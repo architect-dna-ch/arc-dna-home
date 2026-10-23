@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: the Architect-DNA cube inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:scaleX="3.2" android:scaleY="3.2" android:translateX="31.6" android:translateY="31.6">
+        <path android:strokeColor="#1A1A1A" android:strokeWidth="1.1" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M7,1 L1,4 L1,10 L7,13 L13,10 L13,4 Z M7,1 L7,13 M1,4 L7,7" />
+        <path android:strokeColor="#B5271E" android:strokeWidth="1.1" android:strokeLineCap="round"
+            android:pathData="M7,7 L13,4" />
+    </group>
+</vector>

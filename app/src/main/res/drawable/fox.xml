@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Architect-DNA fox, same drawing as fx/brand-fx.js on the website. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <path android:fillColor="@color/rust" android:pathData="M28,38 C14,40 2,30 6,16 C10,22 16,26 26,30 Z" />
+    <path android:strokeColor="@color/ink" android:strokeWidth="2.5" android:strokeLineCap="round"
+        android:pathData="M32,47 L32,58 M38,47 L38,58 M52,47 L52,58 M58,47 L58,58" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.5"
+        android:pathData="M24,40 A20,10 0 1,0 64,40 A20,10 0 1,0 24,40 Z" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.5" android:strokeLineJoin="round"
+        android:pathData="M60,36 L66,12 L73,24 L80,12 L84,30 L93,38 L80,46 L62,44 Z" />
+    <path android:fillColor="@color/rust" android:fillAlpha="0.9" android:pathData="M84,30 L93,38 L80,46 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M90.8,38 A2.2,2.2 0 1,0 95.2,38 A2.2,2.2 0 1,0 90.8,38 Z" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="1.6"
+        android:pathData="M71.4,31 A3.6,3.6 0 1,0 78.6,31 A3.6,3.6 0 1,0 71.4,31 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M74.2,31 A1.8,1.8 0 1,0 77.8,31 A1.8,1.8 0 1,0 74.2,31 Z" />
+</vector>
