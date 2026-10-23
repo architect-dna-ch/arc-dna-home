@@ -2,7 +2,11 @@
 
 Architect-DNA styled Android launcher for the Pixel 9a.
 
-- Clock with rust colon, German date and greeting
+- Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
+  German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
+- Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it
+- Kopf-Scroll (in the Mediathek, off by default): the front camera reads your head tilt on-device
+  (ML Kit); nod up/down to scroll. Runs only while the launcher is on screen
 - "Heute zählt": one focus for the day (resets at midnight)
 - Dock of default apps: phone, SMS, camera, browser, maps, mail, calendar, ARC-DNA web home
 - All apps with search (Enter opens the first hit), long-press for app info

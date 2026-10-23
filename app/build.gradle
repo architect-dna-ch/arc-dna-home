@@ -45,3 +45,11 @@ android {
         checkReleaseBuilds false
     }
 }
+
+dependencies {
+    // Head-nod scrolling: front camera frames + on-device face detection (bundled model, no network).
+    implementation 'androidx.camera:camera-camera2:1.4.1'
+    implementation 'androidx.camera:camera-lifecycle:1.4.1'
+    implementation 'com.google.mlkit:face-detection:16.1.7'
+    implementation 'com.google.guava:listenablefuture:1.0'
+}

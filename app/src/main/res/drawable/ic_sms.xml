@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Line icon from architect-dna.ch/home. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.7" android:strokeLineCap="round"
+        android:strokeLineJoin="round" android:pathData="M21,12a8,8 0 0,1 -11.5,7.2L4,21l1.8,-5A8,8 0 1,1 21,12z" />
+</vector>
