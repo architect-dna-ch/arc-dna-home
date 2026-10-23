@@ -8,7 +8,8 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - All apps with search (Enter opens the first hit), long-press for app info
 - The fox: tap = fox call, long-press = ARC-DNA web home with the AI chat
 - Shake the phone = earthquake
-- Light/dark follows the system; shows your wallpaper behind everything
+- Light/dark follows the system, and the ARC-DNA wallpaper switches with it (home + lock screen);
+  long-press the clock to turn auto-wallpaper off or on
 
 ## Install
 Every push to `main` builds a signed APK with GitHub Actions and publishes it as a release.

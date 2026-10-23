@@ -2,6 +2,7 @@ package ch.architectdna.home;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.WallpaperManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -124,13 +125,18 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         setContentView(buildUi());
+        applyWallpaperIfNeeded();
         loadApps();
         registerPackageReceiver();
     }
 
-    private void pickColours() {
-        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+    private boolean isNight() {
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
             == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private void pickColours() {
+        boolean night = isNight();
         ink = night ? 0xFFECEBE6 : 0xFF1A1A1A;
         ink2 = night ? 0xFFA9A8A2 : 0xFF5A5A58;
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
@@ -163,6 +169,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         clock.setLetterSpacing(-0.06f);
         clock.setIncludeFontPadding(false);
         clock.setPadding(0, dp(30), 0, 0);
+        clock.setOnLongClickListener(v -> {
+            boolean on = !prefs.getBoolean("autoWallpaper", true);
+            prefs.edit().putBoolean("autoWallpaper", on).remove("wallpaperMode").apply();
+            Toast.makeText(this, on ? "Auto-Wallpaper an" : "Auto-Wallpaper aus", Toast.LENGTH_SHORT).show();
+            applyWallpaperIfNeeded();
+            return true;
+        });
         content.addView(clock);
 
         date = text(17, ink2, false);
@@ -438,6 +451,32 @@ public class MainActivity extends Activity implements SensorEventListener {
         } catch (ActivityNotFoundException | SecurityException e) {
             Toast.makeText(this, "Keine passende App gefunden.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /* ---------------- Wallpaper ---------------- */
+
+    /**
+     * Light mode gets the light ARC-DNA wallpaper, dark mode the dark one, on home and lock screen.
+     * The activity is recreated when the system switches modes, so this runs on every switch;
+     * it only writes the wallpaper when the mode differs from the last one applied.
+     * Long-press the clock to turn this off (e.g. to keep a wallpaper of your own).
+     */
+    private void applyWallpaperIfNeeded() {
+        if (!prefs.getBoolean("autoWallpaper", true)) return;
+        boolean night = isNight();
+        String mode = night ? "dark" : "light";
+        if (mode.equals(prefs.getString("wallpaperMode", ""))) return;
+        int res = night ? R.drawable.wallpaper_dark : R.drawable.wallpaper_light;
+        Context app = getApplicationContext();
+        new Thread(() -> {
+            try (java.io.InputStream in = app.getResources().openRawResource(res)) {
+                WallpaperManager.getInstance(app).setStream(in, null, true,
+                    WallpaperManager.FLAG_SYSTEM | WallpaperManager.FLAG_LOCK);
+                prefs.edit().putString("wallpaperMode", mode).apply();
+            } catch (java.io.IOException | RuntimeException e) {
+                handler.post(() -> Toast.makeText(app, "Wallpaper konnte nicht gesetzt werden.", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     /* ---------------- Clock & focus ---------------- */
