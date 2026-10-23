@@ -45,6 +45,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    androidResources {
+        noCompress 'task'
+    }
+
     lint {
         abortOnError false
         checkReleaseBuilds false
@@ -57,4 +61,6 @@ dependencies {
     implementation 'androidx.camera:camera-lifecycle:1.4.1'
     implementation 'com.google.mlkit:face-detection:16.1.7'
     implementation 'com.google.guava:listenablefuture:1.0'
+    // Gaze scrolling: MediaPipe Face Landmarker (eye blendshapes). The model is fetched in CI.
+    implementation 'com.google.mediapipe:tasks-vision:0.10.14'
 }

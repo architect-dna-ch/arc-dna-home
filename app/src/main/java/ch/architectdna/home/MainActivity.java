@@ -461,7 +461,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headToggle = monoText(11, ink2);
         headToggle.setPadding(dp(10), dp(8), dp(10), dp(8));
         headToggle.setBackground(box(card, line, 20));
-        headToggle.setOnClickListener(v -> setHeadScroll(!prefs.getBoolean("headScroll", false)));
+        headToggle.setOnClickListener(v -> cycleHeadMode());
         head.addView(headToggle);
         TextView close = text(18, ink, true);
         close.setText("✕");
@@ -610,22 +610,34 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
-    /* ================= Head-nod scrolling ================= */
+    /* ================= Head / gaze scrolling ================= */
 
-    private void setHeadScroll(boolean on) {
-        prefs.edit().putBoolean("headScroll", on).apply();
+    /** "off", "nod" (head tilt) or "gaze" (eyes). Older versions stored a boolean. */
+    private String headMode() {
+        String m = prefs.getString("headMode", null);
+        if (m == null) m = prefs.getBoolean("headScroll", false) ? "nod" : "off";
+        return m;
+    }
+
+    /** Toggle in the Mediathek cycles AUS → NICKEN → BLICK → AUS. */
+    private void cycleHeadMode() {
+        String m = headMode();
+        String next = m.equals("off") ? "nod" : m.equals("nod") ? "gaze" : "off";
+        prefs.edit().putString("headMode", next).remove("headScroll").apply();
         paintHeadToggle();
-        if (on) startHead();
-        else stopHead();
+        stopHead();
+        if (!next.equals("off")) startHead();
     }
 
     private void paintHeadToggle() {
-        boolean on = prefs.getBoolean("headScroll", false);
-        headToggle.setText(on ? "KOPF-SCROLL: AN" : "KOPF-SCROLL: AUS");
-        headToggle.setTextColor(on ? rust : ink2);
+        String m = headMode();
+        headToggle.setText(m.equals("nod") ? "KOPF-SCROLL: NICKEN" : m.equals("gaze") ? "KOPF-SCROLL: BLICK" : "KOPF-SCROLL: AUS");
+        headToggle.setTextColor(m.equals("off") ? ink2 : rust);
     }
 
     private void startHead() {
+        String m = headMode();
+        if (m.equals("off")) return;
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
             return;
@@ -634,9 +646,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibFrames = 0;
         calibSum = 0;
         smoothTilt = 0;
-        head.start();
+        boolean gaze = m.equals("gaze");
+        head.start(gaze ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
+        showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
-        Toast.makeText(this, "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, gaze
+            ? "Kurz in die Bildschirmmitte schauen … dann unten = runter, oben = rauf"
+            : "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_LONG).show();
     }
 
     private void stopHead() {
@@ -646,6 +662,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headLabel.setVisibility(View.GONE);
     }
 
+    /** Top bar while active: mode plus ↑ / ↓ / · so you can see what the camera reads. */
+    private void showHeadState(int dir) {
+        String arrow = dir < 0 ? "↑" : dir > 0 ? "↓" : "·";
+        headLabel.setText("◉ " + (headMode().equals("gaze") ? "BLICK " : "NICKEN ") + arrow + "  ");
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
@@ -653,35 +675,59 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             startHead();
         } else {
-            prefs.edit().putBoolean("headScroll", false).apply();
+            prefs.edit().putString("headMode", "off").apply();
             paintHeadToggle();
             Toast.makeText(this, "Ohne Kamera kein Kopf-Scroll.", Toast.LENGTH_SHORT).show();
         }
     }
 
     /**
-     * The first frames set the neutral head position; after that, tilting more than a few degrees
-     * up or down scrolls, faster the further you nod. The neutral point slowly follows your
-     * posture while you hold still, so slouching doesn't start a scroll.
+     * NICKEN: the first frames set the neutral head position; tilting more than ~4° up or down
+     * scrolls, reaching full speed at ~12°. The neutral point slowly follows your posture while
+     * you hold still, so slouching doesn't start a scroll.
      */
     @Override
     public void onTilt(float pitch) {
-        if (calibFrames < 8) {
+        if (calibFrames < 6) {
             calibSum += pitch;
-            if (++calibFrames == 8) basePitch = calibSum / 8f;
+            if (++calibFrames == 6) basePitch = calibSum / 6f;
             return;
         }
         float delta = pitch - basePitch;
-        smoothTilt = smoothTilt * 0.6f + delta * 0.4f;
-        float dead = 8f;
+        smoothTilt = smoothTilt * 0.5f + delta * 0.5f;
+        float dead = 4f;
         float over = Math.abs(smoothTilt) - dead;
         if (over <= 0) {
-            basePitch = basePitch * 0.98f + pitch * 0.02f;
+            basePitch = basePitch * 0.99f + pitch * 0.01f;
             setHeadSpeed(0);
             return;
         }
-        float speed = Math.min(1f, over / 14f) * dp(22);
+        float speed = (0.25f + 0.75f * Math.min(1f, over / 8f)) * dp(26);
         setHeadSpeed(smoothTilt > 0 ? -speed : speed); // looking up scrolls up
+    }
+
+    /**
+     * BLICK: the first frames (looking at the middle of the screen) set the rest point.
+     * Looking toward the bottom edge scrolls down slowly and steadily, back to the middle stops,
+     * looking at the top edge / into the camera scrolls up. No drift here, so a long look holds.
+     */
+    @Override
+    public void onGaze(float vertical) {
+        if (calibFrames < 12) {
+            calibSum += vertical;
+            if (++calibFrames == 12) basePitch = calibSum / 12f;
+            return;
+        }
+        float delta = vertical - basePitch;
+        smoothTilt = smoothTilt * 0.7f + delta * 0.3f;
+        float dead = 0.10f;
+        float over = Math.abs(smoothTilt) - dead;
+        if (over <= 0) {
+            setHeadSpeed(0);
+            return;
+        }
+        float speed = (0.35f + 0.65f * Math.min(1f, over / 0.3f)) * dp(9);
+        setHeadSpeed(smoothTilt > 0 ? speed : -speed); // eyes down scrolls down
     }
 
     @Override
@@ -691,13 +737,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onError(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-        setHeadScroll(false);
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        prefs.edit().putString("headMode", "off").apply();
+        paintHeadToggle();
+        stopHead();
     }
 
     private void setHeadSpeed(float speed) {
         boolean wasIdle = headSpeed == 0;
         headSpeed = speed;
+        showHeadState(speed < 0 ? -1 : speed > 0 ? 1 : 0);
         if (speed != 0 && wasIdle) handler.post(headScroller);
     }
 
@@ -865,7 +914,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ticker.run();
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
-        if (prefs.getBoolean("headScroll", false)
+        if (!headMode().equals("off")
             && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startHead();
         }
