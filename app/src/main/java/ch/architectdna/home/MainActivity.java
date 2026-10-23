@@ -37,6 +37,7 @@ import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -90,6 +91,8 @@ public class MainActivity extends Activity implements SensorEventListener {
     private TextView clock, date, greet, bubble;
     private EditText focus, search;
     private ImageView fox;
+    private View shield;
+    private boolean hidden;
     private SharedPreferences prefs;
     private final List<AppEntry> apps = new ArrayList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -125,6 +128,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         setContentView(buildUi());
+        if (prefs.getBoolean("hidden", false)) {
+            hidden = true;
+            shield.setVisibility(View.VISIBLE);
+            content.setAlpha(0.12f);
+            content.setScaleX(0.97f);
+            content.setScaleY(0.97f);
+        }
         applyWallpaperIfNeeded();
         loadApps();
         registerPackageReceiver();
@@ -158,6 +168,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
+        // Tapping empty space (not a tile or field) fades everything away to show the wallpaper.
+        content.setOnClickListener(v -> setHidden(true));
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
 
         content.addView(label("Architect · DNA"));
@@ -219,8 +231,16 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         TextView hint = text(11, ink3, false);
         hint.setTypeface(mono);
-        hint.setText("Fuchs: tippen = Yip · halten = Chat · schütteln = Erdbeben");
+        hint.setText("Leere Fläche tippen = nur Wallpaper · Fuchs: tippen = Yip · halten = Chat · schütteln = Erdbeben");
         content.addView(hint, margins(-1, -2, 0, dp(22), 0, 0));
+
+        // While hidden, this transparent layer takes the tap that brings everything back,
+        // so the faded tiles underneath can't be opened by accident.
+        shield = new View(this);
+        shield.setVisibility(View.GONE);
+        shield.setContentDescription("Apps einblenden");
+        shield.setOnClickListener(v -> setHidden(false));
+        root.addView(shield, new FrameLayout.LayoutParams(-1, -1));
 
         // The fox sits bottom-left above the scrolling content.
         fox = new ImageView(this);
@@ -595,7 +615,29 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        resetView();
+        if (hidden) setHidden(false);
+        else resetView();
+    }
+
+    /** Fade the home screen down to a faint ghost so the wallpaper shows, or bring it back. */
+    private void setHidden(boolean hide) {
+        if (hide == hidden) return;
+        hidden = hide;
+        prefs.edit().putBoolean("hidden", hide).apply();
+        if (hide) {
+            hideKeyboard();
+            if (focus != null) focus.clearFocus();
+            if (search != null) search.clearFocus();
+        }
+        shield.setVisibility(hide ? View.VISIBLE : View.GONE);
+        content.animate().cancel();
+        content.animate()
+            .alpha(hide ? 0.12f : 1f)
+            .scaleX(hide ? 0.97f : 1f)
+            .scaleY(hide ? 0.97f : 1f)
+            .setDuration(hide ? 420 : 300)
+            .setInterpolator(new DecelerateInterpolator())
+            .start();
     }
 
     private void resetView() {
