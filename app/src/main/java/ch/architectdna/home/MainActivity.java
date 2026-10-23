@@ -712,7 +712,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void applyWallpaperIfNeeded() {
         if (!prefs.getBoolean("autoWallpaper", true)) return;
         boolean night = isNight();
-        String mode = night ? "dark" : "light";
+        // The suffix is the wallpaper version: bumping it makes an update replace the old image.
+        String mode = (night ? "dark" : "light") + "-v2";
         if (mode.equals(prefs.getString("wallpaperMode", ""))) return;
         int res = night ? R.drawable.wallpaper_dark : R.drawable.wallpaper_light;
         Context app = getApplicationContext();
