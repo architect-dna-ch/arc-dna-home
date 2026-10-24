@@ -16,6 +16,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -133,6 +134,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private TextView clock, date, greet, net, headLabel, headToggle, bubble;
     private EditText focus, webQuery, libSearch;
     private ImageView fox;
+    /** Volume raised (keys, music slider, Bluetooth speaker) while home is in front: the fox spins. */
+    private BroadcastReceiver volumeReceiver;
+    private android.animation.ObjectAnimator foxSpin;
+    private float spinTarget;
     private SeismoView seismo;
     private View bottomScrim, topScrim;
     private LinearLayout f1Box;
@@ -1830,6 +1835,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Hide / fox / quake ================= */
 
+    /** One full twist per volume step; quick presses stack up into a longer spin. */
+    private void spinFox() {
+        if (fox == null || game != null) return;
+        float from = fox.getRotation();
+        boolean spinning = foxSpin != null && foxSpin.isRunning();
+        spinTarget = (spinning ? spinTarget : (float) Math.ceil(from / 360f) * 360) + 360;
+        if (foxSpin != null) foxSpin.cancel();
+        foxSpin = android.animation.ObjectAnimator.ofFloat(fox, View.ROTATION, from, spinTarget);
+        foxSpin.setDuration(520);
+        foxSpin.setInterpolator(new android.view.animation.OvershootInterpolator(1.4f));
+        foxSpin.start();
+    }
+
+    /** At full volume the system sends no change, so the key itself still gets a spin. */
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+            AudioManager am = getSystemService(AudioManager.class);
+            if (am != null && am.getStreamVolume(AudioManager.STREAM_MUSIC) >= am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) spinFox();
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
     /** Fade the home screen down to a faint ghost so the wallpaper shows, or bring it back. */
     private void setHidden(boolean hide) {
         if (hide == hidden) return;
@@ -1919,6 +1947,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        volumeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                if (i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != AudioManager.STREAM_MUSIC) return;
+                int now = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", 0);
+                int before = i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", now);
+                if (now > before) spinFox();
+            }
+        };
+        IntentFilter vf = new IntentFilter("android.media.VOLUME_CHANGED_ACTION");
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(volumeReceiver, vf, Context.RECEIVER_EXPORTED);
+        else registerReceiver(volumeReceiver, vf);
         handler.removeCallbacks(ticker);
         ticker.run();
         syncLever();
@@ -1942,6 +1982,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         homeInFront = false;
+        if (volumeReceiver != null) {
+            unregisterReceiver(volumeReceiver);
+            volumeReceiver = null;
+        }
         prefs.edit().putInt("homeScrollY", scroll.getScrollY()).apply();
         handler.removeCallbacks(ticker);
         f1Running = false;
