@@ -126,6 +126,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private long lastShake;
 
     private HeadTracker head;
+    private final FoxVoice voice = new FoxVoice();
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
     private final Object calibToken = new Object();
@@ -969,7 +970,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void foxCall() {
         hop();
-        say(FOX_CALLS[random.nextInt(FOX_CALLS.length)], 1400);
+        String call = FOX_CALLS[random.nextInt(FOX_CALLS.length)];
+        say(call, 1400);
+        voice.say(call);
     }
 
     private void say(String s, long ms) {
@@ -1009,6 +1012,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         a.start();
         say("Whoa.", 1200);
+        voice.say("Whoa.");
     }
 
     @Override
@@ -1056,6 +1060,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         if (cm != null && netCallback != null) cm.unregisterNetworkCallback(netCallback);
         if (head != null) head.close();
+        voice.close();
     }
 
     /** Home pressed while already home: close the Mediathek, back to the top. */

@@ -15,7 +15,8 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - "Heute zählt": one focus for the day (resets at midnight)
 - Dock of default apps: phone, SMS, camera, browser, maps, mail, calendar, ARC-DNA web home
 - All apps with search (Enter opens the first hit), long-press for app info
-- The fox: tap = fox call, long-press = ARC-DNA web home with the AI chat
+- The fox: tap = fox call you can hear (synthesized yips, gekkering, barks, like the website),
+  long-press = ARC-DNA web home with the AI chat
 - Tap empty space = everything fades to a faint ghost and the wallpaper shows; tap again to bring it back
 - Shake the phone = earthquake
 - Light/dark follows the system, and the ARC-DNA wallpaper switches with it (home + lock screen);
