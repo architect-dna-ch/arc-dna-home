@@ -58,3 +58,15 @@ Each build also produces `ARC-DNA-Home.aab` (workflow artifact) for Google Play.
 Every push to `main` builds a signed APK with GitHub Actions and publishes it as a release.
 On the phone: open the latest release, download `ARC-DNA-Home.apk`, allow installing from that source,
 then Settings → Apps → Default apps → Home app → ARC-DNA.
+
+## Bären-Wecker
+
+The **⏰ WECKER** line under the greeting: tap it to set the time (repeats daily, "Test" shows the
+bear right away); long-press switches it on or off. When it rings you are in a dark cave and a bear
+walks towards you out of the darkness. Each step shakes the screen and vibrates, the growl gets
+louder and it roars every few seconds. **Hold AUFWACHEN for 1 s** to stop it; **SNOOZE** sends it
+back for 5 minutes. Rings over the lock screen (needs notifications, and on Android 14+
+"Full-screen notifications"); it is re-armed after a reboot or update.
+
+Coming back from an app keeps your scroll position on the home screen; Home pressed while already
+home still scrolls to the top.

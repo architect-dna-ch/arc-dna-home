@@ -91,6 +91,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final String WEB_HOME = "https://architect-dna.ch/home";
     private static final int REQ_CAMERA = 7;
     private static final int REQ_AUDIO = 8;
+    private static final int REQ_NOTIFY = 9;
     private static final String[] FOX_CALLS = {
         "Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."
     };
@@ -123,9 +124,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private final Random random = new Random();
 
     private ScrollView scroll, libScroll;
+    /** True while the home screen is in front; Home pressed then (not on return from an app) scrolls up. */
+    private boolean homeInFront;
     private LinearLayout content, libGrid;
     private FrameLayout library;
     private View shield;
+    private TextView alarmRow;
     private TextView clock, date, greet, net, headLabel, headToggle, bubble;
     private EditText focus, webQuery, libSearch;
     private ImageView fox;
@@ -234,6 +238,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         setContentView(buildUi());
+        AlarmScheduler.schedule(this);
+        // Keep the scroll position across a recreate (dark/light swipe, process restart).
+        int savedY = prefs.getInt("homeScrollY", 0);
+        if (savedY > 0) scroll.post(() -> scroll.scrollTo(0, savedY));
         updater = new Updater(this, prefs, this::onUpdateState);
         setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
         prefs.edit().remove("hidden").apply();   // the old wallpaper-only mode became the Fuchsjagd game
@@ -361,6 +369,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(date);
         greet = text(17, ink, true);
         content.addView(greet);
+        alarmRow = monoText(12, ink3);
+        alarmRow.setPadding(0, dp(10), 0, dp(4));
+        alarmRow.setOnClickListener(v -> pickAlarm());
+        alarmRow.setOnLongClickListener(v -> {
+            setAlarmOn(!prefs.getBoolean("alarmOn", false));
+            return true;
+        });
+        content.addView(alarmRow);
+        paintAlarm();
 
         content.addView(focusCard(), margins(-1, -2, 0, dp(24), 0, 0));
         content.addView(searchRow(), margins(-1, -2, 0, dp(12), 0, 0));
@@ -1248,9 +1265,75 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headLabel.setText("◉ " + mode + " " + arrow + "  ");
     }
 
+    /* ================= Bear alarm ================= */
+
+    private void paintAlarm() {
+        boolean on = prefs.getBoolean("alarmOn", false);
+        int m = prefs.getInt("alarmMinutes", 7 * 60);
+        String t = String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60);
+        alarmRow.setText(on ? "⏰ WECKER " + t + " · BÄR AUS DER HÖHLE" : "⏰ WECKER AUS · TIPPEN ZUM STELLEN");
+        alarmRow.setTextColor(on ? rust : ink3);
+    }
+
+    private void pickAlarm() {
+        int m = prefs.getInt("alarmMinutes", 7 * 60);
+        android.app.TimePickerDialog d = new android.app.TimePickerDialog(this, (tp, h, min) -> {
+            prefs.edit().putInt("alarmMinutes", h * 60 + min).apply();
+            setAlarmOn(true);
+        }, m / 60, m % 60, true);
+        d.setButton(android.content.DialogInterface.BUTTON_NEUTRAL, "Test", (di, w) ->
+            startActivity(new Intent(this, BearAlarmActivity.class)));
+        d.show();
+    }
+
+    private void setAlarmOn(boolean on) {
+        prefs.edit().putBoolean("alarmOn", on).apply();
+        AlarmScheduler.schedule(this);
+        if (!on) AlarmScheduler.cancelSnooze(this);
+        paintAlarm();
+        if (!on) {
+            Toast.makeText(this, "Wecker aus. Der Bär schläft.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        long in = AlarmScheduler.next(prefs) - System.currentTimeMillis();
+        Toast.makeText(this, String.format(Locale.ROOT, "Der Bär kommt in %d h %02d min.",
+            in / 3_600_000, in / 60_000 % 60), Toast.LENGTH_LONG).show();
+        // Ringing over the lock screen needs notifications and, on Android 14+, full-screen access.
+        if (Build.VERSION.SDK_INT >= 33
+            && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIFY);
+        } else {
+            checkFullScreenAccess();
+        }
+    }
+
+    private void checkFullScreenAccess() {
+        if (Build.VERSION.SDK_INT < 34) return;
+        android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
+        if (nm == null || nm.canUseFullScreenIntent()) return;
+        new AlertDialog.Builder(this)
+            .setTitle("Bär über dem Sperrbildschirm")
+            .setMessage("Damit der Wecker bei gesperrtem Handy im Vollbild klingelt, erlaube \"Vollbild-Benachrichtigungen\" für ARC-DNA.")
+            .setPositiveButton("Einstellungen", (d, w) -> {
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        Uri.parse("package:" + getPackageName())));
+                } catch (RuntimeException e) {
+                    Toast.makeText(this, "Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen", Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNegativeButton("Später", null)
+            .show();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQ_NOTIFY) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) checkFullScreenAccess();
+            else Toast.makeText(this, "Ohne Benachrichtigungen klingelt der Bär nur, wenn ARC-DNA offen ist.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (requestCode == REQ_AUDIO) {
             music.onAudioPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
             return;
@@ -1835,6 +1918,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onResume() {
         super.onResume();
+        homeInFront = true;
         handler.removeCallbacks(ticker);
         ticker.run();
         syncLever();
@@ -1857,6 +1941,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onPause() {
         super.onPause();
+        homeInFront = false;
+        prefs.edit().putInt("homeScrollY", scroll.getScrollY()).apply();
         handler.removeCallbacks(ticker);
         f1Running = false;
         f1Panel.pause();
@@ -1876,7 +1962,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         voice.close();
     }
 
-    /** Home pressed while already home: close the Mediathek, back to the top. */
+    /** Home pressed while already home: close the Mediathek, back to the top. Coming back from an app keeps the position. */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -1891,9 +1977,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             lastHomePress = now;
             return;
         }
+        boolean wasInFront = homeInFront;
         closeLibrary();
         hideKeyboard();
-        scroll.smoothScrollTo(0, 0);
+        if (wasInFront) scroll.smoothScrollTo(0, 0);
     }
 
     @Override

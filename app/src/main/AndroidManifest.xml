@@ -22,6 +22,14 @@
          RECORD_AUDIO; nothing is recorded or stored). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Bear alarm: exact daily alarm that rings over the lock screen and survives reboots. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <!-- Android 11+ package visibility: see every launchable app and the default apps for the dock. -->
@@ -65,6 +73,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Bear alarm: full screen over the lock screen, its own task so Home stays the launcher. -->
+        <activity
+            android:name=".BearAlarmActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:taskAffinity="ch.architectdna.home.alarm"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:turnScreenOn="true" />
+
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- ARC-DNA Scroll: head / eye scrolling in apps chosen per app in the Mediathek. -->
         <service
