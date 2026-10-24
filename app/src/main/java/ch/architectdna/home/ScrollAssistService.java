@@ -41,6 +41,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private WindowManager windows;
     private HeadTracker head;
     private TextView pill;
+    private EdgeLight edge;
+    private WindowManager.LayoutParams edgeParams;
     private String currentPkg = "", mode = "off";
     private boolean paused, scrolling, foreground, gotFrame;
 
@@ -145,12 +147,14 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         gotFrame = false;
         head.start(m.equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         DiagLog.log("head tracking started, mode=" + m);
+        showEdge();
         main.removeCallbacks(frameWatchdog);
         main.postDelayed(frameWatchdog, 6000);
     }
 
     private void stopTracking() {
         if (head != null) head.stop();
+        hideEdge();
         speed = 0;
         main.removeCallbacks(scroller);
         scrolling = false;
@@ -325,6 +329,44 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         boolean resting = SystemClock.uptimeMillis() < pauseUntil;
         String state = paused ? "‖ PAUSE" : resting ? "‖ FINGER" : speed < 0 ? "↑" : speed > 0 ? "↓" : "·";
         pill.setText("◉ " + name + " " + state);
+    }
+
+    /** Full-screen, untouchable overlay for the ring light; it lights up only in the dark. */
+    private void showEdge() {
+        if (windows == null || edge != null) return;
+        edge = new EdgeLight(this, on -> {
+            if (edge == null || edgeParams == null) return;
+            edgeParams.screenBrightness = on ? 1f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
+            try {
+                windows.updateViewLayout(edge, edgeParams);
+            } catch (RuntimeException ignored) {
+            }
+        });
+        edgeParams = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT);
+        if (Build.VERSION.SDK_INT >= 30) {
+            edgeParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
+        try {
+            windows.addView(edge, edgeParams);
+            edge.watch(true);
+        } catch (RuntimeException e) {
+            edge = null;
+        }
+    }
+
+    private void hideEdge() {
+        if (edge == null) return;
+        edge.watch(false);
+        try {
+            windows.removeView(edge);
+        } catch (RuntimeException ignored) {
+        }
+        edge = null;
     }
 
     private void hidePill() {

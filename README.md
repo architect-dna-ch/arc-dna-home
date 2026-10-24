@@ -89,3 +89,16 @@ Backup of the previous layout: branch `backup/home-v1.0.35`.
 
 Every push to `main` builds and publishes `v1.0.<run>`; only the 10 newest releases are kept.
 A commit marked `[final]` is published as "· FINAL" and moves the `final` tag to it.
+
+## Ring light (Kopf-Scroll im Dunkeln)
+
+While head / eye scrolling runs (Mediathek or per app, e.g. Chrome) and the light sensor reads
+below ~6 lux, a few pixels of bright white light up along the curved display edge, with LED
+spots in the corners, and the screen goes to full brightness so the front camera still sees
+your face. Off again above ~15 lux.
+
+## Dynamischer Sperrbildschirm – Einführung
+
+Long-press the clock → "Dynamischer Sperrbildschirm – Einführung": what the lock screen shows,
+✓/✗ for each setup step, and a button for the next one. Opens once by itself while the lock
+screen is still static.

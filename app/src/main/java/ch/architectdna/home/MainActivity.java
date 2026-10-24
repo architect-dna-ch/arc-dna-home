@@ -55,6 +55,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewAnimationUtils;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.animation.DecelerateInterpolator;
@@ -134,6 +135,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private TextView clock, date, greet, net, headLabel, headToggle, bubble;
     private EditText focus, webQuery, libSearch;
     private ImageView fox;
+    private EdgeLight edgeLight;
+    private View libFoldHead;
     /** Volume raised (keys, music slider, Bluetooth speaker) while home is in front: the fox spins. */
     private BroadcastReceiver volumeReceiver;
     private android.animation.ObjectAnimator foxSpin;
@@ -248,6 +251,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         setContentView(buildUi());
         AlarmScheduler.schedule(this);
+        if (!prefs.getBoolean("lockIntroShown", false) && !liveOnLock()) handler.postDelayed(this::showLockIntro, 1200);
         // Keep the scroll position across a recreate (dark/light swipe, process restart).
         int savedY = prefs.getInt("homeScrollY", 0);
         if (savedY > 0) scroll.post(() -> scroll.scrollTo(0, savedY));
@@ -545,6 +549,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             bubble.requestLayout();
             return insets;
         });
+
+        // Ring light on the display edge when it's too dark for head / eye scrolling.
+        edgeLight = new EdgeLight(this, on -> {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.screenBrightness = on ? 1f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
+            getWindow().setAttributes(lp);
+        });
+        root.addView(edgeLight, new FrameLayout.LayoutParams(-1, -1));
         return root;
     }
 
@@ -825,6 +837,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             scroll.post(this::updateFolds);
         });
+        if (block == homeLib) libFoldHead = head;
         content.addView(head, margins(-1, -2, 0, top - dp(8), 0, 0));
         content.addView(block, margins(-1, -2, 0, dp(6), 0, 0));
     }
@@ -833,11 +846,26 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void renderHomeLibrary() {
         if (homeLib == null || homeLib.getVisibility() != View.VISIBLE) return;
         fillGrid(homeLib, apps, cols());
+        // Bottom bar, so a long open list can be closed without scrolling back up to its title.
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setBackground(box(card, line, 8));
+        TextView close = monoText(11, rust);
+        close.setText("▴ ZUKLAPPEN");
+        close.setPadding(dp(14), dp(12), dp(14), dp(12));
+        close.setOnClickListener(v -> {
+            if (libFoldHead == null) return;
+            libFoldHead.performClick();
+            libFoldHead.post(() -> scroll.smoothScrollTo(0, Math.max(0, libFoldHead.getTop() - dp(120))));
+        });
+        bar.addView(close);
+        bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         TextView more = monoText(11, ink2);
-        more.setText("SUCHEN, KOPF-SCROLL & EINSTELLUNGEN → VOLLE MEDIATHEK");
-        more.setPadding(dp(4), dp(14), dp(4), dp(6));
+        more.setText("VOLLE MEDIATHEK →");
+        more.setPadding(dp(14), dp(12), dp(14), dp(12));
         more.setOnClickListener(v -> openLibrary());
-        homeLib.addView(more);
+        bar.addView(more);
+        homeLib.addView(bar, margins(-1, -2, 0, dp(12), 0, 0));
     }
 
     private void renderLibrary() {
@@ -1325,6 +1353,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         smoothTilt = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
         boolean gaze = m.equals("gaze");
         head.start(gaze ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
+        edgeLight.watch(true);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
         if (gaze && !prefs.contains("gazeMid")) startGazeCalibration();
@@ -1334,6 +1363,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void stopHead() {
         endGazeCalibration();
         if (head != null) head.stop();
+        if (edgeLight != null) edgeLight.watch(false);
         headSpeed = 0;
         handler.removeCallbacks(headScroller);
         headLabel.setVisibility(View.GONE);
@@ -1709,9 +1739,51 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return "Start: " + home + " · Sperre: " + lock;
     }
 
+    /**
+     * Introduces the dynamic lock screen: what it shows, what is set up already (✓ / ✗), and a
+     * button for the next missing step. Opens once by itself while the lock screen is still static.
+     */
+    private void showLockIntro() {
+        prefs.edit().putBoolean("lockIntroShown", true).apply();
+        boolean live = liveOnLock() || liveWallpaperActive();
+        boolean lockLive = liveOnLock();
+        boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        String msg = "Wenn das Handy gesperrt ist, lebt der Hintergrund:\n\n"
+            + "🌈  Regenbogen-Ring mit Glitzer um den Fingerabdruck-Sensor – pulsiert sanft\n"
+            + "📷  Drehender Regenbogen-Ring um die Frontkamera\n"
+            + "🔊  Rave-Kreise bei jedem Bass-Beat deiner Musik\n"
+            + "🌗  Hell/Dunkel folgt dem System\n\n"
+            + (live ? "✓" : "✗") + "  ARC-DNA Live gewählt\n"
+            + (lockLive ? "✓" : "✗") + "  Auch für den Sperrbildschirm\n"
+            + (mic ? "✓" : "✗") + "  Mikrofon für den Beat (nichts wird aufgenommen)\n\n"
+            + (lockLive && mic ? "Alles bereit – sperr das Handy und spiel Musik."
+            : "Tippe auf den Knopf. Bei der Frage wo: \"Startbildschirm und Sperrbildschirm\".");
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+            .setTitle("Dynamischer Sperrbildschirm")
+            .setMessage(msg)
+            .setNegativeButton("Später", null);
+        if (!lockLive) {
+            b.setPositiveButton("Einrichten", (d, w) -> {
+                Intent i = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                    .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
+                try {
+                    startActivity(i);
+                } catch (ActivityNotFoundException e) {
+                    open(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+                }
+                if (!mic) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+            });
+        } else if (!mic) {
+            b.setPositiveButton("Mikrofon erlauben", (d, w) ->
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO));
+        }
+        b.show();
+    }
+
     /** Long-press the clock: ARC-DNA Live, static light/dark, or leave the wallpaper alone. */
     private void showWallpaperChoice() {
         String[] items = {
+            "Dynamischer Sperrbildschirm – Einführung",
             "ARC-DNA Live – Regenbogen, Glitzer & Rave (Sperrbildschirm)",
             "Statisch – hell/dunkel automatisch",
             "Aus – eigenes Wallpaper behalten",
@@ -1719,7 +1791,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         };
         new AlertDialog.Builder(this)
             .setTitle("Wallpaper & Farben\n" + wallpaperStatus())
-            .setItems(items, (d, which) -> {
+            .setItems(items, (d, pick) -> {
+                if (pick == 0) {
+                    showLockIntro();
+                    return;
+                }
+                int which = pick - 1;
                 if (which == 0) {
                     Toast.makeText(this, "Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“", Toast.LENGTH_LONG).show();
                     Intent live = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
