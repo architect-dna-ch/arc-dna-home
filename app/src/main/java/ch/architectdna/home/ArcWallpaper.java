@@ -82,6 +82,9 @@ public class ArcWallpaper extends WallpaperService {
         @Override
         public void onVisibilityChanged(boolean v) {
             visible = v;
+            DiagLog.init(ArcWallpaper.this);
+            DiagLog.log("wallpaper visible=" + v + " locked=" + locked()
+                + (Build.VERSION.SDK_INT >= 34 ? " flags=" + getWallpaperFlags() : "") + " preview=" + isPreview());
             if (v) {
                 startVisualizer();
                 drawFrame();
@@ -128,6 +131,7 @@ public class ArcWallpaper extends WallpaperService {
             long t = SystemClock.uptimeMillis();
             if (am != null && am.isMusicActive() && t - lastFft > 2000 && t - lastRestart > 3000) {
                 lastRestart = t;
+                DiagLog.log("wallpaper visualizer reconnect, lock=" + lock);
                 stopVisualizer();
                 startVisualizer();
             }

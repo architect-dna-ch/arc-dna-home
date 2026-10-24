@@ -243,6 +243,7 @@ final class Updater {
     }
 
     private void toast(String s) {
+        DiagLog.log("update: " + s);
         Toast.makeText(activity, s, Toast.LENGTH_LONG).show();
     }
 }

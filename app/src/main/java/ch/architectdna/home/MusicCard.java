@@ -554,6 +554,7 @@ final class MusicCard {
             if (resumed || (playing && noSignal && now - lastRestart > wait)) {
                 if (!resumed) failedRestarts++;
                 lastRestart = now;
+                DiagLog.log("visualizer reconnect (" + (resumed ? "resumed" : "no signal, try " + failedRestarts) + ")");
                 stopVisualizer();
                 startVisualizer();
             }

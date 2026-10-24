@@ -232,6 +232,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        DiagLog.init(this);
+        DiagLog.log("launcher start, " + wallpaperStatusSafe());
         pickColours();
         sensors = (SensorManager) getSystemService(SENSOR_SERVICE);
 
@@ -393,6 +395,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         appTilesBox.addView(appTiles());
         content.addView(appTilesBox, margins(-1, -2, 0, dp(10), 0, 0));
 
+        // Zuletzt: always on, one row.
+        content.addView(label("Zuletzt"), margins(-1, -2, 0, dp(22), 0, 0));
+        recentHome = new LinearLayout(this);
+        recentHome.setOrientation(LinearLayout.VERTICAL);
+        content.addView(recentHome, margins(-1, -2, 0, dp(10), 0, 0));
+
         content.addView(label("Musik"), margins(-1, -2, 0, dp(26), 0, 0));
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
             @Override
@@ -429,9 +437,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         today.addView(focusCard(), margins(-1, -2, 0, dp(6), 0, 0));
         foldable("Heute & Wecker", "today", false, today, dp(22));
 
-        recentHome = new LinearLayout(this);
-        recentHome.setOrientation(LinearLayout.VERTICAL);
-        foldable("Zuletzt", "recent", false, recentHome, dp(22));
 
         foldable("Projekte", "projects", false, projectChips(), dp(22));
 
@@ -746,6 +751,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
+
+        TextView diag = monoText(11, ink2);
+        diag.setText("DIAGNOSE-LOG TEILEN (ANONYM) →");
+        diag.setPadding(dp(4), dp(12), dp(4), dp(8));
+        diag.setOnClickListener(v -> shareDiagnostics());
+        body.addView(diag);
 
         TextView appScroll = monoText(11, ink2);
         appScroll.setText("EINSTELLUNGEN · KOPF-SCROLL PRO APP →");
@@ -1618,6 +1629,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         new Thread(() -> {
             try (java.io.InputStream in = app.getResources().openRawResource(res)) {
                 WallpaperManager.getInstance(app).setStream(in, null, true, which);
+                DiagLog.log("static wallpaper " + mode + " written, flags=" + which);
                 prefs.edit().putString("wallpaperMode", mode).apply();
             } catch (java.io.IOException | RuntimeException e) {
                 handler.post(() -> Toast.makeText(app, "Wallpaper konnte nicht gesetzt werden.", Toast.LENGTH_SHORT).show());
@@ -1628,6 +1640,46 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private boolean liveWallpaperActive() {
         android.app.WallpaperInfo info = WallpaperManager.getInstance(this).getWallpaperInfo();
         return info != null && getPackageName().equals(info.getPackageName());
+    }
+
+    private String wallpaperStatusSafe() {
+        try {
+            return wallpaperStatus();
+        } catch (RuntimeException e) {
+            return "wallpaper status n/a";
+        }
+    }
+
+    /** Technical state + the log, as plain text to share (e.g. into the Claude chat). Nothing personal. */
+    private void shareDiagnostics() {
+        StringBuilder b = new StringBuilder("ARC-DNA Home Diagnose\n");
+        try {
+            b.append("Version: ").append(getPackageManager().getPackageInfo(getPackageName(), 0).versionName).append('\n');
+        } catch (PackageManager.NameNotFoundException ignored) {
+        }
+        b.append("Gerät: ").append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
+            .append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n");
+        b.append(wallpaperStatusSafe()).append('\n');
+        b.append("Mikrofon/Visualizer: ").append(checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED).append('\n');
+        b.append("Kamera: ").append(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED).append('\n');
+        b.append("Nutzungszugriff: ").append(hasUsageAccess()).append('\n');
+        if (Build.VERSION.SDK_INT >= 33) {
+            b.append("Benachrichtigungen: ").append(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED).append('\n');
+        }
+        if (Build.VERSION.SDK_INT >= 34) {
+            android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
+            b.append("Vollbild-Benachrichtigungen: ").append(nm != null && nm.canUseFullScreenIntent()).append('\n');
+        }
+        b.append("Helligkeit schreiben: ").append(Settings.System.canWrite(this)).append('\n');
+        b.append("Wecker: ").append(prefs.getBoolean("alarmOn", false) ? "an" : "aus").append('\n');
+        b.append("Kopf-Scroll: ").append(headMode()).append(", Update-Token gesetzt: ").append(!updater.token().isEmpty()).append('\n');
+        b.append("Nachtmodus: ").append(isNight()).append(", Bildschirm ").append(getResources().getConfiguration().screenWidthDp)
+            .append("×").append(getResources().getConfiguration().screenHeightDp).append(" dp\n\n--- Log ---\n");
+        b.append(DiagLog.read());
+        Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, "ARC-DNA Diagnose")
+            .putExtra(Intent.EXTRA_TEXT, b.toString());
+        open(Intent.createChooser(send, "Diagnose teilen"));
     }
 
     /** Lock screen runs ARC-DNA Live (own lock engine, or home live shared with the lock screen). */
@@ -1884,6 +1936,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (child.getVisibility() != View.VISIBLE) continue;
             boolean isLabel = LABEL_TAG.equals(child.getTag()) && i + 1 < n;
             View block = isLabel ? content.getChildAt(i + 1) : child;
+            // A tall block (the open Mediathek) folds row by row, not as one piece.
+            if (isLabel && block instanceof LinearLayout && block.getVisibility() == View.VISIBLE
+                && block.getHeight() > scroll.getHeight() / 2) {
+                frost(child, 0);
+                frost(block, 0);
+                LinearLayout rows = (LinearLayout) block;
+                for (int k = 0; k < rows.getChildCount(); k++) {
+                    View r = rows.getChildAt(k);
+                    int bottom = block.getTop() + r.getBottom();
+                    frost(r, r.getHeight() == 0 ? 0
+                        : Math.max(0f, Math.min(1f, (bottom - limit) / (float) r.getHeight())));
+                }
+                i++;
+                continue;
+            }
             float hidden = block.getHeight() == 0 ? 0
                 : Math.max(0f, Math.min(1f, (block.getBottom() - limit) / (float) block.getHeight()));
             frost(child, hidden);

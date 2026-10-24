@@ -21,6 +21,8 @@ public class AlarmReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context ctx, Intent intent) {
         String action = intent.getAction();
+        DiagLog.init(ctx);
+        DiagLog.log("alarm receiver: " + action);
         if (Intent.ACTION_BOOT_COMPLETED.equals(action) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             AlarmScheduler.schedule(ctx);
             return;

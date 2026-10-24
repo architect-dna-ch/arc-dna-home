@@ -46,6 +46,8 @@ public class BearAlarmActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        DiagLog.init(this);
+        DiagLog.log("bear alarm shown");
         setShowWhenLocked(true);
         setTurnScreenOn(true);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

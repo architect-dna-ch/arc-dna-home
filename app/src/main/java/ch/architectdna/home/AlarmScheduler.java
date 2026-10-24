@@ -57,9 +57,11 @@ final class AlarmScheduler {
     private static void set(Context c, AlarmManager am, long at, int code) {
         PendingIntent show = PendingIntent.getActivity(c, 10, new Intent(c, MainActivity.class),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        DiagLog.log("alarm set code=" + code + " in " + (at - System.currentTimeMillis()) / 60000 + " min");
         try {
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(at, show), pending(c, code));
         } catch (SecurityException e) {
+            DiagLog.log("alarm: no exact-alarm access, inexact fallback");
             // Without exact-alarm access fall back to an inexact but Doze-proof alarm.
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending(c, code));
         }

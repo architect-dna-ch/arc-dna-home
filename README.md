@@ -76,6 +76,11 @@ home still scrolls to the top.
 ## Home layout (priorities)
 
 Always open: clock + brightness lever, **search**, **Apps**, **Musik**. Folding sections below
-(tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (all apps inline; link to the full
-Mediathek with search and head scroll), **Heute & Wecker**, **Zuletzt**, **Projekte**.
+(tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (all apps inline, frosted row by row
+while scrolling; link to the full Mediathek), **Heute & Wecker**, **Projekte**. **Zuletzt** is
+always on, one row under the apps.
+
+**Diagnose:** Mediathek → "DIAGNOSE-LOG TEILEN (ANONYM)" shares device/permission state and a
+technical event log (crashes, visualizer and wallpaper events, alarm, updates) as plain text.
+No app names, song titles or tokens are logged.
 Backup of the previous layout: branch `backup/home-v1.0.35`.
