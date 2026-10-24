@@ -18,6 +18,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -47,6 +48,7 @@ import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -136,6 +138,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private HeadTracker head;
     private final FoxVoice voice = new FoxVoice();
     private Updater updater;
+
+    /** Circle gesture: each circle turns the screen 90°, four bring it back. */
+    private static final int[] ORIENTATIONS = {
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT,
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
+    };
+    private final List<float[]> stroke = new ArrayList<>();
+    private boolean strokeMulti;
     private TextView updateHome, updateLib;
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
@@ -185,6 +197,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         setContentView(buildUi());
         updater = new Updater(this, prefs, this::onUpdateState);
+        setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
         if (prefs.getBoolean("hidden", false)) {
             hidden = true;
             shield.setVisibility(View.VISIBLE);
@@ -779,6 +792,84 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         blocked.setOnClickListener(v -> open(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.fromParts("package", getPackageName(), null))));
         into.addView(blocked);
+    }
+
+    /* ================= Circle gesture → rotate ================= */
+
+    /** Watches every one-finger stroke on the home screen; the views still get the touches as usual. */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        int action = ev.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            stroke.clear();
+            strokeMulti = false;
+            stroke.add(new float[]{ev.getX(), ev.getY()});
+        } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
+            strokeMulti = true;
+        } else if (action == MotionEvent.ACTION_MOVE) {
+            for (int h = 0; h < ev.getHistorySize(); h++) stroke.add(new float[]{ev.getHistoricalX(h), ev.getHistoricalY(h)});
+            stroke.add(new float[]{ev.getX(), ev.getY()});
+        } else if (action == MotionEvent.ACTION_UP) {
+            stroke.add(new float[]{ev.getX(), ev.getY()});
+            if (!strokeMulti && !libraryOpen && calibStage < 0) {
+                int dir = circleDirection();
+                if (dir != 0) rotateStep(dir);
+            }
+            stroke.clear();
+        } else if (action == MotionEvent.ACTION_CANCEL) {
+            stroke.clear();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    /**
+     * +1 for a clockwise circle, -1 for counter-clockwise, 0 for anything else. A circle has to
+     * go most of the way round its centre (≥ 300°), be reasonably round, at least 80 dp across,
+     * and end near where it started, so scrolls, swipes and taps never count.
+     */
+    private int circleDirection() {
+        int n = stroke.size();
+        if (n < 12) return 0;
+        float cx = 0, cy = 0;
+        for (float[] p : stroke) {
+            cx += p[0];
+            cy += p[1];
+        }
+        cx /= n;
+        cy /= n;
+        double meanR = 0;
+        double[] r = new double[n];
+        for (int i = 0; i < n; i++) {
+            r[i] = Math.hypot(stroke.get(i)[0] - cx, stroke.get(i)[1] - cy);
+            meanR += r[i];
+        }
+        meanR /= n;
+        if (meanR < dp(40)) return 0;
+        double var = 0;
+        for (double v : r) var += (v - meanR) * (v - meanR);
+        if (Math.sqrt(var / n) / meanR > 0.35) return 0;
+        double sweep = 0, prev = Math.atan2(stroke.get(0)[1] - cy, stroke.get(0)[0] - cx);
+        for (int i = 1; i < n; i++) {
+            double a = Math.atan2(stroke.get(i)[1] - cy, stroke.get(i)[0] - cx);
+            double d = a - prev;
+            if (d > Math.PI) d -= 2 * Math.PI;
+            if (d < -Math.PI) d += 2 * Math.PI;
+            sweep += d;
+            prev = a;
+        }
+        if (Math.abs(sweep) < Math.toRadians(300)) return 0;
+        float[] first = stroke.get(0), last = stroke.get(n - 1);
+        if (Math.hypot(last[0] - first[0], last[1] - first[1]) > meanR * 1.2) return 0;
+        return sweep > 0 ? 1 : -1; // screen y points down, so a positive sweep looks clockwise
+    }
+
+    /** Clockwise: portrait → landscape → upside down → other landscape → portrait; counter-clockwise backwards. */
+    private void rotateStep(int dir) {
+        int i = (prefs.getInt("orient", 0) + dir + 4) % 4;
+        prefs.edit().putInt("orient", i).commit();
+        hop();
+        voice.say(dir > 0 ? "Yip-yip!" : "Mrrp?");
+        handler.postDelayed(() -> setRequestedOrientation(ORIENTATIONS[i]), 180);
     }
 
     /* ================= Updates ================= */
