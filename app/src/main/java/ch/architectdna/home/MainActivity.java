@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
+import android.app.UiModeManager;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
 import android.app.usage.UsageEvents;
@@ -51,6 +52,7 @@ import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.ViewAnimationUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -169,8 +171,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
     };
-    private final List<float[]> stroke = new ArrayList<>();
-    private boolean strokeMulti;
+    private boolean strokeMulti, strokeOnSlider, circling;
+    private float downX, downY, lastPX, lastPY, pathTurn, pathLen, lastHeading = Float.NaN;
+    private long downTime;
+    private FrameLayout rootFrame;
     /** Last finger contact; eye scrolling rests for EYE_PAUSE_MS after it. */
     private long lastTouch;
     private static final long EYE_PAUSE_MS = 4000;
@@ -256,6 +260,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private View buildUi() {
         FrameLayout root = new FrameLayout(this);
+        rootFrame = root;
 
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -373,7 +378,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(projectChips(), margins(-1, -2, 0, dp(10), 0, 0));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Leere Fläche: tippen = nur Wallpaper · halten = Mediathek · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
+        hint.setText("Leere Fläche: tippen = nur Wallpaper · halten = Mediathek · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         content.addView(hint, margins(-1, -2, 0, dp(20), 0, 0));
 
@@ -876,72 +881,118 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Circle gesture → rotate ================= */
 
-    /** Watches every one-finger stroke on the home screen; the views still get the touches as usual. */
+    /**
+     * Watches every one-finger stroke on the home screen. Once a stroke has clearly curved
+     * (its direction turned ~150° over 120 dp) it counts as a circle: the views get a cancel, so
+     * the page stops scrolling, and the rest of the stroke is ours. On release a full turn
+     * (≥ 280°) rotates the screen. A fast, flat horizontal swipe switches dark/light instead.
+     */
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
+        boolean gestures = !libraryOpen && calibStage < 0;
         if (action == MotionEvent.ACTION_DOWN) {
-            stroke.clear();
             strokeMulti = false;
-            stroke.add(new float[]{ev.getX(), ev.getY()});
+            circling = false;
+            pathTurn = 0;
+            pathLen = 0;
+            lastHeading = Float.NaN;
+            downX = lastPX = ev.getX();
+            downY = lastPY = ev.getY();
+            downTime = ev.getEventTime();
+            strokeOnSlider = music != null && music.isOnSlider(ev.getRawX(), ev.getRawY());
         } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
             strokeMulti = true;
         } else if (action == MotionEvent.ACTION_MOVE) {
-            for (int h = 0; h < ev.getHistorySize(); h++) stroke.add(new float[]{ev.getHistoricalX(h), ev.getHistoricalY(h)});
-            stroke.add(new float[]{ev.getX(), ev.getY()});
-        } else if (action == MotionEvent.ACTION_UP) {
-            stroke.add(new float[]{ev.getX(), ev.getY()});
-            if (!strokeMulti && !libraryOpen && calibStage < 0) {
-                int dir = circleDirection();
-                if (dir != 0) rotateStep(dir);
+            for (int h = 0; h < ev.getHistorySize(); h++) addPoint(ev.getHistoricalX(h), ev.getHistoricalY(h));
+            addPoint(ev.getX(), ev.getY());
+            if (gestures && !strokeMulti && !circling && !strokeOnSlider
+                && Math.abs(pathTurn) > Math.toRadians(150) && pathLen > dp(120)) {
+                circling = true;
+                MotionEvent cancel = MotionEvent.obtain(ev);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                super.dispatchTouchEvent(cancel);
+                cancel.recycle();
             }
-            stroke.clear();
+            if (circling) return true;
+        } else if (action == MotionEvent.ACTION_UP) {
+            addPoint(ev.getX(), ev.getY());
+            if (circling) {
+                circling = false;
+                if (Math.abs(pathTurn) >= Math.toRadians(280)) rotateStep(pathTurn > 0 ? 1 : -1);
+                return true;
+            }
+            float dx = ev.getX() - downX, dy = ev.getY() - downY;
+            if (gestures && !strokeMulti && !strokeOnSlider
+                && Math.abs(dx) > rootFrame.getWidth() * 0.4f && Math.abs(dy) < Math.abs(dx) * 0.4f
+                && ev.getEventTime() - downTime < 800) {
+                switchNight(dx < 0, ev.getX(), ev.getY());
+            }
         } else if (action == MotionEvent.ACTION_CANCEL) {
-            stroke.clear();
+            circling = false;
         }
         return super.dispatchTouchEvent(ev);
     }
 
+    /** Adds a point (≥ 8 dp from the last, which smooths finger jitter) and adds up how far the path's direction has turned. */
+    private void addPoint(float x, float y) {
+        float dx = x - lastPX, dy = y - lastPY;
+        float d = (float) Math.hypot(dx, dy);
+        if (d < dp(8)) return;
+        float heading = (float) Math.atan2(dy, dx);
+        if (!Float.isNaN(lastHeading)) {
+            float t = heading - lastHeading;
+            if (t > Math.PI) t -= 2 * Math.PI;
+            if (t < -Math.PI) t += 2 * Math.PI;
+            pathTurn += t;  // screen y points down, so a positive turn looks clockwise
+        }
+        lastHeading = heading;
+        lastPX = x;
+        lastPY = y;
+        pathLen += d;
+    }
+
+    /* ================= Swipe → dark / light ================= */
+
     /**
-     * +1 for a clockwise circle, -1 for counter-clockwise, 0 for anything else. A circle has to
-     * go most of the way round its centre (≥ 300°), be reasonably round, at least 80 dp across,
-     * and end near where it started, so scrolls, swipes and taps never count.
+     * Right-to-left = dark, left-to-right = light, for ARC-DNA itself (home, Mediathek and its
+     * wallpaper; Android doesn't let apps switch the system-wide setting). The new colour floods
+     * out in a circle from the finger, then the screen redraws in the new mode.
      */
-    private int circleDirection() {
-        int n = stroke.size();
-        if (n < 12) return 0;
-        float cx = 0, cy = 0;
-        for (float[] p : stroke) {
-            cx += p[0];
-            cy += p[1];
+    private void switchNight(boolean dark, float x, float y) {
+        if (Build.VERSION.SDK_INT < 31) {
+            Toast.makeText(this, "Braucht Android 12 oder neuer.", Toast.LENGTH_SHORT).show();
+            return;
         }
-        cx /= n;
-        cy /= n;
-        double meanR = 0;
-        double[] r = new double[n];
-        for (int i = 0; i < n; i++) {
-            r[i] = Math.hypot(stroke.get(i)[0] - cx, stroke.get(i)[1] - cy);
-            meanR += r[i];
+        if (dark == isNight()) {
+            hop();
+            say(dark ? "Schon dunkel." : "Schon hell.", 1000);
+            return;
         }
-        meanR /= n;
-        if (meanR < dp(40)) return 0;
-        double var = 0;
-        for (double v : r) var += (v - meanR) * (v - meanR);
-        if (Math.sqrt(var / n) / meanR > 0.35) return 0;
-        double sweep = 0, prev = Math.atan2(stroke.get(0)[1] - cy, stroke.get(0)[0] - cx);
-        for (int i = 1; i < n; i++) {
-            double a = Math.atan2(stroke.get(i)[1] - cy, stroke.get(i)[0] - cx);
-            double d = a - prev;
-            if (d > Math.PI) d -= 2 * Math.PI;
-            if (d < -Math.PI) d += 2 * Math.PI;
-            sweep += d;
-            prev = a;
-        }
-        if (Math.abs(sweep) < Math.toRadians(300)) return 0;
-        float[] first = stroke.get(0), last = stroke.get(n - 1);
-        if (Math.hypot(last[0] - first[0], last[1] - first[1]) > meanR * 1.2) return 0;
-        return sweep > 0 ? 1 : -1; // screen y points down, so a positive sweep looks clockwise
+        View veil = new View(this);
+        veil.setBackgroundColor(dark ? 0xFF121211 : 0xFFFAFAF8);
+        rootFrame.addView(veil, new FrameLayout.LayoutParams(-1, -1));
+        voice.say(dark ? "Huff." : "Yip-yip!");
+        veil.post(() -> {
+            float radius = (float) Math.hypot(rootFrame.getWidth(), rootFrame.getHeight());
+            android.animation.Animator a = ViewAnimationUtils.createCircularReveal(veil, (int) x, (int) y, 0, radius);
+            a.setDuration(520);
+            a.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            a.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    setAppNight(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
+                }
+            });
+            a.start();
+        });
+    }
+
+    private void setAppNight(int mode) {
+        if (Build.VERSION.SDK_INT < 31) return;
+        UiModeManager ui = (UiModeManager) getSystemService(UI_MODE_SERVICE);
+        if (ui != null) ui.setApplicationNightMode(mode);   // the activity is recreated in the new mode
     }
 
     /** Clockwise: portrait → landscape → upside down → other landscape → portrait; counter-clockwise backwards. */
@@ -1280,9 +1331,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "ARC-DNA Live – Regenbogen, Glitzer & Rave (Sperrbildschirm)",
             "Statisch – hell/dunkel automatisch",
             "Aus – eigenes Wallpaper behalten",
+            "Hell/Dunkel wieder dem System folgen",
         };
         new AlertDialog.Builder(this)
-            .setTitle("Wallpaper")
+            .setTitle("Wallpaper & Farben")
             .setItems(items, (d, which) -> {
                 if (which == 0) {
                     Toast.makeText(this, "Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“", Toast.LENGTH_LONG).show();
@@ -1306,9 +1358,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     }
                     applyWallpaperIfNeeded();
                     Toast.makeText(this, "Statisches Wallpaper: hell/dunkel automatisch", Toast.LENGTH_SHORT).show();
-                } else {
+                } else if (which == 2) {
                     prefs.edit().putBoolean("autoWallpaper", false).apply();
                     Toast.makeText(this, "Wallpaper bleibt, wie es ist", Toast.LENGTH_SHORT).show();
+                } else {
+                    setAppNight(UiModeManager.MODE_NIGHT_AUTO);
+                    Toast.makeText(this, "Hell/Dunkel folgt wieder dem System", Toast.LENGTH_SHORT).show();
                 }
             })
             .show();

@@ -197,6 +197,15 @@ final class MusicCard {
         return b;
     }
 
+    /** True if a touch at these screen coordinates lands on the volume slider (so it isn't a swipe). */
+    boolean isOnSlider(float rawX, float rawY) {
+        if (volume == null || !volume.isShown()) return false;
+        int[] at = new int[2];
+        volume.getLocationOnScreen(at);
+        return rawX >= at[0] && rawX <= at[0] + volume.getWidth()
+            && rawY >= at[1] - dp(12) && rawY <= at[1] + volume.getHeight() + dp(12);
+    }
+
     /* ---------------- Lifecycle ---------------- */
 
     void start() {
