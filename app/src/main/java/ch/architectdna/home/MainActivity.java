@@ -3,8 +3,11 @@ package ch.architectdna.home;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -62,7 +65,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Random;
 
@@ -117,6 +122,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private EditText focus, webQuery, libSearch;
     private ImageView fox;
     private SeismoView seismo;
+    private View bottomScrim;
+    private LinearLayout recentHome, recentLib;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -264,6 +271,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(label("Apps"), margins(-1, -2, 0, dp(26), 0, 0));
         content.addView(appTiles(), margins(-1, -2, 0, dp(10), 0, 0));
 
+        content.addView(label("Zuletzt"), margins(-1, -2, 0, dp(22), 0, 0));
+        recentHome = new LinearLayout(this);
+        recentHome.setOrientation(LinearLayout.VERTICAL);
+        content.addView(recentHome, margins(-1, -2, 0, dp(10), 0, 0));
+
         content.addView(label("Projekte"), margins(-1, -2, 0, dp(26), 0, 0));
         content.addView(projectChips(), margins(-1, -2, 0, dp(10), 0, 0));
 
@@ -284,6 +296,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         root.addView(shield, new FrameLayout.LayoutParams(-1, -1));
+
+        // A soft fade at the bottom so the navigation buttons, seismograph and fox sit on a calm surface.
+        bottomScrim = new View(this);
+        bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
+            new int[]{panel, (panel & 0x00FFFFFF) | 0xB3000000, panel & 0x00FFFFFF}));
+        root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, dp(100), Gravity.BOTTOM));
 
         seismo = new SeismoView(this);
         root.addView(seismo, new FrameLayout.LayoutParams(-1, dp(30), Gravity.BOTTOM));
@@ -321,12 +339,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 top0 = insets.getSystemWindowInsetTop();
                 bottom = insets.getSystemWindowInsetBottom();
             }
-            content.setPadding(dp(20), top0 + dp(24), dp(20), bottom + dp(96));
+            content.setPadding(dp(20), top0 + dp(24), dp(20), bottom + dp(132));
             library.setPadding(dp(20), top0 + dp(20), dp(20), bottom + dp(12));
             calibOverlay.setPadding(0, top0, 0, bottom);
-            ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom;
-            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(14));
-            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(66));
+            // Keep the seismograph and fox clear of the navigation buttons, with the fade behind them.
+            bottomScrim.getLayoutParams().height = bottom + dp(84);
+            ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom + dp(6);
+            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(20));
+            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(72));
+            bottomScrim.requestLayout();
             seismo.requestLayout();
             fox.requestLayout();
             bubble.requestLayout();
@@ -504,6 +525,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         col.addView(libSearch, margins(-1, dp(50), 0, dp(14), 0, 0));
 
+        col.addView(label("Zuletzt"), margins(-1, -2, 0, dp(16), 0, 0));
+        recentLib = new LinearLayout(this);
+        recentLib.setOrientation(LinearLayout.VERTICAL);
+        col.addView(recentLib, margins(-1, -2, 0, dp(10), 0, 0));
+        col.addView(label("Alle Apps"), margins(-1, -2, 0, dp(16), 0, 0));
+
         libScroll = new ScrollView(this);
         libScroll.setVerticalScrollBarEnabled(false);
         libGrid = new LinearLayout(this);
@@ -592,6 +619,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 apps.clear();
                 apps.addAll(list);
                 renderLibrary();
+                refreshRecents();
             });
         }).start();
     }
@@ -625,6 +653,96 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         } catch (ActivityNotFoundException | SecurityException e) {
             Toast.makeText(this, "Keine passende App gefunden.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /* ================= Zuletzt (recently used apps) ================= */
+
+    private boolean hasUsageAccess() {
+        AppOpsManager ops = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
+        if (ops == null) return false;
+        int mode = Build.VERSION.SDK_INT >= 29
+            ? ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), getPackageName())
+            : ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    /**
+     * Apps brought to the foreground in the last three days, newest first, limited to apps
+     * the Mediathek knows (launchable ones). Needs the special "Usage access" permission;
+     * without it both rows show a button to the settings page instead.
+     */
+    private void refreshRecents() {
+        if (recentHome == null || apps.isEmpty()) return;
+        if (!hasUsageAccess()) {
+            showRecentsPrompt(recentHome);
+            showRecentsPrompt(recentLib);
+            return;
+        }
+        Map<String, AppEntry> byPackage = new HashMap<>();
+        for (AppEntry a : apps) {
+            if (!byPackage.containsKey(a.component.getPackageName())) byPackage.put(a.component.getPackageName(), a);
+        }
+        new Thread(() -> {
+            UsageStatsManager usm = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+            List<AppEntry> recent = new ArrayList<>();
+            if (usm != null) {
+                long now = System.currentTimeMillis();
+                UsageEvents events = usm.queryEvents(now - 3L * 24 * 3600 * 1000, now);
+                UsageEvents.Event e = new UsageEvents.Event();
+                Map<String, Long> last = new HashMap<>();
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(e);
+                    if (e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) last.put(e.getPackageName(), e.getTimeStamp());
+                }
+                List<Map.Entry<String, Long>> sorted = new ArrayList<>(last.entrySet());
+                Collections.sort(sorted, (a, b) -> Long.compare(b.getValue(), a.getValue()));
+                for (Map.Entry<String, Long> en : sorted) {
+                    AppEntry app = byPackage.get(en.getKey());
+                    if (app != null) recent.add(app);
+                    if (recent.size() == 8) break;
+                }
+            }
+            handler.post(() -> {
+                renderRecents(recentHome, recent, 4);
+                renderRecents(recentLib, recent, 8);
+            });
+        }).start();
+    }
+
+    private void renderRecents(LinearLayout into, List<AppEntry> recent, int max) {
+        into.removeAllViews();
+        if (recent.isEmpty()) {
+            TextView none = text(13, ink3, false);
+            none.setText("Noch keine Apps verwendet.");
+            into.addView(none);
+            return;
+        }
+        LinearLayout row = null;
+        int n = Math.min(max, recent.size());
+        for (int i = 0; i < n; i++) {
+            if (i % 4 == 0) {
+                row = new LinearLayout(this);
+                into.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
+            }
+            AppEntry app = recent.get(i);
+            View tile = tile(app.label, app.icon, 32);
+            tile.setOnClickListener(v -> launch(app));
+            row.addView(tile, weighted(i % 4 != 0));
+        }
+        for (int i = n % 4; i != 0 && i < 4; i++) row.addView(new View(this), weighted(true));
+    }
+
+    private void showRecentsPrompt(LinearLayout into) {
+        into.removeAllViews();
+        TextView ask = text(13, ink, true);
+        ask.setText("Zuletzt verwendete Apps anzeigen →");
+        ask.setPadding(dp(14), dp(12), dp(14), dp(12));
+        ask.setBackground(box(card, line, 8));
+        ask.setOnClickListener(v -> {
+            Toast.makeText(this, "ARC-DNA antippen und Zugriff erlauben", Toast.LENGTH_LONG).show();
+            open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        });
+        into.addView(ask);
     }
 
     /* ================= Head / gaze scrolling ================= */
@@ -1037,6 +1155,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onResume();
         handler.removeCallbacks(ticker);
         ticker.run();
+        refreshRecents();
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
         if (!headMode().equals("off")

@@ -5,6 +5,9 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
   German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
 - Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it
+- Zuletzt: the 4 (home) / 8 (Mediathek) most recently used apps; needs Settings → Usage access,
+  until then a button leads there
+- Soft fade behind the navigation buttons; fox and seismograph sit clear of them
 - Kopf-Scroll (button in the Mediathek cycles AUS → NICKEN → BLICK; off by default), all on-device,
   only while the launcher is on screen:
   - NICKEN: head tilt via ML Kit face detection; nod up/down to scroll
