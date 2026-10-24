@@ -2,6 +2,8 @@
 
 Architect-DNA styled Android launcher for the Pixel 9a.
 
+- Brightness lever right of the clock: HI / MID / LO (drag or tap, snaps with a click), long-press =
+  automatic brightness; needs "Modify system settings" once
 - F1 mode: tap the clock for a half-screen timing board (live time to the ms, lap counter, sector bars
   over 5 s laps) where an F1 car whooshes past at every lap; tap the board or clock to hide
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,

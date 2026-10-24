@@ -137,6 +137,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private F1Panel f1Panel;
     private FoxRunView game;
     private ImageView gameButton;
+    private BrightnessLever lever;
+    /** System brightness (0..255) for LO / MID / HI. */
+    private static final int[] BRIGHTNESS = {12, 70, 255};
     private FrameLayout appTilesBox;
     private List<AppEntry> lastRecent = new ArrayList<>();
     private long lastHomePress;
@@ -329,6 +332,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Box.setOnClickListener(v -> setF1(false));
         f1Box.setVisibility(View.GONE);
         clockRow.addView(f1Box);
+
+        // Brightness lever to the right of the clock: HI / MID / LO, long-press = automatic.
+        clockRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        lever = new BrightnessLever(this, new int[]{ink, ink2, ink3, rust, card, line}, new BrightnessLever.Listener() {
+            @Override
+            public void onLevel(int level) {
+                setBrightness(level);
+            }
+
+            @Override
+            public void onAuto() {
+                setAutoBrightness();
+            }
+        });
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(64), dp(118));
+        llp.bottomMargin = dp(10);
+        clockRow.addView(lever, llp);
         content.addView(clockRow);
 
         f1Panel = new F1Panel(this, new int[]{ink, ink2, ink3, rust, card, line}, voice);
@@ -1603,6 +1623,55 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return Math.max(4, Math.min(8, widthDp / 100));
     }
 
+    /* ================= Brightness lever ================= */
+
+    /** Changing system brightness needs "Modify system settings"; ask once, then it just works. */
+    private boolean canWriteSettings() {
+        if (Settings.System.canWrite(this)) return true;
+        Toast.makeText(this, "ARC-DNA erlauben, Systemeinstellungen zu ändern – dann nochmal schieben", Toast.LENGTH_LONG).show();
+        open(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
+        return false;
+    }
+
+    private void setBrightness(int level) {
+        if (!canWriteSettings()) {
+            syncLever();
+            return;
+        }
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
+            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[level]);
+    }
+
+    private void setAutoBrightness() {
+        if (!canWriteSettings()) {
+            syncLever();
+            return;
+        }
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
+            Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
+        say("Auto-Helligkeit", 1200);
+    }
+
+    /** Puts the knob on the level nearest to the current brightness, or "A" when automatic. */
+    private void syncLever() {
+        try {
+            int mode = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE);
+            if (mode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
+                lever.setAuto(true);
+                return;
+            }
+            int b = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
+            int best = 0;
+            for (int i = 1; i < 3; i++) {
+                if (Math.abs(BRIGHTNESS[i] - b) < Math.abs(BRIGHTNESS[best] - b)) best = i;
+            }
+            lever.setLevel(best, false);
+        } catch (Settings.SettingNotFoundException e) {
+            lever.setLevel(1, false);
+        }
+    }
+
     /* ================= Fuchsjagd ================= */
 
     /** Tap on empty space: the screen turns to landscape and the fox chases the rabbit. */
@@ -1768,6 +1837,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onResume();
         handler.removeCallbacks(ticker);
         ticker.run();
+        syncLever();
         f1 = prefs.getBoolean("f1", false);
         f1Box.setVisibility(View.GONE);
         f1Panel.setVisibility(f1 ? View.VISIBLE : View.GONE);
