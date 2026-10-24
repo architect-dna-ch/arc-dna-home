@@ -84,3 +84,8 @@ always on, one row under the apps.
 technical event log (crashes, visualizer and wallpaper events, alarm, updates) as plain text.
 No app names, song titles or tokens are logged.
 Backup of the previous layout: branch `backup/home-v1.0.35`.
+
+## Releases
+
+Every push to `main` builds and publishes `v1.0.<run>`; only the 10 newest releases are kept.
+A commit marked `[final]` is published as "· FINAL" and moves the `final` tag to it.

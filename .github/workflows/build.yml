@@ -47,13 +47,40 @@ jobs:
             ARC-DNA-Home.apk
             ARC-DNA-Home.aab
 
+      - name: Final build?
+        id: final
+        run: |
+          if git log -1 --pretty=%B | grep -q '\[final\]'; then
+            echo "suffix= · FINAL" >> "$GITHUB_OUTPUT"
+          else
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: ARC-DNA Home 1.0.${{ github.run_number }}
+          name: ARC-DNA Home 1.0.${{ github.run_number }}${{ steps.final.outputs.suffix }}
           files: ARC-DNA-Home.apk
           make_latest: true
           body: |
             Download **ARC-DNA-Home.apk** on your Pixel, open it and allow installing from this source.
             Then: Settings → Apps → Default apps → Home app → ARC-DNA.
+
+      # A commit marked [final] also moves the "final" tag to this build.
+      - name: Tag final
+        if: steps.final.outputs.suffix != ''
+        run: |
+          git tag -f final
+          git push -f origin refs/tags/final
+
+      # Keep only the 10 newest releases (and their version tags).
+      - name: Prune old releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq 'sort_by(.created_at) | reverse | .[10:] | .[].tag_name' |
+          while read -r tag; do
+            gh release delete "$tag" --yes --cleanup-tag -R "${{ github.repository }}" || true
+          done
