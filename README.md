@@ -72,3 +72,10 @@ Raising the volume (keys, music slider or speaker) twists the fox around, one sp
 
 Coming back from an app keeps your scroll position on the home screen; Home pressed while already
 home still scrolls to the top.
+
+## Home layout (priorities)
+
+Always open: clock + brightness lever, **search**, **Apps**, **Musik**. Folding sections below
+(tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (all apps inline; link to the full
+Mediathek with search and head scroll), **Heute & Wecker**, **Zuletzt**, **Projekte**.
+Backup of the previous layout: branch `backup/home-v1.0.35`.

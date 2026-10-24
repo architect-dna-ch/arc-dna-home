@@ -127,7 +127,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private ScrollView scroll, libScroll;
     /** True while the home screen is in front; Home pressed then (not on return from an app) scrolls up. */
     private boolean homeInFront;
-    private LinearLayout content, libGrid;
+    private LinearLayout content, libGrid, homeLib;
     private FrameLayout library;
     private View shield;
     private TextView alarmRow;
@@ -383,11 +383,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             setAlarmOn(!prefs.getBoolean("alarmOn", false));
             return true;
         });
-        content.addView(alarmRow);
         paintAlarm();
 
-        content.addView(focusCard(), margins(-1, -2, 0, dp(24), 0, 0));
-        content.addView(searchRow(), margins(-1, -2, 0, dp(12), 0, 0));
+        // Priorities: search, apps and music always open; everything else folds away.
+        content.addView(searchRow(), margins(-1, -2, 0, dp(20), 0, 0));
+
+        content.addView(label("Apps"), margins(-1, -2, 0, dp(22), 0, 0));
+        appTilesBox = new FrameLayout(this);
+        appTilesBox.addView(appTiles());
+        content.addView(appTilesBox, margins(-1, -2, 0, dp(10), 0, 0));
 
         content.addView(label("Musik"), margins(-1, -2, 0, dp(26), 0, 0));
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
@@ -414,21 +418,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         content.addView(music.view(), margins(-1, -2, 0, dp(10), 0, 0));
 
-        content.addView(label("Apps"), margins(-1, -2, 0, dp(26), 0, 0));
-        appTilesBox = new FrameLayout(this);
-        appTilesBox.addView(appTiles());
-        content.addView(appTilesBox, margins(-1, -2, 0, dp(10), 0, 0));
+        // Mediathek inline: all apps, folded by default.
+        homeLib = new LinearLayout(this);
+        homeLib.setOrientation(LinearLayout.VERTICAL);
+        foldable("Mediathek", "lib", false, homeLib, dp(26));
 
-        content.addView(label("Zuletzt"), margins(-1, -2, 0, dp(22), 0, 0));
+        LinearLayout today = new LinearLayout(this);
+        today.setOrientation(LinearLayout.VERTICAL);
+        today.addView(alarmRow);
+        today.addView(focusCard(), margins(-1, -2, 0, dp(6), 0, 0));
+        foldable("Heute & Wecker", "today", false, today, dp(22));
+
         recentHome = new LinearLayout(this);
         recentHome.setOrientation(LinearLayout.VERTICAL);
-        content.addView(recentHome, margins(-1, -2, 0, dp(10), 0, 0));
+        foldable("Zuletzt", "recent", false, recentHome, dp(22));
 
-        content.addView(label("Projekte"), margins(-1, -2, 0, dp(26), 0, 0));
-        content.addView(projectChips(), margins(-1, -2, 0, dp(10), 0, 0));
+        foldable("Projekte", "projects", false, projectChips(), dp(22));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Leere Fläche: halten = Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
+        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         content.addView(hint, margins(-1, -2, 0, dp(20), 0, 0));
 
@@ -772,16 +780,68 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .withEndAction(() -> library.setVisibility(View.GONE)).start();
     }
 
+    /**
+     * A section that folds: tap its label to open or close it (▸ / ▾), remembered across restarts.
+     * The label stays paired with its block for the frosted-fold effect.
+     */
+    private void foldable(String title, String key, boolean openByDefault, View block, int top) {
+        LinearLayout head = (LinearLayout) label(title);
+        TextView arrow = monoText(11, rust);
+        arrow.setPadding(dp(10), 0, 0, 0);
+        head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        head.addView(arrow);
+        head.setPadding(0, dp(8), 0, dp(8));
+        boolean open = prefs.getBoolean("fold:" + key, openByDefault);
+        block.setVisibility(open ? View.VISIBLE : View.GONE);
+        arrow.setText(open ? "▾ ZU" : "▸ AUF");
+        head.setOnClickListener(v -> {
+            boolean now = block.getVisibility() != View.VISIBLE;
+            prefs.edit().putBoolean("fold:" + key, now).apply();
+            arrow.setText(now ? "▾ ZU" : "▸ AUF");
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+            if (now) {
+                block.setVisibility(View.VISIBLE);
+                if (block == homeLib) renderHomeLibrary();
+                block.setAlpha(0f);
+                block.setTranslationY(-dp(12));
+                block.animate().alpha(1f).translationY(0).setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+                // Bring the opened section into view.
+                block.post(() -> scroll.smoothScrollTo(0, Math.max(scroll.getScrollY(), head.getTop() - dp(80))));
+            } else {
+                block.animate().cancel();
+                block.setVisibility(View.GONE);
+            }
+            scroll.post(this::updateFolds);
+        });
+        content.addView(head, margins(-1, -2, 0, top - dp(8), 0, 0));
+        content.addView(block, margins(-1, -2, 0, dp(6), 0, 0));
+    }
+
+    /** The inline Mediathek on the home screen: built only while it is open. */
+    private void renderHomeLibrary() {
+        if (homeLib == null || homeLib.getVisibility() != View.VISIBLE) return;
+        fillGrid(homeLib, apps, cols());
+        TextView more = monoText(11, ink2);
+        more.setText("SUCHEN, KOPF-SCROLL & EINSTELLUNGEN → VOLLE MEDIATHEK");
+        more.setPadding(dp(4), dp(14), dp(4), dp(6));
+        more.setOnClickListener(v -> openLibrary());
+        homeLib.addView(more);
+    }
+
     private void renderLibrary() {
+        renderHomeLibrary();
         if (libGrid == null) return;
-        libGrid.removeAllViews();
-        List<AppEntry> list = filtered();
+        fillGrid(libGrid, filtered(), cols());
+    }
+
+    private void fillGrid(LinearLayout grid, List<AppEntry> list, int cols) {
+        grid.removeAllViews();
         LinearLayout row = null;
-        int cols = cols();
         for (int i = 0; i < list.size(); i++) {
             if (i % cols == 0) {
                 row = new LinearLayout(this);
-                libGrid.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
+                grid.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
             AppEntry app = list.get(i);
             View tile = tile(app.label, app.icon, 40);
@@ -800,7 +860,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (list.isEmpty()) {
             TextView none = text(14, ink3, false);
             none.setText(apps.isEmpty() ? "Apps werden geladen…" : "Keine App gefunden.");
-            libGrid.addView(none);
+            grid.addView(none);
         }
     }
 
