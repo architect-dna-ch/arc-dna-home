@@ -2,7 +2,8 @@
 
 Architect-DNA styled Android launcher for the Pixel 9a.
 
-- F1 mode: tap the clock for live seconds.milliseconds beside it; tap again to hide
+- F1 mode: tap the clock for a half-screen timing board (live time to the ms, lap counter, sector bars
+  over 5 s laps) where an F1 car whooshes past at every lap; tap the board or clock to hide
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
   German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
 - Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it
@@ -31,7 +32,8 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - All apps with search (Enter opens the first hit), long-press for app info
 - The fox: tap = fox call you can hear (synthesized yips, gekkering, barks, like the website),
   long-press = ARC-DNA web home with the AI chat
-- Tap empty space = everything fades to a faint ghost and the wallpaper shows; tap again to bring it back
+- Tap empty space = Fuchsjagd: a landscape runner where the fox chases the rabbit; tap to jump over
+  cubes; distance + record; 3 quick taps or Home twice to leave
 - Shake the phone = earthquake
 - Swipe right→left = dark, left→right = light for ARC-DNA (colour floods out from the finger);
   long-press the clock → "System folgen" to follow the system again

@@ -40,8 +40,17 @@ final class FoxVoice {
 
     /** Plays e.g. "Gekk-gekk-gekk!" or "Wa-pa-pa-pa!" on a background thread. */
     void say(String call) {
+        play(() -> render(call));
+    }
+
+    /** An F1 car passing: engine note plus air rush, rising then falling (a cheap Doppler). */
+    void whoosh() {
+        play(FoxVoice::renderWhoosh);
+    }
+
+    private void play(java.util.function.Supplier<short[]> source) {
         worker.execute(() -> {
-            short[] pcm = render(call);
+            short[] pcm = source.get();
             if (pcm.length == 0) return;
             AudioTrack track = null;
             try {
@@ -67,6 +76,34 @@ final class FoxVoice {
                 if (track != null) track.release();
             }
         });
+    }
+
+    static short[] renderWhoosh() {
+        int n = (int) (0.9f * RATE);
+        short[] out = new short[n];
+        java.util.Random rnd = new java.util.Random(7);
+        double phase = 0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        for (int i = 0; i < n; i++) {
+            double t = (double) i / n;
+            // Passing point at 45 %: pitch and filter rise towards it, then drop away.
+            double pass = t < 0.45 ? t / 0.45 : 1 - (t - 0.45) / 0.55;
+            double env = Math.pow(Math.max(0, pass), 1.6) * (t < 0.45 ? 1 : 0.85);
+            double engineHz = t < 0.45 ? 260 + 220 * (t / 0.45) : 480 - 300 * ((t - 0.45) / 0.55);
+            phase += engineHz / RATE;
+            double engine = 2 * (phase - Math.floor(phase + 0.5));
+            // Air rush: white noise through a band-pass that sweeps with the pass.
+            double fc = 500 + 2100 * Math.max(0, pass);
+            double w0 = 2 * Math.PI * fc / RATE, alpha = Math.sin(w0) / (2 * 0.9), a0 = 1 + alpha;
+            double xn = rnd.nextDouble() * 2 - 1;
+            double yn = (alpha / a0) * xn + (-alpha / a0) * x2 - (-2 * Math.cos(w0) / a0) * y1 - ((1 - alpha) / a0) * y2;
+            x2 = x1;
+            x1 = xn;
+            y2 = y1;
+            y1 = yn;
+            double v = env * (0.32 * engine + 1.4 * yn);
+            out[i] = (short) Math.max(-32767, Math.min(32767, v * 32767 * 0.5));
+        }
+        return out;
     }
 
     void close() {

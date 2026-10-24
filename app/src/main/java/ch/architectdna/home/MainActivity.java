@@ -134,6 +134,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private LinearLayout f1Box;
     private TextView f1Time;
     private boolean f1, f1Running;
+    private F1Panel f1Panel;
+    private FoxRunView game;
+    private long lastHomePress;
 
     /** Redraws seconds.milliseconds every frame while F1 mode is on and the screen is in front. */
     private final Runnable f1Tick = new Runnable() {
@@ -227,13 +230,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         setContentView(buildUi());
         updater = new Updater(this, prefs, this::onUpdateState);
         setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
-        if (prefs.getBoolean("hidden", false)) {
-            hidden = true;
-            shield.setVisibility(View.VISIBLE);
-            content.setAlpha(0.12f);
-            content.setScaleX(0.97f);
-            content.setScaleY(0.97f);
-        }
+        prefs.edit().remove("hidden").apply();   // the old wallpaper-only mode became the Fuchsjagd game
         applyWallpaperIfNeeded();
         loadApps();
         registerPackageReceiver();
@@ -271,7 +268,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         // Empty space: tap = only wallpaper, hold = Mediathek.
-        content.setOnClickListener(v -> setHidden(true));
+        content.setOnClickListener(v -> startGame());
         content.setOnLongClickListener(v -> {
             openLibrary();
             return true;
@@ -332,6 +329,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         clockRow.addView(f1Box);
         content.addView(clockRow);
 
+        f1Panel = new F1Panel(this, new int[]{ink, ink2, ink3, rust, card, line}, voice);
+        f1Panel.setVisibility(View.GONE);
+        f1Panel.setOnClickListener(v -> setF1(false));
+        content.addView(f1Panel, margins(-1, f1Height(), 0, dp(14), 0, 0));
+
         date = text(17, ink2, false);
         date.setPadding(0, dp(10), 0, 0);
         content.addView(date);
@@ -378,7 +380,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(projectChips(), margins(-1, -2, 0, dp(10), 0, 0));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Leere Fläche: tippen = nur Wallpaper · halten = Mediathek · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
+        hint.setText("Leere Fläche: tippen = Fuchsjagd · halten = Mediathek · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         content.addView(hint, margins(-1, -2, 0, dp(20), 0, 0));
 
@@ -897,7 +899,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
-        boolean gestures = !libraryOpen && calibStage < 0;
+        boolean gestures = !libraryOpen && calibStage < 0 && game == null;
         if (action == MotionEvent.ACTION_DOWN) {
             strokeMulti = false;
             circling = false;
@@ -1511,7 +1513,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean changed = on != f1;
         f1 = on;
         prefs.edit().putBoolean("f1", on).apply();
-        f1Box.setVisibility(on ? View.VISIBLE : View.GONE);
+        f1Box.setVisibility(View.GONE);
+        f1Panel.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (on && changed) f1Panel.begin();
         if (on && changed) {
             hop();
             say("Box, box!", 1200);
@@ -1520,12 +1524,49 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         startF1Tick();
     }
 
+    /** The timing board takes a bit under half the screen height. */
+    private int f1Height() {
+        return (int) (getResources().getDisplayMetrics().heightPixels * 0.42f);
+    }
+
+    /** Rotation no longer recreates the screen (circle gesture, game); only sizes follow. */
+    @Override
+    public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config);
+        f1Panel.getLayoutParams().height = f1Height();
+        f1Panel.requestLayout();
+    }
+
+    /* ================= Fuchsjagd ================= */
+
+    /** Tap on empty space: the screen turns to landscape and the fox chases the rabbit. */
+    private void startGame() {
+        if (game != null) return;
+        hideKeyboard();
+        game = new FoxRunView(this, new int[]{ink, ink2, ink3, rust, card, line, isNight() ? 0xFF121211 : 0xFFFAFAF8},
+            voice, prefs, this::exitGame);
+        rootFrame.addView(game, new FrameLayout.LayoutParams(-1, -1));
+        game.setAlpha(0f);
+        game.animate().alpha(1f).setDuration(300).start();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        voice.say("Yip-yip!");
+        game.resume();
+        Toast.makeText(this, "Tippen = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+    }
+
+    private void exitGame() {
+        if (game == null) return;
+        FoxRunView g = game;
+        game = null;
+        g.pause();
+        g.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(g)).start();
+        setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
+    }
+
     private void startF1Tick() {
-        f1Running = f1;
-        if (f1) {
-            f1Time.removeCallbacks(f1Tick);
-            f1Time.postOnAnimation(f1Tick);
-        }
+        // The small seconds readout is replaced by the F1 timing board; nothing to tick here.
+        f1Running = false;
+    }
     }
 
     /* ================= Frosted sections at the fold ================= */
@@ -1663,8 +1704,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(ticker);
         ticker.run();
         f1 = prefs.getBoolean("f1", false);
-        f1Box.setVisibility(f1 ? View.VISIBLE : View.GONE);
-        startF1Tick();
+        f1Box.setVisibility(View.GONE);
+        f1Panel.setVisibility(f1 ? View.VISIBLE : View.GONE);
+        if (f1) f1Panel.resume();
+        if (game != null) game.resume();
         refreshRecents();
         music.start();
         updater.check(false);
@@ -1681,6 +1724,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onPause();
         handler.removeCallbacks(ticker);
         f1Running = false;
+        f1Panel.pause();
+        if (game != null) game.pause();
         music.stop();
         if (sensors != null) sensors.unregisterListener(this);
         stopHead();
@@ -1704,6 +1749,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             updater.onStatus(intent);
             return;
         }
+        if (game != null) {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastHomePress < 1500) exitGame();
+            else Toast.makeText(this, "Nochmal Home = Fuchsjagd beenden", Toast.LENGTH_SHORT).show();
+            lastHomePress = now;
+            return;
+        }
         closeLibrary();
         hideKeyboard();
         scroll.smoothScrollTo(0, 0);
@@ -1712,6 +1764,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (game != null) {
+            Toast.makeText(this, "3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (calibStage >= 0) endGazeCalibration();
         else if (libraryOpen) closeLibrary();
         else if (hidden) setHidden(false);
