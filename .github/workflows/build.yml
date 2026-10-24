@@ -32,13 +32,20 @@ jobs:
       - name: Build release APK
         run: gradle assembleRelease --no-daemon --stacktrace
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
+      - name: Build Play bundle (AAB)
+        run: gradle bundleRelease --no-daemon
+
+      - name: Rename outputs
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
+          cp app/build/outputs/bundle/release/app-release.aab ARC-DNA-Home.aab
 
       - uses: actions/upload-artifact@v4
         with:
           name: ARC-DNA-Home
-          path: ARC-DNA-Home.apk
+          path: |
+            ARC-DNA-Home.apk
+            ARC-DNA-Home.aab
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

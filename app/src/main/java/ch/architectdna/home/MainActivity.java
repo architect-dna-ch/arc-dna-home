@@ -3,6 +3,7 @@ package ch.architectdna.home;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
@@ -134,6 +135,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private HeadTracker head;
     private final FoxVoice voice = new FoxVoice();
+    private Updater updater;
+    private TextView updateHome, updateLib;
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
     private final Object calibToken = new Object();
@@ -181,6 +184,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         setContentView(buildUi());
+        updater = new Updater(this, prefs, this::onUpdateState);
         if (prefs.getBoolean("hidden", false)) {
             hidden = true;
             shield.setVisibility(View.VISIBLE);
@@ -242,6 +246,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         net = monoText(11, ink3);
         top.addView(net);
         content.addView(top);
+
+        updateHome = text(14, ink, true);
+        updateHome.setPadding(dp(14), dp(12), dp(14), dp(12));
+        updateHome.setBackground(box(card, rust, 8));
+        updateHome.setVisibility(View.GONE);
+        updateHome.setOnClickListener(v -> updater.install());
+        content.addView(updateHome, margins(-1, -2, 0, dp(14), 0, 0));
 
         clock = new TextView(this);
         clock.setTextColor(ink);
@@ -538,6 +549,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         libGrid.setPadding(0, dp(12), 0, dp(80));
         libScroll.addView(libGrid);
         col.addView(libScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        updateLib = monoText(11, ink2);
+        updateLib.setText("UPDATES EINRICHTEN");
+        updateLib.setPadding(dp(4), dp(12), dp(4), dp(8));
+        updateLib.setOnClickListener(v -> {
+            if (updater.token().isEmpty()) showTokenDialog();
+            else if (updateHome.getVisibility() == View.VISIBLE) updater.install();
+            else updater.check(true);
+        });
+        updateLib.setOnLongClickListener(v -> {
+            showTokenDialog();
+            return true;
+        });
+        col.addView(updateLib);
         return lib;
     }
 
@@ -743,6 +768,51 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
         });
         into.addView(ask);
+
+        // Sideloaded apps get "App was denied access" until restricted settings are allowed once.
+        TextView blocked = text(12, ink2, false);
+        blocked.setText("„Zugriff verweigert“? Android sperrt das bei Apps ausserhalb des Play Store: "
+            + "hier tippen → App-Info → ⋮ oben rechts → „Eingeschränkte Einstellungen zulassen“, "
+            + "dann oben nochmal.");
+        blocked.setLineSpacing(0, 1.25f);
+        blocked.setPadding(dp(2), dp(8), dp(2), 0);
+        blocked.setOnClickListener(v -> open(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.fromParts("package", getPackageName(), null))));
+        into.addView(blocked);
+    }
+
+    /* ================= Updates ================= */
+
+    private void onUpdateState(String text, boolean available) {
+        updateLib.setText(text.toUpperCase(Locale.GERMAN));
+        updateLib.setTextColor(available ? rust : ink2);
+        updateHome.setText(text);
+        updateHome.setVisibility(available ? View.VISIBLE : View.GONE);
+    }
+
+    /** One-time setup: a read-only GitHub token for this private repository. */
+    private void showTokenDialog() {
+        EditText input = new EditText(this);
+        input.setHint("github_pat_…");
+        input.setSingleLine(true);
+        input.setText(updater.token());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setPadding(dp(20), dp(8), dp(20), 0);
+        wrap.addView(input);
+        new AlertDialog.Builder(this)
+            .setTitle("Updates einrichten")
+            .setMessage("GitHub → Fine-grained token: Repository access nur „arc-dna-home“, "
+                + "Permissions → Contents: Read-only. Token hier einfügen – er bleibt nur auf diesem Handy.")
+            .setView(wrap)
+            .setPositiveButton("Speichern", (d, w) -> {
+                updater.setToken(input.getText().toString());
+                updater.check(true);
+            })
+            .setNeutralButton("Token erstellen", (d, w) ->
+                open(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens/new"))))
+            .setNegativeButton("Abbrechen", null)
+            .show();
     }
 
     /* ================= Head / gaze scrolling ================= */
@@ -1156,6 +1226,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(ticker);
         ticker.run();
         refreshRecents();
+        updater.check(false);
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
         if (!headMode().equals("off")
@@ -1186,6 +1257,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (Updater.ACTION_STATUS.equals(intent.getAction())) {
+            updater.onStatus(intent);
+            return;
+        }
         closeLibrary();
         hideKeyboard();
         scroll.smoothScrollTo(0, 0);

@@ -25,6 +25,14 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Light/dark follows the system, and the ARC-DNA wallpaper switches with it (home + lock screen);
   long-press the clock to turn auto-wallpaper off or on
 
+## Updates in the app
+Mediathek → bottom line "UPDATES EINRICHTEN": paste a fine-grained GitHub token
+(repository access: only arc-dna-home, Contents: Read-only). The launcher then checks every 6 hours,
+shows "Update 1.0.x → installieren" on the home screen and installs it with one tap
+(Android and Play Protect still ask to confirm). Long-press the line to change the token.
+
+Each build also produces `ARC-DNA-Home.aab` (workflow artifact) for Google Play.
+
 ## Install
 Every push to `main` builds a signed APK with GitHub Actions and publishes it as a release.
 On the phone: open the latest release, download `ARC-DNA-Home.apk`, allow installing from that source,
