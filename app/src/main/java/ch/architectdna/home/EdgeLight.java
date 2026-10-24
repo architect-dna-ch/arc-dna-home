@@ -18,8 +18,9 @@ import android.view.View;
 /**
  * A ring light for head / eye scrolling in the dark: a few pixels of bright white along the
  * phone's curved display edge, with brighter "LED" spots in the four corners, so the front
- * camera can still see your face. It follows the ambient light sensor (on below ~6 lux, off
- * above ~15 lux) and fades in and out; the listener can raise the screen brightness meanwhile.
+ * camera can still see your face. It comes on below ~12 lux, or when the camera loses your face
+ * in a dim room (below ~60 lux). The Pixel's light sensor sits under the screen and sees the rim
+ * itself, so once on it stays on at least 8 s and only goes off above ~90 lux with a face in view.
  */
 final class EdgeLight extends View implements SensorEventListener {
 
@@ -27,7 +28,10 @@ final class EdgeLight extends View implements SensorEventListener {
         void onEdgeLight(boolean on);
     }
 
-    private static final float ON_LUX = 6f, OFF_LUX = 15f;
+    private static final float ON_LUX = 12f, DIM_LUX = 60f, OFF_LUX = 90f;
+    private static final long MIN_ON_MS = 8000, NO_FACE_MS = 1500;
+    private float lux = -1;
+    private long litSince, faceGoneSince = -1;
 
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -65,6 +69,8 @@ final class EdgeLight extends View implements SensorEventListener {
             sensors.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
         } else {
             if (sensors != null) sensors.unregisterListener(this);
+            lux = -1;
+            faceGoneSince = -1;
             setLit(false);
         }
     }
@@ -75,9 +81,27 @@ final class EdgeLight extends View implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent e) {
-        float lux = e.values[0];
-        if (!lit && lux < ON_LUX) setLit(true);
-        else if (lit && lux > OFF_LUX) setLit(false);
+        lux = e.values[0];
+        decide();
+    }
+
+    /** The camera's view: no face for a while in a dim room also means "too dark". */
+    void face(boolean seen) {
+        long now = SystemClock.uptimeMillis();
+        if (seen) faceGoneSince = -1;
+        else if (faceGoneSince < 0) faceGoneSince = now;
+        decide();
+    }
+
+    private void decide() {
+        if (!watching || lux < 0) return;
+        long now = SystemClock.uptimeMillis();
+        boolean noFace = faceGoneSince >= 0 && now - faceGoneSince > NO_FACE_MS;
+        if (!lit) {
+            if (lux < ON_LUX || (noFace && lux < DIM_LUX)) setLit(true);
+        } else if (now - litSince > MIN_ON_MS && lux > OFF_LUX && !noFace) {
+            setLit(false);
+        }
     }
 
     @Override
@@ -87,7 +111,8 @@ final class EdgeLight extends View implements SensorEventListener {
     private void setLit(boolean on) {
         if (on == lit) return;
         lit = on;
-        DiagLog.log("edge light " + (on ? "on (dark)" : "off"));
+        litSince = SystemClock.uptimeMillis();
+        DiagLog.log("edge light " + (on ? "on" : "off") + ", lux=" + Math.round(lux));
         if (listener != null) listener.onEdgeLight(on);
         lastFrame = SystemClock.uptimeMillis();
         postInvalidateOnAnimation();

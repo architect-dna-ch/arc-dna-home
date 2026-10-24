@@ -1511,6 +1511,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      */
     @Override
     public void onTilt(float pitch) {
+        if (edgeLight != null) edgeLight.face(true);
         if (calibFrames < 6) {
             calibSum += pitch;
             if (++calibFrames == 6) basePitch = calibSum / 6f;
@@ -1537,6 +1538,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      */
     @Override
     public void onGaze(float vertical) {
+        if (edgeLight != null) edgeLight.face(true);
         if (calibStage >= 0) {
             if (calibCollect) {
                 calibAcc[calibStage] += vertical;
@@ -1660,6 +1662,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onLost() {
+        if (edgeLight != null) edgeLight.face(false);
         setHeadSpeed(0);
     }
 

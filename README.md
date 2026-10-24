@@ -93,9 +93,9 @@ A commit marked `[final]` is published as "· FINAL" and moves the `final` tag t
 ## Ring light (Kopf-Scroll im Dunkeln)
 
 While head / eye scrolling runs (Mediathek or per app, e.g. Chrome) and the light sensor reads
-below ~6 lux, a few pixels of bright white light up along the curved display edge, with LED
+below ~12 lux (or the camera loses your face below ~60 lux), a few pixels of bright white light up along the curved display edge, with LED
 spots in the corners, and the screen goes to full brightness so the front camera still sees
-your face. Off again above ~15 lux.
+your face. Stays on at least 8 s and goes off above ~90 lux with your face in view (the light sensor sits under the screen and sees the rim).
 
 ## Dynamischer Sperrbildschirm – Einführung
 

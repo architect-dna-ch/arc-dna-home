@@ -54,7 +54,22 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         }
     };
 
+    private int framesN, lostN, swipesN, overN;
+    private float pitchMin = 999, pitchMax = -999;
+    private long lastStat;
+
     private void frameArrived() {
+        framesN++;
+        long now = SystemClock.uptimeMillis();
+        if (now - lastStat > 10000 && !mode.equals("off")) {
+            // Numbers only: readings per 10 s, face lost, swipes, and the head-tilt range seen.
+            DiagLog.log(String.format(java.util.Locale.ROOT, "scroll stats: %d readings, %d lost, %d swipes, tilt %.1f..%.1f°",
+                framesN, lostN, swipesN, pitchMin == 999 ? 0 : pitchMin, pitchMax == -999 ? 0 : pitchMax));
+            framesN = lostN = swipesN = 0;
+            pitchMin = 999;
+            pitchMax = -999;
+            lastStat = now;
+        }
         if (gotFrame) return;
         gotFrame = true;
         DiagLog.log("first camera reading");
@@ -198,20 +213,29 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             if (++calibFrames == 6) base = calibSum / 6f;
             return;
         }
-        smooth = smooth * 0.5f + (pitch - base) * 0.5f;
-        float over = Math.abs(smooth) - 4f;
+        if (edge != null) edge.face(true);
+        smooth = smooth * 0.65f + (pitch - base) * 0.35f;
+        float d = smooth;
+        pitchMin = Math.min(pitchMin, d);
+        pitchMax = Math.max(pitchMax, d);
+        // Hysteresis: start beyond 5°, keep going until back under 3°; two readings in a row to start.
+        float dead = speed != 0 ? 3f : 5f;
+        float over = Math.abs(d) - dead;
         if (over <= 0) {
+            overN = 0;
             base = base * 0.99f + pitch * 0.01f;
             setSpeed(0);
             return;
         }
-        float s = 0.25f + 0.75f * Math.min(1f, over / 8f);
-        setSpeed(smooth > 0 ? -s : s);   // looking up scrolls up
+        if (speed == 0 && ++overN < 2) return;
+        float s = 0.25f + 0.75f * Math.min(1f, (Math.abs(d) - 3f) / 9f);
+        setSpeed(d > 0 ? -s : s);   // looking up scrolls up
     }
 
     @Override
     public void onGaze(float vertical) {
         frameArrived();
+        if (edge != null) edge.face(true);
         float mid = prefs.getFloat("gazeMid", 0f);
         float down = Math.max(0.03f, prefs.getFloat("gazeBottom", mid + 0.08f) - mid);
         float up = Math.max(0.03f, mid - prefs.getFloat("gazeTop", mid - 0.08f));
@@ -230,6 +254,9 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     @Override
     public void onLost() {
         frameArrived();
+        lostN++;
+        overN = 0;
+        if (edge != null) edge.face(false);
         setSpeed(0);
     }
 
@@ -262,6 +289,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         path.lineTo(x, s > 0 ? y - dist : y + dist);   // finger up = content scrolls down
         // Our own swipe also shows up as a touch outside the pill; don't let it pause us.
         ownGestureUntil = SystemClock.uptimeMillis() + 380 + 120;
+        swipesN++;
         try {
             boolean ok = dispatchGesture(new GestureDescription.Builder()
                 .addStroke(new GestureDescription.StrokeDescription(path, 0, 380)).build(), new GestureResultCallback() {
