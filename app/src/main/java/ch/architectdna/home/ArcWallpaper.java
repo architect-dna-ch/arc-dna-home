@@ -53,7 +53,7 @@ public class ArcWallpaper extends WallpaperService {
         private Rect camera;
         private Visualizer visualizer;
         private float bassAvg, beat;
-        private long lastBeat;
+        private long lastBeat, lastFft, lastRestart;
 
         private final Runnable frame = this::drawFrame;
 
@@ -119,6 +119,14 @@ public class ArcWallpaper extends WallpaperService {
                 c = null;
             } finally {
                 if (c != null) holder.unlockCanvasAndPost(c);
+            }
+            // The output-mix visualizer goes quiet after a pause; reconnect while music plays.
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            long t = SystemClock.uptimeMillis();
+            if (am != null && am.isMusicActive() && t - lastFft > 2000 && t - lastRestart > 3000) {
+                lastRestart = t;
+                stopVisualizer();
+                startVisualizer();
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
             boolean busy = lock || !rings.isEmpty();
@@ -260,6 +268,12 @@ public class ArcWallpaper extends WallpaperService {
 
         /** Bass energy well above its running average = a beat → spawn rings. */
         private void onFft(byte[] fft) {
+            for (int k = 2; k < Math.min(16, fft.length); k++) {
+                if (fft[k] != 0) {
+                    lastFft = SystemClock.uptimeMillis();
+                    break;
+                }
+            }
             float bass = 0;
             int bins = Math.min(7, fft.length / 2);
             for (int k = 1; k < bins; k++) bass += (float) Math.hypot(fft[2 * k], fft[2 * k + 1]);

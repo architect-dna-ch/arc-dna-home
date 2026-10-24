@@ -492,7 +492,9 @@ final class MusicCard {
         private final float[] target = new float[BARS], shown = new float[BARS];
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
-        private long lastSignal;
+        private long lastSignal, lastRestart;
+        private boolean wasPlaying;
+        private int failedRestarts;
         private boolean running;
 
         Spectrum() {
@@ -519,6 +521,27 @@ final class MusicCard {
             host.onLevel(level);
         }
 
+        /**
+         * Android drops the output-mix visualizer while nothing plays and doesn't reattach it
+         * when music resumes. So reconnect when playback starts again, and retry while music
+         * plays but no signal arrives: every 3 s, then every 15 s after three misses (e.g. when
+         * Bluetooth offload hides the mix for good).
+         */
+        private void keepVisualizerAlive(boolean playing, boolean noSignal) {
+            long now = System.currentTimeMillis();
+            if (!noSignal) failedRestarts = 0;
+            boolean resumed = playing && !wasPlaying;
+            wasPlaying = playing;
+            long wait = failedRestarts >= 3 ? 15000 : 3000;
+            if (!hasAudioPermission()) return;
+            if (resumed || (playing && noSignal && now - lastRestart > wait)) {
+                if (!resumed) failedRestarts++;
+                lastRestart = now;
+                stopVisualizer();
+                startVisualizer();
+            }
+        }
+
         void run() {
             if (running) return;
             running = true;
@@ -534,6 +557,7 @@ final class MusicCard {
                 }
                 boolean playing = audio.isMusicActive();
                 boolean noSignal = System.currentTimeMillis() - lastSignal > 1500;
+                keepVisualizerAlive(playing, noSignal);
                 long t = System.currentTimeMillis();
                 for (int i = 0; i < BARS; i++) {
                     if (playing && noSignal) {
