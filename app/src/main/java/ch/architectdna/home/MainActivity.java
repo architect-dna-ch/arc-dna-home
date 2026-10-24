@@ -2391,6 +2391,38 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         private float[] trace = new float[0];
         private float amp;
         private boolean animating;
+        /** Samples still to be written: the calm heartbeat blip. */
+        private final java.util.ArrayDeque<Float> queued = new java.util.ArrayDeque<>();
+        private static final float[] HEARTBEAT = {0.05f, -0.12f, 0.55f, -0.42f, 0.12f, 0f, 0f, 0.08f, 0.16f, 0.08f, 0f};
+
+        /** While home is calm, the line keeps a slow heartbeat so it feels alive. */
+        private final Runnable heartbeat = new Runnable() {
+            @Override
+            public void run() {
+                if (!isAttachedToWindow()) return;
+                if (homeInFront && isShown() && amp < 0.02f) {
+                    for (float v : HEARTBEAT) queued.add(v * 0.35f);
+                    if (!animating) {
+                        animating = true;
+                        postOnAnimation(step);
+                    }
+                }
+                postDelayed(this, 4200);
+            }
+        };
+
+        @Override
+        protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            removeCallbacks(heartbeat);
+            postDelayed(heartbeat, 1500);
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            removeCallbacks(heartbeat);
+        }
 
         SeismoView(Context c) {
             super(c);
@@ -2418,10 +2450,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     return;
                 }
                 System.arraycopy(trace, 1, trace, 0, trace.length - 1);
-                trace[trace.length - 1] = amp * (random.nextFloat() * 2 - 1);
+                Float beat = queued.poll();
+                trace[trace.length - 1] = (beat != null ? beat : 0f) + amp * (random.nextFloat() * 2 - 1);
                 amp *= 0.965f;
                 invalidate();
-                boolean flat = amp < 0.003f;
+                boolean flat = amp < 0.003f && queued.isEmpty();
                 for (float v : trace) if (Math.abs(v) > 0.003f) flat = false;
                 if (flat) animating = false;
                 else postOnAnimation(this);
@@ -2447,8 +2480,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             linePaint.setColor(hot ? rust : (ink & 0x00FFFFFF) | 0x59000000);
             canvas.drawPath(path, linePaint);
+            // The pen: a small rust dot writing at the right end, glowing while it moves.
+            float penY = trace.length > 0 ? mid + trace[trace.length - 1] * half : mid;
+            float glow = Math.min(1f, Math.abs(penY - mid) / (half * 0.4f) + (hot ? 1 : 0));
+            textPaint.setColor((rust & 0x00FFFFFF) | ((int) (40 + 60 * glow) << 24));
+            canvas.drawCircle(w - dp(4), penY, dp(4.5f), textPaint);
+            textPaint.setColor(rust);
+            canvas.drawCircle(w - dp(4), penY, dp(2), textPaint);
+
+            // Label on the right, clear of the fox: magnitude plus a word for the mood.
+            float m = amp * 6;
+            String mood = m < 0.1f ? "RUHIG ♥" : m < 1.5f ? "LEICHT" : m < 3.5f ? "SPÜRBAR" : "BEBEN!";
+            String label = String.format(Locale.ROOT, "SEISMO · M %.1f · %s", m, mood);
             textPaint.setColor(hot ? rust : ink3);
-            canvas.drawText(String.format(Locale.ROOT, "SEISMO  M %.1f", amp * 6), dp(12), dp(11), textPaint);
+            canvas.drawText(label, w - dp(16) - textPaint.measureText(label), dp(11), textPaint);
         }
     }
 }
