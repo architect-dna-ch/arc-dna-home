@@ -251,6 +251,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         setContentView(buildUi());
+        torch = new DarkTorch(this, (on, byUs) -> {
+            if (!byUs) torchOurs = false;          // switched by hand (quick settings): leave it alone
+            paintTorchChip();
+        });
         AlarmScheduler.schedule(this);
         if (!prefs.getBoolean("lockIntroShown", false) && !liveOnLock()) handler.postDelayed(this::showLockIntro, 1200);
         // Keep the scroll position across a recreate (dark/light swipe, process restart).
@@ -312,6 +316,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headLabel.setText("◉ KOPF  ");
         headLabel.setVisibility(View.GONE);
         top.addView(headLabel);
+        torchChip = monoText(11, rust);
+        torchChip.setText("🔦 AUS  ");
+        torchChip.setContentDescription("Taschenlampe ausschalten");
+        torchChip.setVisibility(View.GONE);
+        torchChip.setOnClickListener(v -> {
+            torchDeclined = true;       // not again until you come back home
+            if (torch != null) torch.set(false);
+        });
+        top.addView(torchChip);
         net = monoText(11, ink3);
         top.addView(net);
         content.addView(top);
@@ -764,6 +777,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
+
+        TextView torchSetting = monoText(11, ink2);
+        torchSetting.setPadding(dp(4), dp(12), dp(4), dp(8));
+        Runnable paintTorchSetting = () -> torchSetting.setText("TASCHENLAMPE IM DUNKELN: "
+            + (prefs.getBoolean("autoTorch", true) ? "AUTOMATISCH" : "AUS") + " →");
+        paintTorchSetting.run();
+        torchSetting.setOnClickListener(v -> {
+            prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply();
+            paintTorchSetting.run();
+        });
+        body.addView(torchSetting);
 
         TextView diag = monoText(11, ink2);
         diag.setText("DIAGNOSE-LOG TEILEN (ANONYM) →");
@@ -2105,6 +2129,57 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    /* ================= Auto torch ================= */
+
+    private DarkTorch torch;
+    private TextView torchChip;
+    private boolean torchOurs, torchDeclined, covered;
+    private long darkSince = -1, lastProbe;
+
+    /**
+     * At home in the dark: the front light sensor reads under ~3 lux for 2 s → the back camera
+     * takes a one-second look (so a phone lying face down on a lit table doesn't count) → torch on.
+     * Off again when it gets bright, when you leave home, or by tapping the 🔦 chip.
+     */
+    private void onLux(float lux) {
+        if (torch == null || !torch.available() || !prefs.getBoolean("autoTorch", true)) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (torch.isOn()) {
+            if (torchOurs && lux > 40) {
+                torch.set(false);
+                DiagLog.log("auto torch off, bright again (lux " + Math.round(lux) + ")");
+            }
+            return;
+        }
+        if (lux >= 3 || covered || libraryOpen || game != null || torchDeclined || !homeInFront) {
+            darkSince = -1;
+            return;
+        }
+        if (darkSince < 0) darkSince = now;
+        if (now - darkSince < 2000 || torch.isProbing() || now - lastProbe < 20000) return;
+        lastProbe = now;
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            DiagLog.log("auto torch: no camera permission, using the light sensor only");
+            torchOn();
+            return;
+        }
+        torch.probe(luma -> {
+            if (luma >= 0 && luma < 28 && homeInFront && !torch.isOn()) torchOn();
+        });
+    }
+
+    private void torchOn() {
+        torchOurs = true;
+        torch.set(true);
+        hop();
+        say("Dunkel hier – Licht an. 🔦", 1800);
+    }
+
+    private void paintTorchChip() {
+        if (torchChip == null) return;
+        torchChip.setVisibility(torch != null && torch.isOn() ? View.VISIBLE : View.GONE);
+    }
+
     /* ================= Hide / fox / quake ================= */
 
     /** One full twist per volume step; quick presses stack up into a longer spin. */
@@ -2244,6 +2319,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onSensorChanged(SensorEvent e) {
+        if (e.sensor.getType() == Sensor.TYPE_LIGHT) {
+            onLux(e.values[0]);
+            return;
+        }
+        if (e.sensor.getType() == Sensor.TYPE_PROXIMITY) {
+            covered = e.values[0] < e.sensor.getMaximumRange();     // pocket, bag, face down
+            return;
+        }
         float x = e.values[0], y = e.values[1], z = e.values[2];
         double g = Math.sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH;
         long now = System.currentTimeMillis();
@@ -2289,6 +2372,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         updater.check(false);
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
+        Sensor lightSensor = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_LIGHT);
+        if (lightSensor != null) sensors.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        Sensor near = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+        if (near != null) sensors.registerListener(this, near, SensorManager.SENSOR_DELAY_NORMAL);
+        torchDeclined = false;
+        darkSince = -1;
         if (libraryOpen && !headMode().equals("off")
             && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startHead();
@@ -2310,6 +2399,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (game != null) game.pause();
         music.stop();
         if (sensors != null) sensors.unregisterListener(this);
+        // The automatic torch belongs to the home screen: leaving home switches it off.
+        if (torch != null && torch.isOn() && torchOurs) torch.set(false);
         stopHead();
     }
 
