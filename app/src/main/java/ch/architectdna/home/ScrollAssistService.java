@@ -42,8 +42,22 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private HeadTracker head;
     private TextView pill;
     private String currentPkg = "", mode = "off";
-    private boolean paused, scrolling, foreground;
-    private long pauseUntil;
+    private boolean paused, scrolling, foreground, gotFrame;
+
+    /** If the camera never delivers a reading, say so instead of sitting there silently. */
+    private final Runnable frameWatchdog = () -> {
+        if (!gotFrame && !mode.equals("off")) {
+            DiagLog.log("no camera readings 6 s after start");
+            showPill("○ KEINE KAMERA-BILDER · GESICHT IM BILD?");
+        }
+    };
+
+    private void frameArrived() {
+        if (gotFrame) return;
+        gotFrame = true;
+        DiagLog.log("first camera reading");
+    }
+    private long pauseUntil, ownGestureUntil;
     private int calibFrames;
     private float calibSum, base, smooth, speed;
 
@@ -63,6 +77,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     protected void onServiceConnected() {
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         windows = (WindowManager) getSystemService(WINDOW_SERVICE);
+        DiagLog.init(this);
+        DiagLog.log("scroll service connected");
     }
 
     @Override
@@ -73,13 +89,29 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             if (ignored(pkg) || pkg.equals(currentPkg)) return;
             currentPkg = pkg;
-            apply(pkg.equals(getPackageName()) ? "off" : prefs.getString("appScroll:" + pkg, "off"));
+            String m = pkg.equals(getPackageName()) ? "off" : prefs.getString("appScroll:" + pkg, "off");
+            // Package names of other apps are not logged, only whether scrolling is on for them.
+            DiagLog.log("front app changed, scroll mode=" + m);
+            apply(m);
         } else if (pkg.equals(currentPkg)) {
-            // A tap, long-press or typing in the app: let the eyes rest for a moment.
-            pauseUntil = SystemClock.uptimeMillis() + PAUSE_AFTER_TOUCH_MS;
-            if (mode.equals("gaze")) setSpeed(0);
+            // A tap, long-press or typing in the app: rest for a moment.
+            userTouched();
         }
     }
+
+    /** Any real touch (or typing) pauses head / eye scrolling for 4 s, so your finger wins. */
+    private void userTouched() {
+        if (mode.equals("off")) return;
+        pauseUntil = SystemClock.uptimeMillis() + PAUSE_AFTER_TOUCH_MS;
+        speed = 0;
+        main.removeCallbacks(scroller);
+        scrolling = false;
+        showPill(null);
+        main.removeCallbacks(refreshPill);
+        main.postDelayed(refreshPill, PAUSE_AFTER_TOUCH_MS + 50);
+    }
+
+    private final Runnable refreshPill = () -> showPill(null);
 
     /** System UI, keyboards and the like pop up over apps; they shouldn't switch the mode. */
     private static boolean ignored(String pkg) {
@@ -99,14 +131,22 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             showPill("○ KAMERA FEHLT – IM LAUNCHER ERLAUBEN");
             return;
         }
-        goForeground();
+        // Show the overlay first: a visible window lets Android grant the camera while another app is in front.
+        showPill("◉ KAMERA STARTET …");
+        if (!goForeground()) {
+            showPill("○ KAMERA IM HINTERGRUND BLOCKIERT");
+            return;
+        }
         if (head == null) head = new HeadTracker(this, this);
         calibFrames = 0;
         calibSum = 0;
         smooth = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
         paused = false;
+        gotFrame = false;
         head.start(m.equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
-        showPill(null);
+        DiagLog.log("head tracking started, mode=" + m);
+        main.removeCallbacks(frameWatchdog);
+        main.postDelayed(frameWatchdog, 6000);
     }
 
     private void stopTracking() {
@@ -121,7 +161,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     }
 
     /** Camera use while another app is in front needs a camera foreground service + notification. */
-    private void goForeground() {
+    private boolean goForeground() {
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
@@ -136,15 +176,19 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA);
             else startForeground(1, n);
             foreground = true;
+            DiagLog.log("camera foreground service ok");
         } catch (RuntimeException e) {
-            foreground = false;   // the pill will report if the camera is then refused
+            foreground = false;
+            DiagLog.log("camera foreground service refused: " + e.getClass().getSimpleName() + " " + e.getMessage());
         }
+        return foreground;
     }
 
     /* ---------------- Readings → speed (same feel as in the Mediathek) ---------------- */
 
     @Override
     public void onTilt(float pitch) {
+        frameArrived();
         if (calibFrames < 6) {
             calibSum += pitch;
             if (++calibFrames == 6) base = calibSum / 6f;
@@ -163,6 +207,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     @Override
     public void onGaze(float vertical) {
+        frameArrived();
         float mid = prefs.getFloat("gazeMid", 0f);
         float down = Math.max(0.03f, prefs.getFloat("gazeBottom", mid + 0.08f) - mid);
         float up = Math.max(0.03f, mid - prefs.getFloat("gazeTop", mid - 0.08f));
@@ -180,18 +225,21 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     @Override
     public void onLost() {
+        frameArrived();
         setSpeed(0);
     }
 
     @Override
     public void onError(String message) {
+        DiagLog.log("head tracker error: " + message);
         stopTracking();
         showPill("○ " + message.toUpperCase());
     }
 
     private void setSpeed(float s) {
-        boolean resting = paused || (mode.equals("gaze") && SystemClock.uptimeMillis() < pauseUntil);
+        boolean resting = paused || SystemClock.uptimeMillis() < pauseUntil;
         if (resting) s = 0;
+        if (s != 0 && speed == 0) DiagLog.log("scrolling " + (s > 0 ? "down" : "up"));
         speed = s;
         showPill(null);
         if (s != 0 && !scrolling) {
@@ -208,10 +256,19 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         Path path = new Path();
         path.moveTo(x, y);
         path.lineTo(x, s > 0 ? y - dist : y + dist);   // finger up = content scrolls down
+        // Our own swipe also shows up as a touch outside the pill; don't let it pause us.
+        ownGestureUntil = SystemClock.uptimeMillis() + 380 + 120;
         try {
-            dispatchGesture(new GestureDescription.Builder()
-                .addStroke(new GestureDescription.StrokeDescription(path, 0, 380)).build(), null, null);
-        } catch (RuntimeException ignored) {
+            boolean ok = dispatchGesture(new GestureDescription.Builder()
+                .addStroke(new GestureDescription.StrokeDescription(path, 0, 380)).build(), new GestureResultCallback() {
+                    @Override
+                    public void onCancelled(GestureDescription g) {
+                        DiagLog.log("swipe cancelled by the system");
+                    }
+                }, null);
+            if (!ok) DiagLog.log("swipe rejected (gestures not allowed?)");
+        } catch (RuntimeException e) {
+            DiagLog.log("swipe failed: " + e);
         }
     }
 
@@ -236,10 +293,19 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 paused = !paused;
                 setSpeed(0);
             });
+            // Watch every touch on the screen (outside the pill) to pause while the finger is in charge.
+            pill.setOnTouchListener((v, e) -> {
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
+                    if (SystemClock.uptimeMillis() > ownGestureUntil) userTouched();
+                    return true;
+                }
+                return false;
+            });
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
             lp.gravity = Gravity.TOP | Gravity.END;
             lp.x = dp(12);
@@ -256,8 +322,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             return;
         }
         String name = mode.equals("gaze") ? "BLICK" : "NICKEN";
-        boolean resting = mode.equals("gaze") && SystemClock.uptimeMillis() < pauseUntil;
-        String state = paused ? "‖ PAUSE" : resting ? "‖" : speed < 0 ? "↑" : speed > 0 ? "↓" : "·";
+        boolean resting = SystemClock.uptimeMillis() < pauseUntil;
+        String state = paused ? "‖ PAUSE" : resting ? "‖ FINGER" : speed < 0 ? "↑" : speed > 0 ? "↓" : "·";
         pill.setText("◉ " + name + " " + state);
     }
 

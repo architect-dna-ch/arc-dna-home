@@ -1052,6 +1052,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
+        if (libraryOpen && headSpeed != 0) {
+            headSpeed = 0;          // the finger takes over at once; head scrolling rests for 4 s
+            handler.removeCallbacks(headScroller);
+        }
         boolean gestures = !libraryOpen && calibStage < 0 && game == null;
         if (action == MotionEvent.ACTION_DOWN) {
             strokeMulti = false;
@@ -1595,8 +1599,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void setHeadSpeed(float speed) {
         // Eyes rest for a moment after the screen was touched or scrolled by finger.
-        boolean resting = headMode().equals("gaze")
-            && android.os.SystemClock.uptimeMillis() - lastTouch < EYE_PAUSE_MS;
+        // Any touch pauses head and eye scrolling for 4 s, so the finger wins.
+        boolean resting = android.os.SystemClock.uptimeMillis() - lastTouch < EYE_PAUSE_MS;
         if (resting) speed = 0;
         boolean wasIdle = headSpeed == 0;
         headSpeed = speed;
