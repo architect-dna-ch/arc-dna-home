@@ -128,6 +128,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private HeadTracker head;
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
+    private final Object calibToken = new Object();
+    private View calibOverlay, calibDot;
+    private TextView calibText;
+    private int calibStage = -1, calibRetries;
+    private boolean calibCollect;
+    private float[] calibAcc = new float[3];
+    private int[] calibN = new int[3];
     private float headSpeed;
 
     private final Runnable ticker = new Runnable() {
@@ -283,6 +290,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         library = buildLibrary();
         root.addView(library, new FrameLayout.LayoutParams(-1, -1));
 
+        calibOverlay = buildCalibOverlay();
+        root.addView(calibOverlay, new FrameLayout.LayoutParams(-1, -1));
+
         fox = new ImageView(this);
         fox.setImageResource(R.drawable.fox);
         fox.setContentDescription("Fuchs");
@@ -312,6 +322,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             content.setPadding(dp(20), top0 + dp(24), dp(20), bottom + dp(96));
             library.setPadding(dp(20), top0 + dp(20), dp(20), bottom + dp(12));
+            calibOverlay.setPadding(0, top0, 0, bottom);
             ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom;
             ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(14));
             ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(66));
@@ -462,6 +473,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headToggle.setPadding(dp(10), dp(8), dp(10), dp(8));
         headToggle.setBackground(box(card, line, 20));
         headToggle.setOnClickListener(v -> cycleHeadMode());
+        headToggle.setOnLongClickListener(v -> {
+            if (!headMode().equals("gaze")) return false;
+            startGazeCalibration();
+            return true;
+        });
         head.addView(headToggle);
         TextView close = text(18, ink, true);
         close.setText("✕");
@@ -645,17 +661,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (head == null) head = new HeadTracker(this, this);
         calibFrames = 0;
         calibSum = 0;
-        smoothTilt = 0;
+        smoothTilt = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
         boolean gaze = m.equals("gaze");
         head.start(gaze ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
-        Toast.makeText(this, gaze
-            ? "Kurz in die Bildschirmmitte schauen … dann unten = runter, oben = rauf"
-            : "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_LONG).show();
+        if (gaze && !prefs.contains("gazeMid")) startGazeCalibration();
+        else if (!gaze) Toast.makeText(this, "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_SHORT).show();
     }
 
     private void stopHead() {
+        endGazeCalibration();
         if (head != null) head.stop();
         headSpeed = 0;
         handler.removeCallbacks(headScroller);
@@ -707,30 +723,132 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /**
-     * BLICK: the first frames (looking at the middle of the screen) set the rest point.
-     * Eye movements within the phone's height are small, so the threshold is low (0.04 of the
-     * blendshape range) and full speed is reached 0.12 beyond it.
-     * Looking toward the bottom edge scrolls down slowly and steadily, back to the middle stops,
-     * looking at the top edge / into the camera scrolls up. No drift here, so a long look holds.
+     * BLICK: three zones from the user's own calibration (top / middle / bottom of the screen).
+     * Starting needs the eyes 55 % of the way from the middle to the top or bottom point; once
+     * scrolling it keeps going until they are back within 35 %, so the wide middle band is a
+     * calm "stop" area and the edges don't flicker. Speed grows a little the further you look.
      */
     @Override
     public void onGaze(float vertical) {
-        if (calibFrames < 12) {
-            calibSum += vertical;
-            if (++calibFrames == 12) basePitch = calibSum / 12f;
+        if (calibStage >= 0) {
+            if (calibCollect) {
+                calibAcc[calibStage] += vertical;
+                calibN[calibStage]++;
+            }
             return;
         }
-        float delta = vertical - basePitch;
-        smoothTilt = smoothTilt * 0.6f + delta * 0.4f;
-        // Starts at 0.04, keeps going down to 0.025 (hysteresis), so it doesn't flicker at the edge.
-        float dead = headSpeed == 0 ? 0.04f : 0.025f;
-        float over = Math.abs(smoothTilt) - dead;
-        if (over <= 0) {
+        smoothTilt = smoothTilt * 0.6f + vertical * 0.4f;
+        float mid = prefs.getFloat("gazeMid", 0f);
+        float downRange = Math.max(0.03f, prefs.getFloat("gazeBottom", mid + 0.08f) - mid);
+        float upRange = Math.max(0.03f, mid - prefs.getFloat("gazeTop", mid - 0.08f));
+        float pos = smoothTilt - mid;
+        float frac = pos > 0 ? pos / downRange : -pos / upRange;
+        int dir = pos > 0 ? 1 : -1;
+        boolean sameWay = headSpeed != 0 && Math.signum(headSpeed) == dir;
+        float threshold = sameWay ? 0.35f : 0.55f;
+        if (frac < threshold) {
             setHeadSpeed(0);
             return;
         }
-        float speed = (0.35f + 0.65f * Math.min(1f, over / 0.12f)) * dp(9);
-        setHeadSpeed(smoothTilt > 0 ? speed : -speed); // eyes down scrolls down
+        float speed = (0.4f + 0.6f * Math.min(1f, (frac - 0.35f) / 0.65f)) * dp(9);
+        setHeadSpeed(dir * speed); // eyes down scrolls down, eyes up scrolls up
+    }
+
+    /* ---------- Gaze calibration: a dot at the top, middle and bottom ---------- */
+
+    private void startGazeCalibration() {
+        calibStage = 0;
+        calibAcc = new float[3];
+        calibN = new int[3];
+        calibRetries = 0;
+        setHeadSpeed(0);
+        calibOverlay.setVisibility(View.VISIBLE);
+        calibOverlay.setAlpha(0f);
+        calibOverlay.animate().alpha(1f).setDuration(200).start();
+        runCalibStage();
+    }
+
+    private void runCalibStage() {
+        int stage = calibStage;
+        String[] where = {"oben", "in der Mitte", "unten"};
+        calibText.setText("Schau auf den Punkt " + where[stage]);
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) calibDot.getLayoutParams();
+        lp.gravity = Gravity.CENTER_HORIZONTAL | (stage == 0 ? Gravity.TOP : stage == 1 ? Gravity.CENTER_VERTICAL : Gravity.BOTTOM);
+        calibDot.setLayoutParams(lp);
+        calibDot.setScaleX(0.4f);
+        calibDot.setScaleY(0.4f);
+        calibDot.animate().scaleX(1f).scaleY(1f).setDuration(250).start();
+        calibCollect = false;
+        long now = android.os.SystemClock.uptimeMillis();
+        // Give the eyes ~0.6 s to arrive, then sample for ~1.2 s.
+        handler.postAtTime(() -> calibCollect = true, calibToken, now + 600);
+        handler.postAtTime(this::finishCalibStage, calibToken, now + 1800);
+    }
+
+    private void finishCalibStage() {
+        calibCollect = false;
+        if (calibN[calibStage] < 5 && calibRetries < 2) {
+            calibRetries++;
+            calibText.setText("Gesicht nicht erkannt – nochmal");
+            handler.postAtTime(this::runCalibStage, calibToken, android.os.SystemClock.uptimeMillis() + 700);
+            return;
+        }
+        if (calibStage < 2) {
+            calibStage++;
+            runCalibStage();
+            return;
+        }
+        float top = calibN[0] > 0 ? calibAcc[0] / calibN[0] : -0.1f;
+        float mid = calibN[1] > 0 ? calibAcc[1] / calibN[1] : 0f;
+        float bottom = calibN[2] > 0 ? calibAcc[2] / calibN[2] : 0.1f;
+        prefs.edit().putFloat("gazeTop", top).putFloat("gazeMid", mid).putFloat("gazeBottom", bottom).apply();
+        endGazeCalibration();
+        smoothTilt = mid;
+        Toast.makeText(this, "Blick kalibriert – Neu kalibrieren: Knopf lange drücken", Toast.LENGTH_SHORT).show();
+    }
+
+    private void endGazeCalibration() {
+        handler.removeCallbacksAndMessages(calibToken);
+        calibStage = -1;
+        calibCollect = false;
+        if (calibOverlay.getVisibility() == View.VISIBLE) {
+            calibOverlay.animate().alpha(0f).setDuration(200)
+                .withEndAction(() -> calibOverlay.setVisibility(View.GONE)).start();
+        }
+    }
+
+    private View buildCalibOverlay() {
+        FrameLayout o = new FrameLayout(this);
+        o.setBackgroundColor(panel);
+        o.setClickable(true);
+        o.setVisibility(View.GONE);
+        o.setOnClickListener(v -> {
+            endGazeCalibration();
+            Toast.makeText(this, "Kalibrierung abgebrochen", Toast.LENGTH_SHORT).show();
+        });
+
+        calibDot = new View(this);
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(rust);
+        calibDot.setBackground(dot);
+        FrameLayout.LayoutParams dlp = new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER);
+        dlp.setMargins(0, dp(70), 0, dp(70));
+        o.addView(calibDot, dlp);
+
+        calibText = text(17, ink, true);
+        calibText.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        tlp.topMargin = dp(70);
+        o.addView(calibText, tlp);
+
+        TextView skip = monoText(11, ink3);
+        skip.setText("BLICK-KALIBRIERUNG · TIPPEN = ABBRECHEN");
+        skip.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        slp.topMargin = dp(120);
+        o.addView(skip, slp);
+        return o;
     }
 
     @Override
@@ -952,7 +1070,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (libraryOpen) closeLibrary();
+        if (calibStage >= 0) endGazeCalibration();
+        else if (libraryOpen) closeLibrary();
         else if (hidden) setHidden(false);
         else {
             hideKeyboard();
