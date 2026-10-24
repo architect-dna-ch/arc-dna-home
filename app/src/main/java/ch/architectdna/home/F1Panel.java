@@ -14,8 +14,8 @@ import java.util.Locale;
 
 /**
  * F1 mode on the home screen: a half-screen timing board. Live time to the millisecond, a lap
- * counter and three sector bars (yellow → green → purple) that fill over each 5-second lap;
- * at every lap end an F1 car shoots across the track strip with motion streaks and a whoosh.
+ * counter and three sector bars (yellow → green → purple) that fill over each 5-second lap,
+ * in step with the clock (laps end at :00, :05 … :55); at every lap end an F1 car shoots across the track strip with motion streaks and a whoosh.
  */
 final class F1Panel extends View {
 
@@ -27,6 +27,7 @@ final class F1Panel extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private final RectF rect = new RectF();
+    /** Laps follow the wall clock (…:45, :50, :55, :00); start = the 5-second slot F1 began in. */
     private long start, lastLap = -1, carStart = -1;
     private boolean running;
 
@@ -41,13 +42,13 @@ final class F1Panel extends View {
     }
 
     void begin() {
-        start = SystemClock.uptimeMillis();
+        start = System.currentTimeMillis() / LAP_MS;
         lastLap = -1;
         resume();
     }
 
     void resume() {
-        if (start == 0) start = SystemClock.uptimeMillis();
+        if (start == 0) start = System.currentTimeMillis() / LAP_MS;
         if (running) return;
         running = true;
         postOnAnimation(frame);
@@ -64,7 +65,7 @@ final class F1Panel extends View {
                 running = false;
                 return;
             }
-            long lap = (SystemClock.uptimeMillis() - start) / LAP_MS;
+            long lap = System.currentTimeMillis() / LAP_MS;
             if (lap != lastLap) {
                 if (lastLap >= 0) {
                     carStart = SystemClock.uptimeMillis();
@@ -85,8 +86,9 @@ final class F1Panel extends View {
     protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
         long now = SystemClock.uptimeMillis();
-        long inLap = (now - start) % LAP_MS;
-        long lap = (now - start) / LAP_MS + 1;
+        long wall = System.currentTimeMillis();
+        long inLap = wall % LAP_MS;
+        long lap = wall / LAP_MS - start + 1;
 
         // Board.
         paint.setStyle(Paint.Style.FILL);
