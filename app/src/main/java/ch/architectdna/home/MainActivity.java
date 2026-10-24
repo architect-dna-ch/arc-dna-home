@@ -1455,6 +1455,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return info != null && getPackageName().equals(info.getPackageName());
     }
 
+    /** What Android actually shows on home and lock screen (the lock screen part needs Android 14+). */
+    private String wallpaperStatus() {
+        WallpaperManager wm = WallpaperManager.getInstance(this);
+        String home = liveWallpaperActive() ? "ARC-DNA Live" : wm.getWallpaperInfo() != null ? "andere Live" : "statisch";
+        String lock = "?";
+        if (Build.VERSION.SDK_INT >= 34) {
+            android.app.WallpaperInfo info = wm.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
+            lock = info != null && getPackageName().equals(info.getPackageName()) ? "ARC-DNA Live"
+                : info != null ? "andere Live" : "statisch";
+        }
+        return "Start: " + home + " · Sperre: " + lock;
+    }
+
     /** Long-press the clock: ARC-DNA Live, static light/dark, or leave the wallpaper alone. */
     private void showWallpaperChoice() {
         String[] items = {
@@ -1464,7 +1477,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "Hell/Dunkel wieder dem System folgen",
         };
         new AlertDialog.Builder(this)
-            .setTitle("Wallpaper & Farben")
+            .setTitle("Wallpaper & Farben\n" + wallpaperStatus())
             .setItems(items, (d, which) -> {
                 if (which == 0) {
                     Toast.makeText(this, "Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“", Toast.LENGTH_LONG).show();

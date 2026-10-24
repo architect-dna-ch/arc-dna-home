@@ -28,7 +28,9 @@ final class F1Panel extends View {
     private final Path path = new Path();
     private final RectF rect = new RectF();
     /** Laps follow the wall clock (…:45, :50, :55, :00); start = the 5-second slot F1 began in. */
-    private long start, lastLap = -1, carStart = -1;
+    private long start, lastLap = -1, carStart = -1, carFor = -1, soundFor = -1;
+    /** The whoosh is loudest 45 % into its 0.9 s; the car is mid-track halfway through its pass. */
+    private static final long SOUND_LEAD_MS = 405, CAR_LEAD_MS = CAR_MS / 2;
     private boolean running;
 
     F1Panel(Context c, int[] colours, FoxVoice voice) {
@@ -65,14 +67,19 @@ final class F1Panel extends View {
                 running = false;
                 return;
             }
-            long lap = System.currentTimeMillis() / LAP_MS;
-            if (lap != lastLap) {
-                if (lastLap >= 0) {
-                    carStart = SystemClock.uptimeMillis();
-                    voice.whoosh();
-                }
-                lastLap = lap;
+            // Time the pass so the car is exactly mid-track, and the whoosh at its loudest,
+            // on every round fifth second of the clock (…:45.000, :50.000, :55.000 …).
+            long wall = System.currentTimeMillis();
+            long next = (wall / LAP_MS + 1) * LAP_MS, remaining = next - wall;
+            if (remaining <= SOUND_LEAD_MS && soundFor != next) {
+                soundFor = next;
+                voice.whoosh();
             }
+            if (remaining <= CAR_LEAD_MS && carFor != next) {
+                carFor = next;
+                carStart = SystemClock.uptimeMillis() - (CAR_LEAD_MS - remaining);
+            }
+            lastLap = wall / LAP_MS;
             invalidate();
             postOnAnimation(this);
         }
