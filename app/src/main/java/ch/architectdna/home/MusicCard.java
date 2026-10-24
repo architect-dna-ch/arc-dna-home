@@ -27,6 +27,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -72,6 +73,8 @@ final class MusicCard {
     private ImageView art, playButton;
     private TextView title, artist, source, output, accessHint, vizHint;
     private SeekBar volume;
+    /** A touch that started in the slider band of the card. */
+    private boolean sliding;
     private Spectrum spectrum;
 
     private MediaController controller;
@@ -185,8 +188,20 @@ final class MusicCard {
         accessHint.setOnClickListener(v -> host.open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         root.addView(accessHint);
 
-        // Tapping the card itself opens the app that is playing.
-        root.setOnClickListener(v -> openPlayer());
+        // Only the cover opens the playing app; the rest of the card belongs to the slider: a touch
+        // anywhere in the band around it (device line above, card edge below) moves the volume.
+        art.setOnClickListener(v -> openPlayer());
+        art.setContentDescription("Player-App öffnen");
+        root.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) sliding = e.getY() >= output.getTop() - dp(4);
+            if (!sliding) return false;
+            // Hand the touch to the slider in its own coordinates, so the thumb lands under the finger.
+            MotionEvent m = MotionEvent.obtain(e);
+            m.setLocation(e.getX() - volume.getLeft(), volume.getHeight() / 2f);
+            volume.dispatchTouchEvent(m);
+            m.recycle();
+            return true;
+        });
 
         renderTrack();
         return root;
@@ -219,8 +234,10 @@ final class MusicCard {
         if (volume == null || !volume.isShown()) return false;
         int[] at = new int[2];
         volume.getLocationOnScreen(at);
-        return rawX >= at[0] && rawX <= at[0] + volume.getWidth()
-            && rawY >= at[1] - dp(12) && rawY <= at[1] + volume.getHeight() + dp(12);
+        int[] card = new int[2];
+        root.getLocationOnScreen(card);
+        return rawX >= card[0] && rawX <= card[0] + root.getWidth()
+            && rawY >= at[1] - dp(12) - output.getHeight() && rawY <= card[1] + root.getHeight();
     }
 
     /* ---------------- Lifecycle ---------------- */
