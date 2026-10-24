@@ -130,13 +130,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private EditText focus, webQuery, libSearch;
     private ImageView fox;
     private SeismoView seismo;
-    private View bottomScrim;
+    private View bottomScrim, topScrim;
     private LinearLayout f1Box;
     private TextView f1Time;
     private boolean f1, f1Running;
     private F1Panel f1Panel;
     private FoxRunView game;
     private ImageView gameButton;
+    private FrameLayout appTilesBox;
+    private List<AppEntry> lastRecent = new ArrayList<>();
     private long lastHomePress;
 
     /** Redraws seconds.milliseconds every frame while F1 mode is on and the screen is in front. */
@@ -369,7 +371,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(music.view(), margins(-1, -2, 0, dp(10), 0, 0));
 
         content.addView(label("Apps"), margins(-1, -2, 0, dp(26), 0, 0));
-        content.addView(appTiles(), margins(-1, -2, 0, dp(10), 0, 0));
+        appTilesBox = new FrameLayout(this);
+        appTilesBox.addView(appTiles());
+        content.addView(appTilesBox, margins(-1, -2, 0, dp(10), 0, 0));
 
         content.addView(label("Zuletzt"), margins(-1, -2, 0, dp(22), 0, 0));
         recentHome = new LinearLayout(this);
@@ -396,6 +400,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         root.addView(shield, new FrameLayout.LayoutParams(-1, -1));
+
+        // A matching fade at the top keeps the status bar readable over scrolled content.
+        topScrim = new View(this);
+        topScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{panel, (panel & 0x00FFFFFF) | 0xB3000000, panel & 0x00FFFFFF}));
+        root.addView(topScrim, new FrameLayout.LayoutParams(-1, dp(60), Gravity.TOP));
 
         // A soft fade at the bottom so the navigation buttons, seismograph and fox sit on a calm surface.
         bottomScrim = new View(this);
@@ -446,26 +456,32 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         root.addView(bubble, new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START));
 
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            int top0, bottom;
+            int top0, bottom, left, right;
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
                 top0 = bars.top;
                 bottom = bars.bottom;
+                left = bars.left;
+                right = bars.right;
             } else {
                 top0 = insets.getSystemWindowInsetTop();
                 bottom = insets.getSystemWindowInsetBottom();
+                left = insets.getSystemWindowInsetLeft();
+                right = insets.getSystemWindowInsetRight();
             }
-            content.setPadding(dp(20), top0 + dp(24), dp(20), bottom + dp(132));
-            library.setPadding(dp(20), top0 + dp(20), dp(20), bottom + dp(12));
-            calibOverlay.setPadding(0, top0, 0, bottom);
+            content.setPadding(left + dp(20), top0 + dp(24), right + dp(20), bottom + dp(132));
+            library.setPadding(left + dp(20), top0 + dp(20), right + dp(20), bottom + dp(12));
+            calibOverlay.setPadding(left, top0, right, bottom);
             // Keep the seismograph and fox clear of the navigation buttons, with the fade behind them.
             bottomScrim.getLayoutParams().height = bottom + dp(84);
+            topScrim.getLayoutParams().height = top0 + dp(28);
+            topScrim.requestLayout();
             foldInset = bottom + dp(84);
-            ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom + dp(6);
-            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(20));
-            ((FrameLayout.LayoutParams) gameButton.getLayoutParams()).setMargins(dp(18), 0, 0, bottom + dp(84));
+            ((FrameLayout.LayoutParams) seismo.getLayoutParams()).setMargins(left, 0, right, bottom + dp(6));
+            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(left + dp(14), 0, 0, bottom + dp(20));
+            ((FrameLayout.LayoutParams) gameButton.getLayoutParams()).setMargins(left + dp(18), 0, 0, bottom + dp(84));
             gameButton.requestLayout();
-            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(72));
+            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(left + dp(70), 0, 0, bottom + dp(72));
             bottomScrim.requestLayout();
             seismo.requestLayout();
             fox.requestLayout();
@@ -561,15 +577,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
+        int cols = cols();
         for (int i = 0; i < items.length; i++) {
-            if (i % 4 == 0) {
+            if (i % cols == 0) {
                 row = new LinearLayout(this);
                 wrap.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
             Intent intent = (Intent) items[i][2];
             View tile = tile((String) items[i][0], getDrawable((Integer) items[i][1]), 28);
             tile.setOnClickListener(v -> open(intent));
-            row.addView(tile, weighted(i % 4 != 0));
+            row.addView(tile, weighted(i % cols != 0));
         }
         return wrap;
     }
@@ -716,8 +733,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         libGrid.removeAllViews();
         List<AppEntry> list = filtered();
         LinearLayout row = null;
+        int cols = cols();
         for (int i = 0; i < list.size(); i++) {
-            if (i % 4 == 0) {
+            if (i % cols == 0) {
                 row = new LinearLayout(this);
                 libGrid.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
@@ -729,11 +747,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     Uri.fromParts("package", app.component.getPackageName(), null)));
                 return true;
             });
-            row.addView(tile, weighted(i % 4 != 0));
+            row.addView(tile, weighted(i % cols != 0));
         }
         // Keep the last row's tiles the same width as the others.
         if (row != null) {
-            for (int i = list.size() % 4; i != 0 && i < 4; i++) row.addView(new View(this), weighted(true));
+            for (int i = list.size() % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
         }
         if (list.isEmpty()) {
             TextView none = text(14, ink3, false);
@@ -852,8 +870,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }
             }
             handler.post(() -> {
-                renderRecents(recentHome, recent, 4);
-                renderRecents(recentLib, recent, 8);
+                lastRecent = recent;
+                renderRecents(recentHome, recent, cols());
+                renderRecents(recentLib, recent, 2 * cols());
             });
         }).start();
     }
@@ -867,18 +886,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         LinearLayout row = null;
+        int cols = cols();
         int n = Math.min(max, recent.size());
         for (int i = 0; i < n; i++) {
-            if (i % 4 == 0) {
+            if (i % cols == 0) {
                 row = new LinearLayout(this);
                 into.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
             AppEntry app = recent.get(i);
             View tile = tile(app.label, app.icon, 32);
             tile.setOnClickListener(v -> launch(app));
-            row.addView(tile, weighted(i % 4 != 0));
+            row.addView(tile, weighted(i % cols != 0));
         }
-        for (int i = n % 4; i != 0 && i < 4; i++) row.addView(new View(this), weighted(true));
+        for (int i = n % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
     }
 
     private void showRecentsPrompt(LinearLayout into) {
@@ -1553,6 +1573,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onConfigurationChanged(config);
         f1Panel.getLayoutParams().height = f1Height();
         f1Panel.requestLayout();
+        // Re-flow the grids for the new width (4 columns in portrait, up to 8 in landscape).
+        appTilesBox.removeAllViews();
+        appTilesBox.addView(appTiles());
+        renderLibrary();
+        if (!lastRecent.isEmpty()) {
+            renderRecents(recentHome, lastRecent, cols());
+            renderRecents(recentLib, lastRecent, 2 * cols());
+        }
+        rootFrame.requestApplyInsets();
+    }
+
+    /** Tiles per row: about one per 100 dp of width, at least 4, at most 8. */
+    private int cols() {
+        int widthDp = getResources().getConfiguration().screenWidthDp;
+        return Math.max(4, Math.min(8, widthDp / 100));
     }
 
     /* ================= Fuchsjagd ================= */
