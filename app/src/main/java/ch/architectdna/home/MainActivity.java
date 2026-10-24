@@ -534,9 +534,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         lib.setVisibility(View.GONE);
         lib.setClickable(true);
 
+        // Only the search bar stays fixed; header, Zuletzt, all apps and the update line scroll together.
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         lib.addView(col, new FrameLayout.LayoutParams(-1, -1));
+
+        libScroll = new ScrollView(this);
+        libScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(0, dp(16), 0, dp(110));
+        libScroll.addView(body);
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
@@ -557,7 +565,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         close.setContentDescription("Mediathek schliessen");
         close.setOnClickListener(v -> closeLibrary());
         head.addView(close);
-        col.addView(head);
+        body.addView(head);
         paintHeadToggle();
 
         libSearch = field("Apps suchen…");
@@ -573,21 +581,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (!hits.isEmpty()) launch(hits.get(0));
             return true;
         });
-        col.addView(libSearch, margins(-1, dp(50), 0, dp(14), 0, 0));
+        col.addView(libSearch, new LinearLayout.LayoutParams(-1, dp(50)));
+        col.addView(libScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        col.addView(label("Zuletzt"), margins(-1, -2, 0, dp(16), 0, 0));
+        body.addView(label("Zuletzt"), margins(-1, -2, 0, dp(20), 0, 0));
         recentLib = new LinearLayout(this);
         recentLib.setOrientation(LinearLayout.VERTICAL);
-        col.addView(recentLib, margins(-1, -2, 0, dp(10), 0, 0));
-        col.addView(label("Alle Apps"), margins(-1, -2, 0, dp(16), 0, 0));
+        body.addView(recentLib, margins(-1, -2, 0, dp(10), 0, 0));
+        body.addView(label("Alle Apps"), margins(-1, -2, 0, dp(20), 0, 0));
 
-        libScroll = new ScrollView(this);
-        libScroll.setVerticalScrollBarEnabled(false);
         libGrid = new LinearLayout(this);
         libGrid.setOrientation(LinearLayout.VERTICAL);
-        libGrid.setPadding(0, dp(12), 0, dp(80));
-        libScroll.addView(libGrid);
-        col.addView(libScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        libGrid.setPadding(0, dp(12), 0, 0);
+        body.addView(libGrid);
 
         updateLib = monoText(11, ink2);
         updateLib.setText("UPDATES EINRICHTEN");
@@ -601,7 +607,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showTokenDialog();
             return true;
         });
-        col.addView(updateLib);
+        body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
         return lib;
     }
 
