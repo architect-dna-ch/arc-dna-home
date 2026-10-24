@@ -23,6 +23,8 @@ import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -127,6 +129,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private ImageView fox;
     private SeismoView seismo;
     private View bottomScrim;
+    /** Height at the bottom covered by the fade, fox and seismograph; sections must clear it. */
+    private int foldInset;
+    private final Map<View, Float> foldState = new HashMap<>();
+    private static final String LABEL_TAG = "section-label";
     private LinearLayout recentHome, recentLib;
     private boolean hidden, libraryOpen;
 
@@ -251,6 +257,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
+        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> updateFolds());
+        scroll.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFolds);
 
         // Label row: ARCHITECT · DNA ……… ● ONLINE
         LinearLayout top = new LinearLayout(this);
@@ -394,6 +402,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             calibOverlay.setPadding(0, top0, 0, bottom);
             // Keep the seismograph and fox clear of the navigation buttons, with the fade behind them.
             bottomScrim.getLayoutParams().height = bottom + dp(84);
+            foldInset = bottom + dp(84);
             ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom + dp(6);
             ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(20));
             ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(72));
@@ -1316,6 +1325,48 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         net.setText(s);
     }
 
+    /* ================= Frosted sections at the fold ================= */
+
+    /**
+     * A section that isn't fully visible above the bottom fade is blurred and faded like frosted
+     * glass, more the less of it shows; it turns sharp once scrolled fully into view. A section
+     * label shares the state of the block it introduces, so heading and content clear together.
+     */
+    private void updateFolds() {
+        if (content == null || scroll.getHeight() == 0) return;
+        int limit = scroll.getScrollY() + scroll.getHeight() - foldInset;
+        int n = content.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View child = content.getChildAt(i);
+            if (child.getVisibility() != View.VISIBLE) continue;
+            boolean isLabel = LABEL_TAG.equals(child.getTag()) && i + 1 < n;
+            View block = isLabel ? content.getChildAt(i + 1) : child;
+            float hidden = block.getHeight() == 0 ? 0
+                : Math.max(0f, Math.min(1f, (block.getBottom() - limit) / (float) block.getHeight()));
+            frost(child, hidden);
+            if (isLabel) {
+                frost(block, hidden);
+                i++;
+            }
+        }
+    }
+
+    private void frost(View v, float hidden) {
+        Float last = foldState.get(v);
+        if (last != null && Math.abs(last - hidden) < 0.02f && (hidden > 0 || last == 0)) return;
+        foldState.put(v, hidden);
+        if (hidden <= 0.001f) {
+            v.setAlpha(1f);
+            if (Build.VERSION.SDK_INT >= 31) v.setRenderEffect(null);
+            return;
+        }
+        v.setAlpha(1f - 0.5f * Math.min(1f, hidden * 2f));
+        if (Build.VERSION.SDK_INT >= 31) {
+            float r = dp(4) + hidden * dp(14);
+            v.setRenderEffect(RenderEffect.createBlurEffect(r, r, Shader.TileMode.DECAL));
+        }
+    }
+
     /* ================= Hide / fox / quake ================= */
 
     /** Fade the home screen down to a faint ghost so the wallpaper shows, or bring it back. */
@@ -1474,6 +1525,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Section label: short rust bar + monospace caps, like the website. */
     private View label(String s) {
         LinearLayout row = new LinearLayout(this);
+        row.setTag(LABEL_TAG);
         row.setGravity(Gravity.CENTER_VERTICAL);
         View bar = new View(this);
         bar.setBackgroundColor(rust);

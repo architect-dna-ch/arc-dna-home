@@ -12,6 +12,7 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Zuletzt: the 4 (home) / 8 (Mediathek) most recently used apps; needs Settings → Usage access,
   until then a button leads there
 - Soft fade behind the navigation buttons; fox and seismograph sit clear of them
+- Sections only partly visible above the bottom fade are frosted (blur + fade) until scrolled fully into view
 - Kopf-Scroll (button in the Mediathek cycles AUS → NICKEN → BLICK; off by default), all on-device,
   and only while the Mediathek is open (the camera stops when it closes):
   - NICKEN: head tilt via ML Kit face detection; nod up/down to scroll
