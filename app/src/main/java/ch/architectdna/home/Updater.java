@@ -57,8 +57,13 @@ final class Updater {
         return prefs.getString("ghToken", "");
     }
 
+    /**
+     * Copying a long token on a phone can bring along line breaks (where GitHub wrapped it),
+     * spaces or zero-width characters; a GitHub token only ever contains letters, digits and _.
+     */
     void setToken(String token) {
-        prefs.edit().putString("ghToken", token.trim()).remove("updateChecked").apply();
+        String clean = token.replaceAll("[^A-Za-z0-9_]", "");
+        prefs.edit().putString("ghToken", clean).remove("updateChecked").apply();
     }
 
     int current() {
@@ -92,7 +97,8 @@ final class Updater {
             try {
                 HttpURLConnection c = open(REPO + "/releases/latest", "application/vnd.github+json", true);
                 int code = c.getResponseCode();
-                if (code == 401 || code == 403 || code == 404) throw new IOException("Token ungültig oder ohne Zugriff (" + code + ")");
+                if (code == 401) throw new IOException("Token ungültig oder abgelaufen (401) – neu kopieren");
+                if (code == 403 || code == 404) throw new IOException("Token ohne Zugriff (" + code + ") – Resource owner architect-dna-ch und Freigabe prüfen");
                 if (code != 200) throw new IOException("GitHub antwortet " + code);
                 JSONObject release = new JSONObject(readAll(c.getInputStream()));
                 String tag = release.getString("tag_name");                 // e.g. v1.0.12
