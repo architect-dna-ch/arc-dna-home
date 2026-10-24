@@ -12,6 +12,7 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.SweepGradient;
 import android.media.audiofx.Visualizer;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -102,6 +103,8 @@ public class ArcWallpaper extends WallpaperService {
         }
 
         private boolean locked() {
+            // A lock-screen-only engine (Android 14+) always shows the lock effects.
+            if (Build.VERSION.SDK_INT >= 34 && getWallpaperFlags() == android.app.WallpaperManager.FLAG_LOCK) return true;
             KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
             return km != null && km.isKeyguardLocked();
         }

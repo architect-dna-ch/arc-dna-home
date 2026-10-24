@@ -68,7 +68,7 @@ louder and it roars every few seconds. **Hold AUFWACHEN for 1 s** to stop it; **
 back for 5 minutes. Rings over the lock screen (needs notifications, and on Android 14+
 "Full-screen notifications"); it is re-armed after a reboot or update.
 
-Raising the volume (keys, music slider or speaker) twists the fox around, one spin per step.
+Raising the volume (keys, music slider or speaker) twists the fox around, one spin per step, with its own "wheee" twirl call.
 
 Coming back from an app keeps your scroll position on the home screen; Home pressed while already
 home still scrolls to the top.

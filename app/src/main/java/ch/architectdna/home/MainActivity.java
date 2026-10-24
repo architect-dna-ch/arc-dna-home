@@ -138,6 +138,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private BroadcastReceiver volumeReceiver;
     private android.animation.ObjectAnimator foxSpin;
     private float spinTarget;
+    private long lastTwirl;
     private SeismoView seismo;
     private View bottomScrim, topScrim;
     private LinearLayout f1Box;
@@ -1540,7 +1541,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Long-press the clock to turn this off (e.g. to keep a wallpaper of your own).
      */
     private void applyWallpaperIfNeeded() {
-        if (!prefs.getBoolean("autoWallpaper", true) || liveWallpaperActive()) return;
+        if (!prefs.getBoolean("autoWallpaper", true)) return;
+        // Never paint the static image over a screen that runs ARC-DNA Live (home or lock).
+        int flags = 0;
+        if (!liveWallpaperActive()) flags |= WallpaperManager.FLAG_SYSTEM;
+        if (!liveOnLock()) flags |= WallpaperManager.FLAG_LOCK;
+        if (flags == 0) return;
+        final int which = flags;
         boolean night = isNight();
         // The suffix is the wallpaper version: bumping it makes an update replace the old image.
         String mode = (night ? "dark" : "light") + "-v2";
@@ -1549,8 +1556,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Context app = getApplicationContext();
         new Thread(() -> {
             try (java.io.InputStream in = app.getResources().openRawResource(res)) {
-                WallpaperManager.getInstance(app).setStream(in, null, true,
-                    WallpaperManager.FLAG_SYSTEM | WallpaperManager.FLAG_LOCK);
+                WallpaperManager.getInstance(app).setStream(in, null, true, which);
                 prefs.edit().putString("wallpaperMode", mode).apply();
             } catch (java.io.IOException | RuntimeException e) {
                 handler.post(() -> Toast.makeText(app, "Wallpaper konnte nicht gesetzt werden.", Toast.LENGTH_SHORT).show());
@@ -1563,6 +1569,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return info != null && getPackageName().equals(info.getPackageName());
     }
 
+    /** Lock screen runs ARC-DNA Live (own lock engine, or home live shared with the lock screen). */
+    private boolean liveOnLock() {
+        WallpaperManager wm = WallpaperManager.getInstance(this);
+        if (Build.VERSION.SDK_INT >= 34) {
+            android.app.WallpaperInfo info = wm.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
+            if (info != null) return getPackageName().equals(info.getPackageName());
+        }
+        // No separate lock wallpaper (id < 0) = the lock screen shows the home one.
+        return liveWallpaperActive() && wm.getWallpaperId(WallpaperManager.FLAG_LOCK) < 0;
+    }
+
     /** What Android actually shows on home and lock screen (the lock screen part needs Android 14+). */
     private String wallpaperStatus() {
         WallpaperManager wm = WallpaperManager.getInstance(this);
@@ -1570,8 +1587,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         String lock = "?";
         if (Build.VERSION.SDK_INT >= 34) {
             android.app.WallpaperInfo info = wm.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
-            lock = info != null && getPackageName().equals(info.getPackageName()) ? "ARC-DNA Live"
-                : info != null ? "andere Live" : "statisch";
+            lock = liveOnLock() ? "ARC-DNA Live" : info != null ? "andere Live" : "statisch ✗";
         }
         return "Start: " + home + " · Sperre: " + lock;
     }
@@ -1846,6 +1862,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         foxSpin.setDuration(520);
         foxSpin.setInterpolator(new android.view.animation.OvershootInterpolator(1.4f));
         foxSpin.start();
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastTwirl > 450) {       // fast presses: one twirl sound, not a queue of them
+            lastTwirl = now;
+            voice.twirl();
+        }
     }
 
     /** At full volume the system sends no change, so the key itself still gets a spin. */

@@ -48,6 +48,45 @@ final class FoxVoice {
         play(FoxVoice::renderWhoosh);
     }
 
+    /** The fox twirling: a rising "wheee" with a fast warble as it spins, then a happy chirp. */
+    void twirl() {
+        play(FoxVoice::renderTwirl);
+    }
+
+    static short[] renderTwirl() {
+        int n = (int) (0.62f * RATE);
+        short[] out = new short[n];
+        double phase = 0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        for (int i = 0; i < n; i++) {
+            double sec = (double) i / RATE, t = (double) i / n;
+            double f;
+            double env;
+            if (t < 0.72) {
+                // Wheee: 450 → 1900 Hz, warbling 16× a second like the spin.
+                double k = t / 0.72;
+                f = 450 * Math.pow(1900 / 450.0, k) * (1 + 0.06 * Math.sin(2 * Math.PI * 16 * sec));
+                env = Math.min(1, sec / 0.02) * (0.55 + 0.45 * Math.abs(Math.sin(2 * Math.PI * 8 * sec)));
+            } else {
+                // "Yip" at the top: 1500 → 2300 Hz, short.
+                double k = (t - 0.72) / 0.28;
+                f = 1500 * Math.pow(2300 / 1500.0, Math.min(1, k * 2));
+                env = Math.exp(-k * 5) * (k < 0.04 ? k / 0.04 : 1);
+            }
+            phase += f / RATE;
+            double saw = 2 * (phase - Math.floor(phase + 0.5));
+            // Band-pass that follows the pitch, so it stays voice-like instead of buzzy.
+            double w0 = 2 * Math.PI * Math.min(5000, f * 1.3) / RATE, alpha = Math.sin(w0) / (2 * 1.4), a0 = 1 + alpha;
+            double x = saw * env;
+            double y = (alpha / a0) * x + (-alpha / a0) * x2 - (-2 * Math.cos(w0) / a0) * y1 - ((1 - alpha) / a0) * y2;
+            x2 = x1;
+            x1 = x;
+            y2 = y1;
+            y1 = y;
+            out[i] = (short) Math.max(-32767, Math.min(32767, y * 2.6 * 32767 * 0.35));
+        }
+        return out;
+    }
+
     private void play(java.util.function.Supplier<short[]> source) {
         worker.execute(() -> {
             short[] pcm = source.get();
