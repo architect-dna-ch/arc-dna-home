@@ -155,10 +155,13 @@ final class F1Panel extends View {
         rect.set(pad, trackY, w - pad, trackY + trackH);
         c.drawRoundRect(rect, dp(4), dp(4), paint);
         float kerb = dp(14), shift = (now / 6f) % (2 * kerb);
+        paint.setColor(rust);
+        c.save();
+        c.clipRect(pad, trackY, w - pad, trackY + trackH);   // stripes never leave the track
         for (float x = pad - 2 * kerb + shift; x < w - pad; x += 2 * kerb) {
-            paint.setColor(rust);
-            c.drawRect(Math.max(pad, x), trackY + trackH - dp(4), Math.min(w - pad, x + kerb), trackY + trackH, paint);
+            c.drawRect(x, trackY + trackH - dp(4), x + kerb, trackY + trackH, paint);
         }
+        c.restore();
 
         // The car pass.
         if (carStart >= 0) {
