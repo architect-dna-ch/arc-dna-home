@@ -657,6 +657,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
+
+        TextView appScroll = monoText(11, ink2);
+        appScroll.setText("EINSTELLUNGEN · KOPF-SCROLL PRO APP →");
+        appScroll.setPadding(dp(4), dp(12), dp(4), dp(8));
+        appScroll.setOnClickListener(v -> showAppScrollSettings());
+        body.addView(appScroll);
         return lib;
     }
 
@@ -1002,6 +1008,90 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hop();
         voice.say(dir > 0 ? "Yip-yip!" : "Mrrp?");
         handler.postDelayed(() -> setRequestedOrientation(ORIENTATIONS[i]), 180);
+    }
+
+    /* ================= Kopf-Scroll pro App ================= */
+
+    private boolean scrollAssistOn() {
+        String on = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return on != null && on.contains(getPackageName() + "/");
+    }
+
+    /**
+     * Per app: AUS → NICKEN → BLICK. ScrollAssistService (an accessibility service the user
+     * switches on once) reads these as "appScroll:<package>" when that app comes to the front.
+     */
+    private void showAppScrollSettings() {
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(20), dp(8), dp(20), dp(8));
+
+        TextView status = text(13, scrollAssistOn() ? ink2 : rust, true);
+        status.setText(scrollAssistOn()
+            ? "Bedienungshilfe „ARC-DNA Scroll“ ist an."
+            : "Zuerst einmalig einschalten: Bedienungshilfen → Installierte Apps → ARC-DNA Scroll → An →");
+        status.setPadding(0, 0, 0, dp(8));
+        status.setOnClickListener(v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        list.addView(status);
+
+        TextView hint = text(12, ink3, false);
+        hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt eine kleine Pille den Zustand – antippen = Pause. "
+            + "BLICK nutzt deine Kalibrierung aus der Mediathek.");
+        hint.setLineSpacing(0, 1.2f);
+        hint.setPadding(0, 0, 0, dp(10));
+        list.addView(hint);
+
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        List<AppEntry> sorted = new ArrayList<>(apps);
+        // Apps already switched on first, then alphabetical.
+        Collections.sort(sorted, (a, b) -> {
+            boolean ao = !prefs.getString("appScroll:" + a.component.getPackageName(), "off").equals("off");
+            boolean bo = !prefs.getString("appScroll:" + b.component.getPackageName(), "off").equals("off");
+            return ao == bo ? 0 : ao ? -1 : 1;
+        });
+        for (AppEntry app : sorted) {
+            String pkg = app.component.getPackageName();
+            if (!seen.add(pkg)) continue;
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, dp(6), 0, dp(6));
+            ImageView icon = new ImageView(this);
+            icon.setImageDrawable(app.icon);
+            row.addView(icon, new LinearLayout.LayoutParams(dp(28), dp(28)));
+            TextView name = text(14, ink, false);
+            name.setText(app.label);
+            name.setSingleLine(true);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            name.setPadding(dp(12), 0, dp(8), 0);
+            row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView chip = monoText(11, ink2);
+            chip.setPadding(dp(10), dp(6), dp(10), dp(6));
+            chip.setBackground(box(card, line, 20));
+            paintAppScroll(chip, prefs.getString("appScroll:" + pkg, "off"));
+            chip.setOnClickListener(v -> {
+                String now = prefs.getString("appScroll:" + pkg, "off");
+                String next = now.equals("off") ? "nod" : now.equals("nod") ? "gaze" : "off";
+                prefs.edit().putString("appScroll:" + pkg, next).apply();
+                paintAppScroll(chip, next);
+                if (!next.equals("off") && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
+                }
+            });
+            row.addView(chip);
+            list.addView(row);
+        }
+        ScrollView sv = new ScrollView(this);
+        sv.addView(list);
+        new AlertDialog.Builder(this)
+            .setTitle("Kopf-Scroll pro App")
+            .setView(sv)
+            .setPositiveButton("Fertig", null)
+            .show();
+    }
+
+    private void paintAppScroll(TextView chip, String mode) {
+        chip.setText(mode.equals("nod") ? "NICKEN" : mode.equals("gaze") ? "BLICK" : "AUS");
+        chip.setTextColor(mode.equals("off") ? ink3 : rust);
     }
 
     /* ================= Updates ================= */

@@ -12,6 +12,9 @@
         tools:ignore="ProtectedPermissions" />
     <!-- Only for the optional head-nod scrolling; asked for when it is switched on. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Head / eye scrolling in other apps runs as a camera foreground service with a notification. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <!-- Music card: the audio visualizer reads the phone's output mix (Android files this under
          RECORD_AUDIO; nothing is recorded or stored). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -58,6 +61,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ARC-DNA Scroll: head / eye scrolling in apps chosen per app in the Mediathek. -->
+        <service
+            android:name=".ScrollAssistService"
+            android:exported="true"
+            android:foregroundServiceType="camera"
+            android:label="ARC-DNA Scroll"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/scroll_assist" />
+        </service>
 
         <!-- ARC-DNA Live wallpaper: home + lock screen effects. -->
         <service

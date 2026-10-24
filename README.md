@@ -14,6 +14,10 @@ Architect-DNA styled Android launcher for the Pixel 9a.
   until then a button leads there
 - Soft fade behind the navigation buttons; fox and seismograph sit clear of them
 - Sections only partly visible above the bottom fade are frosted (blur + fade) until scrolled fully into view
+- Kopf-Scroll pro App (Mediathek → Einstellungen): per app AUS / NICKEN / BLICK for other apps such as
+  Chrome. Needs the accessibility service "ARC-DNA Scroll" switched on once; it runs the camera as a
+  foreground service with a notification while such an app is in front, scrolls with gentle swipes and
+  shows a small pill (tap = pause). Taps or typing in the app pause eye scrolling for 4 s
 - Kopf-Scroll (button in the Mediathek cycles AUS → NICKEN → BLICK; off by default), all on-device,
   and only while the Mediathek is open (the camera stops when it closes):
   - NICKEN: head tilt via ML Kit face detection; nod up/down to scroll

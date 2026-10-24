@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="wallpaper_description">ARC-DNA grid and cube, light or dark with the system. Lock screen: rainbow glitter around fingerprint and camera, rave circles on the beat.</string>
+    <string name="scroll_assist_description">ARC-DNA Scroll: scrolls the apps you choose in the launcher (Mediathek → Kopf-Scroll pro App) by nodding or looking up and down. The front camera is read on the phone only; nothing is recorded or sent. A small pill shows the state; tap it to pause.</string>
 </resources>
