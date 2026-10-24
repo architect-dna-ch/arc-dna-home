@@ -279,10 +279,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         clock.setIncludeFontPadding(false);
         clock.setPadding(0, dp(30), 0, 0);
         clock.setOnLongClickListener(v -> {
-            boolean on = !prefs.getBoolean("autoWallpaper", true);
-            prefs.edit().putBoolean("autoWallpaper", on).remove("wallpaperMode").apply();
-            Toast.makeText(this, on ? "Auto-Wallpaper an" : "Auto-Wallpaper aus", Toast.LENGTH_SHORT).show();
-            applyWallpaperIfNeeded();
+            showWallpaperChoice();
             return true;
         });
         content.addView(clock);
@@ -1204,7 +1201,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Long-press the clock to turn this off (e.g. to keep a wallpaper of your own).
      */
     private void applyWallpaperIfNeeded() {
-        if (!prefs.getBoolean("autoWallpaper", true)) return;
+        if (!prefs.getBoolean("autoWallpaper", true) || liveWallpaperActive()) return;
         boolean night = isNight();
         // The suffix is the wallpaper version: bumping it makes an update replace the old image.
         String mode = (night ? "dark" : "light") + "-v2";
@@ -1220,6 +1217,51 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 handler.post(() -> Toast.makeText(app, "Wallpaper konnte nicht gesetzt werden.", Toast.LENGTH_SHORT).show());
             }
         }).start();
+    }
+
+    private boolean liveWallpaperActive() {
+        android.app.WallpaperInfo info = WallpaperManager.getInstance(this).getWallpaperInfo();
+        return info != null && getPackageName().equals(info.getPackageName());
+    }
+
+    /** Long-press the clock: ARC-DNA Live, static light/dark, or leave the wallpaper alone. */
+    private void showWallpaperChoice() {
+        String[] items = {
+            "ARC-DNA Live – Regenbogen, Glitzer & Rave (Sperrbildschirm)",
+            "Statisch – hell/dunkel automatisch",
+            "Aus – eigenes Wallpaper behalten",
+        };
+        new AlertDialog.Builder(this)
+            .setTitle("Wallpaper")
+            .setItems(items, (d, which) -> {
+                if (which == 0) {
+                    Toast.makeText(this, "Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“", Toast.LENGTH_LONG).show();
+                    Intent live = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                        .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
+                    try {
+                        startActivity(live);
+                    } catch (ActivityNotFoundException e) {
+                        open(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+                    }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+                    }
+                } else if (which == 1) {
+                    prefs.edit().putBoolean("autoWallpaper", true).remove("wallpaperMode").apply();
+                    if (liveWallpaperActive()) {
+                        try {
+                            WallpaperManager.getInstance(this).clear();
+                        } catch (java.io.IOException ignored) {
+                        }
+                    }
+                    applyWallpaperIfNeeded();
+                    Toast.makeText(this, "Statisches Wallpaper: hell/dunkel automatisch", Toast.LENGTH_SHORT).show();
+                } else {
+                    prefs.edit().putBoolean("autoWallpaper", false).apply();
+                    Toast.makeText(this, "Wallpaper bleibt, wie es ist", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .show();
     }
 
     /* ================= Clock, focus, network ================= */

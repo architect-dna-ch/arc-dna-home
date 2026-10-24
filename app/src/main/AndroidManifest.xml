@@ -59,6 +59,20 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC-DNA Live wallpaper: home + lock screen effects. -->
+        <service
+            android:name=".ArcWallpaper"
+            android:exported="true"
+            android:label="ARC-DNA Live"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/arc_wallpaper" />
+        </service>
+
         <!-- Gives the music card access to the active media sessions (needs notification access). -->
         <service
             android:name=".MediaListener"

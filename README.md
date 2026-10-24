@@ -29,8 +29,10 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Shake the phone = earthquake
 - Draw a circle on the home screen = turn the screen 90° (clockwise circle turns clockwise:
   portrait → landscape → upside down → other landscape; four circles bring it back)
-- Light/dark follows the system, and the ARC-DNA wallpaper switches with it (home + lock screen);
-  long-press the clock to turn auto-wallpaper off or on
+- Light/dark follows the system, and the ARC-DNA wallpaper switches with it (home + lock screen).
+  Long-press the clock to choose: ARC-DNA Live (live wallpaper: on the lock screen a rainbow
+  glitter halo around the fingerprint sensor, a rainbow ring around the front camera and rave
+  circles on the beat; calm at home), static light/dark, or off
 
 ## Updates in the app
 Mediathek → bottom line "UPDATES EINRICHTEN": paste a fine-grained GitHub token
