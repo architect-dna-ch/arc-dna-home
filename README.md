@@ -7,7 +7,7 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
   German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
 - Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it
-- Musik card: title, artist and cover of whatever plays (needs notification access), ⏮ ▶ ⏭ (work
+- Musik card (tap it to open the playing app): title, artist and cover of whatever plays (needs notification access), ⏮ ▶ ⏭ (work
   without it via media keys), the output device such as a JBL speaker with "seit HH:MM" and a fox
   message on connect/disconnect, a music volume slider, and a spectrum visualizer (needs the
   microphone permission for Android's Visualizer; nothing is recorded) that also moves the seismograph
@@ -32,7 +32,7 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - All apps with search (Enter opens the first hit), long-press for app info
 - The fox: tap = fox call you can hear (synthesized yips, gekkering, barks, like the website),
   long-press = ARC-DNA web home with the AI chat
-- Tap empty space = Fuchsjagd: a landscape runner where the fox chases the rabbit; tap to jump over
+- Rabbit button (bottom left, above the fox) = Fuchsjagd: a landscape runner where the fox chases the rabbit; tap to jump over
   cubes; distance + record; 3 quick taps or Home twice to leave
 - Shake the phone = earthquake
 - Swipe right→left = dark, left→right = light for ARC-DNA (colour floods out from the finger);

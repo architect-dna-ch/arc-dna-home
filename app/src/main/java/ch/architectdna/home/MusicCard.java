@@ -185,8 +185,25 @@ final class MusicCard {
         accessHint.setOnClickListener(v -> host.open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         root.addView(accessHint);
 
+        // Tapping the card itself opens the app that is playing.
+        root.setOnClickListener(v -> openPlayer());
+
         renderTrack();
         return root;
+    }
+
+    private void openPlayer() {
+        if (controller == null) return;
+        android.app.PendingIntent session = controller.getSessionActivity();
+        try {
+            if (session != null) {
+                session.send();
+                return;
+            }
+        } catch (android.app.PendingIntent.CanceledException ignored) {
+        }
+        Intent launch = activity.getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
+        if (launch != null) host.open(launch);
     }
 
     private ImageView control(int icon, int keyCode) {

@@ -136,6 +136,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private boolean f1, f1Running;
     private F1Panel f1Panel;
     private FoxRunView game;
+    private ImageView gameButton;
     private long lastHomePress;
 
     /** Redraws seconds.milliseconds every frame while F1 mode is on and the screen is in front. */
@@ -268,7 +269,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         // Empty space: tap = only wallpaper, hold = Mediathek.
-        content.setOnClickListener(v -> startGame());
         content.setOnLongClickListener(v -> {
             openLibrary();
             return true;
@@ -380,7 +380,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(projectChips(), margins(-1, -2, 0, dp(10), 0, 0));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Leere Fläche: tippen = Fuchsjagd · halten = Mediathek · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
+        hint.setText("Leere Fläche: halten = Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         content.addView(hint, margins(-1, -2, 0, dp(20), 0, 0));
 
@@ -402,6 +402,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
             new int[]{panel, (panel & 0x00FFFFFF) | 0xB3000000, panel & 0x00FFFFFF}));
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, dp(100), Gravity.BOTTOM));
+
+        // Floating rabbit button bottom-left, just above the fox: starts the Fuchsjagd game.
+        gameButton = new ImageView(this);
+        gameButton.setImageResource(R.drawable.rabbit);
+        gameButton.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        int pad = dp(9);
+        gameButton.setPadding(pad, pad, pad, pad);
+        GradientDrawable round = new GradientDrawable();
+        round.setShape(GradientDrawable.OVAL);
+        round.setColor(card);
+        round.setStroke(dp(1.5f), rust);
+        gameButton.setBackground(round);
+        gameButton.setElevation(dp(4));
+        gameButton.setContentDescription("Fuchsjagd starten");
+        gameButton.setOnClickListener(v -> startGame());
+        root.addView(gameButton, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM | Gravity.START));
 
         seismo = new SeismoView(this);
         root.addView(seismo, new FrameLayout.LayoutParams(-1, dp(30), Gravity.BOTTOM));
@@ -447,6 +463,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             foldInset = bottom + dp(84);
             ((FrameLayout.LayoutParams) seismo.getLayoutParams()).bottomMargin = bottom + dp(6);
             ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(dp(14), 0, 0, bottom + dp(20));
+            ((FrameLayout.LayoutParams) gameButton.getLayoutParams()).setMargins(dp(18), 0, 0, bottom + dp(84));
+            gameButton.requestLayout();
             ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(dp(70), 0, 0, bottom + dp(72));
             bottomScrim.requestLayout();
             seismo.requestLayout();
