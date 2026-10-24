@@ -2,6 +2,7 @@
 
 Architect-DNA styled Android launcher for the Pixel 9a.
 
+- F1 mode: tap the clock for live seconds.milliseconds beside it; tap again to hide
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
   German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
 - Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it

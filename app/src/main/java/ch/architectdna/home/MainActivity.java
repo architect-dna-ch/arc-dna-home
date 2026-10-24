@@ -129,6 +129,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private ImageView fox;
     private SeismoView seismo;
     private View bottomScrim;
+    private LinearLayout f1Box;
+    private TextView f1Time;
+    private boolean f1, f1Running;
+
+    /** Redraws seconds.milliseconds every frame while F1 mode is on and the screen is in front. */
+    private final Runnable f1Tick = new Runnable() {
+        @Override
+        public void run() {
+            if (!f1 || !f1Running) return;
+            long now = System.currentTimeMillis();
+            Calendar c = Calendar.getInstance();
+            f1Time.setText(String.format(Locale.ROOT, "%02d.%03d", c.get(Calendar.SECOND), now % 1000));
+            f1Time.postOnAnimation(this);
+        }
+    };
     /** Height at the bottom covered by the fade, fox and seismograph; sections must clear it. */
     private int foldInset;
     private final Map<View, Float> foldState = new HashMap<>();
@@ -290,7 +305,27 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showWallpaperChoice();
             return true;
         });
-        content.addView(clock);
+        clock.setOnClickListener(v -> setF1(!f1));
+
+        // F1 mode: seconds and milliseconds ticking beside the clock, like a race timer.
+        LinearLayout clockRow = new LinearLayout(this);
+        clockRow.setGravity(Gravity.BOTTOM);
+        clockRow.addView(clock);
+        f1Box = new LinearLayout(this);
+        f1Box.setOrientation(LinearLayout.VERTICAL);
+        f1Box.setPadding(dp(8), 0, 0, dp(14));
+        TextView f1Label = monoText(11, rust);
+        f1Label.setText("F1 · LAP");
+        f1Label.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD_ITALIC));
+        f1Box.addView(f1Label);
+        f1Time = text(22, ink, true);
+        f1Time.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        f1Time.setIncludeFontPadding(false);
+        f1Box.addView(f1Time);
+        f1Box.setOnClickListener(v -> setF1(false));
+        f1Box.setVisibility(View.GONE);
+        clockRow.addView(f1Box);
+        content.addView(clockRow);
 
         date = text(17, ink2, false);
         date.setPadding(0, dp(10), 0, 0);
@@ -1325,6 +1360,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         net.setText(s);
     }
 
+    /* ================= F1 mode ================= */
+
+    private void setF1(boolean on) {
+        boolean changed = on != f1;
+        f1 = on;
+        prefs.edit().putBoolean("f1", on).apply();
+        f1Box.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (on && changed) {
+            hop();
+            say("Box, box!", 1200);
+            voice.say("Wow-wow!");
+        }
+        startF1Tick();
+    }
+
+    private void startF1Tick() {
+        f1Running = f1;
+        if (f1) {
+            f1Time.removeCallbacks(f1Tick);
+            f1Time.postOnAnimation(f1Tick);
+        }
+    }
+
     /* ================= Frosted sections at the fold ================= */
 
     /**
@@ -1459,6 +1517,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onResume();
         handler.removeCallbacks(ticker);
         ticker.run();
+        f1 = prefs.getBoolean("f1", false);
+        f1Box.setVisibility(f1 ? View.VISIBLE : View.GONE);
+        startF1Tick();
         refreshRecents();
         music.start();
         updater.check(false);
@@ -1474,6 +1535,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(ticker);
+        f1Running = false;
         music.stop();
         if (sensors != null) sensors.unregisterListener(this);
         stopHead();
