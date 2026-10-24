@@ -5,6 +5,10 @@ Architect-DNA styled Android launcher for the Pixel 9a.
 - Laid out like architect-dna.ch/home: ARCHITECT · DNA row with online status, clock with rust colon,
   German date and greeting, web search, eight line-icon app tiles, project chips, seismograph line
 - Long-press empty space = Mediathek (all apps with search) slides up; Back or ✕ closes it
+- Musik card: title, artist and cover of whatever plays (needs notification access), ⏮ ▶ ⏭ (work
+  without it via media keys), the output device such as a JBL speaker with "seit HH:MM" and a fox
+  message on connect/disconnect, a music volume slider, and a spectrum visualizer (needs the
+  microphone permission for Android's Visualizer; nothing is recorded) that also moves the seismograph
 - Zuletzt: the 4 (home) / 8 (Mediathek) most recently used apps; needs Settings → Usage access,
   until then a button leads there
 - Soft fade behind the navigation buttons; fox and seismograph sit clear of them

@@ -86,6 +86,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private static final String WEB_HOME = "https://architect-dna.ch/home";
     private static final int REQ_CAMERA = 7;
+    private static final int REQ_AUDIO = 8;
     private static final String[] FOX_CALLS = {
         "Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."
     };
@@ -138,6 +139,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private HeadTracker head;
     private final FoxVoice voice = new FoxVoice();
     private Updater updater;
+    private MusicCard music;
 
     /** Circle gesture: each circle turns the screen 90°, four bring it back. */
     private static final int[] ORIENTATIONS = {
@@ -291,6 +293,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         content.addView(focusCard(), margins(-1, -2, 0, dp(24), 0, 0));
         content.addView(searchRow(), margins(-1, -2, 0, dp(12), 0, 0));
+
+        content.addView(label("Musik"), margins(-1, -2, 0, dp(26), 0, 0));
+        music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
+            @Override
+            public void open(Intent intent) {
+                MainActivity.this.open(intent);
+            }
+
+            @Override
+            public void askAudioPermission() {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+            }
+
+            @Override
+            public void onLevel(float level) {
+                if (level > 0.3f) seismo.kick(Math.min(1f, level * 0.8f));
+            }
+
+            @Override
+            public void say(String text) {
+                hop();
+                MainActivity.this.say(text, 1800);
+            }
+        });
+        content.addView(music.view(), margins(-1, -2, 0, dp(10), 0, 0));
 
         content.addView(label("Apps"), margins(-1, -2, 0, dp(26), 0, 0));
         content.addView(appTiles(), margins(-1, -2, 0, dp(10), 0, 0));
@@ -967,6 +994,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQ_AUDIO) {
+            music.onAudioPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
+            return;
+        }
         if (requestCode != REQ_CAMERA) return;
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             startHead();
@@ -1317,6 +1348,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(ticker);
         ticker.run();
         refreshRecents();
+        music.start();
         updater.check(false);
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
@@ -1330,6 +1362,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(ticker);
+        music.stop();
         if (sensors != null) sensors.unregisterListener(this);
         stopHead();
     }

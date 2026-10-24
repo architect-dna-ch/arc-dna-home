@@ -12,6 +12,10 @@
         tools:ignore="ProtectedPermissions" />
     <!-- Only for the optional head-nod scrolling; asked for when it is switched on. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Music card: the audio visualizer reads the phone's output mix (Android files this under
+         RECORD_AUDIO; nothing is recorded or stored). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <!-- Android 11+ package visibility: see every launchable app and the default apps for the dock. -->
@@ -54,5 +58,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Gives the music card access to the active media sessions (needs notification access). -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="ARC-DNA Musik"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
