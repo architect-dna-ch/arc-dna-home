@@ -13,12 +13,13 @@ Architect-DNA styled Android launcher for the Pixel 9a.
   until then a button leads there
 - Soft fade behind the navigation buttons; fox and seismograph sit clear of them
 - Kopf-Scroll (button in the Mediathek cycles AUS → NICKEN → BLICK; off by default), all on-device,
-  only while the launcher is on screen:
+  and only while the Mediathek is open (the camera stops when it closes):
   - NICKEN: head tilt via ML Kit face detection; nod up/down to scroll
   - BLICK: eyes via MediaPipe Face Landmarker. A short calibration (dot at top, middle, bottom)
     sets your personal zones: bottom part = scroll down slowly, wide middle band = stop,
     top part / camera = scroll up. Long-press the mode button to recalibrate
-  - the top bar shows ◉ mode and ↑ / ↓ / · for what the camera currently reads
+  - BLICK rests for 4 seconds after any touch or finger scroll
+  - the button shows the mode and ↑ / ↓ / · (‖ = resting) for what the camera currently reads
 - "Heute zählt": one focus for the day (resets at midnight)
 - Dock of default apps: phone, SMS, camera, browser, maps, mail, calendar, ARC-DNA web home
 - All apps with search (Enter opens the first hit), long-press for app info

@@ -150,6 +150,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     };
     private final List<float[]> stroke = new ArrayList<>();
     private boolean strokeMulti;
+    /** Last finger contact; eye scrolling rests for EYE_PAUSE_MS after it. */
+    private long lastTouch;
+    private static final long EYE_PAUSE_MS = 4000;
     private TextView updateHome, updateLib;
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
@@ -174,9 +177,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private final Runnable headScroller = new Runnable() {
         @Override
         public void run() {
-            if (headSpeed == 0) return;
-            ScrollView target = libraryOpen ? libScroll : scroll;
-            target.scrollBy(0, Math.round(headSpeed));
+            if (headSpeed == 0 || !libraryOpen) return;
+            libScroll.scrollBy(0, Math.round(headSpeed));
             handler.postDelayed(this, 16);
         }
     };
@@ -616,11 +618,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         library.animate().alpha(1f).translationY(0).setDuration(260)
             .setInterpolator(new DecelerateInterpolator()).start();
         libScroll.scrollTo(0, 0);
+        // Head / eye scrolling only works in the Mediathek: the camera starts here …
+        if (!headMode().equals("off")) startHead();
     }
 
     private void closeLibrary() {
         if (!libraryOpen) return;
         libraryOpen = false;
+        // … and stops when it closes.
+        stopHead();
         hideKeyboard();
         libSearch.setText("");
         library.animate().alpha(0f).translationY(dp(60)).setDuration(200)
@@ -827,6 +833,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
+        lastTouch = android.os.SystemClock.uptimeMillis();
         if (action == MotionEvent.ACTION_DOWN) {
             stroke.clear();
             strokeMulti = false;
@@ -949,7 +956,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putString("headMode", next).remove("headScroll").apply();
         paintHeadToggle();
         stopHead();
-        if (!next.equals("off")) startHead();
+        if (!next.equals("off") && libraryOpen) startHead();
     }
 
     private void paintHeadToggle() {
@@ -985,10 +992,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headLabel.setVisibility(View.GONE);
     }
 
-    /** Top bar while active: mode plus ↑ / ↓ / · so you can see what the camera reads. */
+    /** On the Mediathek button while active: mode plus ↑ / ↓ / · (‖ = resting after a touch). */
     private void showHeadState(int dir) {
-        String arrow = dir < 0 ? "↑" : dir > 0 ? "↓" : "·";
-        headLabel.setText("◉ " + (headMode().equals("gaze") ? "BLICK " : "NICKEN ") + arrow + "  ");
+        String arrow = dir == 2 ? "‖" : dir < 0 ? "↑" : dir > 0 ? "↓" : "·";
+        String mode = headMode().equals("gaze") ? "BLICK" : "NICKEN";
+        headToggle.setText("KOPF-SCROLL: " + mode + " " + arrow);
+        headLabel.setText("◉ " + mode + " " + arrow + "  ");
     }
 
     @Override
@@ -1176,9 +1185,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void setHeadSpeed(float speed) {
+        // Eyes rest for a moment after the screen was touched or scrolled by finger.
+        boolean resting = headMode().equals("gaze")
+            && android.os.SystemClock.uptimeMillis() - lastTouch < EYE_PAUSE_MS;
+        if (resting) speed = 0;
         boolean wasIdle = headSpeed == 0;
         headSpeed = speed;
-        showHeadState(speed < 0 ? -1 : speed > 0 ? 1 : 0);
+        showHeadState(resting ? 2 : speed < 0 ? -1 : speed > 0 ? 1 : 0);
         if (speed != 0 && wasIdle) handler.post(headScroller);
     }
 
@@ -1352,7 +1365,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         updater.check(false);
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
-        if (!headMode().equals("off")
+        if (libraryOpen && !headMode().equals("off")
             && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startHead();
         }
