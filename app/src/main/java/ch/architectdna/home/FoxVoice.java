@@ -87,6 +87,45 @@ final class FoxVoice {
         return out;
     }
 
+    /** Volume down: a sad falling whimper, "awoo-hmm", slow and wobbly, fading out. */
+    void whimper() {
+        play(FoxVoice::renderWhimper);
+    }
+
+    static short[] renderWhimper() {
+        int n = (int) (1.25f * RATE);
+        short[] out = new short[n];
+        double phase = 0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        for (int i = 0; i < n; i++) {
+            double sec = (double) i / RATE, t = (double) i / n;
+            double f, env;
+            if (t < 0.62) {
+                // Awoo: a short lift, then a long slide down 820 → 380 Hz with a slow, unsteady vibrato.
+                double k = t / 0.62;
+                double lift = k < 0.12 ? 1 + 0.08 * (k / 0.12) : 1.08 * Math.pow(380 / 885.6, (k - 0.12) / 0.88);
+                f = 820 * lift * (1 + 0.025 * Math.sin(2 * Math.PI * 5.5 * sec));
+                env = Math.min(1, sec / 0.06) * (1 - 0.35 * k);
+            } else {
+                // Hmm: a low, quiet sigh 330 → 260 Hz, dying away.
+                double k = (t - 0.62) / 0.38;
+                f = 330 * Math.pow(260 / 330.0, k) * (1 + 0.03 * Math.sin(2 * Math.PI * 4 * sec));
+                env = 0.45 * Math.min(1, k / 0.08) * Math.exp(-k * 3.2);
+            }
+            phase += f / RATE;
+            // Softer than the other calls: mostly sine with a little saw for the voice.
+            double saw = 2 * (phase - Math.floor(phase + 0.5));
+            double x = (0.75 * Math.sin(2 * Math.PI * phase) + 0.25 * saw) * env;
+            double w0 = 2 * Math.PI * Math.min(4000, f * 1.6) / RATE, alpha = Math.sin(w0) / (2 * 0.9), a0 = 1 + alpha;
+            double y = (alpha / a0) * x + (-alpha / a0) * x2 - (-2 * Math.cos(w0) / a0) * y1 - ((1 - alpha) / a0) * y2;
+            x2 = x1;
+            x1 = x;
+            y2 = y1;
+            y1 = y;
+            out[i] = (short) Math.max(-32767, Math.min(32767, y * 2.6 * 32767 * 0.35));
+        }
+        return out;
+    }
+
     private void play(java.util.function.Supplier<short[]> source) {
         worker.execute(() -> {
             short[] pcm = source.get();

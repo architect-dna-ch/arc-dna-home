@@ -138,6 +138,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private BroadcastReceiver volumeReceiver;
     private android.animation.ObjectAnimator foxSpin;
     private float spinTarget;
+    private android.animation.AnimatorSet foxSad;
     private long lastTwirl;
     private SeismoView seismo;
     private View bottomScrim, topScrim;
@@ -1858,6 +1859,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean spinning = foxSpin != null && foxSpin.isRunning();
         spinTarget = (spinning ? spinTarget : (float) Math.ceil(from / 360f) * 360) + 360;
         if (foxSpin != null) foxSpin.cancel();
+        if (foxSad != null) foxSad.cancel();
+        fox.setPivotX(fox.getWidth() / 2f);
+        fox.setPivotY(fox.getHeight() / 2f);
+        fox.setScaleY(1f);
+        fox.setTranslationY(0);
         foxSpin = android.animation.ObjectAnimator.ofFloat(fox, View.ROTATION, from, spinTarget);
         foxSpin.setDuration(520);
         foxSpin.setInterpolator(new android.view.animation.OvershootInterpolator(1.4f));
@@ -1869,13 +1875,47 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    /** Volume down: the fox droops, head hanging and sinking low, then slowly picks itself up. */
+    private void sadFox() {
+        if (fox == null || game != null) return;
+        if (foxSpin != null) foxSpin.cancel();
+        if (foxSad != null) foxSad.cancel();
+        fox.setRotation(fox.getRotation() % 360);
+        fox.setPivotX(fox.getWidth() * 0.75f);       // the head end
+        fox.setPivotY(fox.getHeight());
+        android.animation.ObjectAnimator droop = android.animation.ObjectAnimator.ofPropertyValuesHolder(fox,
+            android.animation.PropertyValuesHolder.ofFloat(View.ROTATION, fox.getRotation(), 9),
+            android.animation.PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, fox.getTranslationY(), dp(8)),
+            android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, fox.getScaleY(), 0.86f));
+        droop.setDuration(650);
+        droop.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        android.animation.ObjectAnimator sigh = android.animation.ObjectAnimator.ofFloat(fox, View.SCALE_Y, 0.86f, 0.9f, 0.86f);
+        sigh.setDuration(700);
+        android.animation.ObjectAnimator recover = android.animation.ObjectAnimator.ofPropertyValuesHolder(fox,
+            android.animation.PropertyValuesHolder.ofFloat(View.ROTATION, 9, 0),
+            android.animation.PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, dp(8), 0),
+            android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.86f, 1f));
+        recover.setDuration(900);
+        recover.setStartDelay(400);
+        recover.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        foxSad = new android.animation.AnimatorSet();
+        foxSad.playSequentially(droop, sigh, recover);
+        foxSad.start();
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastTwirl > 900) {
+            lastTwirl = now;
+            voice.whimper();
+        }
+    }
+
     /** At full volume the system sends no change, so the key itself still gets a spin. */
     @Override
     public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
-        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
-            AudioManager am = getSystemService(AudioManager.class);
-            if (am != null && am.getStreamVolume(AudioManager.STREAM_MUSIC) >= am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) spinFox();
-        }
+        AudioManager am = getSystemService(AudioManager.class);
+        if (am != null && keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP
+            && am.getStreamVolume(AudioManager.STREAM_MUSIC) >= am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) spinFox();
+        if (am != null && keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN
+            && am.getStreamVolume(AudioManager.STREAM_MUSIC) <= am.getStreamMinVolume(AudioManager.STREAM_MUSIC)) sadFox();
         return super.onKeyDown(keyCode, event);
     }
 
@@ -1975,6 +2015,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 int now = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", 0);
                 int before = i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", now);
                 if (now > before) spinFox();
+                else if (now < before) sadFox();
             }
         };
         IntentFilter vf = new IntentFilter("android.media.VOLUME_CHANGED_ACTION");
