@@ -1567,7 +1567,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // The small seconds readout is replaced by the F1 timing board; nothing to tick here.
         f1Running = false;
     }
-    }
 
     /* ================= Frosted sections at the fold ================= */
 
