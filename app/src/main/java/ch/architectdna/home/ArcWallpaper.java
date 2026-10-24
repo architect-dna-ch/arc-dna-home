@@ -136,7 +136,7 @@ public class ArcWallpaper extends WallpaperService {
                 startVisualizer();
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
-            boolean busy = lock || !rings.isEmpty();
+            boolean busy = lock || !rings.isEmpty() || cubeMoving();
             handler.postDelayed(frame, busy ? 33 : 500);
         }
 
@@ -158,27 +158,9 @@ public class ArcWallpaper extends WallpaperService {
             for (float x = -2 * s; x < width; x += cell) c.drawLine(x, 0, x, height, paint);
             for (float y = 40 * s; y < height; y += cell) c.drawLine(0, y, width, y, paint);
 
-            // The cube, as on the website wallpaper.
-            float size = 760 * s, unit = size / 14f, ox = (width - size) / 2f, oy = height * 0.52f - size / 2f;
-            paint.setStrokeWidth(0.22f * unit);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setColor(0x1A000000 | ink);
-            path.reset();
-            path.moveTo(ox + 7 * unit, oy + unit);
-            path.lineTo(ox + unit, oy + 4 * unit);
-            path.lineTo(ox + unit, oy + 10 * unit);
-            path.lineTo(ox + 7 * unit, oy + 13 * unit);
-            path.lineTo(ox + 13 * unit, oy + 10 * unit);
-            path.lineTo(ox + 13 * unit, oy + 4 * unit);
-            path.close();
-            path.moveTo(ox + 7 * unit, oy + unit);
-            path.lineTo(ox + 7 * unit, oy + 13 * unit);
-            path.moveTo(ox + unit, oy + 4 * unit);
-            path.lineTo(ox + 7 * unit, oy + 7 * unit);
-            c.drawPath(path, paint);
-            paint.setColor((rust & 0x00FFFFFF) | 0x80000000);
-            c.drawLine(ox + 7 * unit, oy + 7 * unit, ox + 13 * unit, oy + 4 * unit, paint);
+            // The cube, as on the website wallpaper, but real 3D: two fingers on the home screen turn it.
+            stepCube();
+            drawCube(c, width / 2f, height * 0.52f, 760 * s / 14f * 6f / (float) Math.sqrt(2), ink, rust);
 
             // Rave / beat rings.
             beat *= 0.9f;
@@ -222,6 +204,91 @@ public class ArcWallpaper extends WallpaperService {
                 * (1 + 0.06f * (float) Math.sin(t * 3.1f) + 0.25f * beat);
             rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f);
             paint.setShader(null);
+        }
+
+        /* ---- The 3D cube: yaw/pitch with inertia; the default pose is the isometric logo ---- */
+
+        private static final float BASE_YAW = (float) Math.toRadians(45), BASE_PITCH = (float) Math.toRadians(35.264);
+        private final float[][] verts = new float[8][3];
+        private final float[][] proj = new float[8][3];
+        private float yaw = BASE_YAW, pitch = BASE_PITCH, vYaw, vPitch;
+        private boolean dragging;
+        private long lastCubeStep;
+
+        boolean cubeMoving() {
+            return dragging || Math.abs(vYaw) > 0.0005f || Math.abs(vPitch) > 0.0005f;
+        }
+
+        @Override
+        public android.os.Bundle onCommand(String action, int x, int y, int z, android.os.Bundle extras, boolean resultRequested) {
+            if ("ch.architectdna.CUBE_DRAG".equals(action) && extras != null) {
+                float k = 0.006f;   // radians per pixel
+                float dYaw = extras.getFloat("dx") * k, dPitch = extras.getFloat("dy") * k;
+                yaw += dYaw;
+                pitch = Math.max(-1.45f, Math.min(1.45f, pitch + dPitch));
+                vYaw = dYaw;
+                vPitch = dPitch;
+                dragging = true;
+                lastCubeStep = SystemClock.uptimeMillis();
+                if (visible) {
+                    handler.removeCallbacks(frame);
+                    handler.post(frame);
+                }
+            } else if ("ch.architectdna.CUBE_RELEASE".equals(action)) {
+                dragging = false;
+            } else if ("ch.architectdna.CUBE_RESET".equals(action)) {
+                vYaw = vPitch = 0;
+                yaw = BASE_YAW;
+                pitch = BASE_PITCH;
+                if (visible) drawFrame();
+            }
+            return null;
+        }
+
+        /** After letting go it keeps spinning and slows down (per 16 ms frame). */
+        private void stepCube() {
+            if (dragging) return;
+            long now = SystemClock.uptimeMillis();
+            float frames = Math.min(4f, (now - lastCubeStep) / 16f);
+            lastCubeStep = now;
+            if (!cubeMoving()) return;
+            yaw += vYaw * frames;
+            pitch = Math.max(-1.45f, Math.min(1.45f, pitch + vPitch * frames));
+            float decay = (float) Math.pow(0.95, frames);
+            vYaw *= decay;
+            vPitch *= decay;
+        }
+
+        private void drawCube(Canvas c, float cx, float cy, float scale, int ink, int rust) {
+            float cyw = (float) Math.cos(yaw), syw = (float) Math.sin(yaw);
+            float cp = (float) Math.cos(pitch), sp = (float) Math.sin(pitch);
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(0.22f * scale * (float) Math.sqrt(2) / 6f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            for (int i = 0; i < 8; i++) {
+                float x = (i & 1) == 0 ? -1 : 1, y = (i & 2) == 0 ? -1 : 1, z = (i & 4) == 0 ? -1 : 1;
+                // Yaw around the vertical axis, then pitch towards the viewer.
+                float x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw;
+                float y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
+                float persp = 7f / (7f - z2);       // a touch of perspective
+                proj[i][0] = cx + x1 * scale * persp;
+                proj[i][1] = cy + y2 * scale * persp;
+                proj[i][2] = z2;
+            }
+            // 12 edges: pairs of corners differing in one bit. Edges further back are fainter.
+            for (int a = 0; a < 8; a++) {
+                for (int bit = 1; bit < 8; bit <<= 1) {
+                    int b = a | bit;
+                    if (b == a) continue;
+                    float depth = (proj[a][2] + proj[b][2]) / 2f;           // -1.7 (back) … 1.7 (front)
+                    float alpha = 0.06f + 0.06f * (depth + 1.7f) / 3.4f;
+                    boolean accent = a == 4 && b == 5;                        // the logo's rust edge
+                    paint.setColor(accent ? (rust & 0x00FFFFFF) | ((int) (255 * (0.3f + 0.25f * (depth + 1.7f) / 3.4f)) << 24)
+                        : (ink & 0x00FFFFFF) | ((int) (255 * alpha) << 24));
+                    c.drawLine(proj[a][0], proj[a][1], proj[b][0], proj[b][1], paint);
+                }
+            }
         }
 
         private void rainbowRing(Canvas c, float x, float y, float r, float stroke, float rotate, float alpha) {

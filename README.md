@@ -102,3 +102,9 @@ your face. Off again above ~15 lux.
 Long-press the clock → "Dynamischer Sperrbildschirm – Einführung": what the lock screen shows,
 ✓/✗ for each setup step, and a button for the next one. Opens once by itself while the lock
 screen is still static.
+
+## 3D cube
+
+With ARC-DNA Live as wallpaper, drag **two fingers** on the home screen to turn the cube on
+both axes (left/right = around the vertical axis, up/down = tilt). Let go and it keeps spinning,
+slowing down; edges further back are drawn fainter.

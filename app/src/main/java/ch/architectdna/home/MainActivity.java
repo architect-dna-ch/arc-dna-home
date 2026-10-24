@@ -194,7 +194,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
     };
-    private boolean strokeMulti, strokeOnSlider, circling;
+    private boolean strokeMulti, strokeOnSlider, circling, cubeDrag;
+    private float cubeX, cubeY;
     private float downX, downY, lastPX, lastPY, pathTurn, pathLen, lastHeading = Float.NaN;
     private long downTime;
     private FrameLayout rootFrame;
@@ -1088,6 +1089,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (action == MotionEvent.ACTION_DOWN) {
             strokeMulti = false;
             circling = false;
+            cubeDrag = false;
             pathTurn = 0;
             pathLen = 0;
             lastHeading = Float.NaN;
@@ -1097,6 +1099,40 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             strokeOnSlider = music != null && music.isOnSlider(ev.getRawX(), ev.getRawY());
         } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
             strokeMulti = true;
+            // Two fingers on the home screen turn the wallpaper cube in 3D.
+            if (gestures && ev.getPointerCount() == 2 && !circling) {
+                cubeDrag = true;
+                cubeX = (ev.getX(0) + ev.getX(1)) / 2f;
+                cubeY = (ev.getY(0) + ev.getY(1)) / 2f;
+                MotionEvent cancel = MotionEvent.obtain(ev);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                super.dispatchTouchEvent(cancel);
+                cancel.recycle();
+                if (!liveWallpaperActive() && !prefs.getBoolean("cubeHint", false)) {
+                    prefs.edit().putBoolean("cubeHint", true).apply();
+                    say("Würfel drehen geht mit ARC-DNA Live – Uhr lange drücken.", 2600);
+                }
+            }
+            if (cubeDrag) return true;
+        } else if (cubeDrag && action == MotionEvent.ACTION_MOVE) {
+            if (ev.getPointerCount() >= 2) {
+                float x = (ev.getX(0) + ev.getX(1)) / 2f, y = (ev.getY(0) + ev.getY(1)) / 2f;
+                android.os.Bundle b = new android.os.Bundle();
+                b.putFloat("dx", x - cubeX);
+                b.putFloat("dy", y - cubeY);
+                cubeX = x;
+                cubeY = y;
+                wallpaperCommand("ch.architectdna.CUBE_DRAG", b);
+            }
+            return true;
+        } else if (cubeDrag && (action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_UP
+            || action == MotionEvent.ACTION_CANCEL)) {
+            if (action == MotionEvent.ACTION_POINTER_UP) {
+                wallpaperCommand("ch.architectdna.CUBE_RELEASE", null);
+                return true;   // keep swallowing until the last finger lifts
+            }
+            cubeDrag = false;
+            return true;
         } else if (action == MotionEvent.ACTION_MOVE) {
             for (int h = 0; h < ev.getHistorySize(); h++) addPoint(ev.getHistoricalX(h), ev.getHistoricalY(h));
             addPoint(ev.getX(), ev.getY());
@@ -1126,6 +1162,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             circling = false;
         }
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void wallpaperCommand(String action, android.os.Bundle extras) {
+        try {
+            WallpaperManager.getInstance(this).sendWallpaperCommand(
+                getWindow().getDecorView().getWindowToken(), action, 0, 0, 0, extras);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     /** Adds a point (≥ 8 dp from the last, which smooths finger jitter) and adds up how far the path's direction has turned. */
