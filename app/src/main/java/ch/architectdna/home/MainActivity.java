@@ -708,6 +708,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /**
      * BLICK: the first frames (looking at the middle of the screen) set the rest point.
+     * Eye movements within the phone's height are small, so the threshold is low (0.04 of the
+     * blendshape range) and full speed is reached 0.12 beyond it.
      * Looking toward the bottom edge scrolls down slowly and steadily, back to the middle stops,
      * looking at the top edge / into the camera scrolls up. No drift here, so a long look holds.
      */
@@ -719,14 +721,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         float delta = vertical - basePitch;
-        smoothTilt = smoothTilt * 0.7f + delta * 0.3f;
-        float dead = 0.10f;
+        smoothTilt = smoothTilt * 0.6f + delta * 0.4f;
+        // Starts at 0.04, keeps going down to 0.025 (hysteresis), so it doesn't flicker at the edge.
+        float dead = headSpeed == 0 ? 0.04f : 0.025f;
         float over = Math.abs(smoothTilt) - dead;
         if (over <= 0) {
             setHeadSpeed(0);
             return;
         }
-        float speed = (0.35f + 0.65f * Math.min(1f, over / 0.3f)) * dp(9);
+        float speed = (0.35f + 0.65f * Math.min(1f, over / 0.12f)) * dp(9);
         setHeadSpeed(smoothTilt > 0 ? speed : -speed); // eyes down scrolls down
     }
 

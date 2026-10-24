@@ -206,12 +206,15 @@ final class HeadTracker implements LifecycleOwner {
             });
             return;
         }
-        float down = 0, up = 0;
+        float down = 0, up = 0, blink = 0;
         for (Category c : shapes.get().get(0)) {
             String name = c.categoryName();
             if (name.startsWith("eyeLookDown")) down += c.score();
             else if (name.startsWith("eyeLookUp")) up += c.score();
+            else if (name.startsWith("eyeBlink")) blink += c.score();
         }
+        // A blink reads as "looking down"; skip those frames instead of scrolling.
+        if (blink / 2f > 0.45f) return;
         float vertical = (down - up) / 2f;
         main.post(() -> {
             if (running) listener.onGaze(vertical);
