@@ -405,6 +405,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Panel.setOnClickListener(v -> setF1(false));
         content.addView(f1Panel, margins(-1, f1Height(), 0, dp(14), 0, 0));
 
+        // For a week after a clock change: the old time next to the new one.
+        oldTime = monoText(12, rust);
+        oldTime.setLetterSpacing(0.12f);
+        oldTime.setVisibility(View.GONE);
+        content.addView(oldTime, margins(-1, -2, 0, dp(4), 0, 0));
+
         date = text(17, ink2, false);
         date.setPadding(0, dp(10), 0, 0);
         content.addView(date);
@@ -2408,6 +2414,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Clock, focus, network ================= */
 
+    private TextView oldTime;
+
+    /**
+     * Within 7 days after a daylight-saving change, shows what the clock would say on the old
+     * time ("SOMMERZEIT 21:12 · UMGESTELLT SO 25.10. 03:00 → 02:00"), so you can adjust.
+     */
+    private void paintOldTime(Calendar c) {
+        java.util.TimeZone tz = c.getTimeZone();
+        long now = c.getTimeInMillis(), weekAgo = now - 7L * 24 * 3600 * 1000;
+        int offNow = tz.getOffset(now), offBefore = tz.getOffset(weekAgo);
+        if (offNow == offBefore) {
+            oldTime.setVisibility(View.GONE);
+            return;
+        }
+        // Find the change to the minute (offsets change once in a week).
+        long lo = weekAgo, hi = now;
+        while (hi - lo > 60_000) {
+            long mid = (lo + hi) / 2;
+            if (tz.getOffset(mid) == offBefore) lo = mid;
+            else hi = mid;
+        }
+        boolean wasSummer = offBefore > offNow;
+        SimpleDateFormat hm = new SimpleDateFormat("HH:mm", Locale.GERMAN);
+        SimpleDateFormat day = new SimpleDateFormat("d.M.", Locale.GERMAN);
+        java.util.TimeZone before = new java.util.SimpleTimeZone(offBefore, "before");
+        hm.setTimeZone(before);
+        String old = hm.format(new java.util.Date(now));
+        String from = hm.format(new java.util.Date(hi));
+        hm.setTimeZone(tz);
+        String to = hm.format(new java.util.Date(hi));
+        String wd = new SimpleDateFormat("EE", Locale.GERMAN).format(new java.util.Date(hi)).replace(".", "");
+        oldTime.setText((wasSummer ? "SOMMERZEIT " : "WINTERZEIT ") + old + "  ·  UMGESTELLT "
+            + wd.toUpperCase(Locale.GERMAN) + " " + day.format(new java.util.Date(hi)) + " " + from + " → " + to);
+        oldTime.setVisibility(View.VISIBLE);
+    }
+
     private void updateClock() {
         Calendar c = Calendar.getInstance();
         int h = c.get(Calendar.HOUR_OF_DAY);
@@ -2416,6 +2458,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         s.setSpan(new ForegroundColorSpan(rust), 2, 3, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         clock.setText(s);
         date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(c.getTime()));
+        paintOldTime(c);
         String hello = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : h < 22 ? "Guten Abend" : "Gute Nacht";
         greet.setText(hello + ", Muharrem.");
 
