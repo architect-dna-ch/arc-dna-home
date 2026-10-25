@@ -136,3 +136,10 @@ At home in the dark (front light sensor under ~3 lux for 2 s, proximity sensor f
 camera takes a one-second look; if the room is really dark the torch goes on and the fox says
 so. Off when it gets bright, when you leave home, or tap "🔦 AUS" in the top row (stays off
 until you come back). Mediathek → "TASCHENLAMPE IM DUNKELN" switches the feature off.
+
+## Geister-Level 👻
+
+In dark mode, swipe ← once more: the home screen goes almost black and ghosts drift around.
+Your finger is a torch – a soft circle 2.5× your thumb's contact size shows the apps beneath
+(tap, hold and drag work as usual). Big ghosts shy away from the light, mini ghosts zip through
+and are only visible inside it. Swipe → to leave.

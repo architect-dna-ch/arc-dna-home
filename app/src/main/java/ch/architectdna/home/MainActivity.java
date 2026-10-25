@@ -1100,6 +1100,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
+        if (ghosts != null) ghosts.touch(ev);
         if (libraryOpen && headSpeed != 0) {
             headSpeed = 0;          // the finger takes over at once; head scrolling rests for 4 s
             handler.removeCallbacks(headScroller);
@@ -1173,9 +1174,41 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * wallpaper; Android doesn't let apps switch the system-wide setting). The new colour floods
      * out in a circle from the finger, then the screen redraws in the new mode.
      */
+    /* ================= Geister-Level ================= */
+
+    private GhostView ghosts;
+
+    /** Almost black, ghosts drifting; the finger is a torch over the apps. Above the page, below the fox. */
+    private void enterGhosts() {
+        ghosts = new GhostView(this);
+        rootFrame.addView(ghosts, rootFrame.indexOfChild(scroll) + 1, new FrameLayout.LayoutParams(-1, -1));
+        ghosts.start();
+        voice.say("Whoa-whoa!");
+        hop();
+        say("Geister-Level 👻 – Finger = Taschenlampe. → wischen = raus.", 2600);
+        DiagLog.log("ghost level on");
+    }
+
+    private void exitGhosts() {
+        GhostView g = ghosts;
+        ghosts = null;
+        if (g == null) return;
+        g.stop(() -> rootFrame.removeView(g));
+        say("Licht an. Die Geister sind weg.", 1600);
+    }
+
     private void switchNight(boolean dark, float x, float y) {
         if (Build.VERSION.SDK_INT < 31) {
             Toast.makeText(this, "Braucht Android 12 oder neuer.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Already dark: one more ← opens the Geister-Level; → leaves it first.
+        if (!dark && ghosts != null) {
+            exitGhosts();
+            return;
+        }
+        if (dark && isNight()) {
+            if (ghosts == null) enterGhosts();
             return;
         }
         if (dark == isNight()) {
@@ -1998,6 +2031,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Tap on empty space: the screen turns to landscape and the fox chases the rabbit. */
     private void startGame() {
         if (game != null) return;
+        exitGhosts();
         hideKeyboard();
         game = new FoxRunView(this, new int[]{ink, ink2, ink3, rust, card, line, isNight() ? 0xFF121211 : 0xFFFAFAF8},
             voice, prefs, this::exitGame);
