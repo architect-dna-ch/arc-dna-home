@@ -78,7 +78,8 @@ public class ArcWallpaper extends WallpaperService {
         public void onApplyWindowInsets(WindowInsets insets) {
             if (camera != null) return;          // the display's own cutout (below) is more precise
             DisplayCutout cutout = insets.getDisplayCutout();
-            camera = cutout != null && !cutout.getBoundingRects().isEmpty() ? cutout.getBoundingRects().get(0) : null;
+            Rect r = cutout != null && !cutout.getBoundingRects().isEmpty() ? cutout.getBoundingRects().get(0) : null;
+            if (plausibleCamera(r)) camera = r;
         }
 
         @Override
@@ -108,6 +109,13 @@ public class ArcWallpaper extends WallpaperService {
             stopVisualizer();
         }
 
+        /** A front camera hole on this surface: near the top edge, roughly centred, small. */
+        private boolean plausibleCamera(Rect r) {
+            if (r == null || width <= 0 || height <= 0) return false;
+            return r.exactCenterY() < height * 0.12f && r.exactCenterX() > width * 0.15f && r.exactCenterX() < width * 0.85f
+                && r.width() < width * 0.3f;
+        }
+
         /**
          * The camera hole straight from the display's cutout (the wallpaper window doesn't always get
          * insets on the lock screen), scaled in case the wallpaper surface isn't the display size.
@@ -129,7 +137,10 @@ public class ArcWallpaper extends WallpaperService {
                 }
                 if (r != null && real.x > 0 && width > 0) {
                     float sx = width / (float) real.x, sy = height / (float) real.y;
-                    camera = new Rect(Math.round(r.left * sx), Math.round(r.top * sy), Math.round(r.right * sx), Math.round(r.bottom * sy));
+                    Rect scaled = new Rect(Math.round(r.left * sx), Math.round(r.top * sy), Math.round(r.right * sx), Math.round(r.bottom * sy));
+                    // Read while the phone was in landscape, the hole sits on a side edge: keep the
+                    // last good (portrait) position instead of drawing the ring mid-screen.
+                    if (plausibleCamera(scaled)) camera = scaled;
                 }
                 DiagLog.init(ArcWallpaper.this);
                 DiagLog.log("wallpaper surface " + width + "x" + height + ", display " + real.x + "x" + real.y
@@ -256,12 +267,11 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setShader(null);
             }
 
-            // While music plays: a flowing rainbow frame behind the system's media card (Pixel only:
-            // other lock screens put their card elsewhere), and a little stage bottom-left where a
+            // While music plays: a rainbow flowing along the screen edge, and a little stage bottom-left where a
             // character takes turns every 15 s.
             if (audio == null) audio = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
             if (audio != null && audio.isMusicActive()) {
-                if (pixelPortrait()) musicFrame(c, s, t);
+                musicFrame(c, s, t);
                 stage(c, s, dark, ink, rust);
             }
         }
@@ -292,29 +302,45 @@ public class ArcWallpaper extends WallpaperService {
 
         private android.media.AudioManager audio;
         private final android.graphics.RectF box = new android.graphics.RectF();
-        /** Where Pixel's lock screen media card sits (fractions of the screen), measured from a screenshot. */
-        private static final float CARD_L = 0.039f, CARD_T = 0.2055f, CARD_R = 0.961f, CARD_B = 0.3955f;
 
+        /**
+         * While music plays: a rainbow flowing along the whole screen edge, following the glass's
+         * rounded corners. (It used to frame the system's media card, but Android moves that card
+         * around with the clock size and notifications, so the frame kept landing in the wrong place.)
+         */
         private void musicFrame(Canvas c, float s, float t) {
-            float pad = 5 * s;
-            box.set(width * CARD_L - pad, height * CARD_T - pad, width * CARD_R + pad, height * CARD_B + pad);
-            float r = width * 0.068f + pad;          // Pixel's media card has a ~28 dp corner
+            float in = 4 * s;
+            box.set(in, in, width - in, height - in);
+            float r = screenCorner() - in;
             int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
-            android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.05f,
+            android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.4f,
                 hues, null, android.graphics.Shader.TileMode.REPEAT);
             matrix.setTranslate((t * width * 0.35f) % (width * 0.9f), 0);
             flow.setLocalMatrix(matrix);
             paint.setShader(flow);
             paint.setStyle(Paint.Style.STROKE);
             // A soft wide glow, then the crisp line; it breathes with the beat.
-            paint.setStrokeWidth((16 + 10 * beat) * s);
-            paint.setAlpha(60);
+            paint.setStrokeWidth((18 + 10 * beat) * s);
+            paint.setAlpha(55);
             c.drawRoundRect(box, r, r, paint);
             paint.setStrokeWidth((5 + 3 * beat) * s);
             paint.setAlpha(235);
             c.drawRoundRect(box, r, r, paint);
             paint.setAlpha(255);
             paint.setShader(null);
+        }
+
+        private float screenCorner() {
+            if (Build.VERSION.SDK_INT >= 31) {
+                try {
+                    android.hardware.display.DisplayManager dm = getSystemService(android.hardware.display.DisplayManager.class);
+                    android.view.Display d = dm == null ? null : dm.getDisplay(android.view.Display.DEFAULT_DISPLAY);
+                    android.view.RoundedCorner rc = d == null ? null : d.getRoundedCorner(android.view.RoundedCorner.POSITION_TOP_LEFT);
+                    if (rc != null && rc.getRadius() > 0) return rc.getRadius() * 1.1f;
+                } catch (RuntimeException ignored) {
+                }
+            }
+            return width * 0.11f;
         }
 
         /** Every 15 s: bear → F1 car → rabbit → fox. Gibberish first, then the "translation". */

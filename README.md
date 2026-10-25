@@ -164,8 +164,8 @@ via the notification-access entry); nothing leaves the device.
 
 ## Lock screen while music plays
 
-A flowing rainbow frame glows around Android's media card (drawn on the wallpaper behind it,
-breathing with the beat), and bottom-left a character takes the stage every 15 s – bear, F1 car,
+A flowing rainbow runs along the whole screen edge, following the glass's rounded corners and
+breathing with the beat (Android moves its media card around, so it no longer frames the card), and bottom-left a character takes the stage every 15 s – bear, F1 car,
 rabbit, fox – mumbling gibberish first, then the "translation" ("Schau mich nicht an, sonst
 fress ich dich.").
 
