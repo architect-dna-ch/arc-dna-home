@@ -36,6 +36,7 @@ final class EdgeLight extends View implements SensorEventListener {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint led = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint wash = new Paint();
     private final RectF rect = new RectF();
     private final SensorManager sensors;
     private final Listener listener;
@@ -81,10 +82,24 @@ final class EdgeLight extends View implements SensorEventListener {
     /** The camera's view: no face for a while in a dim room also means "too dark". */
     void face(boolean seen) {
         long now = SystemClock.uptimeMillis();
-        if (seen) faceGoneSince = -1;
-        else if (faceGoneSince < 0) faceGoneSince = now;
+        if (seen) {
+            faceGoneSince = -1;
+            if (faceSeenSince < 0) faceSeenSince = now;
+        } else {
+            faceSeenSince = -1;
+            if (faceGoneSince < 0) faceGoneSince = now;
+        }
+        // No face for ~0.8 s: too dark for the camera, so the light grows; once the face has
+        // been found again for ~3 s it shrinks back to the corners.
+        float before = boostTarget;
+        if (faceGoneSince >= 0 && now - faceGoneSince > 800) boostTarget = 1f;
+        else if (faceSeenSince >= 0 && now - faceSeenSince > 3000) boostTarget = 0f;
+        if (boostTarget != before) postInvalidateOnAnimation();
         decide();
     }
+
+    private long faceSeenSince = -1;
+    private float boost, boostTarget;   // 0 = corners only, 1 = wide light along the edges
 
     private void decide() {
         if (!watching || lux < 0) return;
@@ -132,8 +147,11 @@ final class EdgeLight extends View implements SensorEventListener {
         lastFrame = now;
         float target = lit ? 1f : 0f;
         level += Math.signum(target - level) * Math.min(Math.abs(target - level), dt * 2.5f);
+        float bt = lit ? boostTarget : 0f;
+        boost += Math.signum(bt - boost) * Math.min(Math.abs(bt - boost), dt * (bt > boost ? 1.5f : 0.6f));
         if (level <= 0.001f) return;
-        if (level != target) postInvalidateOnAnimation();
+        if (level != target || boost != bt) postInvalidateOnAnimation();
+        float b = boost;
 
         float w = getWidth(), h = getHeight(), r = cornerRadius();
         int a = (int) (255 * level);
@@ -145,22 +163,37 @@ final class EdgeLight extends View implements SensorEventListener {
         r = r * 1.18f;
         float d = 2 * (r - in);
         rect.set(in, in, w - in, h - in);
-        rim.setStrokeWidth(dp(2));
-        rim.setAlpha((int) (a * 0.55f));
+        if (b > 0) {
+            // Boost: a soft wide wash inward from all four edges, strongest at top and bottom.
+            int warm = 0x00FFEBD6;
+            float band = dp(90) * b, side = dp(40) * b;
+            int edgeA = (int) (a * 0.75f * b) << 24;
+            wash.setShader(new android.graphics.LinearGradient(0, 0, 0, band, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, band, wash);
+            wash.setShader(new android.graphics.LinearGradient(0, h, 0, h - band, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, h - band, w, h, wash);
+            wash.setShader(new android.graphics.LinearGradient(0, 0, side, 0, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, side, h, wash);
+            wash.setShader(new android.graphics.LinearGradient(w, 0, w - side, 0, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(w - side, 0, w, h, wash);
+            wash.setShader(null);
+        }
+        rim.setStrokeWidth(dp(3 + 7 * b));
+        rim.setAlpha((int) (a * (0.8f + 0.2f * b)));
         c.drawRoundRect(rect, r - in, r - in, rim);
         float[][] corners = {{in, in, 180}, {w - in - d, in, 270}, {w - in - d, h - in - d, 0}, {in, h - in - d, 90}};
         for (float[] k : corners) {
             rect.set(k[0], k[1], k[0] + d, k[1] + d);
-            glow.setStrokeWidth(dp(14));
-            glow.setAlpha((int) (a * 0.5f));
-            c.drawArc(rect, k[2] + 8, 74, false, glow);
-            rim.setStrokeWidth(dp(5));
+            glow.setStrokeWidth(dp(18 + 22 * b));
+            glow.setAlpha((int) (a * (0.7f + 0.3f * b)));
+            c.drawArc(rect, k[2] + 4, 82, false, glow);
+            rim.setStrokeWidth(dp(6 + 6 * b));
             rim.setAlpha(a);
-            c.drawArc(rect, k[2] + 14, 62, false, rim);
+            c.drawArc(rect, k[2] + 10, 70, false, rim);
             // The LED itself, at the middle of the curve.
             double mid = Math.toRadians(k[2] + 45);
             led.setAlpha(a);
-            c.drawCircle(rect.centerX() + (float) Math.cos(mid) * d / 2, rect.centerY() + (float) Math.sin(mid) * d / 2, dp(9), led);
+            c.drawCircle(rect.centerX() + (float) Math.cos(mid) * d / 2, rect.centerY() + (float) Math.sin(mid) * d / 2, dp(11 + 7 * b), led);
         }
     }
 }
