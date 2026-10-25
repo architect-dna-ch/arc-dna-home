@@ -99,6 +99,10 @@ public class ArcWallpaper extends WallpaperService {
 
         @Override
         public void onDestroy() {
+            try {
+                unregisterReceiver(unlock);
+            } catch (RuntimeException ignored) {
+            }
             watchTilt(false);
             handler.removeCallbacks(frame);
             stopVisualizer();
@@ -140,11 +144,34 @@ public class ArcWallpaper extends WallpaperService {
                 == Configuration.UI_MODE_NIGHT_YES;
         }
 
+        /**
+         * Lock effects only while the keyguard is really up: asked every frame, so they vanish the
+         * moment you unlock instead of riding along the unlock animation (even on the lock-only engine).
+         */
         private boolean locked() {
-            // A lock-screen-only engine (Android 14+) always shows the lock effects.
-            if (Build.VERSION.SDK_INT >= 34 && getWallpaperFlags() == android.app.WallpaperManager.FLAG_LOCK) return true;
+            if (unlockedAt > 0 && SystemClock.uptimeMillis() - unlockedAt < 1500) return false;
             KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
             return km != null && km.isKeyguardLocked();
+        }
+
+        /** USER_PRESENT arrives as soon as the phone is unlocked: drop the lock effects right away. */
+        private long unlockedAt;
+        private final android.content.BroadcastReceiver unlock = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context c, android.content.Intent i) {
+                unlockedAt = SystemClock.uptimeMillis();
+                rings.clear();
+                if (visible) drawFrame();
+            }
+        };
+
+        @Override
+        public void onCreate(SurfaceHolder holder) {
+            super.onCreate(holder);
+            try {
+                registerReceiver(unlock, new android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT));
+            } catch (RuntimeException ignored) {
+            }
         }
 
         private void drawFrame() {
