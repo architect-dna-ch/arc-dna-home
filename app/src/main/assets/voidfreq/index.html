@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+<!-- VOID FREQ from void-freq-ios (www/index.html), with the ARC-DNA skin: night palette, rust accent, grid. Sound engine unchanged. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04080f">
+<meta name="theme-color" content="#121211">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="VOID FREQ">
@@ -11,7 +12,7 @@
 <meta name="description" content="Ambient sound for deep focus. Brown noise, rain, lo-fi beats, binaural. Free. No install. No account.">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--cyan:#00eeff;--purple:#7755ff;--bg:#04080f;--text:#f0f4ff;--mono:'SF Mono','Fira Code','Courier New',monospace}
+:root{--cyan:#D9472F;--purple:#A77BFF;--bg:#121211;--text:#EDEDE8;--mono:'SF Mono','Fira Code','Courier New',monospace}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--mono)}
 .ui{padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom));padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
 canvas{position:fixed;inset:0;z-index:0}
@@ -28,7 +29,7 @@ nav{width:100%;display:flex;align-items:center;justify-content:space-between;poi
 .channels{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:auto}
 .ch{padding:10px 18px;border:1px solid rgba(255,255,255,0.08);border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:.2s;background:rgba(0,0,0,0.4);color:rgba(255,255,255,0.45);backdrop-filter:blur(8px)}
 .ch:hover{border-color:rgba(255,255,255,0.25);color:rgba(255,255,255,0.8)}
-.ch.active{color:#000;font-weight:900;border-color:transparent}
+.ch.active{color:#fff;font-weight:900;border-color:transparent}
 
 .controls{width:100%;display:flex;align-items:center;justify-content:center;gap:32px;pointer-events:auto}
 .vol-wrap{display:flex;align-items:center;gap:10px}
@@ -45,18 +46,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 
 .footer{width:100%;display:flex;align-items:center;justify-content:space-between;pointer-events:auto}
 .footer-left{font-size:9px;letter-spacing:.12em;color:rgba(255,255,255,0.2);line-height:1.8}
-.footer-left a{color:rgba(0,238,255,0.4);text-decoration:none}
+.footer-left a{color:rgba(217,71,47,0.4);text-decoration:none}
 .footer-left a:hover{color:var(--cyan)}
 .share-btn{padding:7px 16px;border:1px solid rgba(255,255,255,0.1);border-radius:100px;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;background:rgba(0,0,0,0.5);color:rgba(255,255,255,0.35);transition:.2s;backdrop-filter:blur(6px)}
-.share-btn:hover{border-color:rgba(0,238,255,0.4);color:var(--cyan)}
+.share-btn:hover{border-color:rgba(217,71,47,0.4);color:var(--cyan)}
 
-.tap-hint{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(4,8,15,0.92);cursor:pointer;transition:opacity .4s}
+.tap-hint{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(18,18,17,0.94);cursor:pointer;transition:opacity .4s}
 .tap-hint-inner{text-align:center}
 .tap-title{font-size:clamp(36px,8vw,80px);font-weight:900;letter-spacing:-.04em;line-height:.95;margin-bottom:24px}
 .tap-title .vf{color:#fff}
-.tap-title .freq{background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tap-title .freq{color:var(--cyan)}
 .tap-sub{font-size:11px;letter-spacing:.3em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:40px}
-.tap-start{display:inline-block;padding:16px 40px;background:var(--cyan);color:#000;font-size:12px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;border:none;cursor:pointer;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);transition:.2s}
+.tap-start{display:inline-block;padding:16px 40px;background:var(--cyan);color:#fff;font-size:12px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;border:none;cursor:pointer;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);transition:.2s}
 .tap-start:hover{filter:brightness(1.15)}
 .tap-desc{margin-top:20px;font-size:10px;letter-spacing:.15em;color:rgba(255,255,255,0.2);line-height:2}
 
@@ -65,6 +66,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   .footer{flex-direction:column;gap:10px;align-items:center;text-align:center}
   .nav-right{display:none}
 }
+</style>
+<style id="arc-dna-skin">
+/* ARC-DNA skin (only in the ARC-DNA Home app): the launcher's night palette, grid and labels. */
+html,body{background-color:#121211;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:32px 32px}
+.nav-brand{display:flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:.24em;color:#9A9A98}
+.nav-brand::before{content:'';width:24px;height:2px;background:#D9472F;display:inline-block}
+.nav-sub{margin-left:36px;margin-top:6px;font-size:10px;letter-spacing:.16em;color:#6F6E69}
+.ch{border-radius:20px;color:#C9C9C4;font-size:11px;letter-spacing:.16em}
+.ch.active{color:#fff}
+button{border-radius:20px}
+.footer{display:none!important}
 </style>
 </head>
 <body>
@@ -143,7 +155,7 @@ resize();window.addEventListener('resize',resize);
 // ── Audio ────────────────────────────────────────────────────────────────────
 let AC,masterGain,analyser,volNode;
 let activeNodes=[],lofiTimer=null,rainTimer=null;
-let currentCh='',chColor='#00eeff';
+let currentCh='',chColor='#D9472F';
 let volume=0.7;
 
 function initAudio(){
@@ -197,20 +209,20 @@ function osc(freq,type,gain,fadeIn=0.1){
 
 // ── Channels ─────────────────────────────────────────────────────────────────
 const CHANNELS={
-  focus:{name:'DEEP FOCUS',sub:'Brown noise · 40Hz gamma',color:'#00eeff',
+  focus:{name:'DEEP FOCUS',sub:'Brown noise · 40Hz gamma',color:'#D9472F',
     start(){
       playNoise('brown','lowpass',350,0.6,1);
       osc(40,'sine',0.035,2);
     }
   },
-  rain:{name:'RAIN ROOM',sub:'Filtered noise · Drips',color:'#4499ff',
+  rain:{name:'RAIN ROOM',sub:'Filtered noise · Drips',color:'#3C8DFF',
     start(){
       playNoise('white','bandpass',900,2.5,0.9);
       playNoise('white','lowpass',120,0.5,0.4);
       scheduleDrops();
     }
   },
-  void:{name:'VOID',sub:'Deep drone · Harmonic stack',color:'#7755ff',
+  void:{name:'VOID',sub:'Deep drone · Harmonic stack',color:'#A77BFF',
     start(){
       [[30,0.25],[45,0.12],[60,0.08],[90,0.04],[120,0.025]].forEach(([f,g])=>osc(f,'sine',g,4));
       // slow sweep
@@ -223,13 +235,13 @@ const CHANNELS={
       playNoise('brown','lowpass',60,0.3,0.15);
     }
   },
-  lofi:{name:'LO-FI',sub:'Am7 loop · Beat · Vinyl',color:'#ffaa33',
+  lofi:{name:'LO-FI',sub:'Am7 loop · Beat · Vinyl',color:'#F29A1F',
     start(){
       playNoise('white','bandpass',3000,12,0.04); // vinyl crackle
       startLofi();
     }
   },
-  neurons:{name:'NEURONS',sub:'Binaural alpha 10Hz',color:'#ff55cc',
+  neurons:{name:'NEURONS',sub:'Binaural alpha 10Hz',color:'#2BBF6A',
     start(){
       const merger=AC.createChannelMerger(2);merger.connect(masterGain);
       [[200,0],[210,1]].forEach(([f,ch])=>{
@@ -324,8 +336,8 @@ function updateChButtons(){
   document.querySelectorAll('.ch').forEach(b=>{
     const active=b.dataset.ch===currentCh;
     b.classList.toggle('active',active);
-    b.style.background=active?chColor:'rgba(0,0,0,0.4)';
-    b.style.borderColor=active?chColor:'rgba(255,255,255,0.08)';
+    b.style.background=active?chColor:'#1C1C1A';
+    b.style.borderColor=active?chColor:'rgba(255,255,255,0.12)';
   });
 }
 
@@ -341,11 +353,11 @@ function updateSessionInfo(){
 
 function startTimer(mins){
   timerEnd=Date.now()+mins*60000;
-  document.getElementById('timerDisplay').style.color=chColor||'#00eeff';
+  document.getElementById('timerDisplay').style.color=chColor||'#D9472F';
   document.querySelectorAll('.timer-btn[data-mins]').forEach(b=>{
     b.classList.toggle('active',parseInt(b.dataset.mins)===mins);
-    b.style.borderColor=parseInt(b.dataset.mins)===mins?(chColor||'#00eeff'):'rgba(255,255,255,0.12)';
-    b.style.color=parseInt(b.dataset.mins)===mins?(chColor||'#00eeff'):'rgba(255,255,255,0.45)';
+    b.style.borderColor=parseInt(b.dataset.mins)===mins?(chColor||'#D9472F'):'rgba(255,255,255,0.12)';
+    b.style.color=parseInt(b.dataset.mins)===mins?(chColor||'#D9472F'):'rgba(255,255,255,0.45)';
   });
 }
 
@@ -418,7 +430,7 @@ function draw(){
   requestAnimationFrame(draw);
   frame++;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#04080f';ctx.fillRect(0,0,W,H);
+  ctx.clearRect(0,0,W,H);
 
   const cx=W/2;
   // Center circle in the space between nav (~68px) and bottom controls (~150px)
@@ -484,7 +496,7 @@ function draw(){
     const x1=cx+Math.cos(angle)*r1,y1=cy+Math.sin(angle)*r1;
     const x2=cx+Math.cos(angle)*r2,y2=cy+Math.sin(angle)*r2;
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
-    ctx.strokeStyle=isPlaying?chColor:'rgba(0,238,255,0.3)';
+    ctx.strokeStyle=isPlaying?chColor:'rgba(217,71,47,0.3)';
     ctx.lineWidth=2.5;ctx.globalAlpha=isPlaying?0.55+val*0.45:0.2;
     ctx.stroke();
   }
@@ -492,7 +504,7 @@ function draw(){
 
   // ── Inner circle ──
   ctx.beginPath();ctx.arc(cx,cy,innerR,0,TAU);
-  ctx.strokeStyle=isPlaying?chColor:'rgba(0,238,255,0.2)';
+  ctx.strokeStyle=isPlaying?chColor:'rgba(217,71,47,0.2)';
   ctx.lineWidth=1;ctx.globalAlpha=0.4;ctx.stroke();
   ctx.globalAlpha=1;
 
@@ -500,12 +512,12 @@ function draw(){
   ctx.textAlign='center';
   if(isPlaying){
     const ch=CHANNELS[currentCh];
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(16,W*0.035)}px Courier New`;
+    ctx.fillStyle='#EDEDE8';ctx.font=`800 ${Math.min(22,W*0.05)}px -apple-system,'Helvetica Neue',Roboto,sans-serif`;
     ctx.fillText(ch.name,cx,cy-10);
-    ctx.fillStyle=chColor;ctx.font=`${Math.min(10,W*0.022)}px Courier New`;
+    ctx.fillStyle=chColor;ctx.font=`${Math.min(10,W*0.022)}px 'SF Mono','Fira Code',monospace`;
     ctx.fillText(ch.sub,cx,cy+10);
   } else {
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font=`${Math.min(10,W*0.022)}px Courier New`;
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font=`${Math.min(10,W*0.022)}px 'SF Mono','Fira Code',monospace`;
     ctx.fillText('SELECT A CHANNEL',cx,cy);
   }
 
@@ -529,7 +541,7 @@ function draw(){
     for(let i=0;i<60;i++){
       const sx=(i*617+frame*0.3)%W,sy=(i*431+frame*0.15)%H;
       const b=0.1+Math.sin(frame*0.02+i)*0.08;
-      ctx.fillStyle=`rgba(0,238,255,${b})`;ctx.fillRect(sx,sy,1,1);
+      ctx.fillStyle=`rgba(217,71,47,${b})`;ctx.fillRect(sx,sy,1,1);
     }
   }
 }

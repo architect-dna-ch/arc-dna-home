@@ -19,12 +19,13 @@ import android.widget.TextView;
 /**
  * VOID FREQ inside ARC-DNA: the same focus studio as freq.architect-dna.ch and the iOS app
  * (www/index.html from void-freq-ios, bundled in assets, works offline), not rebuilt, just framed:
- * its own tile in the Mediathek, ARC-DNA close button, the web footer (share / mail) hidden.
+ * its own tile in the Mediathek, ARC-DNA close button, and an ARC-DNA skin in the bundled copy
+ * (night palette, rust accent, grid; footer hidden).
  * The sound keeps playing when you go home; ✕ or back stops it.
  */
 public class FreqActivity extends Activity {
 
-    private static final int BG = 0xFF04080F;     // the page's own --bg
+    private static final int BG = 0xFF121211;     // ARC-DNA night background (the page's skin uses it too)
     private WebView web;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -75,14 +76,14 @@ public class FreqActivity extends Activity {
         // ARC-DNA close button, top right, in the page's cyan.
         TextView close = new TextView(this);
         close.setText("✕");
-        close.setTextColor(0xCCFFFFFF);
+        close.setTextColor(0xFFEDEDE8);
         close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         close.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         close.setGravity(Gravity.CENTER);
         GradientDrawable b = new GradientDrawable();
         b.setShape(GradientDrawable.OVAL);
-        b.setColor(0x66000000);
-        b.setStroke(dp(1), 0x3300EEFF);
+        b.setColor(0xFF1C1C1A);
+        b.setStroke(dp(1), 0x22FFFFFF);
         close.setBackground(b);
         close.setContentDescription("VOID FREQ schliessen");
         close.setOnClickListener(v -> finish());
