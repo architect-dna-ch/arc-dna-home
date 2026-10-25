@@ -153,7 +153,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private ImageView gameButton;
     private BrightnessLever lever;
     /** System brightness (0..255) for LO / MID / HI. */
-    private static final int[] BRIGHTNESS = {12, 70, 255};
+    // Raw 0–255 values; Android's slider is log-like, so these sit at ≈ 20 % / 58 % / 100 % on it.
+    private static final int[] BRIGHTNESS = {3, 30, 255};
     private FrameLayout appTilesBox;
     private List<AppEntry> lastRecent = new ArrayList<>();
     private long lastHomePress;
@@ -529,9 +530,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         fox.setContentDescription("Fuchs");
         fox.setOnClickListener(v -> foxCall());
-        // Hold the fox: an earthquake with the glass crack from architect-dna.ch.
+        // Hold the fox: it kicks the glass, which cracks somewhere new every time.
         fox.setOnLongClickListener(v -> {
-            quake();
+            foxKick();
             return true;
         });
         root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
@@ -1451,7 +1452,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         g.stop(() -> rootFrame.removeView(g));
         // Leaving the darkest level: back to LO, unless the lever is about to set another level.
         if (Settings.System.canWrite(this)
-            && Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 12) <= 1) {
+            && Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 3) <= 1) {
             Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[0]);
         }
         systemBarIcons(!isNight());
@@ -2769,13 +2770,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .withEndAction(() -> fox.animate().translationY(0).setDuration(220).start()).start();
     }
 
+    /** The fox winds up, kicks, and the glass cracks at a random spot as its foot lands. */
+    private void foxKick() {
+        fox.animate().cancel();
+        fox.setPivotX(fox.getWidth() * 0.2f);
+        fox.setPivotY(fox.getHeight());
+        fox.animate().rotation(14).translationX(-dp(6)).setDuration(160).withEndAction(() ->
+            fox.animate().rotation(-22).translationX(dp(16)).translationY(-dp(10)).setDuration(110).withEndAction(() -> {
+                float w = rootFrame.getWidth(), h = rootFrame.getHeight();
+                quake(w * (0.12f + random.nextFloat() * 0.76f), h * (0.15f + random.nextFloat() * 0.7f));
+                fox.animate().rotation(0).translationX(0).translationY(0).setDuration(320)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(2f)).start();
+            }).start()).start();
+    }
+
     private void quake() {
+        quake(rootFrame.getWidth() / 2f, rootFrame.getHeight() * 0.4f);
+    }
+
+    private void quake(float x, float y) {
         if (cracks == null) {
             cracks = new CrackView(this, ink);
             rootFrame.addView(cracks, new FrameLayout.LayoutParams(-1, -1));
         }
         cracks.bringToFront();
-        cracks.crack(rootFrame.getWidth() / 2f, rootFrame.getHeight() * 0.4f);
+        cracks.crack(x, y);
         hop();
         seismo.kick(1f);
         View target = libraryOpen ? library : content;
