@@ -32,6 +32,7 @@ final class F1Panel extends View {
     /** The car's centre is mid-track halfway through its pass. */
     private static final long CAR_LEAD_MS = CAR_MS / 2;
     private boolean running;
+    private android.media.AudioManager audio;
 
     F1Panel(Context c, int[] colours, FoxVoice voice) {
         super(c);
@@ -72,9 +73,11 @@ final class F1Panel extends View {
             long wall = System.currentTimeMillis();
             long next = (wall / LAP_MS + 1) * LAP_MS, remaining = next - wall;
             // The sound is handed over early; FoxVoice waits and starts it ahead by the output delay.
+            // Only while music plays (the last whoosh ended ~3.5 s ago, so it doesn't count itself).
             if (remaining <= 1300 && soundFor != next) {
                 soundFor = next;
-                voice.whooshAt(next);
+                if (audio == null) audio = getContext().getSystemService(android.media.AudioManager.class);
+                if (audio != null && audio.isMusicActive()) voice.whooshAt(next);
             }
             if (remaining <= CAR_LEAD_MS && carFor != next) {
                 carFor = next;
