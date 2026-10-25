@@ -364,7 +364,9 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             // Floating bottom-left, above the navigation bar: clear of address bars and toolbars.
             lp.gravity = Gravity.BOTTOM | Gravity.START;
             lp.x = dp(14);
-            lp.y = dp(72);
+            lp.y = dp(16);
+            // Stay clear of the system bars in every rotation (the nav bar sits at the side in landscape).
+            if (Build.VERSION.SDK_INT >= 30) lp.setFitInsetsTypes(android.view.WindowInsets.Type.systemBars());
             try {
                 windows.addView(pill, lp);
             } catch (RuntimeException e) {

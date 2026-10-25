@@ -134,7 +134,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private TextView alarmRow;
     private TextView clock, date, greet, net, headLabel, headToggle, bubble;
     private EditText focus, webQuery, libSearch;
-    private ImageView fox;
+    private FoxView fox;
     private EdgeLight edgeLight;
     private View libFoldHead;
     /** Volume raised (keys, music slider, Bluetooth speaker) while home is in front: the fox spins. */
@@ -242,6 +242,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         if (Build.VERSION.SDK_INT >= 30) {
             getWindow().setDecorFitsSystemWindows(false);
+            // A see-through navigation bar: the home screen runs underneath it.
+            getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+            getWindow().setNavigationBarContrastEnforced(false);
         } else {
             getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -514,8 +517,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibOverlay = buildCalibOverlay();
         root.addView(calibOverlay, new FrameLayout.LayoutParams(-1, -1));
 
-        fox = new ImageView(this);
-        fox.setImageResource(R.drawable.fox);
+        fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         fox.setContentDescription("Fuchs");
         fox.setOnClickListener(v -> foxCall());
         fox.setOnLongClickListener(v -> {
@@ -1103,6 +1105,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
         if (ghosts != null) ghosts.touch(ev);
+        if (fox != null) {
+            boolean down = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL;
+            fox.finger(ev.getRawX(), ev.getRawY(), down);
+        }
         if (libraryOpen && headSpeed != 0) {
             headSpeed = 0;          // the finger takes over at once; head scrolling rests for 4 s
             handler.removeCallbacks(headScroller);
@@ -1523,6 +1529,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onTilt(float pitch) {
         if (edgeLight != null) edgeLight.face(true);
+        if (fox != null && calibFrames >= 6) fox.userTilt(pitch - basePitch);
         if (game != null) {
             gameNod(pitch);
             return;

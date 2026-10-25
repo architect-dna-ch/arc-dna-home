@@ -147,3 +147,8 @@ and are only visible inside it. Swipe → to leave.
 ## Fuchsjagd: nod to jump
 
 With the camera allowed, a subtle nod (head dips ~2.5°) makes the fox jump, as well as a tap.
+
+## Fox eye
+
+The fox looks at you (following your head tilt while the front camera runs). Touch the screen
+and its eye follows your finger; 1.5 s after you let go it looks back at you.
