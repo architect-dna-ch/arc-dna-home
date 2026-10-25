@@ -743,7 +743,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headToggle.setBackground(box(card, line, 20));
         headToggle.setOnClickListener(v -> cycleHeadMode());
         headToggle.setOnLongClickListener(v -> {
-            if (!headMode().equals("gaze")) return false;
+            if (headMode().equals("off")) return false;
             startGazeCalibration();
             return true;
         });
@@ -1506,7 +1506,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         TextView hint = text(12, ink3, false);
         hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause, lange drücken = NICKEN ↔ BLICK. "
-            + "BLICK nutzt deine Kalibrierung aus der Mediathek.");
+            + "NICKEN und BLICK nutzen deine Kalibrierung aus der Mediathek (Kopf-Knopf lange drücken).");
         hint.setLineSpacing(0, 1.2f);
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
@@ -1707,7 +1707,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeLight.watch(true);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
-        if (gaze && !prefs.contains("gazeMid")) startGazeCalibration();
+        if (gaze ? !prefs.contains("gazeMid") : !prefs.contains("nodMid")) startGazeCalibration();
         else if (!gaze) Toast.makeText(this, "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_SHORT).show();
     }
 
@@ -1812,13 +1812,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /**
-     * NICKEN: the first frames set the neutral head position; tilting more than ~4° up or down
-     * scrolls, reaching full speed at ~12°. The neutral point slowly follows your posture while
-     * you hold still, so slouching doesn't start a scroll.
+     * NICKEN: the first frames set the neutral head position. How far "up" and "down" go comes
+     * from your own calibration (long-press the toggle): scrolling starts at half of your nod and
+     * keeps going until you're back within 30 %, full speed at your full nod. The neutral point
+     * follows your posture only slowly (~15 s) while you hold still, so a slow nod isn't swallowed.
      */
     @Override
     public void onTilt(float pitch) {
         if (edgeLight != null) edgeLight.face(true);
+        if (calibStage >= 0) {
+            if (calibCollect) {
+                calibAcc[calibStage] += pitch;
+                calibN[calibStage]++;
+            }
+            return;
+        }
         if (fox != null && calibFrames >= 6) fox.userTilt(pitch - basePitch);
         if (game != null) {
             gameNod(pitch);
@@ -1831,15 +1839,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         float delta = pitch - basePitch;
         smoothTilt = smoothTilt * 0.5f + delta * 0.5f;
-        float dead = 4f;
-        float over = Math.abs(smoothTilt) - dead;
-        if (over <= 0) {
-            basePitch = basePitch * 0.99f + pitch * 0.01f;
+        float frac = nodFraction(prefs, smoothTilt);
+        boolean sameWay = headSpeed != 0 && Math.signum(headSpeed) == (smoothTilt > 0 ? -1 : 1);
+        if (frac < (sameWay ? 0.3f : 0.5f)) {
+            if (frac < 0.3f) basePitch = basePitch * 0.997f + pitch * 0.003f;
             setHeadSpeed(0);
             return;
         }
-        float speed = (0.25f + 0.75f * Math.min(1f, over / 8f)) * dp(26);
+        float speed = (0.25f + 0.75f * Math.min(1f, (frac - 0.3f) / 0.7f)) * dp(26);
         setHeadSpeed(smoothTilt > 0 ? -speed : speed); // looking up scrolls up
+    }
+
+    /** How far along your own calibrated nod the tilt is (0 = neutral, 1 = your full nod). */
+    static float nodFraction(SharedPreferences p, float tilt) {
+        float mid = p.getFloat("nodMid", 0f);
+        float up = Math.max(2.5f, p.getFloat("nodUp", mid + 8f) - mid);
+        float down = Math.max(2.5f, mid - p.getFloat("nodDown", mid - 8f));
+        return tilt > 0 ? tilt / up : -tilt / down;
     }
 
     /**
@@ -1892,7 +1908,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void runCalibStage() {
         int stage = calibStage;
         String[] where = {"oben", "in der Mitte", "unten"};
-        calibText.setText("Schau auf den Punkt " + where[stage]);
+        boolean nod = headMode().equals("nod");
+        calibText.setText(nod
+            ? new String[]{"Nick mit dem Kopf zum Punkt oben – so weit wie du später scrollen willst", "Kopf ganz normal halten", "Nick mit dem Kopf zum Punkt unten"}[stage]
+            : "Schau auf den Punkt " + where[stage]);
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) calibDot.getLayoutParams();
         lp.gravity = Gravity.CENTER_HORIZONTAL | (stage == 0 ? Gravity.TOP : stage == 1 ? Gravity.CENTER_VERTICAL : Gravity.BOTTOM);
         calibDot.setLayoutParams(lp);
@@ -1917,6 +1936,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (calibStage < 2) {
             calibStage++;
             runCalibStage();
+            return;
+        }
+        if (headMode().equals("nod")) {
+            float up = calibN[0] > 0 ? calibAcc[0] / calibN[0] : 8f;
+            float mid = calibN[1] > 0 ? calibAcc[1] / calibN[1] : 0f;
+            float down = calibN[2] > 0 ? calibAcc[2] / calibN[2] : -8f;
+            prefs.edit().putFloat("nodUp", up).putFloat("nodMid", mid).putFloat("nodDown", down).apply();
+            DiagLog.log(String.format(java.util.Locale.ROOT, "nod calibrated: up %+.1f°, down %+.1f° from neutral", up - mid, down - mid));
+            endGazeCalibration();
+            basePitch = mid;
+            calibFrames = 6;
+            smoothTilt = 0;
+            Toast.makeText(this, "Nicken kalibriert – Neu kalibrieren: Knopf lange drücken", Toast.LENGTH_SHORT).show();
             return;
         }
         float top = calibN[0] > 0 ? calibAcc[0] / calibN[0] : -0.1f;

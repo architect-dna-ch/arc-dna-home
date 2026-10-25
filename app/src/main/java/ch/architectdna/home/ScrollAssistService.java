@@ -159,7 +159,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         String m = !allowed || pkg.equals(getPackageName()) ? "off"
             : prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
         // Package names of other apps are not logged, only whether scrolling is on for them.
-        DiagLog.log("front app changed, scroll mode=" + m);
+        DiagLog.log("front app changed" + (pkg.equals(getPackageName()) ? " (launcher)" : "") + ", scroll mode=" + m);
         apply(m);
     };
 
@@ -261,17 +261,18 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         float d = smooth;
         pitchMin = Math.min(pitchMin, d);
         pitchMax = Math.max(pitchMax, d);
-        // Hysteresis: start beyond 5°, keep going until back under 3°; two readings in a row to start.
-        float dead = speed != 0 ? 3f : 5f;
-        float over = Math.abs(d) - dead;
-        if (over <= 0) {
+        // Your own nod (calibrated in the launcher): start at half of it, keep going until back
+        // within 30 %; two readings in a row to start. Neutral follows posture only slowly.
+        float frac = MainActivity.nodFraction(prefs, d);
+        boolean sameWay = speed != 0 && Math.signum(speed) == (d > 0 ? -1 : 1);
+        if (frac < (sameWay ? 0.3f : 0.5f)) {
             overN = 0;
-            base = base * 0.99f + pitch * 0.01f;
+            if (frac < 0.3f) base = base * 0.997f + pitch * 0.003f;
             setSpeed(0);
             return;
         }
         if (speed == 0 && ++overN < 2) return;
-        float s = 0.25f + 0.75f * Math.min(1f, (Math.abs(d) - 3f) / 9f);
+        float s = 0.25f + 0.75f * Math.min(1f, (frac - 0.3f) / 0.7f);
         setSpeed(d > 0 ? -s : s);   // looking up scrolls up
     }
 
