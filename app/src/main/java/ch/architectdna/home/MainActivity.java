@@ -3261,7 +3261,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** {name, activity, icon}: the native apps built into ARC-DNA. */
     private View arcApps() {
         LinearLayout row = new LinearLayout(this);
-        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.void_freq_icon}, {"Globus", GlobusActivity.class, R.drawable.ic_globus}};
+        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_voidfreq}, {"Globus", GlobusActivity.class, R.drawable.ic_globus}};
         int cols = cols(), gap = dp(8);
         for (int i = 0; i < cols; i++) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);

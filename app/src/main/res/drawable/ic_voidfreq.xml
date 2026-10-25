@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- VOID FREQ app icon in ARC-DNA style: a sound spectrum (ink, rust accents) inside a ring on paper. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3"
+        android:pathData="M18,48 A30,30 0 1,0 78,48 A30,30 0 1,0 18,48 Z" />
+    <path android:fillColor="#B5271E" android:pathData="M28,43.0 h4 v10 h-4 z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M34,39.0 h4 v18 h-4 z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M40,34.0 h4 v28 h-4 z" />
+    <path android:fillColor="#B5271E" android:pathData="M46,30.0 h4 v36 h-4 z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M52,36.0 h4 v24 h-4 z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M58,33.0 h4 v30 h-4 z" />
+    <path android:fillColor="#B5271E" android:pathData="M64,41.0 h4 v14 h-4 z" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="2.5" android:strokeLineCap="round"
+        android:pathData="M34,67 L62,67" />
+</vector>

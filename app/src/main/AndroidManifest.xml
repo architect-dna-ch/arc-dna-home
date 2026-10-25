@@ -109,10 +109,10 @@
         <activity
             android:name=".FreqActivity"
             android:exported="true"
-            android:icon="@drawable/void_freq_icon"
+            android:icon="@drawable/ic_voidfreq"
             android:label="VOID FREQ"
             android:launchMode="singleTask"
-            android:roundIcon="@drawable/void_freq_icon"
+            android:roundIcon="@drawable/ic_voidfreq"
             android:taskAffinity="ch.architectdna.home.voidfreq"
             android:theme="@android:style/Theme.Black.NoTitleBar">
             <intent-filter>
