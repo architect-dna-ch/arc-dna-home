@@ -2044,6 +2044,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (child.getVisibility() != View.VISIBLE) continue;
             boolean isLabel = LABEL_TAG.equals(child.getTag()) && i + 1 < n;
             View block = isLabel ? content.getChildAt(i + 1) : child;
+            // A folded section keeps its old height while GONE: judge its title on its own.
+            if (isLabel && block.getVisibility() != View.VISIBLE) {
+                frost(child, child.getHeight() == 0 ? 0
+                    : Math.max(0f, Math.min(1f, (child.getBottom() - limit) / (float) child.getHeight())));
+                i++;
+                continue;
+            }
             // A tall block (the open Mediathek) folds row by row, not as one piece.
             if (isLabel && block instanceof LinearLayout && block.getVisibility() == View.VISIBLE
                 && block.getHeight() > scroll.getHeight() / 2) {
