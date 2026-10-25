@@ -1251,7 +1251,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }
             }
             if (cardFlipped) return true;
-            if (gestures && !strokeMulti && !circling && !strokeOnSlider
+            // No circle-to-rotate in the Geister-Level: there the finger roams around as a torch.
+            if (gestures && ghosts == null && !strokeMulti && !circling && !strokeOnSlider
                 && Math.abs(pathTurn) > Math.toRadians(150) && pathLen > dp(120)) {
                 circling = true;
                 MotionEvent cancel = MotionEvent.obtain(ev);
