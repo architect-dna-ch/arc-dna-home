@@ -29,8 +29,8 @@ final class F1Panel extends View {
     private final RectF rect = new RectF();
     /** Laps follow the wall clock (…:45, :50, :55, :00); start = the 5-second slot F1 began in. */
     private long start, lastLap = -1, carStart = -1, carFor = -1, soundFor = -1;
-    /** The whoosh is loudest 45 % into its 0.9 s; the car is mid-track halfway through its pass. */
-    private static final long SOUND_LEAD_MS = 405, CAR_LEAD_MS = CAR_MS / 2;
+    /** The car's centre is mid-track halfway through its pass. */
+    private static final long CAR_LEAD_MS = CAR_MS / 2;
     private boolean running;
 
     F1Panel(Context c, int[] colours, FoxVoice voice) {
@@ -71,9 +71,10 @@ final class F1Panel extends View {
             // on every round fifth second of the clock (…:45.000, :50.000, :55.000 …).
             long wall = System.currentTimeMillis();
             long next = (wall / LAP_MS + 1) * LAP_MS, remaining = next - wall;
-            if (remaining <= SOUND_LEAD_MS && soundFor != next) {
+            // The sound is handed over early; FoxVoice waits and starts it ahead by the output delay.
+            if (remaining <= 1300 && soundFor != next) {
                 soundFor = next;
-                voice.whoosh();
+                voice.whooshAt(next);
             }
             if (remaining <= CAR_LEAD_MS && carFor != next) {
                 carFor = next;
@@ -171,7 +172,7 @@ final class F1Panel extends View {
             } else {
                 float ease = k < 0.5f ? 2 * k * k : 1 - (float) Math.pow(-2 * k + 2, 2) / 2;
                 float carW = dp(84), carH = dp(24);
-                float cx = -carW + ease * (w + 2 * carW);
+                float cx = -carW + ease * (w + carW);   // centre exactly mid-track at k = 0.5
                 float cy = trackY + trackH - dp(5) - carH;
                 paint.setStrokeCap(Paint.Cap.ROUND);
                 paint.setStyle(Paint.Style.STROKE);

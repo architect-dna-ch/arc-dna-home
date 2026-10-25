@@ -48,6 +48,83 @@ final class FoxVoice {
         play(FoxVoice::renderWhoosh);
     }
 
+    /** Loudest moment of the whoosh, 45 % into its 0.9 s. */
+    static final long WHOOSH_PEAK_MS = 405;
+    private final ExecutorService whooshWorker = Executors.newSingleThreadExecutor();
+    private short[] whooshPcm;
+    /** Measured time from play() to the sound actually leaving the speaker / earbuds. */
+    private static volatile long outLatencyMs = -1;
+
+    /**
+     * The whoosh, timed so its loudest moment is heard at wall-clock time {@code peakAt}.
+     * Prepared ahead, started early by the measured output delay (bigger on Bluetooth), and
+     * re-measured on every pass from the track's own timestamps, so it stays in step when the
+     * output changes. If it's late it starts partway in instead of drifting.
+     */
+    void whooshAt(long peakAt) {
+        whooshWorker.execute(() -> {
+            if (whooshPcm == null) whooshPcm = renderWhoosh();
+            short[] pcm = whooshPcm;
+            AudioTrack track = null;
+            try {
+                track = new AudioTrack.Builder()
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build())
+                    .setAudioFormat(new AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build())
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .setBufferSizeInBytes(pcm.length * 2)
+                    .build();
+                track.write(pcm, 0, pcm.length);
+                if (outLatencyMs < 0) outLatencyMs = guessLatency(track);
+                long wait = peakAt - WHOOSH_PEAK_MS - outLatencyMs - System.currentTimeMillis();
+                if (wait > 0) Thread.sleep(wait);
+                else if (wait < 0) {
+                    int skip = (int) (-wait * RATE / 1000);
+                    if (skip > pcm.length / 2) return;   // far too late: skip this one
+                    track.setPlaybackHeadPosition(skip);
+                }
+                long playNs = System.nanoTime();
+                int startFrame = track.getPlaybackHeadPosition();
+                track.play();
+                android.media.AudioTimestamp ts = new android.media.AudioTimestamp();
+                for (int i = 0; i < 16; i++) {
+                    Thread.sleep(25);
+                    if (track.getTimestamp(ts) && ts.framePosition > startFrame) {
+                        long firstNs = ts.nanoTime - (ts.framePosition - startFrame) * 1_000_000_000L / RATE;
+                        long measured = (firstNs - playNs) / 1_000_000;
+                        if (measured >= 0 && measured < 800) {
+                            long before = outLatencyMs;
+                            outLatencyMs = (before + measured) / 2;
+                            if (Math.abs(measured - before) > 40) DiagLog.log("whoosh output delay " + measured + " ms");
+                        }
+                        break;
+                    }
+                }
+                Thread.sleep(pcm.length * 1000L / RATE);
+            } catch (Exception ignored) {
+                // No sound is better than a crash on the home screen.
+            } finally {
+                if (track != null) track.release();
+            }
+        });
+    }
+
+    /** First guess before anything was measured: the platform's own figure if it shares it. */
+    private static long guessLatency(AudioTrack track) {
+        try {
+            Object v = AudioTrack.class.getMethod("getLatency").invoke(track);
+            if (v instanceof Integer && (Integer) v > 0 && (Integer) v < 800) return (Integer) v;
+        } catch (Exception ignored) {
+        }
+        return 120;
+    }
+
     /** The fox twirling: a rising "wheee" with a fast warble as it spins, then a happy chirp. */
     void twirl() {
         play(FoxVoice::renderTwirl);
@@ -186,6 +263,7 @@ final class FoxVoice {
 
     void close() {
         worker.shutdownNow();
+        whooshWorker.shutdownNow();
     }
 
     static short[] render(String call) {
