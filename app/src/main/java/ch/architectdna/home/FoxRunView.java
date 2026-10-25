@@ -162,11 +162,16 @@ final class FoxRunView extends View {
             listener.onExit();
             return true;
         }
+        jump();
+        return true;
+    }
+
+    /** Tap or a nod of the head (the launcher feeds those in). */
+    void jump() {
         if (crash <= 0 && foxLift == 0) {
             foxVy = -getHeight() * 1.45f;
             voice.say("Yip!");
         }
-        return true;
     }
 
     @Override

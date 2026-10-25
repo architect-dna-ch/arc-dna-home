@@ -90,8 +90,20 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         }
     };
 
+    /** Same process as the launcher, so it can say "home is in front" without relying on events. */
+    static ScrollAssistService instance;
+
+    /** The launcher came to the front: no pill and no camera here (it frees the camera for home). */
+    static void homeInFront(String pkg) {
+        ScrollAssistService s = instance;
+        if (s == null) return;
+        s.currentPkg = pkg;
+        s.apply("off");
+    }
+
     @Override
     protected void onServiceConnected() {
+        instance = this;
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         windows = (WindowManager) getSystemService(WINDOW_SERVICE);
         DiagLog.init(this);
@@ -419,6 +431,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     @Override
     public void onDestroy() {
+        if (instance == this) instance = null;
         stopTracking();
         hidePill();
         if (head != null) head.close();

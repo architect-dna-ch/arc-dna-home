@@ -143,3 +143,7 @@ In dark mode, swipe ← once more: the home screen goes almost black and ghosts 
 Your finger is a torch – a soft circle 2.5× your thumb's contact size shows the apps beneath
 (tap, hold and drag work as usual). Big ghosts shy away from the light, mini ghosts zip through
 and are only visible inside it. Swipe → to leave.
+
+## Fuchsjagd: nod to jump
+
+With the camera allowed, a subtle nod (head dips ~2.5°) makes the fox jump, as well as a tap.

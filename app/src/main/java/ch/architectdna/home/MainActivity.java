@@ -305,6 +305,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
         scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> updateFolds());
+        // Sections change size (cover loads, a fold opens): judge the blur again after every layout.
+        content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> scroll.post(this::updateFolds));
         scroll.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFolds);
 
         // Label row: ARCHITECT · DNA ……… ● ONLINE
@@ -1521,6 +1523,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onTilt(float pitch) {
         if (edgeLight != null) edgeLight.face(true);
+        if (game != null) {
+            gameNod(pitch);
+            return;
+        }
         if (calibFrames < 6) {
             calibSum += pitch;
             if (++calibFrames == 6) basePitch = calibSum / 6f;
@@ -2041,13 +2047,44 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         voice.say("Yip-yip!");
         game.resume();
-        Toast.makeText(this, "Tippen = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+        startGameNod();
+        Toast.makeText(this, "Tippen oder nicken = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+    }
+
+    /* A subtle nod = jump: a fast reading vs. a slow baseline; a dip of ~2.5° jumps, re-armed once the head is back. */
+    private float nodFast = Float.NaN, nodSlow;
+    private boolean nodArmed = true;
+
+    private void gameNod(float pitch) {
+        if (Float.isNaN(nodFast)) {
+            nodFast = nodSlow = pitch;
+            return;
+        }
+        nodFast += (pitch - nodFast) * 0.6f;
+        nodSlow += (pitch - nodSlow) * 0.06f;
+        float dip = nodFast - nodSlow;            // negative = head moving down
+        if (nodArmed && dip < -2.5f) {
+            nodArmed = false;
+            if (game != null) game.jump();
+        } else if (!nodArmed && dip > -1f) {
+            nodArmed = true;
+        }
+    }
+
+    /** Nod to jump: the front camera runs while the game is open (only if the camera is allowed). */
+    private void startGameNod() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;
+        if (head == null) head = new HeadTracker(this, this);
+        nodFast = Float.NaN;
+        nodArmed = true;
+        head.start(HeadTracker.Mode.NOD);
     }
 
     private void exitGame() {
         if (game == null) return;
         FoxRunView g = game;
         game = null;
+        if (head != null && !libraryOpen) head.stop();
         g.pause();
         g.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(g)).start();
         setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
@@ -2339,6 +2376,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        ScrollAssistService.homeInFront(getPackageName());
         volumeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
@@ -2359,7 +2397,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Box.setVisibility(View.GONE);
         f1Panel.setVisibility(f1 ? View.VISIBLE : View.GONE);
         if (f1) f1Panel.resume();
-        if (game != null) game.resume();
+        if (game != null) {
+            game.resume();
+            startGameNod();
+        }
         refreshRecents();
         music.start();
         updater.check(false);

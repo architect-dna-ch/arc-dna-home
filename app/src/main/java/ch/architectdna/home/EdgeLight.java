@@ -147,7 +147,15 @@ final class EdgeLight extends View implements SensorEventListener {
         int a = (int) (255 * level);
         // Only the four corners light up, like make-up mirror LEDs: warm white along each curve
         // with a soft halo, so your face is lit without a glaring white frame in your eyes.
-        float in = dp(3), d = 2 * (r - in);
+        // The glass is rounder than the reported radius: inset a little and widen the curve so the
+        // corners show in full. A thin warm line runs along the whole edge between them.
+        float in = dp(5);
+        r = r * 1.18f;
+        float d = 2 * (r - in);
+        rect.set(in, in, w - in, h - in);
+        rim.setStrokeWidth(dp(2));
+        rim.setAlpha((int) (a * 0.55f));
+        c.drawRoundRect(rect, r - in, r - in, rim);
         float[][] corners = {{in, in, 180}, {w - in - d, in, 270}, {w - in - d, h - in - d, 0}, {in, h - in - d, 90}};
         for (float[] k : corners) {
             rect.set(k[0], k[1], k[0] + d, k[1] + d);
