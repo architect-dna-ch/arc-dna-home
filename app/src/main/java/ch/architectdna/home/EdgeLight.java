@@ -16,9 +16,9 @@ import android.view.RoundedCorner;
 import android.view.View;
 
 /**
- * A ring light for head / eye scrolling in the dark: a few pixels of bright white along the
- * phone's curved display edge, with brighter "LED" spots in the four corners, so the front
- * camera can still see your face. It comes on below ~12 lux, or when the camera loses your face
+ * Mirror LEDs for head / eye scrolling in the dark: warm white light in the four curved display
+ * corners only (no full frame, no brightness boost), so the front camera can still see your face
+ * without glaring into your eyes. It comes on below ~12 lux, or when the camera loses your face
  * in a dim room (below ~60 lux). The Pixel's light sensor sits under the screen and sees the rim
  * itself, so once on it stays on at least 8 s and only goes off above ~90 lux with a face in view.
  */
@@ -48,11 +48,12 @@ final class EdgeLight extends View implements SensorEventListener {
         this.listener = listener;
         sensors = c.getSystemService(SensorManager.class);
         rim.setStyle(Paint.Style.STROKE);
-        rim.setColor(0xFFFFFFFF);
+        rim.setColor(0xFFFFEBD6);      // warm white, kinder to the eyes than blue-white
+        rim.setStrokeCap(Paint.Cap.ROUND);
         glow.setStyle(Paint.Style.STROKE);
-        glow.setColor(0xFFFFF4E8);
+        glow.setColor(0xFFFFDDB8);
         glow.setMaskFilter(new BlurMaskFilter(dp(10), BlurMaskFilter.Blur.NORMAL));
-        led.setColor(0xFFFFFFFF);
+        led.setColor(0xFFFFF3E6);
         led.setMaskFilter(new BlurMaskFilter(dp(8), BlurMaskFilter.Blur.NORMAL));
         setLayerType(LAYER_TYPE_SOFTWARE, null);   // blur mask filters need a software layer
         setWillNotDraw(false);
@@ -144,23 +145,22 @@ final class EdgeLight extends View implements SensorEventListener {
 
         float w = getWidth(), h = getHeight(), r = cornerRadius();
         int a = (int) (255 * level);
-        // Soft glow inside, then a crisp few-pixel rim right on the edge.
-        glow.setStrokeWidth(dp(16));
-        glow.setAlpha((int) (a * 0.55f));
-        rect.set(dp(2), dp(2), w - dp(2), h - dp(2));
-        c.drawRoundRect(rect, r, r, glow);
-        rim.setStrokeWidth(dp(4));
-        rim.setAlpha(a);
-        rect.set(dp(2), dp(2), w - dp(2), h - dp(2));
-        c.drawRoundRect(rect, r - dp(2), r - dp(2), rim);
-
-        // LED spots in the corners, on the curve.
-        float k = r * 0.29f;    // a point on the corner arc, 45°
-        led.setAlpha(a);
-        float s = dp(14);
-        c.drawCircle(k, k, s, led);
-        c.drawCircle(w - k, k, s, led);
-        c.drawCircle(k, h - k, s, led);
-        c.drawCircle(w - k, h - k, s, led);
+        // Only the four corners light up, like make-up mirror LEDs: warm white along each curve
+        // with a soft halo, so your face is lit without a glaring white frame in your eyes.
+        float in = dp(3), d = 2 * (r - in);
+        float[][] corners = {{in, in, 180}, {w - in - d, in, 270}, {w - in - d, h - in - d, 0}, {in, h - in - d, 90}};
+        for (float[] k : corners) {
+            rect.set(k[0], k[1], k[0] + d, k[1] + d);
+            glow.setStrokeWidth(dp(14));
+            glow.setAlpha((int) (a * 0.5f));
+            c.drawArc(rect, k[2] + 8, 74, false, glow);
+            rim.setStrokeWidth(dp(5));
+            rim.setAlpha(a);
+            c.drawArc(rect, k[2] + 14, 62, false, rim);
+            // The LED itself, at the middle of the curve.
+            double mid = Math.toRadians(k[2] + 45);
+            led.setAlpha(a);
+            c.drawCircle(rect.centerX() + (float) Math.cos(mid) * d / 2, rect.centerY() + (float) Math.sin(mid) * d / 2, dp(9), led);
+        }
     }
 }

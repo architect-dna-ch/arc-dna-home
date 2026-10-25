@@ -362,14 +362,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     /** Full-screen, untouchable overlay for the ring light; it lights up only in the dark. */
     private void showEdge() {
         if (windows == null || edge != null) return;
-        edge = new EdgeLight(this, on -> {
-            if (edge == null || edgeParams == null) return;
-            edgeParams.screenBrightness = on ? 1f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
-            try {
-                windows.updateViewLayout(edge, edgeParams);
-            } catch (RuntimeException ignored) {
-            }
-        });
+        // Corner LEDs only; the screen brightness is left alone.
+        edge = new EdgeLight(this, null);
         edgeParams = new WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,

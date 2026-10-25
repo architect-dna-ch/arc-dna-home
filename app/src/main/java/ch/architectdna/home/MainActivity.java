@@ -563,12 +563,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return insets;
         });
 
-        // Ring light on the display edge when it's too dark for head / eye scrolling.
-        edgeLight = new EdgeLight(this, on -> {
-            WindowManager.LayoutParams lp = getWindow().getAttributes();
-            lp.screenBrightness = on ? 1f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
-            getWindow().setAttributes(lp);
-        });
+        // Mirror LEDs in the display corners when it's too dark for head / eye scrolling.
+        edgeLight = new EdgeLight(this, null);
         root.addView(edgeLight, new FrameLayout.LayoutParams(-1, -1));
         return root;
     }
