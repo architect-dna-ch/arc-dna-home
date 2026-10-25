@@ -272,7 +272,12 @@ final class MusicCard {
     private PhaseBar phaseBar;
     private PhaseBar.Phase phase = PhaseBar.Phase.GROOVE, candidate = PhaseBar.Phase.GROOVE;
     private long candidateSince;
-    private float loS, midS, hiS, loL, midL, hiL;   // short (≈0.5 s) and long (≈8 s) band averages
+    private float loS, midS, hiS, loL, midL, hiL;   // fast (≈0.3 s) and slow (≈8 s) band averages
+    private float totM, hiM;                        // mid speed (≈2 s)
+    private final float[] trend = new float[8];     // ≈4 s of 2-s levels, every 0.5 s
+    private int trendHead;
+    private long trendAt, phaseSince;
+    private int warm;
     private boolean built;                          // a BUILD came first: the next bass surge is a DROP
     private String phaseTrack = "";
 
@@ -284,6 +289,7 @@ final class MusicCard {
         String key = t == null ? "" : t + "\u0001" + (a == null ? "" : a);
         if (!key.equals(phaseTrack)) {
             phaseTrack = key;
+            warm = 0;
             phaseBar.newTrack(key);
         }
     }
@@ -343,16 +349,35 @@ final class MusicCard {
      * the mids lead. A phase has to hold ~0.6 s before it shows, so it doesn't flicker.
      */
     private void readPhase(float lo, float mid, float hi) {
-        loS += (lo - loS) * 0.12f; midS += (mid - midS) * 0.12f; hiS += (hi - hiS) * 0.12f;
-        loL += (lo - loL) * 0.004f; midL += (mid - midL) * 0.004f; hiL += (hi - hiL) * 0.004f;
+        float tot = lo + mid + hi;
+        // Three speeds (≈60 frames/s): fast ≈0.3 s, mid ≈2 s, slow ≈8 s.
+        loS += (lo - loS) * 0.06f; midS += (mid - midS) * 0.06f; hiS += (hi - hiS) * 0.06f;
+        totM += (tot - totM) * 0.008f; hiM += (hi - hiM) * 0.008f;
+        // Warm-up: the slow averages catch up quickly at first, so a song's start doesn't read as a drop.
+        float slow = warm < 240 ? 0.05f : 0.002f;
+        warm++;
+        loL += (lo - loL) * slow; midL += (mid - midL) * slow; hiL += (hi - hiL) * slow;
         float totS = loS + midS + hiS, totL = loL + midL + hiL;
+        // A rising trend: the 2-s level against itself 4 s ago (sampled every ~0.5 s).
+        long t = System.currentTimeMillis();
+        if (t - trendAt > 500) {
+            trendAt = t;
+            trend[trendHead] = totM;
+            trendHead = (trendHead + 1) % trend.length;
+        }
+        float fourAgo = trend[trendHead];                 // the oldest sample ≈ 4 s back
+        boolean rising = fourAgo > 0.02f && totM > fourAgo * 1.12f && hiM > hiL * 1.06f;
+        boolean bassUp = loS > loL * 1.15f;
         PhaseBar.Phase p;
-        if (totL < 0.05f) p = PhaseBar.Phase.GROOVE;
-        else if (loS > loL * 1.45f && loS > totS * 0.3f && (built || loS > loL * 1.8f)) p = PhaseBar.Phase.DROP;
-        else if (totS < totL * 0.6f) p = PhaseBar.Phase.BREAK;
-        else if (hiS > hiL * 1.25f && loS < loL * 0.95f) p = PhaseBar.Phase.BUILD;
-        else if (midS > loS * 1.15f && midS > hiS * 1.1f) p = PhaseBar.Phase.VOCAL;
+        if (totL < 0.04f || warm < 240) p = PhaseBar.Phase.GROOVE;
+        else if ((totS > totL * 1.18f && bassUp) || (built && totS > totL * 1.08f && bassUp) || totS > totL * 1.4f) {
+            p = PhaseBar.Phase.DROP;                      // chorus / drop: clearly fuller than usual
+        } else if (totM < totL * 0.7f) p = PhaseBar.Phase.BREAK;
+        else if (rising) p = PhaseBar.Phase.BUILD;        // pre-chorus: energy climbing for seconds
+        else if (midS > totS * 0.42f) p = PhaseBar.Phase.VOCAL;
         else p = PhaseBar.Phase.GROOVE;
+        // A drop holds at least 2 s, so a chorus doesn't flicker between beats.
+        if (phase == PhaseBar.Phase.DROP && p != PhaseBar.Phase.DROP && t - phaseSince < 2000) p = PhaseBar.Phase.DROP;
         long now = System.currentTimeMillis();
         if (p != candidate) {
             candidate = p;
@@ -361,6 +386,7 @@ final class MusicCard {
             paintPhase(phase);
         } else if (p != phase && now - candidateSince > 600) {
             phase = p;
+            phaseSince = now;
             if (p == PhaseBar.Phase.BUILD) built = true;
             if (p == PhaseBar.Phase.DROP || p == PhaseBar.Phase.BREAK) built = false;
             if (phaseLabel != null) paintPhase(p);

@@ -58,7 +58,7 @@ final class PhaseBar extends View {
         this.ink = ink;
         this.ink3 = ink3;
         this.seeker = seeker;
-        store = c.getSharedPreferences("phases", Context.MODE_PRIVATE);
+        store = c.getSharedPreferences("phases2", Context.MODE_PRIVATE);   // v2: maps from the pop-aware reading
         paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
     }
 
