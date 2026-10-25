@@ -105,6 +105,26 @@ screen is still static.
 
 ## 3D cube
 
+With ARC-DNA Live, tilting the phone turns the wallpaper cube: left/right turns it around the
+vertical axis, forwards/back tilts it. Held still, it eases back to the logo pose (the neutral
+position follows how you hold the phone). The camera ring is placed from the display's own
+cutout, so it sits centred on the camera hole.
+
+## Ring light (Kopf-Scroll im Dunkeln)
+
+While head / eye scrolling runs (Mediathek or per app, e.g. Chrome) and the light sensor reads
+below ~12 lux (or the camera loses your face below ~60 lux), a few pixels of bright white light up along the curved display edge, with LED
+spots in the corners, and the screen goes to full brightness so the front camera still sees
+your face. Stays on at least 8 s and goes off above ~90 lux with your face in view (the light sensor sits under the screen and sees the rim).
+
+## Dynamischer Sperrbildschirm – Einführung
+
+Long-press the clock → "Dynamischer Sperrbildschirm – Einführung": what the lock screen shows,
+✓/✗ for each setup step, and a button for the next one. Opens once by itself while the lock
+screen is still static.
+
+## 3D cube
+
 With ARC-DNA Live as wallpaper, drag **two fingers** on the home screen to turn the cube on
 both axes (left/right = around the vertical axis, up/down = tilt). Let go and it keeps spinning,
 slowing down; edges further back are drawn fainter.

@@ -70,11 +70,13 @@ public class ArcWallpaper extends WallpaperService {
         public void onSurfaceChanged(SurfaceHolder holder, int format, int w, int h) {
             width = w;
             height = h;
+            locateCamera();
             drawFrame();
         }
 
         @Override
         public void onApplyWindowInsets(WindowInsets insets) {
+            if (camera != null) return;          // the display's own cutout (below) is more precise
             DisplayCutout cutout = insets.getDisplayCutout();
             camera = cutout != null && !cutout.getBoundingRects().isEmpty() ? cutout.getBoundingRects().get(0) : null;
         }
@@ -82,6 +84,7 @@ public class ArcWallpaper extends WallpaperService {
         @Override
         public void onVisibilityChanged(boolean v) {
             visible = v;
+            watchTilt(v);
             DiagLog.init(ArcWallpaper.this);
             DiagLog.log("wallpaper visible=" + v + " locked=" + locked()
                 + (Build.VERSION.SDK_INT >= 34 ? " flags=" + getWallpaperFlags() : "") + " preview=" + isPreview());
@@ -96,8 +99,40 @@ public class ArcWallpaper extends WallpaperService {
 
         @Override
         public void onDestroy() {
+            watchTilt(false);
             handler.removeCallbacks(frame);
             stopVisualizer();
+        }
+
+        /**
+         * The camera hole straight from the display's cutout (the wallpaper window doesn't always get
+         * insets on the lock screen), scaled in case the wallpaper surface isn't the display size.
+         */
+        private void locateCamera() {
+            try {
+                android.hardware.display.DisplayManager dm = getSystemService(android.hardware.display.DisplayManager.class);
+                android.view.Display d = dm == null ? null : dm.getDisplay(android.view.Display.DEFAULT_DISPLAY);
+                DisplayCutout cut = d == null || Build.VERSION.SDK_INT < 29 ? null : d.getCutout();
+                android.graphics.Point real = new android.graphics.Point();
+                if (d != null) d.getRealSize(real);
+                Rect r = null;
+                if (cut != null && Build.VERSION.SDK_INT >= 31 && cut.getCutoutPath() != null) {
+                    android.graphics.RectF b = new android.graphics.RectF();
+                    cut.getCutoutPath().computeBounds(b, true);
+                    r = new Rect(Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom));
+                } else if (cut != null && !cut.getBoundingRects().isEmpty()) {
+                    r = cut.getBoundingRects().get(0);
+                }
+                if (r != null && real.x > 0 && width > 0) {
+                    float sx = width / (float) real.x, sy = height / (float) real.y;
+                    camera = new Rect(Math.round(r.left * sx), Math.round(r.top * sy), Math.round(r.right * sx), Math.round(r.bottom * sy));
+                }
+                DiagLog.init(ArcWallpaper.this);
+                DiagLog.log("wallpaper surface " + width + "x" + height + ", display " + real.x + "x" + real.y
+                    + ", camera " + (camera == null ? "?" : camera.toShortString()));
+            } catch (RuntimeException e) {
+                DiagLog.log("camera position: " + e);
+            }
         }
 
         private boolean night() {
@@ -206,57 +241,62 @@ public class ArcWallpaper extends WallpaperService {
             paint.setShader(null);
         }
 
-        /* ---- The 3D cube: yaw/pitch with inertia; the default pose is the isometric logo ---- */
+        /* ---- The 3D cube: tilting the phone turns it; held still it eases back to the logo pose ---- */
 
         private static final float BASE_YAW = (float) Math.toRadians(45), BASE_PITCH = (float) Math.toRadians(35.264);
-        private final float[][] verts = new float[8][3];
         private final float[][] proj = new float[8][3];
-        private float yaw = BASE_YAW, pitch = BASE_PITCH, vYaw, vPitch;
-        private boolean dragging;
-        private long lastCubeStep;
+        private float yaw = BASE_YAW, pitch = BASE_PITCH, drawnYaw = Float.NaN, drawnPitch = Float.NaN;
+        private float tiltX, tiltY, baseX = Float.NaN, baseY;
+        private android.hardware.SensorManager sensors;
 
-        boolean cubeMoving() {
-            return dragging || Math.abs(vYaw) > 0.0005f || Math.abs(vPitch) > 0.0005f;
-        }
-
-        @Override
-        public android.os.Bundle onCommand(String action, int x, int y, int z, android.os.Bundle extras, boolean resultRequested) {
-            if ("ch.architectdna.CUBE_DRAG".equals(action) && extras != null) {
-                float k = 0.006f;   // radians per pixel
-                float dYaw = extras.getFloat("dx") * k, dPitch = extras.getFloat("dy") * k;
-                yaw += dYaw;
-                pitch = Math.max(-1.45f, Math.min(1.45f, pitch + dPitch));
-                vYaw = dYaw;
-                vPitch = dPitch;
-                dragging = true;
-                lastCubeStep = SystemClock.uptimeMillis();
-                if (visible) {
+        private final android.hardware.SensorEventListener gravity = new android.hardware.SensorEventListener() {
+            @Override
+            public void onSensorChanged(android.hardware.SensorEvent e) {
+                float g = android.hardware.SensorManager.GRAVITY_EARTH;
+                float x = (float) Math.asin(Math.max(-1f, Math.min(1f, e.values[0] / g)));   // left / right
+                float y = (float) Math.asin(Math.max(-1f, Math.min(1f, e.values[1] / g)));   // towards / away
+                tiltX = tiltX * 0.8f + x * 0.2f;
+                tiltY = tiltY * 0.8f + y * 0.2f;
+                if (Float.isNaN(baseX)) {
+                    baseX = tiltX;
+                    baseY = tiltY;
+                }
+                // The neutral pose slowly follows how you hold the phone, so only changes turn the cube.
+                baseX += (tiltX - baseX) * 0.01f;
+                baseY += (tiltY - baseY) * 0.01f;
+                yaw = BASE_YAW - (tiltX - baseX) * 1.6f;
+                pitch = Math.max(-1.4f, Math.min(1.4f, BASE_PITCH + (tiltY - baseY) * 1.6f));
+                if (visible && cubeMoving()) {
                     handler.removeCallbacks(frame);
                     handler.post(frame);
                 }
-            } else if ("ch.architectdna.CUBE_RELEASE".equals(action)) {
-                dragging = false;
-            } else if ("ch.architectdna.CUBE_RESET".equals(action)) {
-                vYaw = vPitch = 0;
-                yaw = BASE_YAW;
-                pitch = BASE_PITCH;
-                if (visible) drawFrame();
             }
-            return null;
+
+            @Override
+            public void onAccuracyChanged(android.hardware.Sensor sensor, int accuracy) {
+            }
+        };
+
+        private void watchTilt(boolean on) {
+            if (sensors == null) sensors = getSystemService(android.hardware.SensorManager.class);
+            if (sensors == null) return;
+            if (on) {
+                android.hardware.Sensor g = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY);
+                if (g == null) g = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
+                if (g != null) sensors.registerListener(gravity, g, android.hardware.SensorManager.SENSOR_DELAY_GAME);
+            } else {
+                sensors.unregisterListener(gravity);
+                baseX = Float.NaN;
+            }
         }
 
-        /** After letting go it keeps spinning and slows down (per 16 ms frame). */
+        boolean cubeMoving() {
+            return Float.isNaN(drawnYaw) || Math.abs(yaw - drawnYaw) > 0.003f || Math.abs(pitch - drawnPitch) > 0.003f;
+        }
+
         private void stepCube() {
-            if (dragging) return;
-            long now = SystemClock.uptimeMillis();
-            float frames = Math.min(4f, (now - lastCubeStep) / 16f);
-            lastCubeStep = now;
-            if (!cubeMoving()) return;
-            yaw += vYaw * frames;
-            pitch = Math.max(-1.45f, Math.min(1.45f, pitch + vPitch * frames));
-            float decay = (float) Math.pow(0.95, frames);
-            vYaw *= decay;
-            vPitch *= decay;
+            drawnYaw = yaw;
+            drawnPitch = pitch;
         }
 
         private void drawCube(Canvas c, float cx, float cy, float scale, int ink, int rust) {
