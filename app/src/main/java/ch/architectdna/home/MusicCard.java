@@ -117,6 +117,7 @@ final class MusicCard {
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(dp(12), 0, 0, 0);
         title = label(15, ink, true);
+        title.setOnClickListener(v -> openPlayer());
         artist = label(13, ink2, false);
         source = label(10, ink3, true);
         source.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -141,6 +142,26 @@ final class MusicCard {
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(46));
         slp.topMargin = dp(12);
         root.addView(spectrum, slp);
+
+        // DJ read-out: the phase you're in, quick jumps, and the track timeline with the phases heard so far.
+        LinearLayout phaseRow = new LinearLayout(activity);
+        phaseRow.setGravity(Gravity.CENTER_VERTICAL);
+        phaseLabel = label(11, 0xFFFFFFFF, true);
+        phaseLabel.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        phaseLabel.setLetterSpacing(0.1f);
+        phaseLabel.setPadding(dp(10), dp(4), dp(10), dp(4));
+        paintPhase(PhaseBar.Phase.GROOVE);
+        phaseRow.addView(phaseLabel);
+        phaseRow.addView(new View(activity), new LinearLayout.LayoutParams(0, 1, 1f));
+        phaseRow.addView(jumpChip("→ 0:20", () -> seekTo(20_000)));
+        phaseRow.addView(jumpChip("+30 S", () -> seekTo(currentPosition() + 30_000)));
+        LinearLayout.LayoutParams prl = new LinearLayout.LayoutParams(-1, -2);
+        prl.topMargin = dp(10);
+        root.addView(phaseRow, prl);
+        phaseBar = new PhaseBar(activity, ink, ink3, this::seekTo);
+        LinearLayout.LayoutParams pbl = new LinearLayout.LayoutParams(-1, dp(34));
+        pbl.topMargin = dp(8);
+        root.addView(phaseBar, pbl);
 
         vizHint = label(10, ink3, true);
         vizHint.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -225,6 +246,94 @@ final class MusicCard {
         return root;
     }
 
+    /* ---------------- DJ read-out: phases, timeline, jumps ---------------- */
+
+    private TextView phaseLabel;
+    private PhaseBar phaseBar;
+    private PhaseBar.Phase phase = PhaseBar.Phase.GROOVE, candidate = PhaseBar.Phase.GROOVE;
+    private long candidateSince;
+    private float loS, midS, hiS, loL, midL, hiL;   // short (≈0.5 s) and long (≈8 s) band averages
+    private boolean built;                          // a BUILD came first: the next bass surge is a DROP
+    private String phaseTrack = "";
+
+    private TextView jumpChip(String text, Runnable action) {
+        TextView chip = label(11, ink2, true);
+        chip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        chip.setText(text);
+        chip.setPadding(dp(10), dp(5), dp(10), dp(5));
+        chip.setBackground(box(card, line, 14));
+        chip.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.leftMargin = dp(6);
+        chip.setLayoutParams(lp);
+        return chip;
+    }
+
+    private void paintPhase(PhaseBar.Phase p) {
+        phaseLabel.setText(p.label);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(p.colour);
+        bg.setCornerRadius(dp(12));
+        phaseLabel.setBackground(bg);
+    }
+
+    long currentPosition() {
+        if (controller == null || controller.getPlaybackState() == null) return -1;
+        PlaybackState st = controller.getPlaybackState();
+        long pos = st.getPosition();
+        if (st.getState() == PlaybackState.STATE_PLAYING && st.getLastPositionUpdateTime() > 0) {
+            pos += (long) ((android.os.SystemClock.elapsedRealtime() - st.getLastPositionUpdateTime()) * st.getPlaybackSpeed());
+        }
+        return pos;
+    }
+
+    private long duration() {
+        MediaMetadata m = controller == null ? null : controller.getMetadata();
+        return m == null ? 0 : m.getLong(MediaMetadata.METADATA_KEY_DURATION);
+    }
+
+    void seekTo(long ms) {
+        if (controller == null) return;
+        long d = duration();
+        controller.getTransportControls().seekTo(Math.max(0, d > 0 ? Math.min(ms, d - 1000) : ms));
+    }
+
+    /**
+     * Reads the phase from the live sound: BREAK when it gets much quieter, BUILD when the highs rise
+     * while the bass thins out, DROP when the bass surges (above all right after a build), VOCAL when
+     * the mids lead. A phase has to hold ~0.6 s before it shows, so it doesn't flicker.
+     */
+    private void readPhase(float lo, float mid, float hi) {
+        loS += (lo - loS) * 0.12f; midS += (mid - midS) * 0.12f; hiS += (hi - hiS) * 0.12f;
+        loL += (lo - loL) * 0.004f; midL += (mid - midL) * 0.004f; hiL += (hi - hiL) * 0.004f;
+        float totS = loS + midS + hiS, totL = loL + midL + hiL;
+        PhaseBar.Phase p;
+        if (totL < 0.05f) p = PhaseBar.Phase.GROOVE;
+        else if (loS > loL * 1.45f && loS > totS * 0.3f && (built || loS > loL * 1.8f)) p = PhaseBar.Phase.DROP;
+        else if (totS < totL * 0.6f) p = PhaseBar.Phase.BREAK;
+        else if (hiS > hiL * 1.25f && loS < loL * 0.95f) p = PhaseBar.Phase.BUILD;
+        else if (midS > loS * 1.15f && midS > hiS * 1.1f) p = PhaseBar.Phase.VOCAL;
+        else p = PhaseBar.Phase.GROOVE;
+        long now = System.currentTimeMillis();
+        if (p != candidate) {
+            candidate = p;
+            candidateSince = now;
+        } else if (p != phase && now - candidateSince > 600) {
+            phase = p;
+            if (p == PhaseBar.Phase.BUILD) built = true;
+            if (p == PhaseBar.Phase.DROP || p == PhaseBar.Phase.BREAK) built = false;
+            if (phaseLabel != null) paintPhase(p);
+        }
+        if (phaseBar != null) {
+            String key = title == null ? "" : String.valueOf(title.getText());
+            if (!key.equals(phaseTrack)) {
+                phaseTrack = key;
+                phaseBar.newTrack();
+            }
+            phaseBar.update(currentPosition(), duration(), audio.isMusicActive() ? phase : null);
+        }
+    }
+
     /* ---------------- Second page: listening stats ---------------- */
 
     private LinearLayout stats;
@@ -247,7 +356,8 @@ final class MusicCard {
     private final Runnable autoFlip = new Runnable() {
         @Override
         public void run() {
-            if (root != null && root.isShown() && root.getWidth() > 0) flip(-1);
+            // Forth to the stats (sliding left), back to the player (sliding right).
+            if (root != null && root.isShown() && root.getWidth() > 0) flip(onStats ? 1 : -1);
             else main.postDelayed(this, AUTO_FLIP_MS);
         }
     };
@@ -381,6 +491,13 @@ final class MusicCard {
 
     /** True if a touch at these screen coordinates lands on the volume slider (so it isn't a swipe). */
     boolean isOnSlider(float rawX, float rawY) {
+        // The timeline is dragged sideways too: it belongs to the slider family (no card swipe there).
+        if (phaseBar != null && phaseBar.isShown()) {
+            int[] pb = new int[2];
+            phaseBar.getLocationOnScreen(pb);
+            if (rawX >= pb[0] && rawX <= pb[0] + phaseBar.getWidth() && rawY >= pb[1] - dp(8)
+                && rawY <= pb[1] + phaseBar.getHeight() + dp(8)) return true;
+        }
         if (volume == null || !volume.isShown()) return false;
         int[] at = new int[2];
         volume.getLocationOnScreen(at);
@@ -760,6 +877,7 @@ final class MusicCard {
             float max = Math.max(0.001f, Math.max(lo, Math.max(mid, hi)));
             float amp = Math.min(1f, (lo + mid + hi) / BARS * 1.6f);
             int r = (int) (60 + 195 * lo / max), g = (int) (40 + 215 * mid / max * 0.9f), b = (int) (60 + 195 * hi / max);
+            readPhase(lo / (BARS / 3f), mid / (BARS / 3f), hi / (BARS / 3f));
             colHead = (colHead + 1) % colAmp.length;
             colAmp[colHead] = amp;
             colColour[colHead] = 0xFF000000 | (r << 16) | (g << 8) | b;

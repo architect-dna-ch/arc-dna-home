@@ -181,3 +181,11 @@ long-press it to switch NICKEN ↔ BLICK.
 The music card's visualizer is a DJ-style scrolling waveform (bass red, mids green, highs blue,
 red playhead); tap it to switch to the bars and back. On the home screen the navigation bar stays
 hidden until you swipe it up from the bottom edge.
+
+## DJ read-out on the music card
+
+Under the waveform: the phase you're in (BUILD ↗ / DROP 🔥 / BREAK / VOCAL / GROOVE, read live
+from the sound), quick jumps "→ 0:20" and "+30 S", and the track timeline with the phases heard
+so far, the playhead and "0:42 / 3:15". Tap or drag the timeline to jump; a tap inside a DROP
+jumps to where the drop starts. Tapping the title or cover opens the music app. (Needs an app
+that shares its playback with Android, e.g. Spotify or YouTube Music.)
