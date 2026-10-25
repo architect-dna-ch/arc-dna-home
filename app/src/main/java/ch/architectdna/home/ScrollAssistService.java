@@ -97,6 +97,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     static void homeInFront(String pkg) {
         ScrollAssistService s = instance;
         if (s == null) return;
+        s.main.removeCallbacks(s.settle);
+        s.pendingPkg = pkg;
         s.currentPkg = pkg;
         s.apply("off");
     }
@@ -116,12 +118,15 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         String pkg = event.getPackageName().toString();
         int type = event.getEventType();
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (ignored(pkg) || pkg.equals(currentPkg)) return;
-            currentPkg = pkg;
-            String m = pkg.equals(getPackageName()) ? "off" : prefs.getString("appScroll:" + pkg, "off");
-            // Package names of other apps are not logged, only whether scrolling is on for them.
-            DiagLog.log("front app changed, scroll mode=" + m);
-            apply(m);
+            // Overlays, dialogs and keyboards report windows too, for a moment; only real apps
+            // (with a launcher icon) that stay in front ~0.5 s may switch the mode.
+            if (ignored(pkg) || !launchable(pkg)) {
+                main.removeCallbacks(settle);
+                return;
+            }
+            pendingPkg = pkg;
+            main.removeCallbacks(settle);
+            main.postDelayed(settle, 500);
         } else if (pkg.equals(currentPkg)) {
             // A tap, long-press or typing in the app: rest for a moment.
             userTouched();
@@ -141,6 +146,29 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     }
 
     private final Runnable refreshPill = () -> showPill(null);
+
+    private String pendingPkg = "";
+    private final java.util.Map<String, Boolean> launchableCache = new java.util.HashMap<>();
+
+    private final Runnable settle = () -> {
+        String pkg = pendingPkg;
+        if (pkg.isEmpty() || pkg.equals(currentPkg)) return;
+        currentPkg = pkg;
+        String m = pkg.equals(getPackageName()) ? "off" : prefs.getString("appScroll:" + pkg, "off");
+        // Package names of other apps are not logged, only whether scrolling is on for them.
+        DiagLog.log("front app changed, scroll mode=" + m);
+        apply(m);
+    };
+
+    private boolean launchable(String pkg) {
+        if (pkg.equals(getPackageName())) return true;
+        Boolean known = launchableCache.get(pkg);
+        if (known == null) {
+            known = getPackageManager().getLaunchIntentForPackage(pkg) != null;
+            launchableCache.put(pkg, known);
+        }
+        return known;
+    }
 
     /** System UI, keyboards and the like pop up over apps; they shouldn't switch the mode. */
     private static boolean ignored(String pkg) {
