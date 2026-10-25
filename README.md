@@ -153,7 +153,7 @@ and its eye follows your finger; 1.5 s after you let go it looks back at you.
 
 ## Zuletzt carousel
 
-Zuletzt shows your recent apps as a sideways carousel, a page per row, with dots for the page
+Zuletzt shows your recent apps as a sideways carousel that glides and settles one app at a time, with dots for the page
 you're on. How many: Mediathek → "ZULETZT-KARUSSELL" (4 / 8 / 12 / 16 / 24).
 
 ## Music stats

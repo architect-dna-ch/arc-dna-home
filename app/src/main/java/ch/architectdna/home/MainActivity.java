@@ -454,7 +454,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 MainActivity.this.say(text, 1800);
             }
         });
-        content.addView(music.view(), margins(-1, -2, 0, dp(10), 0, 0));
+        musicView = music.view();
+        content.addView(musicView, margins(-1, -2, 0, dp(10), 0, 0));
 
         // Mediathek inline: all apps, folded by default.
         homeLib = new LinearLayout(this);
@@ -1140,9 +1141,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         recentHome.addView(recentDots, margins(-1, -2, 0, dp(10), 0, 0));
         recentDots.setVisibility(pages > 1 ? View.VISIBLE : View.GONE);
-        int pageW = cols * (tileW + gap);
+        int step = tileW + gap, pageW = cols * step;
         Runnable paint = () -> {
-            int page = pageW == 0 ? 0 : Math.round(hs.getScrollX() / (float) pageW);
+            int page = Math.min(pages - 1, Math.round(hs.getScrollX() / (float) pageW));
+            int max = hs.getChildAt(0).getWidth() - hs.getWidth();
+            if (max > 0 && hs.getScrollX() >= max - step / 2) page = pages - 1;   // the end shows the last dot
             for (int i = 0; i < recentDots.getChildCount(); i++) {
                 GradientDrawable dot = new GradientDrawable();
                 dot.setShape(GradientDrawable.OVAL);
@@ -1152,15 +1155,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
         };
         paint.run();
-        hs.setOnScrollChangeListener((v, x, y, ox, oy) -> paint.run());
-        // Snap to whole pages when the finger lifts.
+        // Let a swipe glide out, then settle softly on the nearest app (one app at a time, not a whole row).
+        final boolean[] touching = {false};
+        Runnable settle = () -> {
+            if (touching[0]) return;
+            int target = Math.round(hs.getScrollX() / (float) step) * step;
+            if (target != hs.getScrollX()) hs.smoothScrollTo(target, 0);
+        };
+        hs.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            paint.run();
+            hs.removeCallbacks(settle);
+            hs.postDelayed(settle, 90);
+        });
         hs.setOnTouchListener((v, e) -> {
             int a = e.getActionMasked();
-            if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
-                hs.post(() -> {
-                    int page = Math.round(hs.getScrollX() / (float) pageW);
-                    hs.smoothScrollTo(page * pageW, 0);
-                });
+            touching[0] = a == MotionEvent.ACTION_DOWN || a == MotionEvent.ACTION_MOVE;
+            if (!touching[0]) {
+                hs.removeCallbacks(settle);
+                hs.postDelayed(settle, 90);
             }
             return false;
         });
@@ -2272,6 +2284,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             float hidden = block.getHeight() == 0 ? 0
                 : Math.max(0f, Math.min(1f, (block.getBottom() - limit) / (float) block.getHeight()));
+            if (block == musicView) hidden = 0;       // its title stays sharp with it
             frost(child, hidden);
             if (isLabel) {
                 frost(block, hidden);
@@ -2280,7 +2293,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    /** The music card is never frosted: it's interactive and animates its own alpha (page swipe). */
+    private View musicView;
+
     private void frost(View v, float hidden) {
+        if (v == musicView) hidden = 0;
         Float last = foldState.get(v);
         if (last != null && Math.abs(last - hidden) < 0.02f && (hidden > 0 || last == 0)) return;
         foldState.put(v, hidden);
