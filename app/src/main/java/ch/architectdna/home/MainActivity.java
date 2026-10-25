@@ -309,7 +309,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
         scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> updateFolds());
         // Sections change size (cover loads, a fold opens): judge the blur again after every layout.
-        content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> scroll.post(this::updateFolds));
+        content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            scroll.post(this::updateFolds);
+            scroll.post(this::fitClock);
+        });
         scroll.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFolds);
 
         // Label row: ARCHITECT · DNA ……… ● ONLINE
@@ -410,7 +413,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(greet);
         // Flexible gap: with sections folded the page fills the screen exactly (clock on top, section
         // titles down by the thumb, no scrolling); opened sections eat the gap before the page scrolls.
-        content.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
+        flexGap = new View(this);
+        content.addView(flexGap, new LinearLayout.LayoutParams(-1, 0, 1f));
         alarmRow = monoText(12, ink3);
         alarmRow.setPadding(0, dp(10), 0, dp(4));
         alarmRow.setOnClickListener(v -> pickAlarm());
@@ -668,7 +672,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
-        int cols = cols();
+        // 8 favourites: one row of 8 on wide screens, else two rows of 4 (never a stretched half row).
+        int cols = cols() >= 8 ? 8 : 4;
         for (int i = 0; i < items.length; i++) {
             if (i % cols == 0) {
                 row = new LinearLayout(this);
@@ -679,6 +684,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             tile.setOnClickListener(v -> open(intent));
             row.addView(tile, weighted(i % cols != 0));
         }
+        for (int i = items.length % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
         return wrap;
     }
 
@@ -2323,6 +2329,32 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 i++;
             }
         }
+    }
+
+    /* ---- Fill the free space: the clock grows into the gap left by folded sections ---- */
+
+    private View flexGap;
+    private static final float CLOCK_SP = 104, CLOCK_MAX_SP = 220;
+
+    /**
+     * With sections folded there's room left: the clock takes it (up to 220 sp and the width next to
+     * the lever) instead of leaving an empty gap; opening sections shrinks it back to 104 sp.
+     */
+    private void fitClock() {
+        if (flexGap == null || clock == null || clock.getHeight() == 0 || f1) return;
+        float sp = getResources().getDisplayMetrics().scaledDensity;
+        float curPx = clock.getTextSize(), basePx = CLOCK_SP * sp;
+        float perPx = (clock.getHeight() - clock.getPaddingTop()) / curPx;      // text height per px of size
+        float roomAtBase = flexGap.getHeight() + (curPx - basePx) * perPx;
+        float targetPx = basePx + Math.max(0, roomAtBase - dp(12)) / perPx;
+        // Never wider than the space beside the brightness lever.
+        float widthRoom = content.getWidth() - content.getPaddingLeft() - content.getPaddingRight() - dp(80);
+        android.graphics.Paint probe = new android.graphics.Paint(clock.getPaint());
+        probe.setTextSize(targetPx);
+        float textW = probe.measureText(clock.getText().toString());
+        if (textW > widthRoom && textW > 0) targetPx *= widthRoom / textW;
+        targetPx = Math.max(basePx, Math.min(CLOCK_MAX_SP * sp, targetPx));
+        if (Math.abs(targetPx - curPx) > dp(2)) clock.setTextSize(TypedValue.COMPLEX_UNIT_PX, targetPx);
     }
 
     /** The music card is never frosted: it's interactive and animates its own alpha (page swipe). */
