@@ -241,12 +241,13 @@ public class ArcWallpaper extends WallpaperService {
             paint.setShader(null);
         }
 
-        /* ---- The 3D cube: tilting the phone turns it; held still it eases back to the logo pose ---- */
+        /* ---- The 3D cube: tilting the phone turns it; held normally (~45°) it is the logo ---- */
 
         private static final float BASE_YAW = (float) Math.toRadians(45), BASE_PITCH = (float) Math.toRadians(35.264);
         private final float[][] proj = new float[8][3];
         private float yaw = BASE_YAW, pitch = BASE_PITCH, drawnYaw = Float.NaN, drawnPitch = Float.NaN;
-        private float tiltX, tiltY, baseX = Float.NaN, baseY;
+        private static final float NEUTRAL_TILT = (float) Math.toRadians(45);
+        private float tiltX, tiltY, baseX = Float.NaN;
         private android.hardware.SensorManager sensors;
 
         private final android.hardware.SensorEventListener gravity = new android.hardware.SensorEventListener() {
@@ -255,17 +256,17 @@ public class ArcWallpaper extends WallpaperService {
                 float g = android.hardware.SensorManager.GRAVITY_EARTH;
                 float x = (float) Math.asin(Math.max(-1f, Math.min(1f, e.values[0] / g)));   // left / right
                 float y = (float) Math.asin(Math.max(-1f, Math.min(1f, e.values[1] / g)));   // towards / away
+                if (Float.isNaN(baseX)) {          // first reading after the screen turns on: no lag
+                    baseX = 0;
+                    tiltX = x;
+                    tiltY = y;
+                }
                 tiltX = tiltX * 0.8f + x * 0.2f;
                 tiltY = tiltY * 0.8f + y * 0.2f;
-                if (Float.isNaN(baseX)) {
-                    baseX = tiltX;
-                    baseY = tiltY;
-                }
-                // The neutral pose slowly follows how you hold the phone, so only changes turn the cube.
-                baseX += (tiltX - baseX) * 0.01f;
-                baseY += (tiltY - baseY) * 0.01f;
-                yaw = BASE_YAW - (tiltX - baseX) * 1.6f;
-                pitch = Math.max(-1.4f, Math.min(1.4f, BASE_PITCH + (tiltY - baseY) * 1.6f));
+                // Fixed calibration: held normally (upright, tilted ~45° towards you) the cube is
+                // exactly the static wallpaper's logo; tilting away from that turns it.
+                yaw = BASE_YAW - tiltX * 1.4f;
+                pitch = Math.max(-1.4f, Math.min(1.4f, BASE_PITCH + (tiltY - NEUTRAL_TILT) * 1.4f));
                 if (visible && cubeMoving()) {
                     handler.removeCallbacks(frame);
                     handler.post(frame);
