@@ -293,7 +293,14 @@ final class MusicCard {
     }
 
     void seekTo(long ms) {
-        if (controller == null) return;
+        PlaybackState st = controller == null ? null : controller.getPlaybackState();
+        if (st == null || (st.getActions() & PlaybackState.ACTION_SEEK_TO) == 0) {
+            DiagLog.log("seek not possible: " + (controller == null ? "no media session" : "app doesn't allow seeking"));
+            android.widget.Toast.makeText(activity, controller == null
+                ? "Keine Musik-App verbunden (Benachrichtigungszugriff?)"
+                : appName(controller.getPackageName()) + " erlaubt kein Springen im Titel.", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
         long d = duration();
         controller.getTransportControls().seekTo(Math.max(0, d > 0 ? Math.min(ms, d - 1000) : ms));
     }
@@ -318,6 +325,8 @@ final class MusicCard {
         if (p != candidate) {
             candidate = p;
             candidateSince = now;
+        } else if (phaseLabel != null && "KEIN SIGNAL".contentEquals(phaseLabel.getText())) {
+            paintPhase(phase);
         } else if (p != phase && now - candidateSince > 600) {
             phase = p;
             if (p == PhaseBar.Phase.BUILD) built = true;
@@ -351,6 +360,19 @@ final class MusicCard {
     }
 
     /** Swipe on the card: -1 = to the left (next page), +1 = to the right. */
+    /** A session that was already open and starts playing later sends no "sessions changed": re-check every 2 s. */
+    private final Runnable repick = new Runnable() {
+        @Override
+        public void run() {
+            if (!started) return;
+            try {
+                if (hasAccess()) pick(sessions.getActiveSessions(listener));
+            } catch (SecurityException ignored) {
+            }
+            main.postDelayed(this, 2000);
+        }
+    };
+
     /** Every 30 s the card turns by itself (player ↔ stats); a swipe by hand restarts the 30 s. */
     private static final long AUTO_FLIP_MS = 30_000;
     private final Runnable autoFlip = new Runnable() {
@@ -510,6 +532,8 @@ final class MusicCard {
     /* ---------------- Lifecycle ---------------- */
 
     void start() {
+        main.removeCallbacks(repick);
+        main.postDelayed(repick, 2000);
         main.removeCallbacks(autoFlip);
         main.postDelayed(autoFlip, AUTO_FLIP_MS);
         started = true;
@@ -534,6 +558,7 @@ final class MusicCard {
     }
 
     void stop() {
+        main.removeCallbacks(repick);
         main.removeCallbacks(autoFlip);
         started = false;
         audio.unregisterAudioDeviceCallback(devices);
@@ -562,16 +587,21 @@ final class MusicCard {
 
     /** Prefers the session that is playing; otherwise the most recent one. */
     private void pick(List<MediaController> list) {
+        // Best session: playing with track info > playing > has track info > the first one.
         MediaController best = null;
+        int bestScore = -1;
         if (list != null) {
             for (MediaController c : list) {
-                PlaybackState s = c.getPlaybackState();
-                if (s != null && s.getState() == PlaybackState.STATE_PLAYING) {
+                PlaybackState st = c.getPlaybackState();
+                MediaMetadata m = c.getMetadata();
+                boolean playing = st != null && st.getState() == PlaybackState.STATE_PLAYING;
+                boolean info = m != null && m.getString(MediaMetadata.METADATA_KEY_TITLE) != null;
+                int score = (playing ? 2 : 0) + (info ? 1 : 0);
+                if (score > bestScore) {
                     best = c;
-                    break;
+                    bestScore = score;
                 }
             }
-            if (best == null && !list.isEmpty()) best = list.get(0);
         }
         if (controller != null && best != null && controller.getSessionToken().equals(best.getSessionToken())) {
             renderTrack();
@@ -856,6 +886,7 @@ final class MusicCard {
                     shown[i] += (target[i] - shown[i]) * 0.35f;
                     target[i] *= 0.9f;
                 }
+                signal = !noSignal;
                 pushColumn();
                 invalidate();
                 postOnAnimation(this);
@@ -867,7 +898,21 @@ final class MusicCard {
         private final int[] colColour = new int[400];
         private int colHead;
 
+        /** True while the real sound arrives; the placeholder pulse never goes into the waveform or the phases. */
+        boolean signal;
+
         private void pushColumn() {
+            if (!signal) {
+                colHead = (colHead + 1) % colAmp.length;
+                colAmp[colHead] = 0;
+                colColour[colHead] = 0;
+                if (phaseLabel != null && audio.isMusicActive()) {
+                    phaseLabel.setText("KEIN SIGNAL");
+                    phase = PhaseBar.Phase.GROOVE;
+                }
+                if (phaseBar != null) phaseBar.update(currentPosition(), duration(), null);
+                return;
+            }
             float lo = 0, mid = 0, hi = 0;
             for (int i = 0; i < BARS; i++) {
                 if (i < BARS / 3) lo += shown[i];
