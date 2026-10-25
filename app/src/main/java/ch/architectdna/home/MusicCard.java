@@ -183,6 +183,12 @@ final class MusicCard {
         output = label(11, ink2, true);
         output.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         output.setLetterSpacing(0.08f);
+        // Speaker line: tap = Android's output switcher (JBL ↔ phone …), long-press = the JBL app or Bluetooth settings.
+        output.setOnClickListener(v -> showOutputSwitcher());
+        output.setOnLongClickListener(v -> {
+            openSpeakerApp();
+            return true;
+        });
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(-1, -2);
         olp.topMargin = dp(8);
         root.addView(output, olp);
@@ -733,6 +739,75 @@ final class MusicCard {
     };
 
     /** Shows where the music goes; remembers when a Bluetooth speaker (e.g. the JBL) connected. */
+    /* ---- Speaker control: output switcher, battery, the speaker's own app ---- */
+
+    private int lastBattery = -1;
+
+    /** Android's own output switcher (moves the music between JBL, phone speaker, other devices). */
+    private void showOutputSwitcher() {
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            try {
+                if (android.media.MediaRouter2.getInstance(activity).showSystemOutputSwitcher()) return;
+            } catch (RuntimeException ignored) {
+            }
+        }
+        try {
+            activity.sendBroadcast(new Intent("com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG")
+                .setPackage("com.android.systemui").putExtra("package_name", activity.getPackageName()));
+            return;
+        } catch (RuntimeException ignored) {
+        }
+        host.open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+    }
+
+    /** The speaker maker's app if installed (JBL / Harman), else Bluetooth settings. */
+    private void openSpeakerApp() {
+        android.content.pm.PackageManager pm = activity.getPackageManager();
+        Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
+            String pkg = ri.activityInfo.packageName.toLowerCase(Locale.ROOT);
+            String label = String.valueOf(ri.loadLabel(pm)).toLowerCase(Locale.ROOT);
+            if (pkg.contains("jbl") || pkg.contains("harman") || label.contains("jbl")) {
+                Intent launch = pm.getLaunchIntentForPackage(ri.activityInfo.packageName);
+                if (launch != null) {
+                    host.open(launch);
+                    return;
+                }
+            }
+        }
+        host.open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+    }
+
+    /** Battery of the connected speaker, if it reports one (needs "Nearby devices"); -1 = unknown. */
+    private int speakerBattery() {
+        if (android.os.Build.VERSION.SDK_INT >= 31
+            && activity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            return -1;
+        }
+        try {
+            android.bluetooth.BluetoothManager bm = activity.getSystemService(android.bluetooth.BluetoothManager.class);
+            android.bluetooth.BluetoothAdapter ad = bm == null ? null : bm.getAdapter();
+            if (ad == null) return lastBattery;
+            for (android.bluetooth.BluetoothDevice d : ad.getBondedDevices()) {
+                if (btName == null || !btName.equals(d.getName())) continue;
+                Object level = d.getClass().getMethod("getBatteryLevel").invoke(d);
+                if (level instanceof Integer && (Integer) level >= 0) lastBattery = (Integer) level;
+            }
+        } catch (Exception ignored) {
+            // Not every phone lets apps read it; then the battery just isn't shown.
+        }
+        return lastBattery;
+    }
+
+    private void askBluetoothOnce() {
+        if (android.os.Build.VERSION.SDK_INT < 31) return;
+        if (activity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) return;
+        android.content.SharedPreferences p = activity.getSharedPreferences("home", Activity.MODE_PRIVATE);
+        if (p.getBoolean("askedBtConnect", false)) return;
+        p.edit().putBoolean("askedBtConnect", true).apply();
+        activity.requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 31);
+    }
+
     private void refreshOutput(boolean announce) {
         AudioDeviceInfo bt = null, wired = null;
         for (AudioDeviceInfo d : audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
@@ -752,7 +827,9 @@ final class MusicCard {
         }
         if (btName != null) {
             String since = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(btSince));
-            output.setText("● " + btName + " · BLUETOOTH · SEIT " + since);
+            askBluetoothOnce();
+            int battery = speakerBattery();
+            output.setText("● " + btName + (battery >= 0 ? " · 🔋 " + battery + " %" : "") + " · SEIT " + since + "  ⇄");
             output.setTextColor(rust);
         } else if (wired != null) {
             output.setText("● " + wired.getProductName() + " · KABEL");

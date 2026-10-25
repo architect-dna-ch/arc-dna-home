@@ -209,3 +209,10 @@ The "Telefon" tile opens ARC-DNA's own dialer (Android doesn't allow restyling t
 app): keypad with key tones, recent calls, contacts matching the typed number or name (T9), a
 rust call button. The call itself runs in Android's in-call screen. Long-press the tile for the
 system phone app. Contacts and call log are only read on the phone.
+
+## Speaker control
+
+The music card's speaker line ("● JBL Tune Beam 2 · 🔋 70 % · SEIT 11:45 ⇄"): tap = Android's
+output switcher (move the music between the JBL, the phone speaker and other devices); long-press
+= the JBL app if installed, else Bluetooth settings. The battery shows when the speaker reports it
+and "Nearby devices" is allowed. JBL's own EQ / PartyBoost settings stay in the JBL app (private protocol).
