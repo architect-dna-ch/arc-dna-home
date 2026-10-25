@@ -420,18 +420,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Priorities: search, apps and music always open; everything else folds away.
         content.addView(searchRow(), margins(-1, -2, 0, dp(20), 0, 0));
 
-        content.addView(label("Apps"), margins(-1, -2, 0, dp(22), 0, 0));
         appTilesBox = new FrameLayout(this);
         appTilesBox.addView(appTiles());
-        content.addView(appTilesBox, margins(-1, -2, 0, dp(10), 0, 0));
+        foldable("Apps", "apps", true, appTilesBox, dp(22));
 
         // Zuletzt: always on, one row.
-        content.addView(label("Zuletzt"), margins(-1, -2, 0, dp(22), 0, 0));
         recentHome = new LinearLayout(this);
         recentHome.setOrientation(LinearLayout.VERTICAL);
-        content.addView(recentHome, margins(-1, -2, 0, dp(10), 0, 0));
+        foldable("Zuletzt", "recentRow", true, recentHome, dp(22));   // new key: the old "recent" fold was closed by default
 
-        content.addView(label("Musik"), margins(-1, -2, 0, dp(26), 0, 0));
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
             @Override
             public void open(Intent intent) {
@@ -455,7 +452,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
         });
         musicView = music.view();
-        content.addView(musicView, margins(-1, -2, 0, dp(10), 0, 0));
+        foldable("Musik", "music", true, musicView, dp(26));
 
         // Mediathek inline: all apps, folded by default.
         homeLib = new LinearLayout(this);
