@@ -24,7 +24,7 @@ import java.util.Random;
  */
 final class GhostView extends View {
 
-    private static final float DARK = 0.94f;
+    private static final float DARK = 0.87f;   // just enough of the page shows outside the torch to know where you are
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hole = new Paint(Paint.ANTI_ALIAS_FLAG);
