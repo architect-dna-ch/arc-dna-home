@@ -30,6 +30,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- ARC-DNA Telefon: place calls, show recent calls and contacts (read on the phone only). -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
     <!-- Android 11+ package visibility: see every launchable app and the default apps for the dock. -->
@@ -71,6 +75,23 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ARC-DNA Telefon: the dialer in the launcher's style (the call itself runs in Android's in-call screen). -->
+        <activity
+            android:name=".DialerActivity"
+            android:exported="true"
+            android:label="ARC-DNA Telefon"
+            android:windowSoftInputMode="stateHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="tel" />
             </intent-filter>
         </activity>
 

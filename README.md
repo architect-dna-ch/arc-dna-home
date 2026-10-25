@@ -202,3 +202,10 @@ The same APK adapts: on a Pixel in portrait the lock screen gets everything (fin
 media-card frame). Elsewhere – e.g. a landscape tablet – it leaves out what was measured on the
 Pixel (fingerprint ring, media-card frame), draws the camera ring only around a real camera hole,
 and sizes the cube, rings and characters by the shorter screen side.
+
+## ARC-DNA Telefon
+
+The "Telefon" tile opens ARC-DNA's own dialer (Android doesn't allow restyling the system phone
+app): keypad with key tones, recent calls, contacts matching the typed number or name (T9), a
+rust call button. The call itself runs in Android's in-call screen. Long-press the tile for the
+system phone app. Contacts and call log are only read on the phone.

@@ -560,7 +560,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 left = insets.getSystemWindowInsetLeft();
                 right = insets.getSystemWindowInsetRight();
             }
-            content.setPadding(left + dp(20), top0 + dp(24), right + dp(20), bottom + dp(132));
+            content.setPadding(left + dp(20), top0 + dp(24), right + dp(20), bottom + dp(170));   // clears rabbit button + fox
             library.setPadding(left + dp(20), top0 + dp(20), right + dp(20), bottom + dp(12));
             calibOverlay.setPadding(left, top0, right, bottom);
             // Keep the seismograph and fox clear of the navigation buttons, with the fade behind them.
@@ -657,7 +657,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** The eight tiles from architect-dna.ch/home, each opening the matching app on the phone. */
     private View appTiles() {
         Object[][] items = {
-            {"Telefon", R.drawable.ic_phone, new Intent(Intent.ACTION_DIAL)},
+            {"Telefon", R.drawable.ic_phone, new Intent(this, DialerActivity.class)},
             {"SMS", R.drawable.ic_sms, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)},
             {"Mail", R.drawable.ic_mail, appOr("ch.protonmail.android",
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL))},
@@ -682,6 +682,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             Intent intent = (Intent) items[i][2];
             View tile = tile((String) items[i][0], getDrawable((Integer) items[i][1]), 28);
             tile.setOnClickListener(v -> open(intent));
+            // Telefon: long-press = the system phone app (favourites, voicemail, settings).
+            if (i == 0) tile.setOnLongClickListener(v -> {
+                Intent system = getPackageManager().getLaunchIntentForPackage("com.google.android.dialer");
+                open(system != null ? system : Intent.createChooser(new Intent(Intent.ACTION_DIAL), "Telefon-App"));
+                return true;
+            });
             row.addView(tile, weighted(i % cols != 0));
         }
         for (int i = items.length % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
