@@ -75,7 +75,7 @@ home still scrolls to the top.
 
 ## Home layout (priorities)
 
-Always open: clock + brightness lever and **search**. **Apps**, **Zuletzt** and **Musik** start open but fold too; folding sections below
+Clock + brightness lever on top; every section folds from its title (**Suche**, **Apps**, **Zuletzt**, **Musik** start open; **Tipps** closed). With everything folded the page fits the screen exactly, the section titles sitting down by the thumb – no scrolling; folding sections below
 (tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (all apps inline, frosted row by row
 while scrolling; link to the full Mediathek), **Heute & Wecker**, **Projekte**. **Zuletzt** is
 always on, one row under the apps.

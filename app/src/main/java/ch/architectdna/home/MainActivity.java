@@ -408,6 +408,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(date);
         greet = text(17, ink, true);
         content.addView(greet);
+        // Flexible gap: with sections folded the page fills the screen exactly (clock on top, section
+        // titles down by the thumb, no scrolling); opened sections eat the gap before the page scrolls.
+        content.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
         alarmRow = monoText(12, ink3);
         alarmRow.setPadding(0, dp(10), 0, dp(4));
         alarmRow.setOnClickListener(v -> pickAlarm());
@@ -418,7 +421,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         paintAlarm();
 
         // Priorities: search, apps and music always open; everything else folds away.
-        content.addView(searchRow(), margins(-1, -2, 0, dp(20), 0, 0));
+        foldable("Suche", "search", true, searchRow(), dp(20));
 
         appTilesBox = new FrameLayout(this);
         appTilesBox.addView(appTiles());
@@ -471,7 +474,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView hint = monoText(11, ink3);
         hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
-        content.addView(hint, margins(-1, -2, 0, dp(20), 0, 0));
+        foldable("Tipps", "hints", false, hint, dp(20));
 
         // While hidden, this transparent layer takes the tap that brings everything back,
         // so the faded tiles underneath can't be opened by accident.
