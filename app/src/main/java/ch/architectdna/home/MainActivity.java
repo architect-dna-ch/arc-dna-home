@@ -920,6 +920,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showTokenDialog();
             return true;
         });
+        settingsRow(sys, "Kamera-Debug", () -> prefs.getBoolean("camDebug", false) ? "an · Ecke in der Mediathek" : "aus", v -> {
+            prefs.edit().putBoolean("camDebug", !prefs.getBoolean("camDebug", false)).apply();
+            if (libraryOpen && !headMode().equals("off")) {
+                stopHead();
+                startHead();
+            }
+        }, null);
         settingsRow(sys, "Diagnose an Claude senden", () -> "anonym · halten = teilen", v -> uploadDiagnostics(), v -> {
             shareDiagnostics();
             return true;
@@ -1875,7 +1882,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibSum = 0;
         smoothTilt = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
         boolean gaze = m.equals("gaze");
+        boolean dbg = prefs.getBoolean("camDebug", false);
+        head.stop();
+        head.setDebug(dbg);
         head.start(gaze ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
+        if (dbg && headDebug == null) {
+            headDebug = new HeadDebugView(this, rust);
+            int top = Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null
+                ? rootFrame.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.systemBars()).top : dp(24);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(150), dp(150 * 4 / 3 + 64), Gravity.TOP | Gravity.END);
+            lp.setMargins(0, top + dp(60), dp(12), 0);
+            rootFrame.addView(headDebug, lp);
+        }
         edgeLight.watch(true);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
@@ -1886,6 +1904,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void stopHead() {
         endGazeCalibration();
         if (head != null) head.stop();
+        if (headDebug != null) {
+            rootFrame.removeView(headDebug);
+            headDebug = null;
+        }
         if (edgeLight != null) edgeLight.watch(false);
         headSpeed = 0;
         handler.removeCallbacks(headScroller);
@@ -2192,6 +2214,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         o.addView(skip, slp);
         return o;
     }
+
+    @Override
+    public void onDebug(HeadTracker.Debug d) {
+        if (headDebug == null) return;
+        String dec;
+        if (calibStage >= 0) dec = "KALIBRIERT …";
+        else if (!d.face) dec = "→ STOPP (KEIN GESICHT)";
+        else {
+            float frac = nodFraction(prefs, smoothTilt);
+            dec = String.format(Locale.ROOT, "NICK %3.0f%%  %s", frac * 100,
+                headSpeed < 0 ? "→ SCROLL ↑" : headSpeed > 0 ? "→ SCROLL ↓" : "→ STEHT");
+        }
+        headDebug.update(d, dec);
+    }
+
+    private HeadDebugView headDebug;
 
     @Override
     public void onLost() {

@@ -20,12 +20,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mediapipe.framework.image.BitmapImageBuilder;
 import com.google.mediapipe.framework.image.MPImage;
 import com.google.mediapipe.tasks.components.containers.Category;
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark;
 import com.google.mediapipe.tasks.core.BaseOptions;
 import com.google.mediapipe.tasks.vision.core.RunningMode;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceContour;
 import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
@@ -58,6 +60,35 @@ final class HeadTracker implements LifecycleOwner {
         void onLost();
 
         void onError(String message);
+
+        /** Debug mode only: a small copy of the camera frame plus what was found in it. Main thread. */
+        default void onDebug(Debug d) {
+        }
+    }
+
+    /** What the tracker sees and computes, for the debug corner. Points are 0..1 of the frame. */
+    static final class Debug {
+        Bitmap frame;
+        boolean face;
+        android.graphics.RectF box;
+        final List<float[]> contours = new java.util.ArrayList<>();   // ML Kit outline, eyes, brows, nose, lips
+        float[] eyes;      // MediaPipe: lids and corners of both eyes
+        float[] iris;      // MediaPipe: the two iris centres
+        float pitch, yaw;  // head angles (degrees)
+        float gazeV = Float.NaN, gazeH = Float.NaN;   // eyes: down−up, right−left (−1 … 1)
+    }
+
+    private volatile boolean debug;
+    private long lastDebug;
+    private FaceLandmarker debugLandmarker;
+
+    /** Turn the debug corner on / off; takes effect from the next start(). */
+    void setDebug(boolean on) {
+        if (on == debug) return;
+        debug = on;
+        FaceDetector old = detector;
+        detector = null;          // rebuilt with (or without) contours on the next start
+        if (old != null) analysisExecutor.execute(old::close);
     }
 
     private static final String GAZE_MODEL = "face_landmarker.task";
@@ -95,6 +126,7 @@ final class HeadTracker implements LifecycleOwner {
             if (m == Mode.NOD && detector == null) {
                 detector = FaceDetection.getClient(new FaceDetectorOptions.Builder()
                     .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                    .setContourMode(debug ? FaceDetectorOptions.CONTOUR_MODE_ALL : FaceDetectorOptions.CONTOUR_MODE_NONE)
                     .setMinFaceSize(0.2f)
                     .build());
             }
@@ -134,6 +166,7 @@ final class HeadTracker implements LifecycleOwner {
         analysisExecutor.execute(() -> {
             if (detector != null) detector.close();
             if (landmarker != null) landmarker.close();
+            if (debugLandmarker != null) debugLandmarker.close();
         });
         analysisExecutor.shutdown();
     }
@@ -181,6 +214,13 @@ final class HeadTracker implements LifecycleOwner {
         if (detector == null) return;
         try {
             List<Face> faces = Tasks.await(detector.process(InputImage.fromBitmap(frame, 0)));
+            if (debug && SystemClock.uptimeMillis() - lastDebug > 120) {
+                lastDebug = SystemClock.uptimeMillis();
+                Debug d = debugInfo(frame, faces);
+                main.post(() -> {
+                    if (running) listener.onDebug(d);
+                });
+            }
             if (faces.isEmpty()) {
                 main.post(() -> {
                     if (running) listener.onLost();
@@ -194,6 +234,70 @@ final class HeadTracker implements LifecycleOwner {
         } catch (Exception ignored) {
             // A dropped frame is fine; the next one follows in ~30 ms.
         }
+    }
+
+    /** Debug corner: shrink the frame, collect ML Kit's contours and MediaPipe's eye points. */
+    private Debug debugInfo(Bitmap frame, List<Face> faces) {
+        Debug d = new Debug();
+        float fw = frame.getWidth(), fh = frame.getHeight();
+        d.frame = Bitmap.createScaledBitmap(frame, 240, Math.max(1, Math.round(240 * fh / fw)), true);
+        if (!faces.isEmpty()) {
+            Face f = faces.get(0);
+            d.face = true;
+            d.pitch = f.getHeadEulerAngleX();
+            d.yaw = f.getHeadEulerAngleY();
+            android.graphics.Rect b = f.getBoundingBox();
+            d.box = new android.graphics.RectF(b.left / fw, b.top / fh, b.right / fw, b.bottom / fh);
+            for (FaceContour c : f.getAllContours()) {
+                List<android.graphics.PointF> pts = c.getPoints();
+                float[] line = new float[pts.size() * 2];
+                for (int i = 0; i < pts.size(); i++) {
+                    line[2 * i] = pts.get(i).x / fw;
+                    line[2 * i + 1] = pts.get(i).y / fh;
+                }
+                d.contours.add(line);
+            }
+        }
+        // The eyes, from the detailed face mesh (the model BLICK used), to compare.
+        try {
+            if (debugLandmarker == null) {
+                debugLandmarker = FaceLandmarker.createFromOptions(context, FaceLandmarker.FaceLandmarkerOptions.builder()
+                    .setBaseOptions(BaseOptions.builder().setModelAssetPath(GAZE_MODEL).build())
+                    .setRunningMode(RunningMode.IMAGE)
+                    .setNumFaces(1)
+                    .setOutputFaceBlendshapes(true)
+                    .build());
+            }
+            FaceLandmarkerResult r = debugLandmarker.detect(new BitmapImageBuilder(frame).build());
+            if (!r.faceLandmarks().isEmpty()) {
+                List<NormalizedLandmark> lm = r.faceLandmarks().get(0);
+                int[] eyeIdx = {33, 159, 133, 145, 362, 386, 263, 374};
+                d.eyes = new float[eyeIdx.length * 2];
+                for (int i = 0; i < eyeIdx.length; i++) {
+                    d.eyes[2 * i] = lm.get(eyeIdx[i]).x();
+                    d.eyes[2 * i + 1] = lm.get(eyeIdx[i]).y();
+                }
+                if (lm.size() > 473) d.iris = new float[]{lm.get(468).x(), lm.get(468).y(), lm.get(473).x(), lm.get(473).y()};
+            }
+            Optional<List<List<Category>>> shapes = r.faceBlendshapes();
+            if (shapes.isPresent() && !shapes.get().isEmpty()) {
+                float down = 0, up = 0, inL = 0, outL = 0, inR = 0, outR = 0;
+                for (Category c : shapes.get().get(0)) {
+                    String n = c.categoryName();
+                    if (n.startsWith("eyeLookDown")) down += c.score();
+                    else if (n.startsWith("eyeLookUp")) up += c.score();
+                    else if (n.equals("eyeLookInLeft")) inL = c.score();
+                    else if (n.equals("eyeLookOutLeft")) outL = c.score();
+                    else if (n.equals("eyeLookInRight")) inR = c.score();
+                    else if (n.equals("eyeLookOutRight")) outR = c.score();
+                }
+                d.gazeV = (down - up) / 2f;
+                d.gazeH = ((outL + inR) - (inL + outR)) / 2f;
+            }
+        } catch (RuntimeException e) {
+            // No eye model: the corner shows the head part only.
+        }
+        return d;
     }
 
     /** MediaPipe result (background thread): eyeLookDown minus eyeLookUp, averaged over both eyes. */
