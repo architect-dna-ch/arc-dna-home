@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Buddy: the F1 racer (car side-on, the driver's visor is the eye), 96 × 64 like the fox. -->
+<!-- Buddy: the F1 racer (car side-on, the driver's eye looks out through the visor), 96 × 64 like the fox. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="96dp"
     android:height="64dp"
     android:viewportWidth="96"
     android:viewportHeight="64">
     <path android:fillColor="@color/ink" android:pathData="M5,25 L17,25 L17,30 L13,30 L13,44 L9,44 L9,30 L5,30 Z" />
+    <path android:fillColor="@color/rust" android:pathData="M85,47.5 L95,47.5 L95,50.5 L85,50.5 Z" />
     <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.5" android:strokeLineJoin="round"
-        android:pathData="M10,44 L26,40 L42,40 L47,33 L62,33 L67,40 L84,42 L92,45 L92,48 L10,48 Z" />
-    <path android:fillColor="@color/rust" android:pathData="M27,43.5 L84,43.5 L84,46 L27,46 Z" />
-    <path android:fillColor="@color/rust" android:pathData="M80,48 L95,48 L95,51.5 L80,51.5 Z" />
+        android:pathData="M10,44 L26,40 L44,40 L48,35 L63,35 L67,40 L84,42 L91,45 L91,48 L10,48 Z" />
+    <path android:fillColor="@color/rust" android:pathData="M30,43.5 L66,43.5 L66,46 L30,46 Z" />
     <path android:fillColor="@color/ink" android:pathData="M18,51 A8,8 0 1,0 34,51 A8,8 0 1,0 18,51 Z" />
-    <path android:fillColor="@color/ink" android:pathData="M68,51 A8,8 0 1,0 84,51 A8,8 0 1,0 68,51 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M66,51 A8,8 0 1,0 82,51 A8,8 0 1,0 66,51 Z" />
     <path android:fillColor="@color/paper" android:pathData="M23,51 A3,3 0 1,0 29,51 A3,3 0 1,0 23,51 Z" />
-    <path android:fillColor="@color/paper" android:pathData="M73,51 A3,3 0 1,0 79,51 A3,3 0 1,0 73,51 Z" />
+    <path android:fillColor="@color/paper" android:pathData="M71,51 A3,3 0 1,0 77,51 A3,3 0 1,0 71,51 Z" />
     <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2"
-        android:pathData="M48,29 A7,7 0 1,0 62,29 A7,7 0 1,0 48,29 Z" />
-    <path android:fillColor="@color/rust" android:pathData="M48.4,31 L61.6,31 L61,33 L49,33 Z" />
-    <path android:fillColor="@color/ink" android:pathData="M54.4,28 A3.4,3.4 0 1,0 61.2,28 A3.4,3.4 0 1,0 54.4,28 Z" />
+        android:pathData="M49,30 C49,24 52,22 56,22 C60,22 63,25 63,30 L63,35 L49,35 Z" />
+    <path android:fillColor="@color/rust" android:pathData="M50.2,26 C51,23.6 53,23 56,23 L56,25 C53.5,25 52,25.4 51.2,26.4 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M55,27 L63,27 L63,31.5 L56.5,31.5 C55.6,31.5 55,30.9 55,30 Z" />
 </vector>

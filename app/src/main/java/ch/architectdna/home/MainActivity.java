@@ -2934,7 +2934,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         {"Brumm.", "Hrrmm?", "Grrmpf!", "Mmmh, Honig."},
         {"Mümmel!", "Tipp-tapp!", "Snff?", "Hüpf!"},
         {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."}};
-    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {57.8f, 28f, 3.4f, 1.8f}};
+    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {59.6f, 29.2f, 1.9f, 1.05f}};
     private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy};
     private int tipIndex;
 
