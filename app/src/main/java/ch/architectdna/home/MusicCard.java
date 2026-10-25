@@ -105,6 +105,7 @@ final class MusicCard {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(14), dp(14), dp(14), dp(12));
         root.setBackground(box(card, line, 8));
+        root.setForeground(frame);
 
         LinearLayout top = new LinearLayout(activity);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -751,6 +752,72 @@ final class MusicCard {
             source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN));
         }
         playButton.setImageResource(isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
+        frame.run(isPlaying());
+    }
+
+    private final RainbowFrame frame = new RainbowFrame();
+
+    /** The lock screen's flowing rainbow border, on the card while music plays. */
+    private final class RainbowFrame extends android.graphics.drawable.Drawable {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF();
+        private final android.graphics.Matrix m = new android.graphics.Matrix();
+        private final int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
+        private android.graphics.LinearGradient flow;
+        private float flowW;
+        private boolean running;
+        private float shown;
+
+        void run(boolean on) {
+            if (on == running) return;
+            running = on;
+            invalidateSelf();
+        }
+
+        @Override
+        public void draw(Canvas c) {
+            android.graphics.Rect b = getBounds();
+            if (b.isEmpty()) return;
+            // Fade in / out over ~0.4 s instead of popping.
+            shown = Math.max(0f, Math.min(1f, shown + (running ? 0.08f : -0.08f)));
+            if (shown > 0) {
+                float w = b.width();
+                if (flow == null || flowW != w) {
+                    flowW = w;
+                    flow = new android.graphics.LinearGradient(0, 0, w * 0.9f, b.height() * 0.15f, hues, null,
+                        android.graphics.Shader.TileMode.REPEAT);
+                }
+                float t = android.os.SystemClock.uptimeMillis() / 1000f;
+                m.setTranslate((t * w * 0.35f) % (w * 0.9f), 0);
+                flow.setLocalMatrix(m);
+                p.setShader(flow);
+                p.setStyle(Paint.Style.STROKE);
+                float rad = dp(8);
+                // A soft inner glow, then the crisp line on the card's edge.
+                p.setStrokeWidth(dp(7));
+                p.setAlpha((int) (55 * shown));
+                r.set(b.left + dp(3.5f), b.top + dp(3.5f), b.right - dp(3.5f), b.bottom - dp(3.5f));
+                c.drawRoundRect(r, rad - dp(2), rad - dp(2), p);
+                p.setStrokeWidth(dp(2.5f));
+                p.setAlpha((int) (240 * shown));
+                r.set(b.left + dp(1.25f), b.top + dp(1.25f), b.right - dp(1.25f), b.bottom - dp(1.25f));
+                c.drawRoundRect(r, rad, rad, p);
+            }
+            if (running || shown > 0) scheduleSelf(this::invalidateSelf, android.os.SystemClock.uptimeMillis() + 33);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter cf) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     private boolean isPlaying() {
