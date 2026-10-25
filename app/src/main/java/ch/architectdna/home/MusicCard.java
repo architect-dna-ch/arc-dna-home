@@ -418,6 +418,11 @@ final class MusicCard {
             if (p == PhaseBar.Phase.DROP || p == PhaseBar.Phase.BREAK) built = false;
             if (phaseLabel != null) paintPhase(p);
         }
+        // On a drop every kick flashes one of the bunny's ears, left, right, left …
+        if (phase == PhaseBar.Phase.DROP && lo > loS * 1.3f && lo > 0.05f && now - lastKick > 180) {
+            lastKick = now;
+            if (gauge != null) gauge.beat();
+        }
         if (phaseBar != null) {
             followTrack();
             phaseBar.update(currentPosition(), duration(), audio.isMusicActive() ? phase : null);
@@ -888,6 +893,7 @@ final class MusicCard {
 
     private int lastBattery = -1;
     private DeviceGauge gauge;
+    private long lastKick;
     private TextView deviceName;
 
     /**
@@ -901,6 +907,44 @@ final class MusicCard {
 
         DeviceGauge() {
             super(activity);
+        }
+
+        /* Bunny life: now and then one ear flicks; on a drop the ears flash in turn with the kicks. */
+        private long flickAt = -1, nextFlick;
+        private int flickSide = 1, beatSide = 1;
+        private final long[] flashAt = {-1, -1};
+        private final java.util.Random rnd = new java.util.Random();
+        private final Runnable flicker = new Runnable() {
+            @Override
+            public void run() {
+                if (!isAttachedToWindow()) return;
+                if (kind == 0 && isShown()) {
+                    flickAt = android.os.SystemClock.uptimeMillis();
+                    flickSide = rnd.nextBoolean() ? 1 : -1;
+                    invalidate();
+                }
+                postDelayed(this, 2500 + rnd.nextInt(4500));
+            }
+        };
+
+        @Override
+        protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            removeCallbacks(flicker);
+            postDelayed(flicker, 2000);
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            removeCallbacks(flicker);
+            super.onDetachedFromWindow();
+        }
+
+        void beat() {
+            if (kind != 0) return;
+            beatSide = -beatSide;
+            flashAt[beatSide < 0 ? 0 : 1] = android.os.SystemClock.uptimeMillis();
+            invalidate();
         }
 
         void set(int k, int lvl) {
@@ -927,18 +971,38 @@ final class MusicCard {
             ox = cx;
             oy = cy;
             if (kind == 0) {
-                // Bunny — long ears for the in-ears.
+                // Bunny — long ears for the in-ears (left ear = left bud, right ear = right bud).
+                long now = android.os.SystemClock.uptimeMillis();
+                boolean busy = false;
                 for (int side = -1; side <= 1; side += 2) {
+                    float angle = side * 12.6f;
+                    // Flick: the ear twitches outwards twice, quickly, then settles.
+                    long fk = now - flickAt;
+                    if (flickAt >= 0 && side == flickSide && fk < 520) {
+                        angle += side * 26f * (float) Math.abs(Math.sin(Math.PI * 2 * fk / 520f)) * (1 - fk / 620f);
+                        busy = true;
+                    }
+                    long fl = now - flashAt[side < 0 ? 0 : 1];
+                    float flash = flashAt[side < 0 ? 0 : 1] >= 0 && fl < 260 ? 1 - fl / 260f : 0;
+                    if (flash > 0) busy = true;
                     c.save();
-                    c.rotate(side * 12.6f, ox + side * 1.5f * u, oy - 3.4f * u);
+                    c.rotate(angle, ox + side * 1.5f * u, oy - 1.2f * u);
+                    if (flash > 0) {
+                        // A glow at the ear's tip.
+                        p.setColor(0xFFFFE680);
+                        p.setAlpha((int) (110 * flash));
+                        c.drawCircle(ox + side * 1.5f * u, oy - 5.6f * u, (1.4f + 1.4f * flash) * u, p);
+                        p.setAlpha(255);
+                    }
                     p.setColor(ink);
                     r.set(ox + (side * 1.5f - 0.95f) * u, oy - 6f * u, ox + (side * 1.5f + 0.95f) * u, oy - 0.8f * u);
                     c.drawOval(r, p);
-                    p.setColor(rust);
+                    p.setColor(flash > 0 ? mix(rust, 0xFFFFE680, flash) : rust);
                     r.set(ox + (side * 1.5f - 0.43f) * u, oy - 5f * u, ox + (side * 1.5f + 0.43f) * u, oy - 1.4f * u);
                     c.drawOval(r, p);
                     c.restore();
                 }
+                if (busy) postInvalidateOnAnimation();
                 dot(0, 2, 3.3f, ink, c);
                 dot(-1.2f, 1.5f, 0.45f, card, c);
                 dot(1.2f, 1.5f, 0.45f, card, c);
@@ -981,6 +1045,12 @@ final class MusicCard {
         }
 
         private float u, ox, oy;
+
+        private int mix(int a, int b, float k) {
+            int r1 = (a >> 16) & 255, g1 = (a >> 8) & 255, b1 = a & 255;
+            int r2 = (b >> 16) & 255, g2 = (b >> 8) & 255, b2 = b & 255;
+            return 0xFF000000 | ((int) (r1 + (r2 - r1) * k) << 16) | ((int) (g1 + (g2 - g1) * k) << 8) | (int) (b1 + (b2 - b1) * k);
+        }
         private final Path path = new Path();
 
         private void dot(float x, float y, float rr, int color, Canvas c) {
