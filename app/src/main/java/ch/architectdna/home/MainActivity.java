@@ -841,11 +841,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (libraryOpen) return;
         libraryOpen = true;
         hideKeyboard();
+        // One smooth move: the home page sinks back and fades while the Mediathek slides up over it.
         library.setVisibility(View.VISIBLE);
         library.setAlpha(0f);
-        library.setTranslationY(dp(60));
-        library.animate().alpha(1f).translationY(0).setDuration(260)
-            .setInterpolator(new DecelerateInterpolator()).start();
+        library.setTranslationY(dp(48));
+        library.animate().cancel();
+        library.animate().alpha(1f).translationY(0).setDuration(320)
+            .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        scroll.animate().cancel();
+        scroll.setPivotY(scroll.getHeight() * 0.35f);
+        scroll.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(320)
+            .setInterpolator(new DecelerateInterpolator(1.6f)).start();
         libScroll.scrollTo(0, 0);
         floaters(false);
         // Head / eye scrolling only works in the Mediathek: the camera starts here …
@@ -859,8 +865,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         stopHead();
         hideKeyboard();
         libSearch.setText("");
-        library.animate().alpha(0f).translationY(dp(60)).setDuration(200)
+        // The same move backwards: the Mediathek slides down and fades, the home page comes forward.
+        library.animate().cancel();
+        library.animate().alpha(0f).translationY(dp(48)).setDuration(280)
+            .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
             .withEndAction(() -> library.setVisibility(View.GONE)).start();
+        scroll.animate().cancel();
+        scroll.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(320)
+            .setInterpolator(new DecelerateInterpolator(1.6f)).start();
         floaters(true);
     }
 
