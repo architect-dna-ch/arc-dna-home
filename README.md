@@ -222,3 +222,6 @@ and "Nearby devices" is allowed. JBL's own EQ / PartyBoost settings stay in the 
 Every song you start is logged on the phone (time, title, artist, app – from the media sessions,
 via the notification-access entry). Music card → stats page → "VERLAUF ALLER TITEL": the history
 grouped by day, or the TOP list with play counts. Tap a song to play it again in its app.
+The TIERE tab sorts every song to a lock screen character by its remembered phase map:
+🏎 F1-Racer (builds + drops), 🐻 Bär in der Höhle (calm, breaks), 🦊 Fuchs (vocals), 🐰 Hase
+(light groove); a thin bar under each song shows its phase mix.

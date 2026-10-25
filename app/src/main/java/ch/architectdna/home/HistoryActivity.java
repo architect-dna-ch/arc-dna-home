@@ -38,7 +38,7 @@ public class HistoryActivity extends Activity {
 
     private int bg, ink, ink2, ink3, rust, card, line;
     private LinearLayout list;
-    private TextView tabRecent, tabTop;
+    private TextView tabRecent, tabTop, tabAnimals;
     private List<String[]> plays;
     private final Map<String, Integer> counts = new HashMap<>();
 
@@ -160,6 +160,11 @@ public class HistoryActivity extends Activity {
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
         tl.leftMargin = dp(8);
         tabs.addView(tabTop, tl);
+        tabAnimals = tab("TIERE");
+        tabAnimals.setOnClickListener(v -> showAnimals());
+        LinearLayout.LayoutParams tl2 = new LinearLayout.LayoutParams(-2, -2);
+        tl2.leftMargin = dp(8);
+        tabs.addView(tabAnimals, tl2);
         LinearLayout.LayoutParams tsl = new LinearLayout.LayoutParams(-1, -2);
         tsl.topMargin = dp(16);
         root.addView(tabs, tsl);
@@ -184,10 +189,148 @@ public class HistoryActivity extends Activity {
     }
 
     private void paintTabs(boolean recent) {
-        tabRecent.setTextColor(recent ? 0xFFFFFFFF : ink2);
-        tabRecent.setBackground(recent ? box(rust, 0) : box(card, line));
-        tabTop.setTextColor(recent ? ink2 : 0xFFFFFFFF);
-        tabTop.setBackground(recent ? box(card, line) : box(rust, 0));
+        paintTab(recent ? tabRecent : tabTop);
+    }
+
+    private void paintTab(TextView on) {
+        for (TextView t : new TextView[]{tabRecent, tabTop, tabAnimals}) {
+            boolean active = t == on;
+            t.setTextColor(active ? 0xFFFFFFFF : ink2);
+            t.setBackground(active ? box(rust, 0) : box(card, line));
+        }
+    }
+
+    /* ---- TIERE: every song sorted to a lock screen character by its remembered phase map ---- */
+
+    private static final String[][] ANIMALS = {
+        {"🏎", "F1-Racer", "Energie, Builds und Drops"},
+        {"🐻", "Bär in der Höhle", "ruhig, tief, viele Breaks"},
+        {"🦊", "Fuchs", "Stimme vorne, Flow"},
+        {"🐰", "Hase", "leicht und verspielt, Groove"},
+        {"?", "Noch nicht gehört", "Phasen werden beim nächsten Hören gelernt"}};
+
+    /** Phase shares {groove, build, drop, break, vocal} from the per-song map, or null if too little was heard. */
+    private float[] shares(String[] p) {
+        String saved = getSharedPreferences("phases2", MODE_PRIVATE).getString(key(p), null);
+        if (saved == null) return null;
+        String[] parts = saved.split(";", 2);
+        if (parts.length < 2) return null;
+        String[] cells = parts[1].split(",", -1);
+        float[] sum = new float[5];
+        int heard = 0;
+        for (int sl = 0; sl * 5 + 4 < cells.length; sl++) {
+            int best = -1, bestVotes = 0;
+            for (int ph = 0; ph < 5; ph++) {
+                String c = cells[sl * 5 + ph];
+                int v;
+                try {
+                    v = c.isEmpty() ? 0 : Integer.parseInt(c, 36);
+                } catch (NumberFormatException e) {
+                    v = 0;
+                }
+                if (v > bestVotes) {
+                    bestVotes = v;
+                    best = ph;
+                }
+            }
+            if (best >= 0) {
+                sum[best]++;
+                heard++;
+            }
+        }
+        if (heard < 12) return null;                // under ~10 % of the song: not enough to judge
+        for (int i = 0; i < 5; i++) sum[i] /= heard;
+        return sum;
+    }
+
+    private static int animal(float[] f) {
+        if (f == null) return 4;
+        float energy = f[1] + f[2], calm = f[3], vocal = f[4];
+        if (energy >= 0.28f && energy >= calm) return 0;   // F1
+        if (calm >= 0.22f) return 1;                       // bear
+        if (vocal >= 0.32f) return 2;                      // fox
+        return 3;                                          // bunny
+    }
+
+    private void showAnimals() {
+        paintTab(tabAnimals);
+        list.removeAllViews();
+        Map<String, String[]> latest = new HashMap<>();
+        for (String[] p : plays) latest.putIfAbsent(key(p), p);
+        List<List<String[]>> groups = new ArrayList<>();
+        List<Map<String, float[]>> why = new ArrayList<>();
+        for (int i = 0; i < ANIMALS.length; i++) {
+            groups.add(new ArrayList<>());
+            why.add(new HashMap<>());
+        }
+        for (String[] p : latest.values()) {
+            float[] f = shares(p);
+            int a = animal(f);
+            groups.get(a).add(p);
+            if (f != null) why.get(a).put(key(p), f);
+        }
+        for (int a = 0; a < ANIMALS.length; a++) {
+            List<String[]> g = groups.get(a);
+            if (g.isEmpty()) continue;
+            Collections.sort(g, (x, y) -> counts.get(key(y)) - counts.get(key(x)));
+            // Header: big animal, name, what fits it, how many songs.
+            LinearLayout head = new LinearLayout(this);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            TextView icon = text(30, ink, false);
+            icon.setText(ANIMALS[a][0]);
+            head.addView(icon);
+            LinearLayout ht = new LinearLayout(this);
+            ht.setOrientation(LinearLayout.VERTICAL);
+            ht.setPadding(dp(12), 0, 0, 0);
+            TextView name = text(17, ink, true);
+            name.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
+            name.setText(ANIMALS[a][1] + "  ·  " + g.size());
+            ht.addView(name);
+            TextView what = mono(10, ink3);
+            what.setText(ANIMALS[a][2].toUpperCase(Locale.GERMAN));
+            ht.addView(what);
+            head.addView(ht);
+            LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-1, -2);
+            hl.topMargin = dp(18);
+            list.addView(head, hl);
+            LinearLayout group = new LinearLayout(this);
+            group.setOrientation(LinearLayout.VERTICAL);
+            group.setBackground(box(card, a == 4 ? line : rust));
+            LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, -2);
+            gl.topMargin = dp(8);
+            list.addView(group, gl);
+            for (int i = 0; i < g.size(); i++) {
+                if (i > 0) {
+                    View div = new View(this);
+                    div.setBackgroundColor(line);
+                    group.addView(div, new LinearLayout.LayoutParams(-1, dp(1)));
+                }
+                LinearLayout wrap = new LinearLayout(this);
+                wrap.setOrientation(LinearLayout.VERTICAL);
+                wrap.addView(row(ANIMALS[a][0], g.get(i)));
+                float[] f = why.get(a).get(key(g.get(i)));
+                if (f != null) wrap.addView(mix(f), new LinearLayout.LayoutParams(-1, dp(4)));
+                group.addView(wrap);
+            }
+        }
+    }
+
+    /** A thin bar of the song's phase shares (grey groove, orange build, red drop, blue break, green vocal). */
+    private View mix(float[] f) {
+        int[] colours = {0xFF8A8A86, 0xFFF29A1F, 0xFFE0281E, 0xFF3C8DFF, 0xFF2BBF6A};
+        return new View(this) {
+            private final Paint p = new Paint();
+
+            @Override
+            protected void onDraw(Canvas c) {
+                float x = dp(64), w = getWidth() - x - dp(12);
+                for (int i = 0; i < 5; i++) {
+                    p.setColor(colours[i]);
+                    c.drawRect(x, 0, x + w * f[i], getHeight(), p);
+                    x += w * f[i];
+                }
+            }
+        };
     }
 
     /** Newest first, a card per day. */
