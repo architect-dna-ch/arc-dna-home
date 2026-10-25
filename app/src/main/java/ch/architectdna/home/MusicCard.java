@@ -422,6 +422,11 @@ final class MusicCard {
             if (p == PhaseBar.Phase.DROP || p == PhaseBar.Phase.BREAK) built = false;
             if (phaseLabel != null) paintPhase(p);
         }
+        // Every kick nods the ring animal along; lastBeat keeps it to real beats (≥ 0.25 s apart).
+        if (lo > loS * 1.25f && lo > 0.04f && now - lastBeat > 250) {
+            lastBeat = now;
+            if (gauge != null) gauge.pulse();
+        }
         // On a drop every kick flashes one of the bunny's ears, left, right, left …
         if (phase == PhaseBar.Phase.DROP && lo > loS * 1.3f && lo > 0.05f && now - lastKick > 180) {
             lastKick = now;
@@ -762,6 +767,7 @@ final class MusicCard {
         }
         playButton.setImageResource(isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
         frame.run(isPlaying());
+        if (gauge != null) gauge.playing(isPlaying());
     }
 
     private final RainbowFrame frame = new RainbowFrame();
@@ -897,7 +903,7 @@ final class MusicCard {
 
     private int lastBattery = -1;
     private DeviceGauge gauge;
-    private long lastKick, lastVocalAt = System.currentTimeMillis();
+    private long lastKick, lastBeat, lastVocalAt = System.currentTimeMillis();
     private TextView deviceName;
 
     /**
@@ -944,6 +950,36 @@ final class MusicCard {
             super.onDetachedFromWindow();
         }
 
+        private boolean playing;
+        private long beatAt = -1;
+
+        void playing(boolean on) {
+            if (on == playing) return;
+            playing = on;
+            invalidate();
+        }
+
+        /** Any kick while music plays: the animal nods along. */
+        void pulse() {
+            beatAt = android.os.SystemClock.uptimeMillis();
+        }
+
+        /** Exhaust flames behind the F1 helmet, flickering like a car at the limiter. */
+        private void flames(Canvas c, long tNow) {
+            int[] colours = {rust, 0xFFF29A1F, 0xFFFFE680};
+            float[] ys = {-1.6f, 0.4f, 2.2f};
+            for (int i = 0; i < 3; i++) {
+                double ph = tNow / 1000.0 * (9 + i * 2.3) + i * 1.7;
+                float flick = (float) (0.5 + 0.25 * Math.sin(ph) + 0.25 * Math.sin(ph * 2.7 + 1));
+                for (int layer = 0; layer < 3; layer++) {
+                    float len = (1.2f + 2.6f * flick) * (1 - layer * 0.3f) + (beatAt >= 0 && tNow - beatAt < 200 ? 0.8f : 0);
+                    float half = 0.75f * (1 - layer * 0.3f);
+                    float bx = -3.4f;
+                    poly(c, colours[layer], bx, ys[i] - half, bx, ys[i] + half, bx - len, ys[i] + 0.2f * (float) Math.sin(ph * 1.3));
+                }
+            }
+        }
+
         void beat() {
             if (kind != 0) return;
             beatSide = -beatSide;
@@ -974,6 +1010,16 @@ final class MusicCard {
             u = rad / 10f;
             ox = cx;
             oy = cy;
+            // While music plays: a constant gentle sway, plus a little head nod on every kick.
+            long tNow = android.os.SystemClock.uptimeMillis();
+            float bob = beatAt >= 0 && tNow - beatAt < 240 ? 1 - (tNow - beatAt) / 240f : 0;
+            float sway = playing ? (float) Math.sin(tNow / 1000.0 * Math.PI * 1.1) : 0;
+            c.save();
+            if (playing) {
+                c.translate(0, -bob * 0.7f * u);
+                c.rotate(sway * 3f - bob * 5f, ox, oy + 4f * u);
+            }
+            if (kind == 3 && playing) flames(c, tNow);
             if (kind == 0) {
                 // Bunny — long ears for the in-ears (left ear = left bud, right ear = right bud).
                 long now = android.os.SystemClock.uptimeMillis();
@@ -1045,7 +1091,25 @@ final class MusicCard {
                 p.setColor(rust);
                 r.set(ox - 3.7f * u, oy + 1.8f * u, ox + 3.7f * u, oy + 2.5f * u);
                 c.drawRect(r, p);
+                if (playing) {
+                    // A glint sweeping over the visor every ~2.5 s.
+                    float g = (tNow % 2500) / 600f;
+                    if (g < 1) {
+                        c.save();
+                        r.set(ox - 0.4f * u, oy - 1.3f * u, ox + 4.2f * u, oy + 0.7f * u);
+                        c.clipRect(r);
+                        p.setColor(0x99FFFFFF);
+                        p.setStrokeWidth(0.6f * u);
+                        p.setStyle(Paint.Style.STROKE);
+                        float gx = ox + (-1.4f + g * 6.4f) * u;
+                        c.drawLine(gx, oy + 0.9f * u, gx + 1.2f * u, oy - 1.5f * u, p);
+                        p.setStyle(Paint.Style.FILL);
+                        c.restore();
+                    }
+                }
             }
+            c.restore();
+            if (playing) postInvalidateOnAnimation();
         }
 
         private float u, ox, oy;

@@ -383,7 +383,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 // Below LO: the Geister-Level. Any other position leaves it.
                 if (level == 0) {
                     if (ghosts == null) enterGhosts();
-                    setBrightness(0);
+                    else ghostBrightness();
                 } else {
                     if (ghosts != null) exitGhosts();
                     setBrightness(level - 1);
@@ -1388,6 +1388,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int above = Math.max(rootFrame.indexOfChild(topScrim), rootFrame.indexOfChild(bottomScrim));
         rootFrame.addView(ghosts, Math.max(rootFrame.indexOfChild(scroll), above) + 1, new FrameLayout.LayoutParams(-1, -1));
         systemBarIcons(false);
+        ghostBrightness();
         ghosts.start();
         voice.say("Whoa-whoa!");
         hop();
@@ -1423,6 +1424,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ghosts = null;
         if (g == null) return;
         g.stop(() -> rootFrame.removeView(g));
+        // Leaving the darkest level: back to LO, unless the lever is about to set another level.
+        if (Settings.System.canWrite(this)
+            && Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 12) <= 1) {
+            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[0]);
+        }
         systemBarIcons(!isNight());
         say("Licht an. Die Geister sind weg.", 1600);
         syncLever();
@@ -2365,6 +2371,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
             Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
         Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[level]);
+    }
+
+    /**
+     * Geister-Level: the system's very lowest brightness, set as the real system value (manual mode),
+     * so it stays that dark in every app you open from here, not just on the home screen.
+     */
+    private void ghostBrightness() {
+        if (!canWriteSettings()) return;
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
+            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 1);
     }
 
     private void setAutoBrightness() {
