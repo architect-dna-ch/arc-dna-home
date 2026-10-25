@@ -105,7 +105,7 @@ screen is still static.
 ## 3D cube
 
 With ARC-DNA Live, tilting the phone turns the wallpaper cube: left/right turns it around the
-vertical axis, forwards/back tilts it. Held normally (upright, tilted ~45° towards you) it shows
+vertical axis, forwards/back tilts it. The visible faces carry A · R · C (left, top, right), turning with it; every 30 s they blend into D · N · A for a few seconds. Held normally (upright, tilted ~45° towards you) it shows
 exactly the static wallpaper's logo, rust edge from the centre to the top-right corner. The camera ring is placed from the display's own
 cutout, so it sits centred on the camera hole.
 

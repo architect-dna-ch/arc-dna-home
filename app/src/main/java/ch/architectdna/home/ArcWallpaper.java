@@ -542,6 +542,74 @@ public class ArcWallpaper extends WallpaperService {
                     c.drawLine(proj[a][0], proj[a][1], proj[b][0], proj[b][1], paint);
                 }
             }
+            faceLetters(c, rust);
+        }
+
+        /* ---- Letters on the cube: A · R · C, now and then D · N · A, turning with it ---- */
+
+        /** Faces as {axis, sign}: in the normal grip these are left, top and right. */
+        private final int[][] faces = {{0, -1}, {1, -1}, {2, 1}};
+        private static final String ARC = "ARC", DNA = "DNA";
+        private final android.graphics.Matrix faceMatrix = new android.graphics.Matrix();
+        private final float[] src = {0, 0, 100, 0, 100, 100, 0, 100}, dst = new float[8];
+        private final float[][] quad = new float[4][3];
+
+        private void faceLetters(Canvas c, int rust) {
+            // Every 30 s the letters blend into D · N · A for about 6 s.
+            long ms = System.currentTimeMillis() % 30_000;
+            float dna = ms < 22_000 ? 0 : ms < 22_600 ? (ms - 22_000) / 600f : ms < 27_400 ? 1 : ms < 28_000 ? (28_000 - ms) / 600f : 0;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL));
+            paint.setTextSize(64);
+            for (int f = 0; f < faces.length; f++) {
+                int axis = faces[f][0], sign = faces[f][1];
+                int u = axis == 0 ? 1 : 0, v = axis == 2 ? 1 : 2;
+                // The face's corners in order round the face.
+                int[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+                float depth = 0;
+                for (int k = 0; k < 4; k++) {
+                    int idx = (sign > 0 ? 1 << axis : 0) | (uv[k][0] << u) | (uv[k][1] << v);
+                    quad[k][0] = proj[idx][0];
+                    quad[k][1] = proj[idx][1];
+                    depth += proj[idx][2] / 4f;
+                }
+                if (depth < 0.08f) continue;                 // turned away: no letter
+                // Clockwise on screen, starting with the top edge → the letter reads upright, never mirrored.
+                float area = 0;
+                for (int k = 0; k < 4; k++) {
+                    float[] p0 = quad[k], p1 = quad[(k + 1) % 4];
+                    area += p0[0] * p1[1] - p1[0] * p0[1];
+                }
+                if (area < 0) {
+                    float[] t = quad[1]; quad[1] = quad[3]; quad[3] = t;
+                }
+                int top = 0;
+                float best = Float.MAX_VALUE;
+                for (int k = 0; k < 4; k++) {
+                    float m = (quad[k][1] + quad[(k + 1) % 4][1]) / 2f;
+                    if (m < best) {
+                        best = m;
+                        top = k;
+                    }
+                }
+                for (int k = 0; k < 4; k++) {
+                    dst[2 * k] = quad[(top + k) % 4][0];
+                    dst[2 * k + 1] = quad[(top + k) % 4][1];
+                }
+                if (!faceMatrix.setPolyToPoly(src, 0, dst, 0, 4)) continue;
+                float face = Math.min(1f, (depth - 0.08f) / 0.3f);
+                c.save();
+                c.concat(faceMatrix);
+                for (int w = 0; w < 2; w++) {
+                    float mix = w == 0 ? 1 - dna : dna;
+                    if (mix <= 0.01f) continue;
+                    String letter = String.valueOf((w == 0 ? ARC : DNA).charAt(f));
+                    paint.setColor((rust & 0x00FFFFFF) | ((int) (150 * face * mix) << 24));
+                    c.drawText(letter, 50 - paint.measureText(letter) / 2f, 50 + 64 * 0.36f, paint);
+                }
+                c.restore();
+            }
         }
 
         private void rainbowRing(Canvas c, float x, float y, float r, float stroke, float rotate, float alpha) {
