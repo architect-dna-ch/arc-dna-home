@@ -377,15 +377,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         lever = new BrightnessLever(this, new int[]{ink, ink2, ink3, rust, card, line}, new BrightnessLever.Listener() {
             @Override
             public void onLevel(int level) {
-                setBrightness(level);
+                // Below LO: the Geister-Level. Any other position leaves it.
+                if (level == 0) {
+                    if (ghosts == null) enterGhosts();
+                    setBrightness(0);
+                } else {
+                    if (ghosts != null) exitGhosts();
+                    setBrightness(level - 1);
+                }
             }
 
             @Override
             public void onAuto() {
+                if (ghosts != null) exitGhosts();
                 setAutoBrightness();
             }
         });
-        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(64), dp(118));
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(64), dp(150));
         llp.bottomMargin = dp(10);
         clockRow.addView(lever, llp);
         content.addView(clockRow);
@@ -1308,7 +1316,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ghosts.start();
         voice.say("Whoa-whoa!");
         hop();
-        say("Geister-Level 👻 – Finger = Taschenlampe. → wischen = raus.", 2600);
+        say("Geister-Level 👻 – Finger = Taschenlampe. Hebel hoch oder → wischen = raus.", 2600);
+        if (lever != null) lever.setLevel(0, true);
         DiagLog.log("ghost level on");
     }
 
@@ -1318,6 +1327,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (g == null) return;
         g.stop(() -> rootFrame.removeView(g));
         say("Licht an. Die Geister sind weg.", 1600);
+        syncLever();
     }
 
     private void switchNight(boolean dark, float x, float y) {
@@ -2143,14 +2153,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 lever.setAuto(true);
                 return;
             }
+            if (ghosts != null) {
+                lever.setLevel(0, false);
+                return;
+            }
             int b = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
             int best = 0;
             for (int i = 1; i < 3; i++) {
                 if (Math.abs(BRIGHTNESS[i] - b) < Math.abs(BRIGHTNESS[best] - b)) best = i;
             }
-            lever.setLevel(best, false);
+            lever.setLevel(best + 1, false);   // lever 0 is the Geister-Level
         } catch (Settings.SettingNotFoundException e) {
-            lever.setLevel(1, false);
+            lever.setLevel(2, false);
         }
     }
 

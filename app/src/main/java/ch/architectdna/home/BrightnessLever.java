@@ -12,28 +12,30 @@ import android.view.View;
 import android.view.animation.OvershootInterpolator;
 
 /**
- * A three-position lever for screen brightness: HI at the top, MID, LO at the bottom.
+ * A four-position lever: HI at the top, MID, LO and, below LO, 👻 = the Geister-Level (pitch dark,
+ * your finger is a torch).
  * Drag the rust knob or tap a position; it snaps with a small overshoot and a haptic click.
  * Long-press switches to automatic brightness (the knob turns into an outline with "A").
  */
 final class BrightnessLever extends View {
 
     interface Listener {
-        /** 0 = LO, 1 = MID, 2 = HI. */
+        /** 0 = 👻 (Geister-Level), 1 = LO, 2 = MID, 3 = HI. */
         void onLevel(int level);
 
         void onAuto();
     }
 
-    private static final String[] LABELS = {"LO", "MID", "HI"};
+    private static final String[] LABELS = {"👻", "LO", "MID", "HI"};
+    private static final int TOP = LABELS.length - 1;
 
     private final int ink3, rust, card, line;
     private final Listener listener;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
-    private int level = 1;
+    private int level = 2;
     private boolean auto, dragging, longPressed;
-    private float knob = 1f;           // 0..2, animated towards level
+    private float knob = 2f;           // 0..TOP, animated towards level
     private ValueAnimator anim;
     private final Runnable longPress = () -> {
         longPressed = true;
@@ -50,11 +52,11 @@ final class BrightnessLever extends View {
         card = colours[4];
         line = colours[5];
         this.listener = listener;
-        setContentDescription("Helligkeit: LO, MID, HI – lange drücken für automatisch");
+        setContentDescription("Helligkeit: Geister-Level, LO, MID, HI – lange drücken für automatisch");
     }
 
     void setLevel(int l, boolean animate) {
-        level = Math.max(0, Math.min(2, l));
+        level = Math.max(0, Math.min(TOP, l));
         auto = false;
         moveKnob(level, animate);
     }
@@ -76,9 +78,9 @@ final class BrightnessLever extends View {
         return getHeight() - dp(14);
     }
 
-    /** y of a position 0 (LO, bottom) .. 2 (HI, top). */
+    /** y of a position 0 (👻, bottom) .. TOP (HI, top). */
     private float yOf(float pos) {
-        return trackBottom() - (trackBottom() - trackTop()) * pos / 2f;
+        return trackBottom() - (trackBottom() - trackTop()) * pos / TOP;
     }
 
     private void moveKnob(float to, boolean animate) {
@@ -100,7 +102,7 @@ final class BrightnessLever extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        float pos = Math.max(0f, Math.min(2f, 2f * (trackBottom() - e.getY()) / (trackBottom() - trackTop())));
+        float pos = Math.max(0f, Math.min(TOP, TOP * (trackBottom() - e.getY()) / (trackBottom() - trackTop())));
         int action = e.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
             getParent().requestDisallowInterceptTouchEvent(true);
@@ -149,7 +151,7 @@ final class BrightnessLever extends View {
         paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         paint.setTextSize(dp(9));
         paint.setLetterSpacing(0.1f);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < LABELS.length; i++) {
             float y = yOf(i);
             paint.setStyle(Paint.Style.FILL);
             boolean on = !auto && i == level;
@@ -164,14 +166,14 @@ final class BrightnessLever extends View {
         if (auto) {
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(card);
-            c.drawCircle(kx, yOf(1), r, paint);
+            c.drawCircle(kx, yOf(2), r, paint);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(dp(2));
             paint.setColor(rust);
-            c.drawCircle(kx, yOf(1), r, paint);
+            c.drawCircle(kx, yOf(2), r, paint);
             paint.setStyle(Paint.Style.FILL);
             paint.setTextSize(dp(10));
-            c.drawText("A", kx - paint.measureText("A") / 2, yOf(1) + dp(3.5f), paint);
+            c.drawText("A", kx - paint.measureText("A") / 2, yOf(2) + dp(3.5f), paint);
         } else {
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(rust);

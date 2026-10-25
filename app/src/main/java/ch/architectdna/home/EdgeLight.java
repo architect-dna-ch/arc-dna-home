@@ -16,9 +16,9 @@ import android.view.RoundedCorner;
 import android.view.View;
 
 /**
- * Mirror LEDs for head / eye scrolling in the dark: warm white light in the four curved display
- * corners only (no full frame, no brightness boost), so the front camera can still see your face
- * without glaring into your eyes. It comes on below ~12 lux, or when the camera loses your face
+ * Mirror LEDs while head / eye scrolling runs: warm white light in the four curved display
+ * corners and a thin line along the edge (no brightness boost), always on while the camera
+ * tracks, so the front camera sees your face without glaring into your eyes. It comes on below ~12 lux, or when the camera loses your face
  * in a dim room (below ~60 lux). The Pixel's light sensor sits under the screen and sees the rim
  * itself, so once on it stays on at least 8 s and only goes off above ~90 lux with a face in view.
  */
@@ -61,19 +61,11 @@ final class EdgeLight extends View implements SensorEventListener {
         setFocusable(false);
     }
 
-    /** Follow the light sensor while head / eye scrolling runs. */
+    /** On for as long as head / eye scrolling runs (any light level), off when it stops. */
     void watch(boolean on) {
         if (on == watching) return;
         watching = on;
-        Sensor light = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_LIGHT);
-        if (on && light != null) {
-            sensors.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
-        } else {
-            if (sensors != null) sensors.unregisterListener(this);
-            lux = -1;
-            faceGoneSince = -1;
-            setLit(false);
-        }
+        setLit(on);
     }
 
     boolean isLit() {

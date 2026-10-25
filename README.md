@@ -90,13 +90,11 @@ Backup of the previous layout: branch `backup/home-v1.0.35`.
 Every push to `main` builds and publishes `v1.0.<run>`; only the 10 newest releases are kept.
 A commit marked `[final]` is published as "· FINAL" and moves the `final` tag to it.
 
-## Mirror LEDs (Kopf-Scroll im Dunkeln)
+## Mirror LEDs (Kopf-Scroll)
 
-While head / eye scrolling runs (Mediathek or per app, e.g. Chrome) and it is too dark for the
-camera (light sensor below ~12 lux, or the face is lost below ~60 lux), warm white light glows in
-the four curved display corners only, like make-up mirror LEDs. No full frame and no brightness
-boost, so it lights your face without glaring. It stays on at least 8 s and goes off above
-~90 lux with your face in view.
+Whenever head / eye scrolling runs (Mediathek or per app, e.g. Chrome), warm white light glows in
+the four curved display corners with a thin line along the edge, like make-up mirror LEDs, so the
+front camera sees your face. No brightness boost.
 
 ## Dynamischer Sperrbildschirm – Einführung
 
@@ -139,10 +137,10 @@ until you come back). Mediathek → "TASCHENLAMPE IM DUNKELN" switches the featu
 
 ## Geister-Level 👻
 
-In dark mode, swipe ← once more: the home screen goes almost black and ghosts drift around.
+Push the brightness lever below LO to 👻 (or, in dark mode, swipe ← once more): the home screen goes almost black and ghosts drift around.
 Your finger is a torch – a soft circle 2.5× your thumb's contact size shows the apps beneath
 (tap, hold and drag work as usual). Big ghosts shy away from the light, mini ghosts zip through
-and are only visible inside it. Swipe → to leave.
+and are only visible inside it. Lever up or swipe → to leave.
 
 ## Fuchsjagd: nod to jump
 
