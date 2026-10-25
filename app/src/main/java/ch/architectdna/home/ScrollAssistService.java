@@ -339,9 +339,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                     | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
-            lp.gravity = Gravity.TOP | Gravity.END;
-            lp.x = dp(12);
-            lp.y = dp(64);
+            // Floating bottom-left, above the navigation bar: clear of address bars and toolbars.
+            lp.gravity = Gravity.BOTTOM | Gravity.START;
+            lp.x = dp(14);
+            lp.y = dp(72);
             try {
                 windows.addView(pill, lp);
             } catch (RuntimeException e) {
