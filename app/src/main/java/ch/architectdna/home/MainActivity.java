@@ -1465,12 +1465,39 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
 
+        // One switch for every app (also ones installed later); single apps can still differ.
+        LinearLayout allRow = new LinearLayout(this);
+        allRow.setGravity(Gravity.CENTER_VERTICAL);
+        allRow.setPadding(0, dp(4), 0, dp(10));
+        TextView allName = text(14, ink, true);
+        allName.setText("Alle Apps");
+        allRow.addView(allName, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView allChip = monoText(11, ink2);
+        allChip.setPadding(dp(12), dp(7), dp(12), dp(7));
+        allChip.setBackground(box(card, rust, 20));
+        paintAppScroll(allChip, prefs.getString("appScrollAll", "off"));
+        allRow.addView(allChip);
+        list.addView(allRow);
+        final AlertDialog[] dialog = new AlertDialog[1];
+        allChip.setOnClickListener(v -> {
+            String now = prefs.getString("appScrollAll", "off");
+            String next = now.equals("off") ? "nod" : now.equals("nod") ? "gaze" : "off";
+            SharedPreferences.Editor e = prefs.edit().putString("appScrollAll", next);
+            for (String k : prefs.getAll().keySet()) if (k.startsWith("appScroll:")) e.remove(k);   // everyone follows
+            e.apply();
+            if (!next.equals("off") && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
+            }
+            if (dialog[0] != null) dialog[0].dismiss();
+            showAppScrollSettings();
+        });
+
         java.util.Set<String> seen = new java.util.HashSet<>();
         List<AppEntry> sorted = new ArrayList<>(apps);
         // Apps already switched on first, then alphabetical.
         Collections.sort(sorted, (a, b) -> {
-            boolean ao = !prefs.getString("appScroll:" + a.component.getPackageName(), "off").equals("off");
-            boolean bo = !prefs.getString("appScroll:" + b.component.getPackageName(), "off").equals("off");
+            boolean ao = !appScrollMode(a.component.getPackageName()).equals("off");
+            boolean bo = !appScrollMode(b.component.getPackageName()).equals("off");
             return ao == bo ? 0 : ao ? -1 : 1;
         });
         for (AppEntry app : sorted) {
@@ -1491,9 +1518,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             TextView chip = monoText(11, ink2);
             chip.setPadding(dp(10), dp(6), dp(10), dp(6));
             chip.setBackground(box(card, line, 20));
-            paintAppScroll(chip, prefs.getString("appScroll:" + pkg, "off"));
+            paintAppScroll(chip, appScrollMode(pkg));
             chip.setOnClickListener(v -> {
-                String now = prefs.getString("appScroll:" + pkg, "off");
+                String now = appScrollMode(pkg);
                 String next = now.equals("off") ? "nod" : now.equals("nod") ? "gaze" : "off";
                 prefs.edit().putString("appScroll:" + pkg, next).apply();
                 paintAppScroll(chip, next);
@@ -1506,11 +1533,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         ScrollView sv = new ScrollView(this);
         sv.addView(list);
-        new AlertDialog.Builder(this)
+        dialog[0] = new AlertDialog.Builder(this)
             .setTitle("Kopf-Scroll pro App")
             .setView(sv)
             .setPositiveButton("Fertig", null)
             .show();
+    }
+
+    /** The app's own setting, else the "Alle Apps" switch. */
+    private String appScrollMode(String pkg) {
+        return prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
     }
 
     private void paintAppScroll(TextView chip, String mode) {

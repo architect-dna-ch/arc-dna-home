@@ -189,3 +189,7 @@ from the sound), quick jumps "→ 0:20" and "+30 S", and the track timeline with
 so far, the playhead and "0:42 / 3:15". Tap or drag the timeline to jump; a tap inside a DROP
 jumps to where the drop starts. Tapping the title or cover opens the music app. (Needs an app
 that shares its playback with Android, e.g. Spotify or YouTube Music.)
+
+"Alle Apps" at the top of Mediathek → Kopf-Scroll pro App switches head / eye scrolling for every
+app at once (AUS → NICKEN → BLICK, also for apps installed later); single apps can still be set
+differently afterwards.
