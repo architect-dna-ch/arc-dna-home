@@ -742,7 +742,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             chip.setText(s);
             chip.setPadding(dp(12), dp(8), dp(12), dp(8));
             chip.setBackground(box(card, line, 20));
-            chip.setOnClickListener(v -> open(new Intent(Intent.ACTION_VIEW, Uri.parse(p[2]))));
+            // VOID FREQ lives inside ARC-DNA now; the other projects open on the web.
+            chip.setOnClickListener(v -> open(p[0].equals("VOID FREQ") ? new Intent(this, FreqActivity.class)
+                : new Intent(Intent.ACTION_VIEW, Uri.parse(p[2]))));
             flow.addView(chip);
         }
         return flow;
@@ -1159,7 +1161,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
             List<AppEntry> list = new ArrayList<>();
             for (ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
-                if (getPackageName().equals(ri.activityInfo.packageName)) continue;
+                // Our own entries: only the built-in apps (VOID FREQ), not the launcher itself.
+                if (getPackageName().equals(ri.activityInfo.packageName) && !FreqActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),

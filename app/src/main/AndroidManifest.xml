@@ -103,6 +103,22 @@
             </intent-filter>
         </activity>
 
+        <!-- VOID FREQ focus studio inside ARC-DNA: its own app tile and task, sound keeps playing at home. -->
+        <activity
+            android:name=".FreqActivity"
+            android:exported="true"
+            android:icon="@drawable/void_freq_icon"
+            android:label="VOID FREQ"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/void_freq_icon"
+            android:taskAffinity="ch.architectdna.home.voidfreq"
+            android:theme="@android:style/Theme.Black.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Bear alarm: full screen over the lock screen, its own task so Home stays the launcher. -->
         <activity
             android:name=".BearAlarmActivity"
