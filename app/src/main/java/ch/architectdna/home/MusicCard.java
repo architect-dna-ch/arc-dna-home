@@ -518,17 +518,15 @@ final class MusicCard {
                 p.setTypeface(Typeface.MONOSPACE);
                 for (int i = 0; i < 7; i++) {
                     float x = i * (bw + gap), bh = Math.max(dp(2), h * week[i] / (float) max);
-                    // Each day a rainbow bar, red at the bottom up to violet; today at full strength.
-                    p.setShader(week[i] > 0 ? new android.graphics.LinearGradient(0, h, 0, 0,
-                        new int[]{0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF},
-                        null, android.graphics.Shader.TileMode.CLAMP) : null);
-                    if (week[i] == 0) p.setColor(ink3);
-                    p.setAlpha(i == 6 ? 255 : 170);
+                    // The week as a rainbow: every weekday its own colour (Mo red … So violet); today full strength.
+                    int[] rainbow = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFD21F, 0xFF2BC96B, 0xFF1FA8FF, 0xFF5B5BFF, 0xFFA04BFF};
+                    int weekday = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7;   // 0 = Monday
+                    p.setColor(week[i] > 0 ? rainbow[weekday] : ink3);
+                    p.setAlpha(week[i] > 0 && i != 6 ? 190 : 255);
                     r.set(x, h - bh, x + bw, h);
                     c.drawRoundRect(r, dp(3), dp(3), p);
-                    p.setShader(null);
                     p.setAlpha(255);
-                    p.setColor(i == 6 ? rust : ink3);
+                    p.setColor(rainbow[weekday]);
                     String d = days[(cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7];
                     c.drawText(d, x + bw / 2 - p.measureText(d) / 2, getHeight() - dp(2), p);
                     cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
