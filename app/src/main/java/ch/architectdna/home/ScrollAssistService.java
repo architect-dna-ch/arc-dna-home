@@ -466,7 +466,13 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         android.graphics.Rect hole = null;
         if (Build.VERSION.SDK_INT >= 30) {
             android.view.DisplayCutout cut = windows.getCurrentWindowMetrics().getWindowInsets().getDisplayCutout();
-            if (cut != null && !cut.getBoundingRects().isEmpty()) hole = cut.getBoundingRects().get(0);
+            // The bounding rect runs up to the screen edge; the cutout path is the hole itself.
+            if (cut != null && Build.VERSION.SDK_INT >= 31 && cut.getCutoutPath() != null) {
+                android.graphics.RectF b = new android.graphics.RectF();
+                cut.getCutoutPath().computeBounds(b, true);
+                if (!b.isEmpty()) hole = new android.graphics.Rect(Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom));
+            }
+            if (hole == null && cut != null && !cut.getBoundingRects().isEmpty()) hole = cut.getBoundingRects().get(0);
         }
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         float cx = hole != null ? hole.exactCenterX() : dm.widthPixels / 2f;
@@ -478,6 +484,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         lp.x = Math.round(cx - size / 2f);
         lp.y = Math.round(cy - size / 2f);
         if (pill instanceof CameraRing) ((CameraRing) pill).holeR = holeR;
+        DiagLog.log("camera ring at " + Math.round(cx) + "," + Math.round(cy) + " hole r=" + Math.round(holeR));
     }
 
     /** Full-screen, untouchable overlay for the corner LEDs; they light up only in the dark. */
