@@ -194,7 +194,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
     };
-    private boolean strokeMulti, strokeOnSlider, circling;
+    private boolean strokeMulti, strokeOnSlider, circling, strokeOnCard, cardFlipped, strokeOnCarousel;
     private float downX, downY, lastPX, lastPY, pathTurn, pathLen, lastHeading = Float.NaN;
     private long downTime;
     private FrameLayout rootFrame;
@@ -777,6 +777,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
 
+        TextView recentSetting = monoText(11, ink2);
+        recentSetting.setPadding(dp(4), dp(12), dp(4), dp(8));
+        Runnable paintRecent = () -> recentSetting.setText("ZULETZT-KARUSSELL: " + prefs.getInt("recentCount", 8) + " APPS →");
+        paintRecent.run();
+        recentSetting.setOnClickListener(v -> {
+            int[] steps = {4, 8, 12, 16, 24};
+            int now = prefs.getInt("recentCount", 8), next = steps[0];
+            for (int i = 0; i < steps.length; i++) if (steps[i] == now) next = steps[(i + 1) % steps.length];
+            prefs.edit().putInt("recentCount", next).apply();
+            paintRecent.run();
+            refreshRecents();
+        });
+        body.addView(recentSetting);
+
         TextView torchSetting = monoText(11, ink2);
         torchSetting.setPadding(dp(4), dp(12), dp(4), dp(8));
         Runnable paintTorchSetting = () -> torchSetting.setText("TASCHENLAMPE IM DUNKELN: "
@@ -1033,12 +1047,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 for (Map.Entry<String, Long> en : sorted) {
                     AppEntry app = byPackage.get(en.getKey());
                     if (app != null) recent.add(app);
-                    if (recent.size() == 8) break;
+                    if (recent.size() >= Math.max(8, prefs.getInt("recentCount", 8))) break;
                 }
             }
             handler.post(() -> {
                 lastRecent = recent;
-                renderRecents(recentHome, recent, cols());
+                renderRecentCarousel(recent);
                 renderRecents(recentLib, recent, 2 * cols());
             });
         }).start();
@@ -1066,6 +1080,89 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             row.addView(tile, weighted(i % cols != 0));
         }
         for (int i = n % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
+    }
+
+    /* ---- Zuletzt carousel: N recent apps (setting), a page per row, dots show where you are ---- */
+
+    private android.widget.HorizontalScrollView recentCarousel;
+    private LinearLayout recentDots;
+
+    private void renderRecentCarousel(List<AppEntry> recent) {
+        recentHome.removeAllViews();
+        recentCarousel = null;
+        if (recent.isEmpty()) {
+            renderRecents(recentHome, recent, cols());
+            return;
+        }
+        int cols = cols(), n = Math.min(prefs.getInt("recentCount", 8), recent.size());
+        int pages = (n + cols - 1) / cols;
+        int width = content.getWidth() > 0 ? content.getWidth() - content.getPaddingLeft() - content.getPaddingRight()
+            : getResources().getDisplayMetrics().widthPixels - dp(44);
+        int gap = dp(8), tileW = (width - (cols - 1) * gap) / cols;
+
+        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        hs.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout strip = new LinearLayout(this);
+        for (int i = 0; i < pages * cols; i++) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileW, -2);
+            // Pages line up exactly: a gap between tiles and a full gap between pages.
+            lp.leftMargin = i == 0 ? 0 : gap;
+            if (i < n) {
+                AppEntry app = recent.get(i);
+                View tile = tile(app.label, app.icon, 32);
+                tile.setOnClickListener(v -> launch(app));
+                strip.addView(tile, lp);
+            } else {
+                strip.addView(new View(this), lp);
+            }
+        }
+        hs.addView(strip);
+        recentHome.addView(hs);
+        recentCarousel = hs;
+
+        // Dots: one per page, the current one in rust.
+        recentDots = new LinearLayout(this);
+        recentDots.setGravity(Gravity.CENTER);
+        for (int i = 0; i < pages; i++) {
+            View d = new View(this);
+            LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(dp(6), dp(6));
+            dl.setMargins(dp(4), 0, dp(4), 0);
+            recentDots.addView(d, dl);
+        }
+        recentHome.addView(recentDots, margins(-1, -2, 0, dp(10), 0, 0));
+        recentDots.setVisibility(pages > 1 ? View.VISIBLE : View.GONE);
+        int pageW = cols * (tileW + gap);
+        Runnable paint = () -> {
+            int page = pageW == 0 ? 0 : Math.round(hs.getScrollX() / (float) pageW);
+            for (int i = 0; i < recentDots.getChildCount(); i++) {
+                GradientDrawable dot = new GradientDrawable();
+                dot.setShape(GradientDrawable.OVAL);
+                dot.setColor(i == page ? rust : ink3);
+                recentDots.getChildAt(i).setBackground(dot);
+                recentDots.getChildAt(i).setAlpha(i == page ? 1f : 0.45f);
+            }
+        };
+        paint.run();
+        hs.setOnScrollChangeListener((v, x, y, ox, oy) -> paint.run());
+        // Snap to whole pages when the finger lifts.
+        hs.setOnTouchListener((v, e) -> {
+            int a = e.getActionMasked();
+            if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                hs.post(() -> {
+                    int page = Math.round(hs.getScrollX() / (float) pageW);
+                    hs.smoothScrollTo(page * pageW, 0);
+                });
+            }
+            return false;
+        });
+    }
+
+    private boolean onView(View v, float rawX, float rawY) {
+        if (!v.isShown()) return false;
+        int[] at = new int[2];
+        v.getLocationOnScreen(at);
+        return rawX >= at[0] && rawX <= at[0] + v.getWidth() && rawY >= at[1] && rawY <= at[1] + v.getHeight();
     }
 
     private void showRecentsPrompt(LinearLayout into) {
@@ -1124,11 +1221,28 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             downY = lastPY = ev.getY();
             downTime = ev.getEventTime();
             strokeOnSlider = music != null && music.isOnSlider(ev.getRawX(), ev.getRawY());
+            strokeOnCard = !strokeOnSlider && music != null && music.isOnCard(ev.getRawX(), ev.getRawY());
+            cardFlipped = false;
+            // The Zuletzt carousel scrolls sideways itself: no dark / light swipe from there.
+            strokeOnCarousel = recentCarousel != null && onView(recentCarousel, ev.getRawX(), ev.getRawY());
         } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
             strokeMulti = true;
         } else if (action == MotionEvent.ACTION_MOVE) {
             for (int h = 0; h < ev.getHistorySize(); h++) addPoint(ev.getHistoricalX(h), ev.getHistoricalY(h));
             addPoint(ev.getX(), ev.getY());
+            // Sideways on the music card: player ↔ stats page.
+            if (strokeOnCard && !cardFlipped && !circling) {
+                float sx = ev.getX() - downX, sy = ev.getY() - downY;
+                if (Math.abs(sx) > dp(48) && Math.abs(sx) > 2 * Math.abs(sy)) {
+                    cardFlipped = true;
+                    music.flip(sx < 0 ? -1 : 1);
+                    MotionEvent cancel = MotionEvent.obtain(ev);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancel);
+                    cancel.recycle();
+                }
+            }
+            if (cardFlipped) return true;
             if (gestures && !strokeMulti && !circling && !strokeOnSlider
                 && Math.abs(pathTurn) > Math.toRadians(150) && pathLen > dp(120)) {
                 circling = true;
@@ -1140,13 +1254,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (circling) return true;
         } else if (action == MotionEvent.ACTION_UP) {
             addPoint(ev.getX(), ev.getY());
+            if (cardFlipped) return true;
             if (circling) {
                 circling = false;
                 if (Math.abs(pathTurn) >= Math.toRadians(280)) rotateStep(pathTurn > 0 ? 1 : -1);
                 return true;
             }
             float dx = ev.getX() - downX, dy = ev.getY() - downY;
-            if (gestures && !strokeMulti && !strokeOnSlider
+            if (gestures && !strokeMulti && !strokeOnSlider && !strokeOnCard && !strokeOnCarousel
                 && Math.abs(dx) > rootFrame.getWidth() * 0.4f && Math.abs(dy) < Math.abs(dx) * 0.4f
                 && ev.getEventTime() - downTime < 800) {
                 switchNight(dx < 0, ev.getX(), ev.getY());
@@ -1978,7 +2093,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         appTilesBox.addView(appTiles());
         renderLibrary();
         if (!lastRecent.isEmpty()) {
-            renderRecents(recentHome, lastRecent, cols());
+            renderRecentCarousel(lastRecent);
             renderRecents(recentLib, lastRecent, 2 * cols());
         }
         rootFrame.requestApplyInsets();

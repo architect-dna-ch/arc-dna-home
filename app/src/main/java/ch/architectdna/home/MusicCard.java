@@ -203,8 +203,139 @@ final class MusicCard {
             return true;
         });
 
+        // Page dots (player · stats) in the top row; swipe the card left / right to switch.
+        dots = label(11, ink3, true);
+        dots.setPadding(dp(8), 0, 0, 0);
+        top.addView(dots);
+        for (int i = 0; i < root.getChildCount(); i++) playerViews.add(root.getChildAt(i));
+        stats = new LinearLayout(activity);
+        stats.setOrientation(LinearLayout.VERTICAL);
+        stats.setVisibility(View.GONE);
+        root.addView(stats);
+        paintDots();
+
         renderTrack();
         return root;
+    }
+
+    /* ---------------- Second page: listening stats ---------------- */
+
+    private LinearLayout stats;
+    private TextView dots;
+    private final java.util.List<View> playerViews = new java.util.ArrayList<>();
+    private final java.util.Map<View, Integer> playerVisibility = new java.util.HashMap<>();
+    private boolean onStats;
+
+    /** True if a touch at these screen coordinates is on the card (for the swipe). */
+    boolean isOnCard(float rawX, float rawY) {
+        if (root == null || !root.isShown()) return false;
+        int[] at = new int[2];
+        root.getLocationOnScreen(at);
+        return rawX >= at[0] && rawX <= at[0] + root.getWidth() && rawY >= at[1] && rawY <= at[1] + root.getHeight();
+    }
+
+    /** Swipe on the card: -1 = to the left (next page), +1 = to the right. */
+    void flip(int dir) {
+        boolean toStats = !onStats;
+        float w = root.getWidth();
+        root.animate().cancel();
+        root.animate().translationX(dir * w * 0.3f).alpha(0f).setDuration(140).withEndAction(() -> {
+            showStats(toStats);
+            root.setTranslationX(-dir * w * 0.3f);
+            root.animate().translationX(0).alpha(1f).setDuration(200).start();
+        }).start();
+    }
+
+    private void showStats(boolean show) {
+        onStats = show;
+        if (show) {
+            for (View v : playerViews) {
+                if (v == playerViews.get(0)) continue;       // the top row (cover, title, dots) stays
+                playerVisibility.put(v, v.getVisibility());
+                v.setVisibility(View.GONE);
+            }
+            renderStats();
+            stats.setVisibility(View.VISIBLE);
+        } else {
+            stats.setVisibility(View.GONE);
+            for (java.util.Map.Entry<View, Integer> e : playerVisibility.entrySet()) e.getKey().setVisibility(e.getValue());
+            playerVisibility.clear();
+        }
+        paintDots();
+    }
+
+    private void paintDots() {
+        if (dots == null) return;
+        dots.setText(onStats ? "○ ●" : "● ○");
+        dots.setTextColor(rust);
+    }
+
+    private void renderStats() {
+        stats.removeAllViews();
+        if (!hasAccess()) {
+            TextView ask = label(12, ink, true);
+            ask.setText("Statistiken brauchen den Benachrichtigungszugriff für ARC-DNA →");
+            ask.setPadding(0, dp(12), 0, dp(4));
+            ask.setOnClickListener(v -> host.open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+            stats.addView(ask);
+            return;
+        }
+        long[] week = MusicStats.week(activity);
+        long today = week[6], total = 0;
+        for (long m : week) total += m;
+        TextView head = label(10, ink3, true);
+        head.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        head.setLetterSpacing(0.12f);
+        head.setText("HEUTE GEHÖRT · NUR AUF DEM HANDY GEZÄHLT");
+        head.setPadding(0, dp(14), 0, dp(2));
+        stats.addView(head);
+        TextView big = label(26, ink, true);
+        big.setText(today >= 60 ? (today / 60) + " h " + (today % 60) + " min" : today + " min");
+        stats.addView(big);
+        TextView sub = label(12, ink2, false);
+        sub.setText(MusicStats.tracksToday(activity) + " Titel heute · " + (total / 60) + " h " + (total % 60) + " min in 7 Tagen");
+        stats.addView(sub);
+
+        // Last 7 days as bars, today in rust.
+        View chart = new View(activity) {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final RectF r = new RectF();
+
+            @Override
+            protected void onDraw(Canvas c) {
+                long max = 1;
+                for (long m : week) max = Math.max(max, m);
+                float gap = dp(6), bw = (getWidth() - 6 * gap) / 7f, h = getHeight() - dp(14);
+                String[] days = {"M", "D", "M", "D", "F", "S", "S"};
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.add(java.util.Calendar.DAY_OF_YEAR, -6);
+                p.setTextSize(dp(9));
+                p.setTypeface(Typeface.MONOSPACE);
+                for (int i = 0; i < 7; i++) {
+                    float x = i * (bw + gap), bh = Math.max(dp(2), h * week[i] / (float) max);
+                    p.setColor(i == 6 ? rust : ink3);
+                    r.set(x, h - bh, x + bw, h);
+                    c.drawRoundRect(r, dp(3), dp(3), p);
+                    String d = days[(cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7];
+                    c.drawText(d, x + bw / 2 - p.measureText(d) / 2, getHeight() - dp(2), p);
+                    cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                }
+            }
+        };
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, dp(70));
+        clp.topMargin = dp(12);
+        stats.addView(chart, clp);
+
+        java.util.List<String> top = MusicStats.topArtists(activity);
+        TextView artists = label(12, ink2, true);
+        artists.setText(top.isEmpty() ? "Noch keine Künstler heute." : "TOP HEUTE  " + TextUtils.join("   ", top));
+        artists.setPadding(0, dp(10), 0, dp(2));
+        stats.addView(artists);
+        TextView back = label(10, ink3, true);
+        back.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        back.setText("← WISCHEN = PLAYER");
+        back.setPadding(0, dp(6), 0, 0);
+        stats.addView(back);
     }
 
     private void openPlayer() {

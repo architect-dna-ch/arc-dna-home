@@ -152,3 +152,14 @@ With the camera allowed, a subtle nod (head dips ~2.5°) makes the fox jump, as 
 
 The fox looks at you (following your head tilt while the front camera runs). Touch the screen
 and its eye follows your finger; 1.5 s after you let go it looks back at you.
+
+## Zuletzt carousel
+
+Zuletzt shows your recent apps as a sideways carousel, a page per row, with dots for the page
+you're on. How many: Mediathek → "ZULETZT-KARUSSELL" (4 / 8 / 12 / 16 / 24).
+
+## Music stats
+
+Swipe the music card left or right: player ↔ stats. Minutes listened today, titles today, the
+last 7 days as bars and today's top artists. Counted on the phone only (from the media sessions,
+via the notification-access entry); nothing leaves the device.
