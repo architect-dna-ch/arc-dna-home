@@ -1334,18 +1334,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hs.setHorizontalScrollBarEnabled(false);
         hs.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout strip = new LinearLayout(this);
-        for (int i = 0; i < pages * cols; i++) {
+        // Only real apps: the carousel ends when the last one reaches the right edge (no empty page).
+        for (int i = 0; i < n; i++) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileW, -2);
-            // Pages line up exactly: a gap between tiles and a full gap between pages.
             lp.leftMargin = i == 0 ? 0 : gap;
-            if (i < n) {
-                AppEntry app = recent.get(i);
-                View tile = tile(app.label, app.icon, 32);
-                tile.setOnClickListener(v -> launch(app));
-                strip.addView(tile, lp);
-            } else {
-                strip.addView(new View(this), lp);
-            }
+            AppEntry app = recent.get(i);
+            View tile = tile(app.label, app.icon, 32);
+            tile.setOnClickListener(v -> launch(app));
+            strip.addView(tile, lp);
         }
         // Focus landing on a tile (e.g. when coming back home) made the carousel jump to it: never let
         // tiles take focus, and always start at the newest app.
@@ -1385,7 +1381,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         final boolean[] touching = {false};
         Runnable settle = () -> {
             if (touching[0]) return;
-            int target = Math.round(hs.getScrollX() / (float) step) * step;
+            int max = Math.max(0, hs.getChildAt(0).getWidth() - hs.getWidth());
+            int target = Math.min(max, Math.round(hs.getScrollX() / (float) step) * step);
             if (target != hs.getScrollX()) hs.smoothScrollTo(target, 0);
         };
         hs.setOnScrollChangeListener((v, x, y, ox, oy) -> {
