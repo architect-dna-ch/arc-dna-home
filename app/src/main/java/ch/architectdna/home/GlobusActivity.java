@@ -249,7 +249,8 @@ public class GlobusActivity extends Activity {
         } catch (Exception ignored) {
         }
         prefs.edit().putString("marks", a.toString()).apply();
-        count.setText(marks.size() + (marks.size() == 1 ? " PUNKT" : " PUNKTE"));
+        // save() also runs while loading, before the header exists.
+        if (count != null) count.setText(marks.size() + (marks.size() == 1 ? " PUNKT" : " PUNKTE"));
     }
 
     private void select(Mark k) {
