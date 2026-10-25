@@ -415,13 +415,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // titles down by the thumb, no scrolling); opened sections eat the gap before the page scrolls.
         flexGap = new View(this);
         content.addView(flexGap, new LinearLayout.LayoutParams(-1, 0, 1f));
-        alarmRow = monoText(12, ink3);
-        alarmRow.setPadding(0, dp(10), 0, dp(4));
-        alarmRow.setOnClickListener(v -> pickAlarm());
-        alarmRow.setOnLongClickListener(v -> {
-            setAlarmOn(!prefs.getBoolean("alarmOn", false));
-            return true;
-        });
+        alarmRow = monoText(10, ink3);
+        alarmRow.setLetterSpacing(0.14f);
+        alarmCard = alarmCard();
         paintAlarm();
 
         // Priorities: search, apps and music always open; everything else folds away.
@@ -468,8 +464,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         LinearLayout today = new LinearLayout(this);
         today.setOrientation(LinearLayout.VERTICAL);
-        today.addView(alarmRow);
-        today.addView(focusCard(), margins(-1, -2, 0, dp(6), 0, 0));
+        today.addView(alarmCard, margins(-1, -2, 0, dp(6), 0, 0));
+        today.addView(focusCard(), margins(-1, -2, 0, dp(12), 0, 0));
         foldable("Heute & Wecker", "today", false, today, dp(22));
 
 
@@ -585,6 +581,35 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeLight = new EdgeLight(this, null);
         root.addView(edgeLight, new FrameLayout.LayoutParams(-1, -1));
         return root;
+    }
+
+    private LinearLayout alarmCard;
+    private TextView alarmTime;
+
+    /** The alarm as its own card: the bear, the time big, and what happens; tap = set, hold = on/off. */
+    private LinearLayout alarmCard() {
+        LinearLayout box = new LinearLayout(this);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(14), dp(12), dp(14), dp(12));
+        TextView bear = text(30, ink, false);
+        bear.setText("🐻");
+        box.addView(bear, margins(-2, -2, 0, 0, dp(14), 0));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        alarmTime = text(30, ink, true);
+        alarmTime.setLetterSpacing(-0.03f);
+        col.addView(alarmTime);
+        col.addView(alarmRow);
+        box.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView hint = monoText(10, ink3);
+        hint.setText("HALTEN = AN/AUS");
+        box.addView(hint);
+        box.setOnClickListener(v -> pickAlarm());
+        box.setOnLongClickListener(v -> {
+            setAlarmOn(!prefs.getBoolean("alarmOn", false));
+            return true;
+        });
+        return box;
     }
 
     private View focusCard() {
@@ -1741,8 +1766,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean on = prefs.getBoolean("alarmOn", false);
         int m = prefs.getInt("alarmMinutes", 7 * 60);
         String t = String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60);
-        alarmRow.setText(on ? "⏰ WECKER " + t + " · BÄR AUS DER HÖHLE" : "⏰ WECKER AUS · TIPPEN ZUM STELLEN");
+        alarmRow.setText(on ? "WECKER · BÄR AUS DER HÖHLE" : "WECKER AUS · TIPPEN ZUM STELLEN");
         alarmRow.setTextColor(on ? rust : ink3);
+        if (alarmTime != null) {
+            alarmTime.setText(t);
+            alarmTime.setTextColor(on ? ink : ink3);
+            alarmCard.setBackground(box(card, on ? rust : line, 8));
+            alarmCard.setAlpha(on ? 1f : 0.75f);
+        }
     }
 
     private void pickAlarm() {

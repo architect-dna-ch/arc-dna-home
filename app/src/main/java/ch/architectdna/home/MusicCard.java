@@ -485,6 +485,8 @@ final class MusicCard {
         boolean toStats = !onStats;
         float w = root.getWidth();
         root.animate().cancel();
+        // Both pages keep the taller page's height, so the sections below never jump.
+        root.setMinimumHeight(Math.max(root.getMinimumHeight(), root.getHeight()));
         root.animate().translationX(dir * w * 0.3f).alpha(0f).setDuration(140).withEndAction(() -> {
             showStats(toStats);
             root.setTranslationX(-dir * w * 0.3f);
