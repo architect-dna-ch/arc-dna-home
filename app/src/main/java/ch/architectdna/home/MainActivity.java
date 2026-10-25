@@ -2290,10 +2290,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         voice.say("Yip-yip!");
         game.resume();
         startGameNod();
-        Toast.makeText(this, "Tippen oder nicken = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
     }
 
-    /* A subtle nod = jump: a fast reading vs. a slow baseline; a dip of ~2.5° jumps, re-armed once the head is back. */
+    /* A head bump up = jump: a fast reading vs. a slow baseline; a lift of ~2.5° jumps, re-armed once the head is back. */
     private float nodFast = Float.NaN, nodSlow;
     private boolean nodArmed = true;
 
@@ -2304,11 +2304,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         nodFast += (pitch - nodFast) * 0.6f;
         nodSlow += (pitch - nodSlow) * 0.06f;
-        float dip = nodFast - nodSlow;            // negative = head moving down
-        if (nodArmed && dip < -2.5f) {
+        float lift = nodFast - nodSlow;           // positive = head moving up
+        if (nodArmed && lift > 2.5f) {
             nodArmed = false;
             if (game != null) game.jump();
-        } else if (!nodArmed && dip > -1f) {
+        } else if (!nodArmed && lift < 1f) {
             nodArmed = true;
         }
     }

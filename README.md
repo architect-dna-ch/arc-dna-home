@@ -144,7 +144,7 @@ and are only visible inside it. Lever up or swipe → to leave.
 
 ## Fuchsjagd: nod to jump
 
-With the camera allowed, a subtle nod (head dips ~2.5°) makes the fox jump, as well as a tap.
+With the camera allowed, a quick head bump up (~2.5°) makes the fox jump, as well as a tap.
 
 ## Fox eye
 

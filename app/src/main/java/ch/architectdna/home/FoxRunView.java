@@ -238,7 +238,7 @@ final class FoxRunView extends View {
         c.drawText(String.format(Locale.ROOT, "%05d M   REKORD %05d M", (int) distance, best), dp(20), dp(50), paint);
         paint.setColor(ink3);
         paint.setTextSize(dp(10));
-        String hint = crash > 0 ? "EEEK! NOCHMAL …" : "TIPPEN = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK";
+        String hint = crash > 0 ? "EEEK! NOCHMAL …" : "TIPPEN ODER KOPF HOCH = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK";
         c.drawText(hint, w - dp(20) - paint.measureText(hint), dp(30), paint);
     }
 
