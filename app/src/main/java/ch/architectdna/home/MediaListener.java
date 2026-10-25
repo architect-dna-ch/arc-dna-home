@@ -142,18 +142,21 @@ public class MediaListener extends NotificationListenerService {
         }
     };
 
-    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~4 s ---- */
+    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~15 s ---- */
 
     private String trackNow = "", trackBefore = "";
     private long changedAt, changedBeforeAt;
     private FoxVoice voice;
 
     private void watchFavGesture(MediaController c, String title, String artist) {
-        String key = title + "\u0001" + (artist == null ? "" : artist);
-        if (key.equals(trackNow)) return;
+        // Title only: artist sometimes blinks empty for a moment while the player skips.
+        String key = title.trim().toLowerCase(java.util.Locale.ROOT);
+        if (key.isEmpty() || key.equals(trackNow)) return;
         long now = System.currentTimeMillis();
-        // A → B → A, with B lasting under 4 s: that's the double tap "next, previous" on the earbuds.
-        if (key.equals(trackBefore) && now - changedAt < 4000 && now - changedBeforeAt < 9000) {
+        // A → B → A, B lasting under ~15 s: "next, then back" from the earbuds (two presses take time).
+        boolean back = key.equals(trackBefore) && now - changedAt < 15_000 && now - changedBeforeAt < 30_000;
+        DiagLog.log("fav gesture: track change, back=" + back + ", B lasted " + (now - changedAt) / 1000 + " s");
+        if (back) {
             favourite(c, title, artist);
             trackBefore = "";
         } else {
