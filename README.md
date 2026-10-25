@@ -233,3 +233,8 @@ returns within ~4 s – and it becomes a ★ favourite: marked in the Musik-Verl
 Like is pressed when it offers one (e.g. YouTube Music's thumb), and you hear a little "yip" in
 the earbuds. The same gesture on a favourite removes the ★ ("huff"). Second gesture: volume up, down, up on
 the earbuds within ~2.5 s. Favourites carry a rust ★ badge in the history.
+
+Main switch "Kopf-Scroll in anderen Apps" (top of that list) is **off by default**: while off,
+the scroll service never starts the camera outside ARC-DNA, whatever the per-app settings say.
+Head / eye scrolling inside the Mediathek is not affected. The camera frames are analysed on the
+phone only; Android shows its green camera dot whenever the camera runs.

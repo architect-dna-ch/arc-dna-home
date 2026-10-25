@@ -1507,6 +1507,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
 
+        // Main switch: off by default. While off, the service never starts the camera in another app.
+        LinearLayout mainRow = new LinearLayout(this);
+        mainRow.setGravity(Gravity.CENTER_VERTICAL);
+        mainRow.setPadding(dp(12), dp(10), dp(12), dp(10));
+        mainRow.setBackground(box(card, rust, 8));
+        LinearLayout mainTexts = new LinearLayout(this);
+        mainTexts.setOrientation(LinearLayout.VERTICAL);
+        TextView mainName = text(14, ink, true);
+        mainName.setText("Kopf-Scroll in anderen Apps");
+        mainTexts.addView(mainName);
+        TextView mainHint = text(11, ink3, false);
+        mainHint.setText("Aus = die Kamera startet nie ausserhalb von ARC-DNA, egal was unten steht. "
+            + "An = nur in den Apps, die du unten wählst; Android zeigt dann den grünen Kamera-Punkt.");
+        mainHint.setLineSpacing(0, 1.15f);
+        mainTexts.addView(mainHint);
+        mainRow.addView(mainTexts, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView mainChip = monoText(12, ink2);
+        mainChip.setPadding(dp(12), dp(7), dp(12), dp(7));
+        Runnable paintMain = () -> {
+            boolean on = prefs.getBoolean("scrollOutside", false);
+            mainChip.setText(on ? "AN" : "AUS");
+            mainChip.setTextColor(on ? 0xFFFFFFFF : ink2);
+            mainChip.setBackground(on ? box(rust, rust, 20) : box(card, line, 20));
+        };
+        paintMain.run();
+        mainChip.setOnClickListener(v -> {
+            boolean on = !prefs.getBoolean("scrollOutside", false);
+            prefs.edit().putBoolean("scrollOutside", on).apply();
+            DiagLog.log("scroll outside the launcher: " + (on ? "allowed" : "off"));
+            paintMain.run();
+        });
+        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(-1, -2);
+        ml.bottomMargin = dp(12);
+        mainRow.addView(mainChip);
+        list.addView(mainRow, ml);
+
         // One switch for every app (also ones installed later); single apps can still differ.
         LinearLayout allRow = new LinearLayout(this);
         allRow.setGravity(Gravity.CENTER_VERTICAL);

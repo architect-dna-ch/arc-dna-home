@@ -154,7 +154,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         String pkg = pendingPkg;
         if (pkg.isEmpty() || pkg.equals(currentPkg)) return;
         currentPkg = pkg;
-        String m = pkg.equals(getPackageName()) ? "off" : prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
+        // Main switch first: unless you allowed it, the camera never starts outside the launcher.
+        boolean allowed = prefs.getBoolean("scrollOutside", false);
+        String m = !allowed || pkg.equals(getPackageName()) ? "off"
+            : prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
         // Package names of other apps are not logged, only whether scrolling is on for them.
         DiagLog.log("front app changed, scroll mode=" + m);
         apply(m);
