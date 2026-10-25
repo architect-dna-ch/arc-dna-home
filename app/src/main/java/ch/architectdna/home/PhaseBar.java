@@ -29,7 +29,9 @@ final class PhaseBar extends View {
 
     enum Phase {
         GROOVE(0xFF8A8A86, "GROOVE"), BUILD(0xFFF29A1F, "BUILD ↗"), DROP(0xFFE0281E, "DROP 🔥"),
-        BREAK(0xFF3C8DFF, "BREAK"), VOCAL(0xFF2BBF6A, "VOCAL");
+        BREAK(0xFF3C8DFF, "BREAK"), VOCAL(0xFF2BBF6A, "VOCAL"),
+        // Appended last: stored maps index phases by position.
+        INSTRUMENTAL(0xFFA77BFF, "INSTRUMENTAL");
 
         final int colour;
         final String label;
@@ -70,12 +72,15 @@ final class PhaseBar extends View {
         plays = 0;
         String saved = track.isEmpty() ? null : store.getString(track, null);
         if (saved != null) {
-            String[] parts = saved.split(";", 2);
+            // "plays;6;cells" now; older maps were "plays;cells" with 5 phases per slice.
+            String[] parts = saved.split(";", 3);
             try {
                 plays = Integer.parseInt(parts[0]);
-                String[] cells = parts.length > 1 ? parts[1].split(",") : new String[0];
-                for (int i = 0; i < cells.length && i < SLICES * PHASES; i++) {
-                    if (!cells[i].isEmpty()) votes[i / PHASES][i % PHASES] = Integer.parseInt(cells[i], 36);
+                int stride = parts.length > 2 ? Integer.parseInt(parts[1]) : 5;
+                String body = parts.length > 2 ? parts[2] : parts.length > 1 ? parts[1] : "";
+                String[] cells = body.isEmpty() ? new String[0] : body.split(",");
+                for (int i = 0; i < cells.length && i < SLICES * stride; i++) {
+                    if (!cells[i].isEmpty() && i % stride < PHASES) votes[i / stride][i % stride] = Integer.parseInt(cells[i], 36);
                 }
             } catch (NumberFormatException ignored) {
                 votes = new int[SLICES][PHASES];
@@ -87,7 +92,7 @@ final class PhaseBar extends View {
 
     void save() {
         if (!dirty || track.isEmpty()) return;
-        StringBuilder b = new StringBuilder().append(plays).append(';');
+        StringBuilder b = new StringBuilder().append(plays).append(';').append(PHASES).append(';');
         for (int s = 0; s < SLICES; s++) {
             for (int p = 0; p < PHASES; p++) {
                 if (votes[s][p] > 0) b.append(Integer.toString(votes[s][p], 36));

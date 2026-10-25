@@ -205,24 +205,31 @@ public class HistoryActivity extends Activity {
 
     private static final String[][] ANIMALS = {
         {"🏎", "F1-Racer", "Energie, Builds und Drops"},
-        {"🐻", "Bär in der Höhle", "ruhig, tief, viele Breaks"},
+        {"🐻", "Bär in der Höhle", "ruhig, tief, Breaks und Instrumentals"},
         {"🦊", "Fuchs", "Stimme vorne, Flow"},
         {"🐰", "Hase", "leicht und verspielt, Groove"},
         {"?", "Noch nicht gehört", "Phasen werden beim nächsten Hören gelernt"}};
 
-    /** Phase shares {groove, build, drop, break, vocal} from the per-song map, or null if too little was heard. */
+    /** Phase shares {groove, build, drop, break, vocal, instrumental} from the per-song map, or null if too little was heard. */
     private float[] shares(String[] p) {
         String saved = getSharedPreferences("phases2", MODE_PRIVATE).getString(key(p), null);
         if (saved == null) return null;
-        String[] parts = saved.split(";", 2);
+        // "plays;6;cells" (with INSTRUMENTAL) or the older "plays;cells" with 5 phases.
+        String[] parts = saved.split(";", 3);
         if (parts.length < 2) return null;
-        String[] cells = parts[1].split(",", -1);
-        float[] sum = new float[5];
+        int stride;
+        try {
+            stride = parts.length > 2 ? Integer.parseInt(parts[1]) : 5;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        String[] cells = parts[parts.length - 1].split(",", -1);
+        float[] sum = new float[6];
         int heard = 0;
-        for (int sl = 0; sl * 5 + 4 < cells.length; sl++) {
+        for (int sl = 0; sl * stride + stride - 1 < cells.length; sl++) {
             int best = -1, bestVotes = 0;
-            for (int ph = 0; ph < 5; ph++) {
-                String c = cells[sl * 5 + ph];
+            for (int ph = 0; ph < Math.min(stride, 6); ph++) {
+                String c = cells[sl * stride + ph];
                 int v;
                 try {
                     v = c.isEmpty() ? 0 : Integer.parseInt(c, 36);
@@ -240,13 +247,13 @@ public class HistoryActivity extends Activity {
             }
         }
         if (heard < 12) return null;                // under ~10 % of the song: not enough to judge
-        for (int i = 0; i < 5; i++) sum[i] /= heard;
+        for (int i = 0; i < 6; i++) sum[i] /= heard;
         return sum;
     }
 
     private static int animal(float[] f) {
         if (f == null) return 4;
-        float energy = f[1] + f[2], calm = f[3], vocal = f[4];
+        float energy = f[1] + f[2], calm = f[3] + 0.6f * f[5], vocal = f[4];   // instrumental leans to the cave
         if (energy >= 0.28f && energy >= calm) return 0;   // F1
         if (calm >= 0.22f) return 1;                       // bear
         if (vocal >= 0.32f) return 2;                      // fox
@@ -318,14 +325,14 @@ public class HistoryActivity extends Activity {
 
     /** A thin bar of the song's phase shares (grey groove, orange build, red drop, blue break, green vocal). */
     private View mix(float[] f) {
-        int[] colours = {0xFF8A8A86, 0xFFF29A1F, 0xFFE0281E, 0xFF3C8DFF, 0xFF2BBF6A};
+        int[] colours = {0xFF8A8A86, 0xFFF29A1F, 0xFFE0281E, 0xFF3C8DFF, 0xFF2BBF6A, 0xFFA77BFF};
         return new View(this) {
             private final Paint p = new Paint();
 
             @Override
             protected void onDraw(Canvas c) {
                 float x = dp(64), w = getWidth() - x - dp(12);
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < 6; i++) {
                     p.setColor(colours[i]);
                     c.drawRect(x, 0, x + w * f[i], getHeight(), p);
                     x += w * f[i];

@@ -317,6 +317,7 @@ final class MusicCard {
         if (!key.equals(phaseTrack)) {
             phaseTrack = key;
             warm = 0;
+            lastVocalAt = System.currentTimeMillis();
             phaseBar.newTrack(key);
         }
     }
@@ -403,6 +404,9 @@ final class MusicCard {
         else if (rising) p = PhaseBar.Phase.BUILD;        // pre-chorus: energy climbing for seconds
         else if (midS > totS * 0.42f) p = PhaseBar.Phase.VOCAL;
         else p = PhaseBar.Phase.GROOVE;
+        // No voice for 20 s and nothing else going on: an instrumental stretch.
+        if (midS > totS * 0.42f) lastVocalAt = t;
+        if (p == PhaseBar.Phase.GROOVE && warm >= 240 && t - lastVocalAt > 20_000) p = PhaseBar.Phase.INSTRUMENTAL;
         // A drop holds at least 2 s, so a chorus doesn't flicker between beats.
         if (phase == PhaseBar.Phase.DROP && p != PhaseBar.Phase.DROP && t - phaseSince < 2000) p = PhaseBar.Phase.DROP;
         long now = System.currentTimeMillis();
@@ -893,7 +897,7 @@ final class MusicCard {
 
     private int lastBattery = -1;
     private DeviceGauge gauge;
-    private long lastKick;
+    private long lastKick, lastVocalAt = System.currentTimeMillis();
     private TextView deviceName;
 
     /**

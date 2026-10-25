@@ -90,7 +90,7 @@ import java.util.Random;
  */
 public class MainActivity extends Activity implements SensorEventListener, HeadTracker.Listener {
 
-    private static final String WEB_HOME = "https://architect-dna.ch/home";
+    private CrackView cracks;
     private static final int REQ_CAMERA = 7;
     private static final int REQ_AUDIO = 8;
     private static final int REQ_NOTIFY = 9;
@@ -476,7 +476,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         foldable("Projekte", "projects", false, projectChips(), dp(22));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Chat · schütteln = Erdbeben");
+        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Erdbeben · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         foldable("Tipps", "hints", false, hint, dp(20));
 
@@ -533,8 +533,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         fox.setContentDescription("Fuchs");
         fox.setOnClickListener(v -> foxCall());
+        // Hold the fox: an earthquake with the glass crack from architect-dna.ch.
         fox.setOnLongClickListener(v -> {
-            open(new Intent(Intent.ACTION_VIEW, Uri.parse(WEB_HOME)));
+            quake();
             return true;
         });
         root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
@@ -2721,6 +2722,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void quake() {
+        if (cracks == null) {
+            cracks = new CrackView(this, ink);
+            rootFrame.addView(cracks, new FrameLayout.LayoutParams(-1, -1));
+        }
+        cracks.bringToFront();
+        cracks.crack(rootFrame.getWidth() / 2f, rootFrame.getHeight() * 0.4f);
         hop();
         seismo.kick(1f);
         View target = libraryOpen ? library : content;
