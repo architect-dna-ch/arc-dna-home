@@ -824,9 +824,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         body.addView(torchSetting);
 
         TextView diag = monoText(11, ink2);
-        diag.setText("DIAGNOSE-LOG TEILEN (ANONYM) →");
+        diag.setText("DIAGNOSE-LOG AN CLAUDE SENDEN (ANONYM) →");
         diag.setPadding(dp(4), dp(12), dp(4), dp(8));
-        diag.setOnClickListener(v -> shareDiagnostics());
+        diag.setOnClickListener(v -> uploadDiagnostics());
+        diag.setOnLongClickListener(v -> {
+            shareDiagnostics();
+            return true;
+        });
         body.addView(diag);
 
         TextView appScroll = monoText(11, ink2);
@@ -2039,8 +2043,45 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    /** Only this app knows it; architect-dna.ch/api/diag keeps just its hash. */
+    private static final String DIAG_TOKEN = "845948abb2e6d9f707f10d75a30f7e2114bf47179618474a";
+
+    /** Sends the same anonymous report to the private drop on architect-dna.ch, where Claude reads it. */
+    private void uploadDiagnostics() {
+        String report = diagnosticsText();
+        Toast.makeText(this, "Diagnose wird gesendet …", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            int code = -1;
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL("https://architect-dna.ch/api/diag").openConnection();
+                con.setRequestMethod("POST");
+                con.setConnectTimeout(10_000);
+                con.setReadTimeout(15_000);
+                con.setDoOutput(true);
+                con.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
+                con.setRequestProperty("x-diag-token", DIAG_TOKEN);
+                try (java.io.OutputStream out = con.getOutputStream()) {
+                    out.write(report.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                code = con.getResponseCode();
+                con.disconnect();
+            } catch (Exception e) {
+                DiagLog.log("diag upload failed: " + e.getClass().getSimpleName());
+            }
+            int result = code;
+            runOnUiThread(() -> Toast.makeText(this, result == 200 ? "Gesendet ✓ — sag Claude: „check the log“" : "Senden fehlgeschlagen (" + result + ") — lang drücken zum Teilen", Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
     /** Technical state + the log, as plain text to share (e.g. into the Claude chat). Nothing personal. */
     private void shareDiagnostics() {
+        Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, "ARC-DNA Diagnose")
+            .putExtra(Intent.EXTRA_TEXT, diagnosticsText());
+        open(Intent.createChooser(send, "Diagnose teilen"));
+    }
+
+    private String diagnosticsText() {
         StringBuilder b = new StringBuilder("ARC-DNA Home Diagnose\n");
         try {
             b.append("Version: ").append(getPackageManager().getPackageInfo(getPackageName(), 0).versionName).append('\n');
@@ -2065,10 +2106,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         b.append("Nachtmodus: ").append(isNight()).append(", Bildschirm ").append(getResources().getConfiguration().screenWidthDp)
             .append("×").append(getResources().getConfiguration().screenHeightDp).append(" dp\n\n--- Log ---\n");
         b.append(DiagLog.read());
-        Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
-            .putExtra(Intent.EXTRA_SUBJECT, "ARC-DNA Diagnose")
-            .putExtra(Intent.EXTRA_TEXT, b.toString());
-        open(Intent.createChooser(send, "Diagnose teilen"));
+        return b.toString();
     }
 
     /** Lock screen runs ARC-DNA Live (own lock engine, or home live shared with the lock screen). */
