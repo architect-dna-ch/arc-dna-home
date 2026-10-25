@@ -1335,6 +1335,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         DiagLog.log("ghost level on");
     }
 
+    /** The navigation bar stays hidden on the home screen until you swipe it up from the edge. */
+    private void hideNavBar() {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        android.view.WindowInsetsController c = getWindow().getInsetsController();
+        c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        c.hide(android.view.WindowInsets.Type.navigationBars());
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) hideNavBar();
+    }
+
     /** Dark icons on a light screen, light icons on the dark one (and in the Geister-Level). */
     private void systemBarIcons(boolean dark) {
         if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
@@ -2540,6 +2554,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        hideNavBar();
         ScrollAssistService.homeInFront(getPackageName());
         volumeReceiver = new BroadcastReceiver() {
             @Override

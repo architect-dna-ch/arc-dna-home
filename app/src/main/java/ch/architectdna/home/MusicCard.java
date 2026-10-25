@@ -129,7 +129,14 @@ final class MusicCard {
 
         spectrum = new Spectrum();
         spectrum.setOnClickListener(v -> {
-            if (!hasAudioPermission()) host.askAudioPermission();
+            if (!hasAudioPermission()) {
+                host.askAudioPermission();
+                return;
+            }
+            // Tap: waveform (like a DJ deck) ↔ bars.
+            android.content.SharedPreferences p = activity.getSharedPreferences("home", Activity.MODE_PRIVATE);
+            p.edit().putBoolean("vizBars", !p.getBoolean("vizBars", false)).apply();
+            spectrum.invalidate();
         });
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(46));
         slp.topMargin = dp(12);
@@ -732,14 +739,63 @@ final class MusicCard {
                     shown[i] += (target[i] - shown[i]) * 0.35f;
                     target[i] *= 0.9f;
                 }
+                pushColumn();
                 invalidate();
                 postOnAnimation(this);
             }
         };
 
+        /* Waveform history: one column per frame, coloured by sound like a DJ deck – bass red, mids green, highs blue. */
+        private final float[] colAmp = new float[400];
+        private final int[] colColour = new int[400];
+        private int colHead;
+
+        private void pushColumn() {
+            float lo = 0, mid = 0, hi = 0;
+            for (int i = 0; i < BARS; i++) {
+                if (i < BARS / 3) lo += shown[i];
+                else if (i < 2 * BARS / 3) mid += shown[i];
+                else hi += shown[i];
+            }
+            float max = Math.max(0.001f, Math.max(lo, Math.max(mid, hi)));
+            float amp = Math.min(1f, (lo + mid + hi) / BARS * 1.6f);
+            int r = (int) (60 + 195 * lo / max), g = (int) (40 + 215 * mid / max * 0.9f), b = (int) (60 + 195 * hi / max);
+            colHead = (colHead + 1) % colAmp.length;
+            colAmp[colHead] = amp;
+            colColour[colHead] = 0xFF000000 | (r << 16) | (g << 8) | b;
+        }
+
+        private boolean bars() {
+            return activity.getSharedPreferences("home", Activity.MODE_PRIVATE).getBoolean("vizBars", false);
+        }
+
+        private void drawWave(Canvas canvas, float w, float h) {
+            float col = dp(2), mid = h / 2f, head = w * 0.82f;     // the playhead, with the past to its left
+            int n = (int) (head / col);
+            for (int k = 0; k < n && k < colAmp.length; k++) {
+                int idx = (colHead - k + colAmp.length) % colAmp.length;
+                float a = Math.max(0.03f, colAmp[idx]) * (h / 2f - dp(2));
+                float x = head - k * col;
+                paint.setColor(colColour[idx] == 0 ? (ink & 0x00FFFFFF) | 0x40000000 : colColour[idx]);
+                paint.setAlpha((int) (255 * (0.35f + 0.65f * (1 - k / (float) n))));   // older = fainter
+                rect.set(x - col * 0.8f, mid - a, x, mid + a);
+                canvas.drawRect(rect, paint);
+            }
+            // The part "ahead" stays a calm line, and the red playhead marks now.
+            paint.setAlpha(255);
+            paint.setColor((ink & 0x00FFFFFF) | 0x33000000);
+            canvas.drawRect(head, mid - dp(0.5f), w, mid + dp(0.5f), paint);
+            paint.setColor(0xFFE0281E);
+            canvas.drawRect(head, 0, head + dp(1.5f), h, paint);
+        }
+
         @Override
         protected void onDraw(Canvas canvas) {
             float w = getWidth(), h = getHeight();
+            if (!bars()) {
+                drawWave(canvas, w, h);
+                return;
+            }
             float gap = dp(3), bw = (w - gap * (BARS - 1)) / BARS;
             for (int i = 0; i < BARS; i++) {
                 float v = Math.max(0.05f, shown[i]);

@@ -175,3 +175,9 @@ In other apps the state shows as an orange ring around the front camera (no pill
 bar): solid = ready, a running arc = scrolling (clockwise down, anticlockwise up), dim = paused
 or your finger is in charge, double ring = BLICK. Triple-tap the camera to pause / resume,
 long-press it to switch NICKEN ↔ BLICK.
+
+## Visualizer styles & nav bar
+
+The music card's visualizer is a DJ-style scrolling waveform (bass red, mids green, highs blue,
+red playhead); tap it to switch to the bars and back. On the home screen the navigation bar stays
+hidden until you swipe it up from the bottom edge.
