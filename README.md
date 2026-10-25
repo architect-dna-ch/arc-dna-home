@@ -225,3 +225,10 @@ grouped by day, or the TOP list with play counts. Tap a song to play it again in
 The TIERE tab sorts every song to a lock screen character by its remembered phase map:
 🏎 F1-Racer (builds + drops), 🐻 Bär in der Höhle (calm, breaks), 🦊 Fuchs (vocals), 🐰 Hase
 (light groove); a thin bar under each song shows its phase mix.
+
+## ★ from the earbuds
+
+Away from the phone: tap "next" and then straight "back" on the JBL (or any earbuds) – the song
+returns within ~4 s – and it becomes a ★ favourite: marked in the Musik-Verlauf, the app's own
+Like is pressed when it offers one (e.g. YouTube Music's thumb), and you hear a little "yip" in
+the earbuds. The same gesture on a favourite removes the ★ ("huff").

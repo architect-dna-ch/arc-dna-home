@@ -36,6 +36,23 @@ final class MusicStats {
         update(c, playing, title, artist, null);
     }
 
+    /* ---- ★ favourites (from the earbud gesture): toggled, kept on the phone ---- */
+
+    /** Toggles ★ for a song; returns true if it is a favourite now. */
+    static synchronized boolean favourite(Context c, String title, String artist) {
+        SharedPreferences p = c.getSharedPreferences("favourites", Context.MODE_PRIVATE);
+        String k = (title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist);
+        boolean now = !p.contains(k);
+        if (now) p.edit().putLong(k, System.currentTimeMillis()).apply();
+        else p.edit().remove(k).apply();
+        return now;
+    }
+
+    static boolean isFavourite(Context c, String title, String artist) {
+        return c.getSharedPreferences("favourites", Context.MODE_PRIVATE)
+            .contains((title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist));
+    }
+
     /* ---- Track history for the Musik-Verlauf screen: one line per started song, on the phone only ---- */
 
     private static final long HISTORY_MAX_BYTES = 400_000;

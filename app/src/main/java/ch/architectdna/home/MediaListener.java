@@ -98,5 +98,51 @@ public class MediaListener extends NotificationListenerService {
             artist = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
         }
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
+        if (playing != null && title != null) watchFavGesture(playing, title, artist);
+    }
+
+    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~4 s ---- */
+
+    private String trackNow = "", trackBefore = "";
+    private long changedAt, changedBeforeAt;
+    private FoxVoice voice;
+
+    private void watchFavGesture(MediaController c, String title, String artist) {
+        String key = title + "\u0001" + (artist == null ? "" : artist);
+        if (key.equals(trackNow)) return;
+        long now = System.currentTimeMillis();
+        // A → B → A, with B lasting under 4 s: that's the double tap "next, previous" on the earbuds.
+        if (key.equals(trackBefore) && now - changedAt < 4000 && now - changedBeforeAt < 9000) {
+            favourite(c, title, artist);
+            trackBefore = "";
+        } else {
+            trackBefore = trackNow;
+        }
+        trackNow = key;
+        changedBeforeAt = changedAt;
+        changedAt = now;
+    }
+
+    private void favourite(MediaController c, String title, String artist) {
+        boolean liked = MusicStats.favourite(this, title, artist);
+        // Press the app's own Like if it offers one (YouTube Music's thumb, Spotify's heart …).
+        PlaybackState st = c.getPlaybackState();
+        if (st != null && liked) {
+            for (PlaybackState.CustomAction a : st.getCustomActions()) {
+                String n = (a.getAction() + " " + a.getName()).toLowerCase(java.util.Locale.ROOT);
+                if (n.contains("like") && !n.contains("dislike") || n.contains("thumb_up") || n.contains("thumbs up")
+                    || n.contains("heart") || n.contains("favorit") || n.contains("mag ich")) {
+                    try {
+                        c.getTransportControls().sendCustomAction(a, null);
+                    } catch (RuntimeException ignored) {
+                    }
+                    break;
+                }
+            }
+        }
+        // A little yip in the earbuds, so you know it worked without looking.
+        if (voice == null) voice = new FoxVoice();
+        voice.say(liked ? "Yip-yip!" : "Huff.");
+        DiagLog.log("earbud gesture: favourite " + (liked ? "on" : "off"));
     }
 }

@@ -148,7 +148,8 @@ public class HistoryActivity extends Activity {
         big.setPadding(0, dp(16), 0, 0);
         root.addView(big);
         TextView sub = mono(10, ink3);
-        sub.setText(counts.size() + " VERSCHIEDENE · NUR AUF DEM HANDY");
+        int favs = getSharedPreferences("favourites", MODE_PRIVATE).getAll().size();
+        sub.setText(counts.size() + " VERSCHIEDENE · ★ " + favs + " FAVORITEN · NUR AUF DEM HANDY");
         root.addView(sub);
 
         LinearLayout tabs = new LinearLayout(this);
@@ -403,7 +404,8 @@ public class HistoryActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t1 = text(15, ink, true);
-        t1.setText(p[1].isEmpty() ? "–" : p[1]);
+        boolean fav = MusicStats.isFavourite(this, p[1], p[2]);
+        t1.setText((fav ? "★ " : "") + (p[1].isEmpty() ? "–" : p[1]));
         t1.setSingleLine(true);
         t1.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(t1);
