@@ -33,6 +33,56 @@ final class MusicStats {
 
     /** A playback state or track change from any media app. */
     static synchronized void update(Context c, boolean playing, String title, String artist) {
+        update(c, playing, title, artist, null);
+    }
+
+    /* ---- Track history for the Musik-Verlauf screen: one line per started song, on the phone only ---- */
+
+    private static final long HISTORY_MAX_BYTES = 400_000;
+
+    private static java.io.File historyFile(Context c) {
+        return new java.io.File(c.getFilesDir(), "tracks.log");
+    }
+
+    private static void record(Context c, String title, String artist, String pkg) {
+        java.io.File f = historyFile(c);
+        String line = System.currentTimeMillis() + "\t" + clean(title) + "\t" + clean(artist) + "\t" + clean(pkg) + "\n";
+        try {
+            if (f.length() > HISTORY_MAX_BYTES) {
+                // Keep the newer half.
+                byte[] all = java.nio.file.Files.readAllBytes(f.toPath());
+                int from = all.length / 2;
+                while (from < all.length && all[from] != '\n') from++;
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(f, false)) {
+                    out.write(all, Math.min(all.length, from + 1), Math.max(0, all.length - from - 1));
+                }
+            }
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(f, true)) {
+                out.write(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+        } catch (java.io.IOException ignored) {
+        }
+    }
+
+    private static String clean(String s) {
+        return s == null ? "" : s.replace('\t', ' ').replace('\n', ' ');
+    }
+
+    /** Every logged play, newest first: {time, title, artist, package}. */
+    static List<String[]> history(Context c) {
+        List<String[]> out = new ArrayList<>();
+        try {
+            for (String line : java.nio.file.Files.readAllLines(historyFile(c).toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+                String[] f = line.split("\t", -1);
+                if (f.length >= 4) out.add(f);
+            }
+        } catch (java.io.IOException ignored) {
+        }
+        Collections.reverse(out);
+        return out;
+    }
+
+    static synchronized void update(Context c, boolean playing, String title, String artist, String pkg) {
         SharedPreferences p = prefs(c);
         SharedPreferences.Editor e = p.edit();
         long now = System.currentTimeMillis();
@@ -49,6 +99,7 @@ final class MusicStats {
             String d = day(now);
             e.putString("lastTrack", key);
             e.putInt("musicTracks:" + d, p.getInt("musicTracks:" + d, 0) + 1);
+            record(c, title, artist, pkg);
             if (artist != null && !artist.isEmpty()) {
                 Map<String, Integer> top = artists(p, d);
                 top.put(artist, top.getOrDefault(artist, 0) + 1);

@@ -216,3 +216,9 @@ The music card's speaker line ("● JBL Tune Beam 2 · 🔋 70 % · SEIT 11:45 �
 output switcher (move the music between the JBL, the phone speaker and other devices); long-press
 = the JBL app if installed, else Bluetooth settings; with a JBL connected an "ANC ↗" chip jumps straight into the JBL app for noise cancelling. The battery shows when the speaker reports it
 and "Nearby devices" is allowed. JBL's own EQ / PartyBoost settings stay in the JBL app (private protocol).
+
+## Musik-Verlauf
+
+Every song you start is logged on the phone (time, title, artist, app – from the media sessions,
+via the notification-access entry). Music card → stats page → "VERLAUF ALLER TITEL": the history
+grouped by day, or the TOP list with play counts. Tap a song to play it again in its app.

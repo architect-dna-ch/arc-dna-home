@@ -97,6 +97,6 @@ public class MediaListener extends NotificationListenerService {
             title = m.getString(MediaMetadata.METADATA_KEY_TITLE);
             artist = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
         }
-        MusicStats.update(this, playing != null, title, artist);
+        MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
     }
 }

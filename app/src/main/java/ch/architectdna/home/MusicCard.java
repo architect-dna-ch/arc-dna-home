@@ -536,6 +536,12 @@ final class MusicCard {
         artists.setText(top.isEmpty() ? "Noch keine Künstler heute." : "TOP HEUTE  " + TextUtils.join("   ", top));
         artists.setPadding(0, dp(10), 0, dp(2));
         stats.addView(artists);
+        TextView history = label(11, rust, true);
+        history.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        history.setText("VERLAUF ALLER TITEL →");
+        history.setPadding(0, dp(10), 0, dp(2));
+        history.setOnClickListener(v -> host.open(new Intent(activity, HistoryActivity.class)));
+        stats.addView(history);
         TextView back = label(10, ink3, true);
         back.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         back.setText("← WISCHEN = PLAYER");

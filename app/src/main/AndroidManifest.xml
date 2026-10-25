@@ -80,6 +80,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Musik-Verlauf: the songs played, from the music card's stats page. -->
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false"
+            android:label="Musik-Verlauf" />
+
         <!-- ARC-DNA Telefon: the dialer in the launcher's style (the call itself runs in Android's in-call screen). -->
         <activity
             android:name=".DialerActivity"
