@@ -106,48 +106,113 @@ public class DialerActivity extends Activity {
         return d;
     }
 
-    private View build() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(bg);
-        root.setPadding(dp(20), dp(36), dp(20), dp(20));
-        root.setFitsSystemWindows(true);
+    /** Blueprint grid behind everything, like the home screen and wallpaper. */
+    private final class Grid extends View {
+        private final android.graphics.Paint p = new android.graphics.Paint();
 
-        // Label row, like the home screen.
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        Grid() {
+            super(DialerActivity.this);
+            p.setStrokeWidth(dp(1));
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            p.setColor((ink & 0x00FFFFFF) | 0x0F000000);
+            float cell = dp(32);
+            for (float x = 0; x < getWidth(); x += cell) c.drawLine(x, 0, x, getHeight(), p);
+            for (float y = 0; y < getHeight(); y += cell) c.drawLine(0, y, getWidth(), y, p);
+        }
+    }
+
+    private TextView mono(float sp, int colour) {
+        TextView t = text(sp, colour, true);
+        t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        t.setLetterSpacing(0.16f);
+        return t;
+    }
+
+    private View sectionLabel(String s) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
         View bar = new View(this);
         bar.setBackgroundColor(rust);
-        top.addView(bar, new LinearLayout.LayoutParams(dp(22), dp(2)));
-        TextView label = text(11, ink3, true);
-        label.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        label.setLetterSpacing(0.2f);
-        label.setText("  ARC-DNA · TELEFON");
-        top.addView(label);
+        row.addView(bar, new LinearLayout.LayoutParams(dp(22), dp(2)));
+        TextView t = mono(11, ink3);
+        t.setLetterSpacing(0.2f);
+        t.setText(s.toUpperCase(Locale.GERMAN));
+        t.setPadding(dp(10), 0, 0, 0);
+        row.addView(t);
+        return row;
+    }
+
+    private View build() {
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(bg);
+        frame.addView(new Grid(), new FrameLayout.LayoutParams(-1, -1));
+        // The window insets go to this wrapper, so the content keeps its own side margins.
+        FrameLayout safe = new FrameLayout(this);
+        safe.setFitsSystemWindows(true);
+        frame.addView(safe, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(20), dp(18), dp(20), dp(18));
+        safe.addView(root, new FrameLayout.LayoutParams(-1, -1));
+
+        // — ARC-DNA · TELEFON ……… ● BEREIT
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(sectionLabel("Architect · DNA · Telefon"), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView ready = mono(11, ink3);
+        android.text.SpannableString st = new android.text.SpannableString("● BEREIT");
+        st.setSpan(new android.text.style.ForegroundColorSpan(0xFF1A7A3C), 0, 1, 0);
+        ready.setText(st);
+        top.addView(ready);
         root.addView(top);
 
-        // Suggestions: recent calls, or matches while typing.
+        // Recent calls / matches in one card with dividers.
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        listHead = (LinearLayout) sectionLabel("Zuletzt");
+        list.addView(listHead);
         suggestions = new LinearLayout(this);
         suggestions.setOrientation(LinearLayout.VERTICAL);
-        sv.addView(suggestions);
+        suggestions.setBackground(box(card, line, 8));
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
+        sl.topMargin = dp(10);
+        list.addView(suggestions, sl);
+        sv.addView(list);
         LinearLayout.LayoutParams svl = new LinearLayout.LayoutParams(-1, 0, 1f);
-        svl.topMargin = dp(14);
+        svl.topMargin = dp(20);
         root.addView(sv, svl);
 
-        // The number, big and tight like the clock; ⌫ deletes, long-press clears.
+        // The number, big and tight like the clock, with a blinking rust cursor; ⌫ deletes, long-press clears.
         LinearLayout numRow = new LinearLayout(this);
         numRow.setGravity(Gravity.CENTER_VERTICAL);
+        numRow.setPadding(0, dp(14), 0, dp(6));
         display = text(40, ink, true);
         display.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
-        display.setLetterSpacing(-0.03f);
+        display.setLetterSpacing(-0.04f);
         display.setSingleLine(true);
         display.setEllipsize(android.text.TextUtils.TruncateAt.START);
-        numRow.addView(display, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView back = text(26, ink2, false);
-        back.setText("⌫");
-        back.setPadding(dp(14), dp(6), dp(6), dp(6));
+        numRow.addView(display, new LinearLayout.LayoutParams(-2, -2));
+        View cursor = new View(this);
+        cursor.setBackgroundColor(rust);
+        LinearLayout.LayoutParams cl0 = new LinearLayout.LayoutParams(dp(4), dp(40));
+        cl0.leftMargin = dp(4);
+        numRow.addView(cursor, cl0);
+        android.animation.ObjectAnimator blink = android.animation.ObjectAnimator.ofFloat(cursor, View.ALPHA, 1f, 0f);
+        blink.setDuration(530);
+        blink.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        blink.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+        blink.start();
+        numRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        TextView back = mono(13, ink2);
+        back.setText("⌫ LÖSCHEN");
+        back.setPadding(dp(12), dp(8), dp(12), dp(8));
+        back.setBackground(box(card, line, 8));
         back.setOnClickListener(v -> {
             if (number.length() > 0) number.setLength(number.length() - 1);
             v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
@@ -161,7 +226,7 @@ public class DialerActivity extends Activity {
         numRow.addView(back);
         root.addView(numRow, new LinearLayout.LayoutParams(-1, -2));
 
-        // Keypad: 3 × 4 tiles.
+        // Keypad: 3 × 4 sharp tiles.
         LinearLayout pad = new LinearLayout(this);
         pad.setOrientation(LinearLayout.VERTICAL);
         for (int r = 0; r < 4; r++) {
@@ -172,15 +237,14 @@ public class DialerActivity extends Activity {
                 key.setOrientation(LinearLayout.VERTICAL);
                 key.setGravity(Gravity.CENTER);
                 key.setBackground(box(card, line, 8));
-                key.setPadding(0, dp(8), 0, dp(8));
-                TextView d = text(26, ink, false);
-                d.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                key.setPadding(0, dp(6), 0, dp(6));
+                TextView d = text(26, ink, true);
+                d.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
                 d.setText(k[0]);
                 d.setGravity(Gravity.CENTER);
                 key.addView(d);
-                TextView sub = text(9, ink3, true);
-                sub.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-                sub.setLetterSpacing(0.2f);
+                TextView sub = mono(9, k[0].equals("0") ? rust : ink3);
+                sub.setLetterSpacing(0.25f);
                 sub.setText(k[1].isEmpty() ? " " : k[1]);
                 sub.setGravity(Gravity.CENTER);
                 key.addView(sub);
@@ -189,31 +253,31 @@ public class DialerActivity extends Activity {
                     press("+");
                     return true;
                 });
-                LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(0, dp(64), 1f);
-                kl.setMargins(dp(4), dp(4), dp(4), dp(4));
+                LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(0, dp(62), 1f);
+                kl.setMargins(col == 0 ? 0 : dp(4), dp(4), col == 2 ? 0 : dp(4), dp(4));
                 row.addView(key, kl);
             }
             pad.addView(row);
         }
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
-        pl.topMargin = dp(10);
-        root.addView(pad, pl);
+        root.addView(pad, new LinearLayout.LayoutParams(-1, -2));
 
-        // Call button.
-        FrameLayout callWrap = new FrameLayout(this);
-        TextView call = text(16, 0xFFFFFFFF, true);
-        call.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        call.setLetterSpacing(0.15f);
-        call.setText("ANRUFEN");
+        // Call bar: full width, rust, sharp.
+        TextView call = mono(15, 0xFFFFFFFF);
+        call.setLetterSpacing(0.2f);
+        call.setText("ANRUFEN  →");
         call.setGravity(Gravity.CENTER);
-        call.setBackground(box(rust, 0, 30));
-        call.setOnClickListener(v -> call(number.toString()));
-        callWrap.addView(call, new FrameLayout.LayoutParams(dp(200), dp(58), Gravity.CENTER));
-        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, -2);
-        cl.topMargin = dp(14);
-        root.addView(callWrap, cl);
-        return root;
+        call.setBackground(box(rust, 0, 8));
+        call.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            call(number.toString());
+        });
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, dp(58));
+        cl.topMargin = dp(10);
+        root.addView(call, cl);
+        return frame;
     }
+
+    private LinearLayout listHead;
 
     private void press(String key) {
         number.append(key);
@@ -228,20 +292,26 @@ public class DialerActivity extends Activity {
 
     private void refresh() {
         display.setText(number.length() == 0 ? "" : number);
-        display.setHint("Nummer…");
+        display.setHint("Nummer");
         display.setHintTextColor(ink3);
         suggestions.removeAllViews();
         String q = number.toString();
         List<String[]> rows = q.isEmpty() ? recents() : matches(q);
-        TextView head = text(11, ink3, true);
-        head.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        head.setLetterSpacing(0.2f);
-        head.setText(q.isEmpty() ? "ZULETZT" : rows.isEmpty() ? "KEIN KONTAKT" : "KONTAKTE");
-        head.setPadding(0, 0, 0, dp(8));
-        suggestions.addView(head);
-        for (String[] r : rows) suggestions.addView(row(r[0], r[1], r.length > 2 ? r[2] : null));
+        ((TextView) listHead.getChildAt(1)).setText(q.isEmpty() ? "ZULETZT" : rows.isEmpty() ? "KEIN KONTAKT" : "KONTAKTE · " + rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            if (i > 0) {
+                View div = new View(this);
+                div.setBackgroundColor(line);
+                suggestions.addView(div, new LinearLayout.LayoutParams(-1, dp(1)));
+            }
+            String[] r = rows.get(i);
+            suggestions.addView(row(r[0], r[1], r.length > 2 ? r[2] : null));
+        }
+        suggestions.setVisibility(rows.isEmpty() ? View.GONE : View.VISIBLE);
         if (rows.isEmpty() && q.isEmpty() && checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            suggestions.setVisibility(View.VISIBLE);
             TextView ask = text(13, ink2, false);
+            ask.setPadding(dp(14), dp(12), dp(14), dp(12));
             ask.setText("Anrufliste und Kontakte erlauben, um sie hier zu sehen →");
             ask.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.READ_CALL_LOG,
                 Manifest.permission.READ_CONTACTS}, REQ_READ));
@@ -252,33 +322,33 @@ public class DialerActivity extends Activity {
     private View row(String name, String num, String meta) {
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setBackground(box(card, line, 8));
-        r.setPadding(dp(14), dp(10), dp(10), dp(10));
-        TextView initial = text(16, 0xFFFFFFFF, true);
-        initial.setGravity(Gravity.CENTER);
+        r.setPadding(dp(12), dp(10), dp(12), dp(10));
         String n = name == null || name.isEmpty() ? num : name;
+        // Square monogram tile, ink outline; missed calls in rust.
+        TextView initial = text(16, "verpasst".equals(meta) ? rust : ink, true);
+        initial.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
+        initial.setGravity(Gravity.CENTER);
         initial.setText(n.isEmpty() ? "#" : n.substring(0, 1).toUpperCase(Locale.ROOT));
-        GradientDrawable circle = new GradientDrawable();
-        circle.setShape(GradientDrawable.OVAL);
-        circle.setColor(rust);
-        initial.setBackground(circle);
-        r.addView(initial, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        initial.setBackground(box(bg, "verpasst".equals(meta) ? rust : line, 8));
+        r.addView(initial, new LinearLayout.LayoutParams(dp(40), dp(40)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(dp(12), 0, dp(8), 0);
         TextView t1 = text(15, ink, true);
         t1.setText(n);
         t1.setSingleLine(true);
+        t1.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(t1);
-        TextView t2 = text(12, ink2, false);
-        t2.setText(meta != null ? num + " · " + meta : num);
+        TextView t2 = mono(10, "verpasst".equals(meta) ? rust : ink3);
+        t2.setLetterSpacing(0.1f);
+        t2.setText((meta != null ? meta.toUpperCase(Locale.GERMAN) + " · " : "") + num);
         t2.setSingleLine(true);
         texts.addView(t2);
         r.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView go = text(13, rust, true);
-        go.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        go.setText("ANRUF");
-        go.setPadding(dp(10), dp(8), dp(4), dp(8));
+        TextView go = mono(11, rust);
+        go.setText("→");
+        go.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        go.setPadding(dp(10), 0, dp(4), 0);
         r.addView(go);
         r.setOnClickListener(v -> call(num));
         r.setOnLongClickListener(v -> {
@@ -287,9 +357,6 @@ public class DialerActivity extends Activity {
             refresh();
             return true;
         });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(8);
-        r.setLayoutParams(lp);
         return r;
     }
 

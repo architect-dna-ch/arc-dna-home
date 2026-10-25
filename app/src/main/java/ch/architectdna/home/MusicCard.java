@@ -189,9 +189,23 @@ final class MusicCard {
             openSpeakerApp();
             return true;
         });
+        // Speaker row: the line plus "ANC ↗" while a JBL is connected (ANC lives in JBL's own app).
+        outputRow = new LinearLayout(activity);
+        outputRow.setGravity(Gravity.CENTER_VERTICAL);
+        outputRow.addView(output, new LinearLayout.LayoutParams(0, -2, 1f));
+        anc = label(11, rust, true);
+        anc.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        anc.setText("ANC ↗");
+        anc.setPadding(dp(10), dp(5), dp(10), dp(5));
+        anc.setBackground(box(card, rust, 14));
+        anc.setVisibility(View.GONE);
+        anc.setOnClickListener(v -> openSpeakerApp());
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
+        al.leftMargin = dp(8);
+        outputRow.addView(anc, al);
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(-1, -2);
         olp.topMargin = dp(8);
-        root.addView(output, olp);
+        root.addView(outputRow, olp);
 
         volume = new SeekBar(activity);
         volume.setProgressTintList(android.content.res.ColorStateList.valueOf(rust));
@@ -227,7 +241,7 @@ final class MusicCard {
         art.setOnClickListener(v -> openPlayer());
         art.setContentDescription("Player-App öffnen");
         root.setOnTouchListener((v, e) -> {
-            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) sliding = e.getY() >= output.getTop() - dp(4);
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) sliding = e.getY() >= outputRow.getBottom() + dp(2);
             if (!sliding) return false;
             // Hand the touch to the slider in its own coordinates, so the thumb lands under the finger.
             MotionEvent m = MotionEvent.obtain(e);
@@ -742,6 +756,8 @@ final class MusicCard {
     /* ---- Speaker control: output switcher, battery, the speaker's own app ---- */
 
     private int lastBattery = -1;
+    private LinearLayout outputRow;
+    private TextView anc;
 
     /** Android's own output switcher (moves the music between JBL, phone speaker, other devices). */
     private void showOutputSwitcher() {
@@ -824,6 +840,9 @@ final class MusicCard {
         } else if (name == null && btName != null) {
             if (announce) host.say(btName + " getrennt.");
             btName = null;
+        }
+        if (anc != null) {
+            anc.setVisibility(btName != null && btName.toUpperCase(Locale.ROOT).contains("JBL") ? View.VISIBLE : View.GONE);
         }
         if (btName != null) {
             String since = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(btSince));
