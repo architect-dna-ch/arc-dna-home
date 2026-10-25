@@ -147,53 +147,18 @@ final class EdgeLight extends View implements SensorEventListener {
         lastFrame = now;
         float target = lit ? 1f : 0f;
         level += Math.signum(target - level) * Math.min(Math.abs(target - level), dt * 2.5f);
-        float bt = lit ? boostTarget : 0f;
-        boost += Math.signum(bt - boost) * Math.min(Math.abs(bt - boost), dt * (bt > boost ? 1.5f : 0.6f));
         if (level <= 0.001f) return;
-        if (level != target || boost != bt) postInvalidateOnAnimation();
-        float b = boost;
+        if (level != target) postInvalidateOnAnimation();
 
         float w = getWidth(), h = getHeight(), r = cornerRadius();
         int a = (int) (255 * level);
-        // Only the four corners light up, like make-up mirror LEDs: warm white along each curve
-        // with a soft halo, so your face is lit without a glaring white frame in your eyes.
-        // The glass is rounder than the reported radius: inset a little and widen the curve so the
-        // corners show in full. A thin warm line runs along the whole edge between them.
-        float in = dp(5);
-        r = r * 1.18f;
-        float d = 2 * (r - in);
+        // Just a thin warm line along the glass while the camera watches: a quiet "tracking on"
+        // sign. (Corner lights and the wide wash are gone: they covered content, and the screen
+        // can't shine brighter than its own brightness anyway.)
+        float in = dp(2);
         rect.set(in, in, w - in, h - in);
-        if (b > 0) {
-            // Boost: a soft wide wash inward from all four edges, strongest at top and bottom.
-            int warm = 0x00FFEBD6;
-            float band = dp(90) * b, side = dp(40) * b;
-            int edgeA = (int) (a * 0.75f * b) << 24;
-            wash.setShader(new android.graphics.LinearGradient(0, 0, 0, band, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, band, wash);
-            wash.setShader(new android.graphics.LinearGradient(0, h, 0, h - band, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
-            c.drawRect(0, h - band, w, h, wash);
-            wash.setShader(new android.graphics.LinearGradient(0, 0, side, 0, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, side, h, wash);
-            wash.setShader(new android.graphics.LinearGradient(w, 0, w - side, 0, warm | edgeA, warm, android.graphics.Shader.TileMode.CLAMP));
-            c.drawRect(w - side, 0, w, h, wash);
-            wash.setShader(null);
-        }
-        rim.setStrokeWidth(dp(3 + 7 * b));
-        rim.setAlpha((int) (a * (0.8f + 0.2f * b)));
-        c.drawRoundRect(rect, r - in, r - in, rim);
-        float[][] corners = {{in, in, 180}, {w - in - d, in, 270}, {w - in - d, h - in - d, 0}, {in, h - in - d, 90}};
-        for (float[] k : corners) {
-            rect.set(k[0], k[1], k[0] + d, k[1] + d);
-            glow.setStrokeWidth(dp(18 + 22 * b));
-            glow.setAlpha((int) (a * (0.7f + 0.3f * b)));
-            c.drawArc(rect, k[2] + 4, 82, false, glow);
-            rim.setStrokeWidth(dp(6 + 6 * b));
-            rim.setAlpha(a);
-            c.drawArc(rect, k[2] + 10, 70, false, rim);
-            // The LED itself, at the middle of the curve.
-            double mid = Math.toRadians(k[2] + 45);
-            led.setAlpha(a);
-            c.drawCircle(rect.centerX() + (float) Math.cos(mid) * d / 2, rect.centerY() + (float) Math.sin(mid) * d / 2, dp(11 + 7 * b), led);
-        }
+        rim.setStrokeWidth(dp(2));
+        rim.setAlpha((int) (a * 0.7f));
+        c.drawRoundRect(rect, r * 1.1f - in, r * 1.1f - in, rim);
     }
 }

@@ -901,12 +901,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             String m = headMode();
             return m.equals("nod") ? "Nicken" : m.equals("gaze") ? "Blick" : "Aus";
         }, v -> cycleHeadMode(), null);
-        settingsRow(head2, "Neu kalibrieren", () -> headMode().equals("off") ? "erst Modus wählen" : "", v -> {
-            if (headMode().equals("off")) return;
-            closeSettings();
-            openLibrary();
-            handler.postDelayed(this::startGazeCalibration, 450);
-        }, null);
+        settingsRow(head2, "Nicken kalibrieren", () -> prefs.contains("nodMid") ? "kalibriert" : "noch nie", v -> calibrate("nod"), null);
+        settingsRow(head2, "Blick kalibrieren", () -> prefs.contains("gazeMid") ? "kalibriert" : "noch nie", v -> calibrate("gaze"), null);
         settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
             v -> showAppScrollSettings(), null);
 
@@ -925,6 +921,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         sheet.setAlpha(0f);
         sheet.setTranslationY(dp(40));
         sheet.animate().alpha(1f).translationY(0).setDuration(260).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+    }
+
+    /** Calibrate NICKEN or BLICK: switches the Mediathek to that mode, opens it and starts the dots. */
+    private void calibrate(String mode) {
+        prefs.edit().putString("headMode", mode).remove("headScroll").apply();
+        paintHeadToggle();
+        closeSettings();
+        stopHead();
+        if (!libraryOpen) openLibrary();
+        else startHead();
+        handler.postDelayed(this::startGazeCalibration, 500);
     }
 
     private void closeSettings() {
@@ -1657,7 +1664,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         TextView hint = text(12, ink3, false);
         hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause, lange drücken = NICKEN ↔ BLICK. "
-            + "NICKEN und BLICK nutzen deine Kalibrierung aus der Mediathek (Kopf-Knopf lange drücken).");
+            + "Kalibrieren: ⚙ Einstellungen → Kopf-Scroll → Nicken / Blick kalibrieren.");
         hint.setLineSpacing(0, 1.2f);
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
@@ -2039,18 +2046,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         float frac = pos > 0 ? pos / downRange : -pos / upRange;
         int dir = pos > 0 ? 1 : -1;
         boolean sameWay = headSpeed != 0 && Math.signum(headSpeed) == dir;
-        float threshold = sameWay ? 0.35f : 0.55f;
+        float threshold = sameWay ? 0.45f : 0.7f;
         if (frac < threshold) {
             setHeadSpeed(0);
             return;
         }
-        float speed = (0.4f + 0.6f * Math.min(1f, (frac - 0.35f) / 0.65f)) * dp(9);
+        float speed = (0.4f + 0.6f * Math.min(1f, (frac - 0.45f) / 0.55f)) * dp(9);
         setHeadSpeed(dir * speed); // eyes down scrolls down, eyes up scrolls up
     }
 
     /* ---------- Gaze calibration: a dot at the top, middle and bottom ---------- */
 
     private void startGazeCalibration() {
+        handler.removeCallbacksAndMessages(calibToken);
         calibStage = 0;
         calibAcc = new float[3];
         calibN = new int[3];

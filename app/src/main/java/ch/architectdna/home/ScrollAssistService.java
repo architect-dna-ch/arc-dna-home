@@ -205,6 +205,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         gotFrame = false;
         head.start(m.equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         DiagLog.log("head tracking started, mode=" + m);
+        if (m.equals("gaze") && !prefs.contains("gazeMid")) {
+            android.widget.Toast.makeText(this, "BLICK ist noch nicht kalibriert: ARC-DNA ⚙ Einstellungen → Kopf-Scroll → Blick kalibrieren",
+                android.widget.Toast.LENGTH_LONG).show();
+        }
         showEdge();
         main.removeCallbacks(frameWatchdog);
         main.postDelayed(frameWatchdog, 6000);
@@ -288,11 +292,13 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         float frac = pos > 0 ? pos / down : -pos / up;
         int dir = pos > 0 ? 1 : -1;
         boolean sameWay = speed != 0 && Math.signum(speed) == dir;
-        if (frac < (sameWay ? 0.35f : 0.55f)) {
+        // Wide calm middle: start only at 70 % of the way to your calibrated top / bottom,
+        // stop again under 45 %.
+        if (frac < (sameWay ? 0.45f : 0.7f)) {
             setSpeed(0);
             return;
         }
-        setSpeed(dir * (0.4f + 0.6f * Math.min(1f, (frac - 0.35f) / 0.65f)));
+        setSpeed(dir * (0.4f + 0.6f * Math.min(1f, (frac - 0.45f) / 0.55f)));
     }
 
     @Override
@@ -339,7 +345,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 .addStroke(new GestureDescription.StrokeDescription(path, 0, 380)).build(), new GestureResultCallback() {
                     @Override
                     public void onCancelled(GestureDescription g) {
-                        DiagLog.log("swipe cancelled by the system");
+                        // Your finger landed while our swipe ran (the system cancels ours then):
+                        // that's you scrolling yourself, so rest like after any touch.
+                        DiagLog.log("swipe cancelled by a touch: pause");
+                        main.post(() -> userTouched());
                     }
                 }, null);
             if (!ok) DiagLog.log("swipe rejected (gestures not allowed?)");
