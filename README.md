@@ -170,3 +170,10 @@ A flowing rainbow frame glows around Android's media card (drawn on the wallpape
 breathing with the beat), and bottom-left a character takes the stage every 15 s – bear, F1 car,
 rabbit, fox – mumbling gibberish first, then the "translation" ("Schau mich nicht an, sonst
 fress ich dich.").
+
+## Kopf-Scroll status ring
+
+In other apps the state shows as an orange ring around the front camera (no pill in the nav
+bar): solid = ready, a running arc = scrolling (clockwise down, anticlockwise up), dim = paused
+or your finger is in charge, double ring = BLICK. Triple-tap the camera to pause / resume,
+long-press it to switch NICKEN ↔ BLICK.

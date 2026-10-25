@@ -1398,7 +1398,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         list.addView(status);
 
         TextView hint = text(12, ink3, false);
-        hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt eine Pille unten links den Zustand – antippen = Pause, lange drücken = NICKEN ↔ BLICK. "
+        hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause, lange drücken = NICKEN ↔ BLICK. "
             + "BLICK nutzt deine Kalibrierung aus der Mediathek.");
         hint.setLineSpacing(0, 1.2f);
         hint.setPadding(0, 0, 0, dp(10));

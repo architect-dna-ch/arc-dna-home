@@ -27,8 +27,8 @@ import android.widget.TextView;
 /**
  * Head / eye scrolling in other apps (e.g. Chrome), switched on per app in the launcher's
  * Mediathek → "Kopf-Scroll pro App". When such an app comes to the front this service starts
- * the front camera (HeadTracker, on-device), shows a small pill overlay with the state, and
- * scrolls the app with gentle swipe gestures. Tap the pill to pause; any tap or typing in the
+ * the front camera (HeadTracker, on-device), shows an orange ring around the camera with the state,
+ * and scrolls the app with gentle swipe gestures. Triple-tap the camera to pause; any tap or typing in the
  * app also pauses eye scrolling for 4 seconds.
  */
 public class ScrollAssistService extends AccessibilityService implements HeadTracker.Listener {
@@ -40,7 +40,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private SharedPreferences prefs;
     private WindowManager windows;
     private HeadTracker head;
-    private TextView pill;
+    private android.view.View pill;
     private EdgeLight edge;
     private WindowManager.LayoutParams edgeParams;
     private String currentPkg = "", mode = "off";
@@ -344,57 +344,111 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         }
     }
 
-    /* ---------------- Overlay pill ---------------- */
+    /* ---------------- Status ring around the front camera ---------------- */
+
+    /**
+     * Instead of a pill (which ended up in the navigation bar), the state is an orange ring around
+     * the front camera: solid = ready, a running arc = scrolling (up / down), dim = paused or your
+     * finger is in charge, two rings = BLICK. Triple-tap the camera to pause / resume, long-press
+     * to switch NICKEN ↔ BLICK. Errors come as a short message.
+     */
+    private final class CameraRing extends android.view.View {
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF arc = new android.graphics.RectF();
+        float holeR;
+
+        CameraRing() {
+            super(ScrollAssistService.this);
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = holeR + dp(5);
+            long now = SystemClock.uptimeMillis();
+            boolean resting = now < pauseUntil;
+            int rust = 0xFFE0552F;
+            if (error) {
+                p.setColor(0x99A0A0A0);
+                p.setStrokeWidth(dp(2));
+                p.setPathEffect(new android.graphics.DashPathEffect(new float[]{dp(3), dp(3)}, 0));
+                c.drawCircle(cx, cy, r, p);
+                p.setPathEffect(null);
+                return;
+            }
+            float breathe = 0.75f + 0.25f * (float) Math.sin(now / 420.0);
+            int alpha = paused ? 80 : resting ? 140 : (int) (255 * breathe);
+            p.setColor((alpha << 24) | (rust & 0xFFFFFF));
+            p.setStrokeWidth(dp(2.5f));
+            c.drawCircle(cx, cy, r, p);
+            if (mode.equals("gaze")) c.drawCircle(cx, cy, r + dp(4), p);
+            if (!paused && !resting && speed != 0) {
+                // A bright arc running round: clockwise = down, anticlockwise = up.
+                p.setColor(0xFFFFB27A);
+                p.setStrokeWidth(dp(4));
+                float a = (now / 3f * Math.signum(speed)) % 360;
+                arc.set(cx - r, cy - r, cx + r, cy + r);
+                c.drawArc(arc, a, 70, false, p);
+            }
+            postInvalidateOnAnimation();
+        }
+    }
+
+    private boolean error;
+    private final long[] ringTaps = new long[3];
 
     private void showPill(String message) {
         if (windows == null) return;
         if (pill == null) {
-            pill = new TextView(this);
-            pill.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-            pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-            pill.setLetterSpacing(0.1f);
-            pill.setTextColor(0xFFFAFAF8);
-            int p = dp(10);
-            pill.setPadding(p + dp(2), p - dp(3), p + dp(2), p - dp(3));
-            GradientDrawable bg = new GradientDrawable();
-            bg.setColor(0xE61A1A1A);
-            bg.setStroke(dp(1), 0xFFB5271E);
-            bg.setCornerRadius(dp(20));
-            pill.setBackground(bg);
-            pill.setOnClickListener(v -> {
-                paused = !paused;
-                setSpeed(0);
-            });
-            // Long-press: switch this app between NICKEN and BLICK (saved for the app).
-            pill.setOnLongClickListener(v -> {
+            CameraRing ring = new CameraRing();
+            ring.setClickable(true);
+            ring.setContentDescription("Kopf-Scroll: dreimal tippen = Pause, lange drücken = Nicken/Blick");
+            ring.setOnLongClickListener(v -> {
                 if (mode.equals("off") || currentPkg.isEmpty()) return false;
                 String next = mode.equals("gaze") ? "nod" : "gaze";
                 prefs.edit().putString("appScroll:" + currentPkg, next).apply();
-                DiagLog.log("pill: switched to " + next);
+                DiagLog.log("ring: switched to " + next);
                 v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 apply(next);
+                android.widget.Toast.makeText(this, next.equals("gaze") ? "Kopf-Scroll: BLICK" : "Kopf-Scroll: NICKEN",
+                    android.widget.Toast.LENGTH_SHORT).show();
                 return true;
             });
-            // Watch every touch on the screen (outside the pill) to pause while the finger is in charge.
-            pill.setOnTouchListener((v, e) -> {
+            ring.setOnTouchListener((v, e) -> {
+                // Every touch elsewhere on the screen: your finger is in charge for a moment.
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
                     if (SystemClock.uptimeMillis() > ownGestureUntil) userTouched();
                     return true;
                 }
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
+                    long now = SystemClock.uptimeMillis();
+                    System.arraycopy(ringTaps, 1, ringTaps, 0, 2);
+                    ringTaps[2] = now;
+                    if (ringTaps[0] > 0 && now - ringTaps[0] < 800) {
+                        ringTaps[0] = ringTaps[1] = ringTaps[2] = 0;
+                        paused = !paused;
+                        setSpeed(0);
+                        v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+                        android.widget.Toast.makeText(this, paused ? "Kopf-Scroll pausiert" : "Kopf-Scroll läuft",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                }
                 return false;
             });
+            pill = ring;
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                    | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                    | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
-            // Floating bottom-left, above the navigation bar: clear of address bars and toolbars.
-            lp.gravity = Gravity.BOTTOM | Gravity.START;
-            lp.x = dp(14);
-            lp.y = dp(16);
-            // Stay clear of the system bars in every rotation (the nav bar sits at the side in landscape).
-            if (Build.VERSION.SDK_INT >= 30) lp.setFitInsetsTypes(android.view.WindowInsets.Type.systemBars());
+            lp.gravity = Gravity.TOP | Gravity.START;
+            if (Build.VERSION.SDK_INT >= 30) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+                lp.setFitInsetsTypes(0);
+            }
+            placeRing(lp);
             try {
                 windows.addView(pill, lp);
             } catch (RuntimeException e) {
@@ -402,17 +456,31 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 return;
             }
         }
-        if (message != null) {
-            pill.setText(message);
-            return;
-        }
-        String name = mode.equals("gaze") ? "BLICK" : "NICKEN";
-        boolean resting = SystemClock.uptimeMillis() < pauseUntil;
-        String state = paused ? "‖ PAUSE" : resting ? "‖ FINGER" : speed < 0 ? "↑" : speed > 0 ? "↓" : "·";
-        pill.setText("◉ " + name + " " + state);
+        error = message != null && message.startsWith("○");
+        if (error) android.widget.Toast.makeText(this, message.substring(1).trim(), android.widget.Toast.LENGTH_LONG).show();
+        pill.invalidate();
     }
 
-    /** Full-screen, untouchable overlay for the ring light; it lights up only in the dark. */
+    /** Centre the ring window on the camera hole (from the display cutout; top centre as a fallback). */
+    private void placeRing(WindowManager.LayoutParams lp) {
+        android.graphics.Rect hole = null;
+        if (Build.VERSION.SDK_INT >= 30) {
+            android.view.DisplayCutout cut = windows.getCurrentWindowMetrics().getWindowInsets().getDisplayCutout();
+            if (cut != null && !cut.getBoundingRects().isEmpty()) hole = cut.getBoundingRects().get(0);
+        }
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        float cx = hole != null ? hole.exactCenterX() : dm.widthPixels / 2f;
+        float cy = hole != null ? hole.exactCenterY() : dp(20);
+        float holeR = hole != null ? Math.max(hole.width(), hole.height()) / 2f : dp(8);
+        int size = Math.round(holeR * 2 + dp(36));
+        lp.width = size;
+        lp.height = size;
+        lp.x = Math.round(cx - size / 2f);
+        lp.y = Math.round(cy - size / 2f);
+        if (pill instanceof CameraRing) ((CameraRing) pill).holeR = holeR;
+    }
+
+    /** Full-screen, untouchable overlay for the corner LEDs; they light up only in the dark. */
     private void showEdge() {
         if (windows == null || edge != null) return;
         // Corner LEDs only; the screen brightness is left alone.
@@ -442,6 +510,20 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         } catch (RuntimeException ignored) {
         }
         edge = null;
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration config) {
+        super.onConfigurationChanged(config);
+        // Rotation moves the camera hole: follow it.
+        if (pill != null && windows != null) {
+            WindowManager.LayoutParams lp = (WindowManager.LayoutParams) pill.getLayoutParams();
+            placeRing(lp);
+            try {
+                windows.updateViewLayout(pill, lp);
+            } catch (RuntimeException ignored) {
+            }
+        }
     }
 
     private void hidePill() {
