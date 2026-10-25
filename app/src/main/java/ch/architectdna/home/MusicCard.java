@@ -9,6 +9,7 @@ import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -855,34 +856,78 @@ final class MusicCard {
                 c.drawArc(r, -90, 360f * level / 100f, false, p);
             }
             p.setStyle(Paint.Style.FILL);
-            p.setColor(ink);
-            float u = rad / 10f;
+            u = rad / 10f;
+            ox = cx;
+            oy = cy;
             if (kind == 0) {
-                // Two in-ear buds: round head + stem, mirrored.
+                // Bunny — long ears for the in-ears.
                 for (int side = -1; side <= 1; side += 2) {
-                    float bx = cx + side * u * 3.2f, by = cy - u * 1.5f;
-                    c.drawCircle(bx, by, u * 2.4f, p);
-                    r.set(bx - u * 0.9f + side * u * 0.6f, by, bx + u * 0.9f + side * u * 0.6f, by + u * 5.5f);
-                    c.drawRoundRect(r, u, u, p);
-                    p.setColor(card);
-                    c.drawCircle(bx - side * u * 0.9f, by - u * 0.4f, u * 0.8f, p);
+                    c.save();
+                    c.rotate(side * 12.6f, ox + side * 1.5f * u, oy - 3.4f * u);
                     p.setColor(ink);
+                    r.set(ox + (side * 1.5f - 0.95f) * u, oy - 6f * u, ox + (side * 1.5f + 0.95f) * u, oy - 0.8f * u);
+                    c.drawOval(r, p);
+                    p.setColor(rust);
+                    r.set(ox + (side * 1.5f - 0.43f) * u, oy - 5f * u, ox + (side * 1.5f + 0.43f) * u, oy - 1.4f * u);
+                    c.drawOval(r, p);
+                    c.restore();
                 }
+                dot(0, 2, 3.3f, ink, c);
+                dot(-1.2f, 1.5f, 0.45f, card, c);
+                dot(1.2f, 1.5f, 0.45f, card, c);
+                dot(0, 2.7f, 0.5f, rust, c);
             } else if (kind == 1) {
-                // Speaker: rounded body with two cones.
-                r.set(cx - u * 4, cy - u * 6, cx + u * 4, cy + u * 6);
-                c.drawRoundRect(r, u * 1.6f, u * 1.6f, p);
+                // Bear — the big bass of the speaker.
+                dot(-2.9f, -2.4f, 1.6f, ink, c);
+                dot(2.9f, -2.4f, 1.6f, ink, c);
+                dot(-2.9f, -2.4f, 0.75f, rust, c);
+                dot(2.9f, -2.4f, 0.75f, rust, c);
+                dot(0, 0.6f, 3.9f, ink, c);
                 p.setColor(card);
-                c.drawCircle(cx, cy + u * 2, u * 2.4f, p);
-                c.drawCircle(cx, cy - u * 3, u * 1.2f, p);
+                r.set(ox - 1.9f * u, oy + 1.3f * u, ox + 1.9f * u, oy + 4f * u);
+                c.drawOval(r, p);
+                dot(0, 2f, 0.6f, ink, c);
+                dot(-1.5f, -0.3f, 0.45f, card, c);
+                dot(1.5f, -0.3f, 0.45f, card, c);
+            } else if (kind == 2) {
+                // Fox — the phone's own speaker, home turf.
+                poly(c, rust, -4.4f, -4.2f, -1.6f, -2f, 1.6f, -2f, 4.4f, -4.2f, 4.2f, 0.2f, 0, 4.6f, -4.2f, 0.2f);
+                poly(c, ink, -3.7f, -3f, -2.3f, -1.9f, -3.5f, -1f);
+                poly(c, ink, 3.7f, -3f, 2.3f, -1.9f, 3.5f, -1f);
+                poly(c, card, -4.2f, 0.2f, -0.9f, 1.6f, 0, 4.6f);
+                poly(c, card, 4.2f, 0.2f, 0.9f, 1.6f, 0, 4.6f);
+                dot(0, 4f, 0.55f, ink, c);
+                dot(-1.6f, -0.2f, 0.5f, ink, c);
+                dot(1.6f, -0.2f, 0.5f, ink, c);
             } else {
-                // Phone.
-                r.set(cx - u * 3.2f, cy - u * 6, cx + u * 3.2f, cy + u * 6);
-                c.drawRoundRect(r, u * 1.2f, u * 1.2f, p);
+                // F1 helmet — on the cable.
+                p.setColor(ink);
+                r.set(ox - 4.2f * u, oy - 3.8f * u, ox + 4.2f * u, oy + 4f * u);
+                c.drawRoundRect(r, 3.6f * u, 3.6f * u, p);
                 p.setColor(card);
-                r.set(cx - u * 2.4f, cy - u * 4.6f, cx + u * 2.4f, cy + u * 4.2f);
+                r.set(ox - 0.4f * u, oy - 1.3f * u, ox + 4.2f * u, oy + 0.7f * u);
+                c.drawRoundRect(r, u, u, p);
+                p.setColor(rust);
+                r.set(ox - 3.7f * u, oy + 1.8f * u, ox + 3.7f * u, oy + 2.5f * u);
                 c.drawRect(r, p);
             }
+        }
+
+        private float u, ox, oy;
+        private final Path path = new Path();
+
+        private void dot(float x, float y, float rr, int color, Canvas c) {
+            p.setColor(color);
+            c.drawCircle(ox + x * u, oy + y * u, rr * u, p);
+        }
+
+        private void poly(Canvas c, int color, float... xy) {
+            path.reset();
+            path.moveTo(ox + xy[0] * u, oy + xy[1] * u);
+            for (int i = 2; i < xy.length; i += 2) path.lineTo(ox + xy[i] * u, oy + xy[i + 1] * u);
+            path.close();
+            p.setColor(color);
+            c.drawPath(path, p);
         }
     }
     private LinearLayout outputRow;
@@ -985,7 +1030,7 @@ final class MusicCard {
             deviceName.setText(String.valueOf(wired.getProductName()));
             output.setText("KABEL");
             output.setTextColor(ink2);
-            gauge.set(0, -1);
+            gauge.set(3, -1);
         } else {
             deviceName.setText("Handy-Lautsprecher");
             output.setText("TIPPEN = AUSGANG WECHSELN");
