@@ -286,7 +286,8 @@ final class MusicCard {
         stats = new LinearLayout(activity);
         stats.setOrientation(LinearLayout.VERTICAL);
         stats.setVisibility(View.GONE);
-        root.addView(stats);
+        // Takes up whatever height the card keeps from the player page; the chart grows into it.
+        root.addView(stats, new LinearLayout.LayoutParams(-1, 0, 1f));
         paintDots();
 
         renderTrack();
@@ -531,16 +532,17 @@ final class MusicCard {
         long[] week = MusicStats.week(activity);
         long today = week[6], total = 0;
         for (long m : week) total += m;
-        TextView head = label(10, ink3, true);
+        TextView head = label(11, ink3, true);
         head.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         head.setLetterSpacing(0.12f);
-        head.setText("HEUTE GEHÖRT · NUR AUF DEM HANDY GEZÄHLT");
-        head.setPadding(0, dp(14), 0, dp(2));
+        head.setText("HEUTE GEHÖRT · NUR AUF DEM HANDY");
+        head.setPadding(0, dp(16), 0, dp(2));
         stats.addView(head);
-        TextView big = label(26, ink, true);
+        TextView big = label(46, ink, true);
+        big.setLetterSpacing(-0.03f);
         big.setText(today >= 60 ? (today / 60) + " h " + (today % 60) + " min" : today + " min");
         stats.addView(big);
-        TextView sub = label(12, ink2, false);
+        TextView sub = label(15, ink2, false);
         sub.setText(MusicStats.tracksToday(activity) + " Titel heute · " + (total / 60) + " h " + (total % 60) + " min in 7 Tagen");
         stats.addView(sub);
 
@@ -553,14 +555,14 @@ final class MusicCard {
             protected void onDraw(Canvas c) {
                 long max = 1;
                 for (long m : week) max = Math.max(max, m);
-                float gap = dp(6), bw = (getWidth() - 6 * gap) / 7f, h = getHeight() - dp(14);
-                String[] days = {"M", "D", "M", "D", "F", "S", "S"};
+                float gap = dp(6), bw = (getWidth() - 6 * gap) / 7f, h = getHeight() - dp(20), top = dp(16);
+                String[] days = {"MO", "DI", "MI", "DO", "FR", "SA", "SO"};
                 java.util.Calendar cal = java.util.Calendar.getInstance();
                 cal.add(java.util.Calendar.DAY_OF_YEAR, -6);
-                p.setTextSize(dp(9));
+                p.setTextSize(dp(11));
                 p.setTypeface(Typeface.MONOSPACE);
                 for (int i = 0; i < 7; i++) {
-                    float x = i * (bw + gap), bh = Math.max(dp(2), h * week[i] / (float) max);
+                    float x = i * (bw + gap), bh = Math.max(dp(2), (h - top) * week[i] / (float) max);
                     // The week as a rainbow: every weekday its own colour (Mo red … So violet); today full strength.
                     int[] rainbow = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFD21F, 0xFF2BC96B, 0xFF1FA8FF, 0xFF5B5BFF, 0xFFA04BFF};
                     int weekday = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7;   // 0 = Monday
@@ -571,27 +573,52 @@ final class MusicCard {
                     p.setAlpha(255);
                     p.setColor(rainbow[weekday]);
                     String d = days[(cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7];
-                    c.drawText(d, x + bw / 2 - p.measureText(d) / 2, getHeight() - dp(2), p);
+                    c.drawText(d, x + bw / 2 - p.measureText(d) / 2, getHeight() - dp(3), p);
+                    // Hours above each bar that has any.
+                    if (week[i] > 0) {
+                        String v = week[i] >= 60 ? (week[i] / 60) + "h" : week[i] + "′";
+                        p.setColor(i == 6 ? ink : ink2);
+                        c.drawText(v, x + bw / 2 - p.measureText(v) / 2, h - bh - dp(4), p);
+                    }
                     cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
                 }
             }
         };
-        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, dp(70));
-        clp.topMargin = dp(12);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, 0, 1f);
+        clp.topMargin = dp(14);
+        chart.setMinimumHeight(dp(100));
         stats.addView(chart, clp);
 
+        // Today's top artists, one per line, ranked.
         java.util.List<String> top = MusicStats.topArtists(activity);
-        TextView artists = label(12, ink2, true);
-        artists.setText(top.isEmpty() ? "Noch keine Künstler heute." : "TOP HEUTE  " + TextUtils.join("   ", top));
-        artists.setPadding(0, dp(10), 0, dp(2));
-        stats.addView(artists);
-        TextView history = label(11, rust, true);
+        TextView topHead = label(11, ink3, true);
+        topHead.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        topHead.setLetterSpacing(0.12f);
+        topHead.setText(top.isEmpty() ? "NOCH KEINE KÜNSTLER HEUTE" : "TOP HEUTE");
+        topHead.setPadding(0, dp(14), 0, dp(4));
+        stats.addView(topHead);
+        for (int i = 0; i < Math.min(3, top.size()); i++) {
+            LinearLayout row = new LinearLayout(activity);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            TextView rank = label(13, rust, true);
+            rank.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+            rank.setText((i + 1) + "  ");
+            row.addView(rank);
+            TextView name = label(17, ink, true);
+            name.setText(top.get(i));
+            name.setSingleLine(true);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            row.addView(name);
+            row.setPadding(0, dp(2), 0, dp(2));
+            stats.addView(row);
+        }
+        TextView history = label(13, rust, true);
         history.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         history.setText("VERLAUF ALLER TITEL →");
-        history.setPadding(0, dp(10), 0, dp(2));
+        history.setPadding(0, dp(14), 0, dp(2));
         history.setOnClickListener(v -> host.open(new Intent(activity, HistoryActivity.class)));
         stats.addView(history);
-        TextView back = label(10, ink3, true);
+        TextView back = label(11, ink3, true);
         back.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         back.setText("← WISCHEN = PLAYER");
         back.setPadding(0, dp(6), 0, 0);
