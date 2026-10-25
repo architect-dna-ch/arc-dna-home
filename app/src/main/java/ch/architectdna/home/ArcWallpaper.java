@@ -384,6 +384,13 @@ public class ArcWallpaper extends WallpaperService {
             String[] line = LINES[slot][(int) (cycle % LINES[slot].length)];
             if (k < 1.2f || k > 14f) return;
             boolean translated = k > 5f;
+            // The robot translator gets it wrong about every third time, then corrects itself.
+            boolean slips = (cycle * 7 + slot * 3) % 3 == 0;
+            boolean wrong = translated && slips && k < 9.5f, fixed = translated && slips && k >= 9.5f;
+            String said = !translated ? line[0]
+                : wrong ? WRONG[slot][(int) (cycle % WRONG[slot].length)]
+                : fixed ? "Oh, den hab ich falsch erwischt! Eigentlich: " + line[1]
+                : line[1];
             // Speech bubble to the right.
             float bx = width * 0.06f + size * 1.15f, bw = Math.min(width * 0.94f - bx, Math.min(width, height) * 0.8f), by = y - size * 0.15f;
             paint.setShader(null);
@@ -391,7 +398,7 @@ public class ArcWallpaper extends WallpaperService {
             paint.setTypeface(translated ? android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
                 : android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD_ITALIC));
             paint.setTextSize((translated ? 34 : 30) * s);
-            List<String> rows = wrap(translated ? line[1] : line[0], bw - 44 * s);
+            List<String> rows = wrap(said, bw - 44 * s);
             float lineH = paint.getTextSize() * 1.25f, bh = rows.size() * lineH + 36 * s + (translated ? 30 * s : 0);
             box.set(bx, by - bh / 2, bx + bw, by + bh / 2);
             // Dark mode: the lock screen dims the wallpaper, so the bubble is lighter and outlined in rust.
@@ -416,7 +423,7 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(20 * s);
                 paint.setColor(glow);
-                c.drawText("ÜBERSETZT:", bx + 22 * s, box.top + 18 * s + 20 * s, paint);
+                c.drawText(fixed ? "ROBO, KORRIGIERT:" : "ROBO ÜBERSETZT:", bx + 22 * s, box.top + 18 * s + 20 * s, paint);
                 paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 paint.setTextSize(34 * s);
                 ty += 30 * s;
@@ -426,7 +433,75 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawText(row, bx + 22 * s, ty, paint);
                 ty += lineH;
             }
+            // The translator robot sits on the bubble's top edge while it speaks.
+            if (translated) {
+                float rs = size * 0.42f;
+                robot(c, box.right - rs * 1.1f, box.top - rs * 0.62f, rs, dark, glow, fixed && k < 10.6f, k);
+            }
         }
+
+        /** Things the robot thinks they said, before it notices. */
+        private static final String[][] WRONG = {
+            {"Ich hätte gern einen Smoothie mit Glitzer.", "Bitte weck mich um fünf, ich will joggen."},
+            {"Ich fahre heute ganz gemütlich, Tempo 30.", "Kann mir jemand das Lenkrad halten?"},
+            {"Ich liebe den Fuchs. Er ist mein bester Freund.", "Karotten? Nein danke, ich esse nur Pizza."},
+            {"Ich bin seit heute vegetarisch.", "Ich will einfach nur kuscheln."}};
+
+        /**
+         * The translator: a small square robot with two LED eyes, a speaking mouth (bars that move
+         * with the words) and a blinking antenna. "oops": eyes turn into × and an ! pops up.
+         */
+        private void robot(Canvas c, float cx, float cy, float r, boolean dark, int glow, boolean oops, float k) {
+            int body = dark ? 0xFFD8D6CF : 0xFF2A2A28, face = dark ? 0xFF2A2A28 : 0xFFEDEDE8;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            // Antenna with a blinking tip.
+            paint.setColor(body);
+            paint.setStrokeWidth(r * 0.08f);
+            c.drawLine(cx, cy - r * 0.55f, cx, cy - r * 0.85f, paint);
+            paint.setColor((int) (k * 3) % 2 == 0 ? glow : body);
+            c.drawCircle(cx, cy - r * 0.9f, r * 0.11f, paint);
+            // Head and face plate.
+            paint.setColor(body);
+            box2.set(cx - r * 0.62f, cy - r * 0.55f, cx + r * 0.62f, cy + r * 0.5f);
+            c.drawRoundRect(box2, r * 0.18f, r * 0.18f, paint);
+            paint.setColor(face);
+            box2.set(cx - r * 0.5f, cy - r * 0.42f, cx + r * 0.5f, cy + r * 0.38f);
+            c.drawRoundRect(box2, r * 0.12f, r * 0.12f, paint);
+            // Ears.
+            paint.setColor(glow);
+            c.drawRect(cx - r * 0.74f, cy - r * 0.12f, cx - r * 0.62f, cy + r * 0.12f, paint);
+            c.drawRect(cx + r * 0.62f, cy - r * 0.12f, cx + r * 0.74f, cy + r * 0.12f, paint);
+            // Eyes.
+            float ey = cy - r * 0.14f, ex = r * 0.22f, er = r * 0.09f;
+            if (oops) {
+                paint.setStrokeWidth(r * 0.06f);
+                for (int side = -1; side <= 1; side += 2) {
+                    float x = cx + side * ex;
+                    c.drawLine(x - er, ey - er, x + er, ey + er, paint);
+                    c.drawLine(x - er, ey + er, x + er, ey - er, paint);
+                }
+                paint.setTextSize(r * 0.7f);
+                paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+                c.drawText("!", cx + r * 0.8f, cy - r * 0.55f, paint);
+            } else {
+                boolean blink = (k % 3.1f) < 0.12f;
+                if (blink) c.drawRect(cx - ex - er, ey - r * 0.02f, cx - ex + er, ey + r * 0.02f, paint);
+                else c.drawCircle(cx - ex, ey, er, paint);
+                if (blink) c.drawRect(cx + ex - er, ey - r * 0.02f, cx + ex + er, ey + r * 0.02f, paint);
+                else c.drawCircle(cx + ex, ey, er, paint);
+            }
+            // Mouth: four bars that move while it talks.
+            paint.setColor(body);
+            float mw = r * 0.09f, my = cy + r * 0.18f;
+            for (int i = 0; i < 4; i++) {
+                float h = r * (0.04f + 0.1f * (float) Math.abs(Math.sin(k * 9 + i * 1.3)));
+                float x = cx - r * 0.24f + i * r * 0.16f;
+                c.drawRect(x, my - h, x + mw, my + h, paint);
+            }
+        }
+
+        private final android.graphics.RectF box2 = new android.graphics.RectF();
 
         private List<String> wrap(String text, float max) {
             List<String> out = new ArrayList<>();
