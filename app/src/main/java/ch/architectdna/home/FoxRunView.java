@@ -227,19 +227,39 @@ final class FoxRunView extends View {
         fox.draw(c);
         c.restore();
 
-        // HUD.
+        // HUD: below the status bar and clear of the camera / rounded corners, score big.
+        float top = dp(14), left = dp(24), right = dp(24);
+        android.view.WindowInsets wi = getRootWindowInsets();
+        if (wi != null && android.os.Build.VERSION.SDK_INT >= 30) {
+            android.graphics.Insets in = wi.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+            top += in.top;
+            left += in.left;
+            right += in.right;
+        }
         paint.setStyle(Paint.Style.FILL);
         paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        paint.setTextSize(dp(12));
-        paint.setLetterSpacing(0.14f);
+        paint.setLetterSpacing(0.16f);
+        paint.setTextSize(dp(13));
         paint.setColor(rust);
-        c.drawText("FUCHSJAGD", dp(20), dp(30), paint);
-        paint.setColor(ink);
-        c.drawText(String.format(Locale.ROOT, "%05d M   REKORD %05d M", (int) distance, best), dp(20), dp(50), paint);
+        c.drawText("FUCHSJAGD", left, top + dp(13), paint);
         paint.setColor(ink3);
-        paint.setTextSize(dp(10));
+        paint.setTextSize(dp(11));
         String hint = crash > 0 ? "EEEK! NOCHMAL …" : "TIPPEN ODER KOPF HOCH = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK";
-        c.drawText(hint, w - dp(20) - paint.measureText(hint), dp(30), paint);
+        float hintW = paint.measureText(hint);
+        // Narrow (portrait) screen: the hint goes under the score instead of next to the title.
+        if (w - right - hintW < left + dp(150)) c.drawText(hint, left, top + dp(76), paint);
+        else c.drawText(hint, w - right - hintW, top + dp(13), paint);
+        paint.setLetterSpacing(0.02f);
+        paint.setTextSize(dp(34));
+        paint.setColor(ink);
+        String run = String.format(Locale.ROOT, "%05d M", (int) distance);
+        c.drawText(run, left, top + dp(52), paint);
+        float runW = paint.measureText(run);
+        paint.setLetterSpacing(0.14f);
+        paint.setTextSize(dp(12));
+        paint.setColor(distance > best && best > 0 ? rust : ink3);
+        c.drawText(distance > best && best > 0 ? "NEUER REKORD!" : String.format(Locale.ROOT, "REKORD %05d M", best),
+            left + runW + dp(16), top + dp(52), paint);
     }
 
     /** ARC-DNA cube outline; obstacles get the rust edge. */
