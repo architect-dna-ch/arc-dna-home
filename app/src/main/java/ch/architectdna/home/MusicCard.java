@@ -678,7 +678,11 @@ final class MusicCard {
 
     /** Uses the session's controls when we have it, otherwise plain media keys (no permission needed). */
     private void press(int keyCode) {
-        if (controller != null) {
+        // Only steer a session directly when it really holds a track; otherwise let Android route the
+        // key to the music app you used last (that's what resumes YouTube Music & co. properly).
+        boolean usable = controller != null && controller.getMetadata() != null
+            && controller.getMetadata().getString(MediaMetadata.METADATA_KEY_TITLE) != null;
+        if (usable) {
             MediaController.TransportControls tc = controller.getTransportControls();
             if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) tc.skipToNext();
             else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) tc.skipToPrevious();
@@ -689,6 +693,15 @@ final class MusicCard {
             audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
         }
         main.postDelayed(this::renderTrack, 400);
+        // The app that starts playing may only now show its session: follow it right away.
+        for (long d : new long[]{500, 1500}) {
+            main.postDelayed(() -> {
+                try {
+                    if (started && hasAccess()) pick(sessions.getActiveSessions(listener));
+                } catch (SecurityException ignored) {
+                }
+            }, d);
+        }
     }
 
     /* ---------------- Output device & volume ---------------- */
