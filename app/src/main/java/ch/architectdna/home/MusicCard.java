@@ -256,6 +256,18 @@ final class MusicCard {
     private boolean built;                          // a BUILD came first: the next bass surge is a DROP
     private String phaseTrack = "";
 
+    /** The phase map belongs to one song: title + artist (nothing is kept without a real title). */
+    private void followTrack() {
+        MediaMetadata m = controller == null ? null : controller.getMetadata();
+        String t = m == null ? null : m.getString(MediaMetadata.METADATA_KEY_TITLE);
+        String a = m == null ? null : m.getString(MediaMetadata.METADATA_KEY_ARTIST);
+        String key = t == null ? "" : t + "\u0001" + (a == null ? "" : a);
+        if (!key.equals(phaseTrack)) {
+            phaseTrack = key;
+            phaseBar.newTrack(key);
+        }
+    }
+
     private TextView jumpChip(String text, Runnable action) {
         TextView chip = label(11, ink2, true);
         chip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -334,11 +346,7 @@ final class MusicCard {
             if (phaseLabel != null) paintPhase(p);
         }
         if (phaseBar != null) {
-            String key = title == null ? "" : String.valueOf(title.getText());
-            if (!key.equals(phaseTrack)) {
-                phaseTrack = key;
-                phaseBar.newTrack();
-            }
+            followTrack();
             phaseBar.update(currentPosition(), duration(), audio.isMusicActive() ? phase : null);
         }
     }
@@ -558,6 +566,7 @@ final class MusicCard {
     }
 
     void stop() {
+        if (phaseBar != null) phaseBar.save();
         main.removeCallbacks(repick);
         main.removeCallbacks(autoFlip);
         started = false;
@@ -923,7 +932,10 @@ final class MusicCard {
                     phaseLabel.setText("KEIN SIGNAL");
                     phase = PhaseBar.Phase.GROOVE;
                 }
-                if (phaseBar != null) phaseBar.update(currentPosition(), duration(), null);
+                if (phaseBar != null) {
+                    followTrack();
+                    phaseBar.update(currentPosition(), duration(), null);
+                }
                 return;
             }
             float lo = 0, mid = 0, hi = 0;

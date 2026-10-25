@@ -187,7 +187,9 @@ hidden until you swipe it up from the bottom edge.
 Under the waveform: the phase you're in (BUILD ↗ / DROP 🔥 / BREAK / VOCAL / GROOVE, read live
 from the sound), quick jumps "→ 0:20" and "+30 S", and the track timeline with the phases heard
 so far, the playhead and "0:42 / 3:15". Tap or drag the timeline to jump; a tap inside a DROP
-jumps to where the drop starts. Tapping the title or cover opens the music app. (Needs an app
+jumps to where the drop starts. The phase map is remembered per song (title + artist, on the
+phone): every listen adds votes per slice, so it gets better each time and shows the drops ahead
+from the start next time ("3× GEHÖRT"). Tapping the title or cover opens the music app. (Needs an app
 that shares its playback with Android, e.g. Spotify or YouTube Music.)
 
 "Alle Apps" at the top of Mediathek → Kopf-Scroll pro App switches head / eye scrolling for every

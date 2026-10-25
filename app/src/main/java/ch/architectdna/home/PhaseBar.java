@@ -1,6 +1,7 @@
 package ch.architectdna.home;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -8,15 +9,17 @@ import android.graphics.Typeface;
 import android.view.MotionEvent;
 import android.view.View;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 /**
- * The track timeline under the music card's waveform, read like a DJ deck: the phases heard so far
- * (BUILD orange, DROP red, BREAK blue, VOCAL green, GROOVE grey) are painted onto the track as it
- * plays, with the playhead and "0:42 / 3:15". Tap or drag to jump; a tap on a DROP jumps to its start.
- * The phases come from the live sound (MusicCard), so a track fills in while you listen to it.
+ * The track timeline under the music card's waveform, read like a DJ deck: BUILD orange, DROP red,
+ * BREAK blue, VOCAL green, GROOVE grey, with the playhead and "0:42 / 3:15". Tap or drag to jump;
+ * a tap inside a DROP jumps to where the drop starts.
+ *
+ * The phases are remembered per song (title + artist) on the phone: the track is split into 120
+ * slices and every listen adds votes for the phase heard in each slice. Each slice shows its most
+ * voted phase, so the map gets better with every play and is there from the start next time,
+ * drops included.
  */
 final class PhaseBar extends View {
 
@@ -37,40 +40,97 @@ final class PhaseBar extends View {
         }
     }
 
+    private static final int SLICES = 120, PHASES = Phase.values().length;
+
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private final int ink, ink3;
     private final Seeker seeker;
-    /** Start positions (ms) and phases heard in the current track. */
-    private final List<long[]> marks = new ArrayList<>();
-    private long position, duration;
-    private boolean dragging;
+    private final SharedPreferences store;
+    private int[][] votes = new int[SLICES][PHASES];
+    private String track = "";
+    private int plays;
+    private long position, duration, lastSave;
+    private boolean dirty, dragging, counted;
 
     PhaseBar(Context c, int ink, int ink3, Seeker seeker) {
         super(c);
         this.ink = ink;
         this.ink3 = ink3;
         this.seeker = seeker;
+        store = c.getSharedPreferences("phases", Context.MODE_PRIVATE);
         paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
     }
 
-    void newTrack() {
-        marks.clear();
+    /** A new song: save the old one's map, load (or start) this one's and count the play. */
+    void newTrack(String key) {
+        save();
+        track = key == null ? "" : key;
+        votes = new int[SLICES][PHASES];
+        plays = 0;
+        String saved = track.isEmpty() ? null : store.getString(track, null);
+        if (saved != null) {
+            String[] parts = saved.split(";", 2);
+            try {
+                plays = Integer.parseInt(parts[0]);
+                String[] cells = parts.length > 1 ? parts[1].split(",") : new String[0];
+                for (int i = 0; i < cells.length && i < SLICES * PHASES; i++) {
+                    if (!cells[i].isEmpty()) votes[i / PHASES][i % PHASES] = Integer.parseInt(cells[i], 36);
+                }
+            } catch (NumberFormatException ignored) {
+                votes = new int[SLICES][PHASES];
+            }
+        }
+        counted = false;
         invalidate();
     }
 
+    void save() {
+        if (!dirty || track.isEmpty()) return;
+        StringBuilder b = new StringBuilder().append(plays).append(';');
+        for (int s = 0; s < SLICES; s++) {
+            for (int p = 0; p < PHASES; p++) {
+                if (votes[s][p] > 0) b.append(Integer.toString(votes[s][p], 36));
+                b.append(',');
+            }
+        }
+        store.edit().putString(track, b.toString()).apply();
+        dirty = false;
+        lastSave = System.currentTimeMillis();
+    }
+
+    /** Called every frame while the card runs; now = the phase heard right now (null = no signal). */
     void update(long positionMs, long durationMs, Phase now) {
         if (positionMs < 0) return;
-        if (!marks.isEmpty() && positionMs + 2000 < marks.get(marks.size() - 1)[0]) {
-            // Jumped back: keep what was heard, drop marks after the new position.
-            while (!marks.isEmpty() && marks.get(marks.size() - 1)[0] > positionMs) marks.remove(marks.size() - 1);
-        }
-        if (now != null && (marks.isEmpty() || marks.get(marks.size() - 1)[1] != now.ordinal())) {
-            marks.add(new long[]{positionMs, now.ordinal()});
-        }
         position = positionMs;
         duration = durationMs;
+        // A play counts once, when the song is heard from (near) its start.
+        if (!counted && now != null && !track.isEmpty() && positionMs < 10_000) {
+            counted = true;
+            plays++;
+            dirty = true;
+        }
+        if (now != null && durationMs > 0 && !dragging) {
+            int s = (int) Math.min(SLICES - 1, positionMs * SLICES / durationMs);
+            int[] v = votes[s];
+            v[now.ordinal()]++;
+            if (v[now.ordinal()] > 1500) for (int p = 0; p < PHASES; p++) v[p] /= 2;   // keep it bounded
+            dirty = true;
+        }
+        if (dirty && System.currentTimeMillis() - lastSave > 10_000) save();
         invalidate();
+    }
+
+    /** The most voted phase of a slice, or -1 if it was never heard. */
+    private int phaseOf(int s) {
+        int best = -1, bestVotes = 0;
+        for (int p = 0; p < PHASES; p++) {
+            if (votes[s][p] > bestVotes) {
+                best = p;
+                bestVotes = votes[s][p];
+            }
+        }
+        return best;
     }
 
     private float dp(float v) {
@@ -86,32 +146,31 @@ final class PhaseBar extends View {
     protected void onDraw(Canvas c) {
         float w = getWidth(), barTop = dp(4), barH = dp(10);
         paint.setStyle(Paint.Style.FILL);
-        // Track background.
         paint.setColor((ink3 & 0x00FFFFFF) | 0x44000000);
         rect.set(0, barTop, w, barTop + barH);
         c.drawRoundRect(rect, barH / 2, barH / 2, paint);
         if (duration > 0) {
-            // Phases heard so far, up to the playhead.
-            for (int i = 0; i < marks.size(); i++) {
-                long from = marks.get(i)[0];
-                long to = i + 1 < marks.size() ? marks.get(i + 1)[0] : position;
-                if (to <= from) continue;
-                paint.setColor(Phase.values()[(int) marks.get(i)[1]].colour);
-                rect.set(w * from / duration, barTop, w * Math.min(to, duration) / duration, barTop + barH);
+            // The remembered map: every slice in its most heard phase; what lies ahead is a bit paler.
+            float sw = w / SLICES, head = w * Math.min(position, duration) / duration;
+            for (int s = 0; s < SLICES; s++) {
+                int p = phaseOf(s);
+                if (p < 0) continue;
+                float x = s * sw;
+                paint.setColor(Phase.values()[p].colour);
+                paint.setAlpha(x + sw <= head ? 255 : 150);
+                rect.set(x, barTop, x + sw + 0.5f, barTop + barH);
                 c.drawRect(rect, paint);
             }
-            // Playhead.
-            float x = w * Math.min(position, duration) / duration;
+            paint.setAlpha(255);
             paint.setColor(0xFF000000 | ink);
-            rect.set(x - dp(1.5f), barTop - dp(3), x + dp(1.5f), barTop + barH + dp(3));
+            rect.set(head - dp(1.5f), barTop - dp(3), head + dp(1.5f), barTop + barH + dp(3));
             c.drawRoundRect(rect, dp(1.5f), dp(1.5f), paint);
         }
-        // Time readout.
         paint.setTextSize(dp(10));
         paint.setColor(ink3);
         String t = duration > 0 ? time(position) + " / " + time(duration) : "ZEIT UNBEKANNT";
         c.drawText(t, 0, barTop + barH + dp(14), paint);
-        String hint = "TIPPEN = SPRINGEN";
+        String hint = (plays > 1 ? plays + "× GEHÖRT · " : "") + "TIPPEN = SPRINGEN";
         c.drawText(hint, w - paint.measureText(hint), barTop + barH + dp(14), paint);
     }
 
@@ -128,16 +187,14 @@ final class PhaseBar extends View {
             invalidate();
         }
         if (a == MotionEvent.ACTION_UP) {
-            // A tap inside a DROP (or any phase) lands on that phase's start; a drag lands where you let go.
+            // A tap inside a DROP lands where that drop starts; a drag lands where you let go.
             long target = at;
-            if (!dragging) {
-                for (int i = marks.size() - 1; i >= 0; i--) {
-                    if (marks.get(i)[0] <= at) {
-                        if (marks.get(i)[1] == Phase.DROP.ordinal()) target = marks.get(i)[0];
-                        break;
-                    }
-                }
+            int s = (int) Math.min(SLICES - 1, at * SLICES / duration);
+            if (!dragging && phaseOf(s) == Phase.DROP.ordinal()) {
+                while (s > 0 && phaseOf(s - 1) == Phase.DROP.ordinal()) s--;
+                target = s * duration / SLICES;
             }
+            dragging = false;
             seeker.seekTo(target);
         }
         return true;
