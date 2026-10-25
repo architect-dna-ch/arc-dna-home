@@ -235,7 +235,19 @@ final class MusicCard {
     }
 
     /** Swipe on the card: -1 = to the left (next page), +1 = to the right. */
+    /** Every 30 s the card turns by itself (player ↔ stats); a swipe by hand restarts the 30 s. */
+    private static final long AUTO_FLIP_MS = 30_000;
+    private final Runnable autoFlip = new Runnable() {
+        @Override
+        public void run() {
+            if (root != null && root.isShown() && root.getWidth() > 0) flip(-1);
+            else main.postDelayed(this, AUTO_FLIP_MS);
+        }
+    };
+
     void flip(int dir) {
+        main.removeCallbacks(autoFlip);
+        main.postDelayed(autoFlip, AUTO_FLIP_MS);
         boolean toStats = !onStats;
         float w = root.getWidth();
         root.animate().cancel();
@@ -374,6 +386,8 @@ final class MusicCard {
     /* ---------------- Lifecycle ---------------- */
 
     void start() {
+        main.removeCallbacks(autoFlip);
+        main.postDelayed(autoFlip, AUTO_FLIP_MS);
         started = true;
         syncVolume();
         refreshOutput(false);
@@ -396,6 +410,7 @@ final class MusicCard {
     }
 
     void stop() {
+        main.removeCallbacks(autoFlip);
         started = false;
         audio.unregisterAudioDeviceCallback(devices);
         activity.getContentResolver().unregisterContentObserver(volumeObserver);

@@ -158,7 +158,7 @@ you're on. How many: Mediathek → "ZULETZT-KARUSSELL" (4 / 8 / 12 / 16 / 24).
 
 ## Music stats
 
-Swipe the music card left or right: player ↔ stats. Minutes listened today, titles today, the
+Swipe the music card left or right: player ↔ stats (it also turns by itself every 30 s). Minutes listened today, titles today, the
 last 7 days as bars and today's top artists. Counted on the phone only (from the media sessions,
 via the notification-access entry); nothing leaves the device.
 
