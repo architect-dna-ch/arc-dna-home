@@ -325,6 +325,16 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 paused = !paused;
                 setSpeed(0);
             });
+            // Long-press: switch this app between NICKEN and BLICK (saved for the app).
+            pill.setOnLongClickListener(v -> {
+                if (mode.equals("off") || currentPkg.isEmpty()) return false;
+                String next = mode.equals("gaze") ? "nod" : "gaze";
+                prefs.edit().putString("appScroll:" + currentPkg, next).apply();
+                DiagLog.log("pill: switched to " + next);
+                v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                apply(next);
+                return true;
+            });
             // Watch every touch on the screen (outside the pill) to pause while the finger is in charge.
             pill.setOnTouchListener((v, e) -> {
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
