@@ -239,6 +239,190 @@ public class ArcWallpaper extends WallpaperService {
                 * (1 + 0.06f * (float) Math.sin(t * 3.1f) + 0.25f * beat);
             rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f);
             paint.setShader(null);
+
+            // While music plays: a flowing rainbow frame behind the system's media card, and a
+            // little stage bottom-left where a character takes turns every 15 s.
+            if (audio == null) audio = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audio != null && audio.isMusicActive()) {
+                musicFrame(c, s, t);
+                stage(c, s, dark, ink, rust);
+            }
+        }
+
+        /* ---- Lock screen while music plays ---- */
+
+        private android.media.AudioManager audio;
+        private final android.graphics.RectF box = new android.graphics.RectF();
+        /** Where Pixel's lock screen media card sits (fractions of the screen), measured from a screenshot. */
+        private static final float CARD_L = 0.039f, CARD_T = 0.2055f, CARD_R = 0.961f, CARD_B = 0.3955f;
+
+        private void musicFrame(Canvas c, float s, float t) {
+            float pad = 5 * s;
+            box.set(width * CARD_L - pad, height * CARD_T - pad, width * CARD_R + pad, height * CARD_B + pad);
+            float r = width * 0.052f + pad;
+            int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
+            android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.05f,
+                hues, null, android.graphics.Shader.TileMode.REPEAT);
+            matrix.setTranslate((t * width * 0.35f) % (width * 0.9f), 0);
+            flow.setLocalMatrix(matrix);
+            paint.setShader(flow);
+            paint.setStyle(Paint.Style.STROKE);
+            // A soft wide glow, then the crisp line; it breathes with the beat.
+            paint.setStrokeWidth((16 + 10 * beat) * s);
+            paint.setAlpha(60);
+            c.drawRoundRect(box, r, r, paint);
+            paint.setStrokeWidth((5 + 3 * beat) * s);
+            paint.setAlpha(235);
+            c.drawRoundRect(box, r, r, paint);
+            paint.setAlpha(255);
+            paint.setShader(null);
+        }
+
+        /** Every 15 s: bear → F1 car → rabbit → fox. Gibberish first, then the "translation". */
+        private static final String[][][] LINES = {
+            {{"Grrmmph brummel-wumm!", "Schau mich nicht an, sonst fress ich dich."},
+                {"Hrrr… mmmh… Hoonig?", "Hast du Honig? Nein? Dann schlaf ich weiter."},
+                {"Wuuoorrgh. Mpf.", "Wer hat mich geweckt? Ah, du. Natürlich."}},
+            {{"Nyeeeooowww-ng-ng!", "Ich bin schneller als dein Entsperren."},
+                {"Brrm brrm pfft.", "Box, box! Reifenwechsel im Hosensack."},
+                {"Wrrraaap-tak-tak!", "Das war Sektor drei. Lila. Natürlich."}},
+            {{"Mümmel-mümmel tick?", "Ich sehe nichts. Ich bin ein Busch."},
+                {"Tipp-tipp-tapp-hüpf!", "Der Fuchs ist hinter mir, oder? ODER?"},
+                {"Snff snff… mmh.", "Riecht nach Karotten. Oder nach Bass."}},
+            {{"Gekk-gekk-ack!", "Ich hab dein Passwort nicht gesehen. Ehrlich."},
+                {"Wa-pa-pa-pa-pow!", "Was sagt der Fuchs? Genau das."},
+                {"Yip! Yip-yip!", "Dieser Beat ist besser als Hasenjagd."}}
+        };
+
+        private android.graphics.drawable.Drawable foxArt, rabbitArt;
+
+        private void stage(Canvas c, float s, boolean dark, int ink, int rust) {
+            long ms = System.currentTimeMillis();
+            int slot = (int) ((ms / 15000) % 4);
+            long cycle = ms / 60000;
+            float k = (ms % 15000) / 1000f;                 // seconds into this character's turn
+            // Slide in during the first second, out during the last.
+            float in = Math.min(1f, k) * Math.min(1f, 15f - k);
+            float size = width * 0.17f;
+            float x = width * 0.06f - (1 - in) * size * 1.4f, y = height * 0.85f;   // between fingerprint and the bottom shortcuts
+            float bob = (float) Math.sin(k * 6) * size * 0.03f * (1 + beat);
+            c.save();
+            c.translate(x, y + bob);
+            switch (slot) {
+                case 0: bear(c, size, dark); break;
+                case 1: car(c, size, ink, rust); break;
+                case 2: art(c, size, false); break;
+                default: art(c, size, true); break;
+            }
+            c.restore();
+
+            String[] line = LINES[slot][(int) (cycle % LINES[slot].length)];
+            if (k < 1.2f || k > 14f) return;
+            boolean translated = k > 5f;
+            // Speech bubble to the right.
+            float bx = width * 0.06f + size * 1.15f, bw = width * 0.94f - bx, by = y - size * 0.15f;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTypeface(translated ? android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+                : android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD_ITALIC));
+            paint.setTextSize((translated ? 34 : 30) * s);
+            List<String> rows = wrap(translated ? line[1] : line[0], bw - 44 * s);
+            float lineH = paint.getTextSize() * 1.25f, bh = rows.size() * lineH + 36 * s + (translated ? 30 * s : 0);
+            box.set(bx, by - bh / 2, bx + bw, by + bh / 2);
+            paint.setColor(dark ? 0xE61C1C1A : 0xF2FFFFFF);
+            c.drawRoundRect(box, 22 * s, 22 * s, paint);
+            path.reset();
+            path.moveTo(bx + 2 * s, by - 12 * s);
+            path.lineTo(bx - 18 * s, by + 4 * s);
+            path.lineTo(bx + 2 * s, by + 14 * s);
+            path.close();
+            c.drawPath(path, paint);
+            float ty = box.top + 18 * s + paint.getTextSize();
+            if (translated) {
+                paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+                paint.setTextSize(20 * s);
+                paint.setColor(rust);
+                c.drawText("ÜBERSETZT:", bx + 22 * s, box.top + 18 * s + 20 * s, paint);
+                paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+                paint.setTextSize(34 * s);
+                ty += 30 * s;
+            }
+            paint.setColor(translated ? (0xFF000000 | ink) : rust);
+            for (String row : rows) {
+                c.drawText(row, bx + 22 * s, ty, paint);
+                ty += lineH;
+            }
+        }
+
+        private List<String> wrap(String text, float max) {
+            List<String> out = new ArrayList<>();
+            StringBuilder row = new StringBuilder();
+            for (String w : text.split(" ")) {
+                String next = row.length() == 0 ? w : row + " " + w;
+                if (paint.measureText(next) > max && row.length() > 0) {
+                    out.add(row.toString());
+                    row = new StringBuilder(w);
+                } else {
+                    row = new StringBuilder(next);
+                }
+            }
+            if (row.length() > 0) out.add(row.toString());
+            return out;
+        }
+
+        private void art(Canvas c, float size, boolean fox) {
+            if (fox && foxArt == null) foxArt = getDrawable(R.drawable.fox);
+            if (!fox && rabbitArt == null) rabbitArt = getDrawable(R.drawable.rabbit);
+            android.graphics.drawable.Drawable d = fox ? foxArt : rabbitArt;
+            if (d == null) return;
+            float h = size * (fox ? 64 / 96f : 40 / 48f);
+            d.setBounds(0, (int) (-h / 2), (int) size, (int) (h / 2));
+            d.draw(c);
+        }
+
+        /** A round bear head peeking out: brown, ears, sleepy eyes, snout. */
+        private void bear(Canvas c, float size, boolean dark) {
+            float r = size * 0.42f, cx = size * 0.5f;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xFF6B4226);
+            c.drawCircle(cx - r * 0.75f, -r * 0.75f, r * 0.38f, paint);
+            c.drawCircle(cx + r * 0.75f, -r * 0.75f, r * 0.38f, paint);
+            c.drawCircle(cx, 0, r, paint);
+            paint.setColor(0xFFC89B6D);
+            c.drawCircle(cx, r * 0.35f, r * 0.42f, paint);
+            paint.setColor(0xFF1A1A1A);
+            c.drawCircle(cx, r * 0.2f, r * 0.13f, paint);
+            c.drawCircle(cx - r * 0.38f, -r * 0.2f, r * 0.09f, paint);
+            c.drawCircle(cx + r * 0.38f, -r * 0.2f, r * 0.09f, paint);
+            paint.setColor(0xFFFF5A3C);
+            c.drawCircle(cx - r * 0.38f, -r * 0.22f, r * 0.03f, paint);   // the little glint that says "I'm hungry"
+            c.drawCircle(cx + r * 0.38f, -r * 0.22f, r * 0.03f, paint);
+        }
+
+        /** The F1 car, side-on, same shape as on the timing board. */
+        private void car(Canvas c, float size, int ink, int rust) {
+            float w = size * 1.1f, h = w * 0.3f, x = 0, y = -h / 2;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xFF000000 | ink);
+            path.reset();
+            path.moveTo(x + w * 0.08f, y + h * 0.72f);
+            path.lineTo(x + w * 0.16f, y + h * 0.42f);
+            path.lineTo(x + w * 0.46f, y + h * 0.40f);
+            path.lineTo(x + w * 0.56f, y + h * 0.22f);
+            path.lineTo(x + w * 0.64f, y + h * 0.40f);
+            path.lineTo(x + w * 0.98f, y + h * 0.60f);
+            path.lineTo(x + w * 0.98f, y + h * 0.72f);
+            path.close();
+            c.drawPath(path, paint);
+            c.drawRect(x, y + h * 0.10f, x + w * 0.12f, y + h * 0.30f, paint);
+            c.drawRect(x + w * 0.86f, y + h * 0.72f, x + w * 1.02f, y + h * 0.80f, paint);
+            paint.setColor(rust);
+            c.drawRect(x + w * 0.20f, y + h * 0.50f, x + w * 0.80f, y + h * 0.58f, paint);
+            paint.setColor(0xFF000000 | ink);
+            c.drawCircle(x + w * 0.24f, y + h * 0.78f, h * 0.22f, paint);
+            c.drawCircle(x + w * 0.80f, y + h * 0.78f, h * 0.20f, paint);
         }
 
         /* ---- The 3D cube: tilting the phone turns it; held normally (~45°) it is the logo ---- */

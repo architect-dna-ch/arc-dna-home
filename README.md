@@ -163,3 +163,10 @@ you're on. How many: Mediathek → "ZULETZT-KARUSSELL" (4 / 8 / 12 / 16 / 24).
 Swipe the music card left or right: player ↔ stats. Minutes listened today, titles today, the
 last 7 days as bars and today's top artists. Counted on the phone only (from the media sessions,
 via the notification-access entry); nothing leaves the device.
+
+## Lock screen while music plays
+
+A flowing rainbow frame glows around Android's media card (drawn on the wallpaper behind it,
+breathing with the beat), and bottom-left a character takes the stage every 15 s – bear, F1 car,
+rabbit, fox – mumbling gibberish first, then the "translation" ("Schau mich nicht an, sonst
+fress ich dich.").
