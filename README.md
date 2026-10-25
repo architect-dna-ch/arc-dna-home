@@ -76,7 +76,7 @@ home still scrolls to the top.
 ## Home layout (priorities)
 
 Clock + brightness lever on top; every section folds from its title (**Suche**, **Apps**, **Zuletzt**, **Musik** start open; **Tipps** closed). With everything folded the page fits the screen exactly, the section titles sitting down by the thumb – no scrolling; folding sections below
-(tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (all apps inline, frosted row by row
+(tap the title, ▸ AUF / ▾ ZU, remembered): **Mediathek** (up to 34 apps inline – most used first, then A–Z, frosted row by row
 while scrolling; link to the full Mediathek), **Heute & Wecker**, **Projekte**. **Zuletzt** is
 always on, one row under the apps.
 
@@ -231,4 +231,5 @@ The TIERE tab sorts every song to a lock screen character by its remembered phas
 Away from the phone: tap "next" and then straight "back" on the JBL (or any earbuds) – the song
 returns within ~4 s – and it becomes a ★ favourite: marked in the Musik-Verlauf, the app's own
 Like is pressed when it offers one (e.g. YouTube Music's thumb), and you hear a little "yip" in
-the earbuds. The same gesture on a favourite removes the ★ ("huff").
+the earbuds. The same gesture on a favourite removes the ★ ("huff"). Second gesture: volume up, down, up on
+the earbuds within ~2.5 s. Favourites carry a rust ★ badge in the history.

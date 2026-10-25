@@ -921,7 +921,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** The inline Mediathek on the home screen: built only while it is open. */
     private void renderHomeLibrary() {
         if (homeLib == null || homeLib.getVisibility() != View.VISIBLE) return;
-        fillGrid(homeLib, apps, cols());
+        // At most 34 apps here: the ones you use first, then A–Z (the full list is the volle Mediathek).
+        List<AppEntry> pick = new ArrayList<>();
+        for (AppEntry a : lastRecent) if (!pick.contains(a)) pick.add(a);
+        for (AppEntry a : apps) {
+            if (pick.size() >= 34) break;
+            if (!pick.contains(a)) pick.add(a);
+        }
+        fillGrid(homeLib, pick.subList(0, Math.min(34, pick.size())), cols());
         // Bottom bar, so a long open list can be closed without scrolling back up to its title.
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);

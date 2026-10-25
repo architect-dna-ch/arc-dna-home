@@ -49,6 +49,12 @@ public class MediaListener extends NotificationListenerService {
 
     @Override
     public void onListenerConnected() {
+        try {
+            android.content.IntentFilter vf = new android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION");
+            if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(volume, vf, RECEIVER_EXPORTED);
+            else registerReceiver(volume, vf);
+        } catch (RuntimeException ignored) {
+        }
         sessions = getSystemService(MediaSessionManager.class);
         if (sessions == null) return;
         try {
@@ -63,6 +69,10 @@ public class MediaListener extends NotificationListenerService {
 
     @Override
     public void onListenerDisconnected() {
+        try {
+            unregisterReceiver(volume);
+        } catch (RuntimeException ignored) {
+        }
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(changed);
         for (MediaController c : watched) c.unregisterCallback(callback);
         watched.clear();
@@ -100,6 +110,37 @@ public class MediaListener extends NotificationListenerService {
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
         if (playing != null && title != null) watchFavGesture(playing, title, artist);
     }
+
+    /* ---- ★ from the earbud volume: up, down, up within ~2.5 s ---- */
+
+    private final int[] volDir = new int[3];
+    private final long[] volAt = new long[3];
+
+    private final android.content.BroadcastReceiver volume = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context c, android.content.Intent i) {
+            if (i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != android.media.AudioManager.STREAM_MUSIC) return;
+            int now = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", 0);
+            int before = i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", now);
+            if (now == before) return;
+            System.arraycopy(volDir, 1, volDir, 0, 2);
+            System.arraycopy(volAt, 1, volAt, 0, 2);
+            volDir[2] = now > before ? 1 : -1;
+            volAt[2] = System.currentTimeMillis();
+            boolean zigzag = volDir[0] == 1 && volDir[1] == -1 && volDir[2] == 1 && volAt[2] - volAt[0] < 2500;
+            if (!zigzag) return;
+            volDir[0] = volDir[1] = volDir[2] = 0;
+            for (MediaController mc : watched) {
+                PlaybackState st = mc.getPlaybackState();
+                MediaMetadata m = mc.getMetadata();
+                if (st != null && st.getState() == PlaybackState.STATE_PLAYING && m != null
+                    && m.getString(MediaMetadata.METADATA_KEY_TITLE) != null) {
+                    favourite(mc, m.getString(MediaMetadata.METADATA_KEY_TITLE), m.getString(MediaMetadata.METADATA_KEY_ARTIST));
+                    return;
+                }
+            }
+        }
+    };
 
     /* ---- ★ from the earbuds: "next" and straight back to the same song within ~4 s ---- */
 

@@ -405,7 +405,8 @@ public class HistoryActivity extends Activity {
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t1 = text(15, ink, true);
         boolean fav = MusicStats.isFavourite(this, p[1], p[2]);
-        t1.setText((fav ? "★ " : "") + (p[1].isEmpty() ? "–" : p[1]));
+        t1.setText(p[1].isEmpty() ? "–" : p[1]);
+        if (fav) t1.setTextColor(rust);
         t1.setSingleLine(true);
         t1.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(t1);
@@ -420,6 +421,19 @@ public class HistoryActivity extends Activity {
         n.setText(counts.get(key(p)) + "×");
         n.setPadding(dp(8), 0, 0, 0);
         r.addView(n);
+        if (fav) {
+            // ★ badge for favourites (set from the earbuds), rust like the accents.
+            TextView star = text(18, 0xFFFFFFFF, true);
+            star.setText("★");
+            star.setGravity(Gravity.CENTER);
+            GradientDrawable b = new GradientDrawable();
+            b.setShape(GradientDrawable.OVAL);
+            b.setColor(rust);
+            star.setBackground(b);
+            LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(dp(28), dp(28));
+            sl.leftMargin = dp(8);
+            r.addView(star, sl);
+        }
         r.setOnClickListener(v -> playAgain(p));
         return r;
     }
