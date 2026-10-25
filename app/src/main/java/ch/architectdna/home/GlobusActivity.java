@@ -74,11 +74,6 @@ public class GlobusActivity extends Activity {
         rust = night ? 0xFFD9472F : 0xFFB5271E;
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
-        if (Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
-            int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            getWindow().getInsetsController().setSystemBarsAppearance(night ? 0 : bits, bits);
-        }
         load();
 
         FrameLayout root = new FrameLayout(this);
@@ -164,6 +159,12 @@ public class GlobusActivity extends Activity {
         col.addView(add);
 
         setContentView(root);
+        // Bar icon colours only once the window exists (Android 16 crashes otherwise).
+        if (Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
+            int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            getWindow().getInsetsController().setSystemBarsAppearance(night ? 0 : bits, bits);
+        }
         handleShare(getIntent());
         showSheet();
     }

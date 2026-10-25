@@ -157,7 +157,7 @@ public class MediaListener extends NotificationListenerService {
         // A → B → A, B lasting under ~7 s: "next, then back" from the earbuds. Longer than that is
         // usually just skipping and changing your mind, which shouldn't set a ★.
         boolean back = key.equals(trackBefore) && now - changedAt < 7_000 && now - changedBeforeAt < 20_000;
-        DiagLog.log("fav gesture: track change, back=" + back + ", B lasted " + (now - changedAt) / 1000 + " s");
+        if (changedAt > 0) DiagLog.log("fav gesture: track change, back=" + back + ", B lasted " + (now - changedAt) / 1000 + " s");
         if (back) {
             favourite(c, title, artist, "next-back");
             trackBefore = "";

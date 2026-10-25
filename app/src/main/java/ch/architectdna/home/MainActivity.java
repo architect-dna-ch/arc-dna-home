@@ -2154,6 +2154,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             float up = calibN[0] > 0 ? calibAcc[0] / calibN[0] : 8f;
             float mid = calibN[1] > 0 ? calibAcc[1] / calibN[1] : 0f;
             float down = calibN[2] > 0 ? calibAcc[2] / calibN[2] : -8f;
+            if (calibN[0] < 5 || calibN[2] < 5 || up - mid < 1.5f || mid - down < 1.5f) {
+                // Hardly any movement (or no face) between the dots: don't save a useless calibration.
+                DiagLog.log(String.format(Locale.ROOT, "nod calibration rejected: up %+.1f°, down %+.1f°", up - mid, down - mid));
+                endGazeCalibration();
+                Toast.makeText(this, "Kein Nicken erkannt – nochmal kalibrieren und deutlicher nicken", Toast.LENGTH_LONG).show();
+                return;
+            }
             prefs.edit().putFloat("nodUp", up).putFloat("nodMid", mid).putFloat("nodDown", down).apply();
             DiagLog.log(String.format(java.util.Locale.ROOT, "nod calibrated: up %+.1f°, down %+.1f° from neutral", up - mid, down - mid));
             endGazeCalibration();

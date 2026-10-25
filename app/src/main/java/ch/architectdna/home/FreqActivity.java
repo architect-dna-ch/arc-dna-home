@@ -68,11 +68,6 @@ public class FreqActivity extends Activity {
 
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
-        if (Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
-            int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            getWindow().getInsetsController().setSystemBarsAppearance(night ? 0 : bits, bits);
-        }
 
         FrameLayout root = new FrameLayout(this);
         root.setFitsSystemWindows(true);
@@ -249,6 +244,12 @@ public class FreqActivity extends Activity {
         col.addView(sessions);
 
         setContentView(root);
+        // Bar icon colours only once the window exists (Android 16 crashes otherwise).
+        if (Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
+            int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            getWindow().getInsetsController().setSystemBarsAppearance(night ? 0 : bits, bits);
+        }
         render();
     }
 
