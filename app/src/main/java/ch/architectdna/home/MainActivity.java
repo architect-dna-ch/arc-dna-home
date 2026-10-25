@@ -1123,9 +1123,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 strip.addView(new View(this), lp);
             }
         }
+        // Focus landing on a tile (e.g. when coming back home) made the carousel jump to it: never let
+        // tiles take focus, and always start at the newest app.
+        strip.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        hs.setFocusable(false);
         hs.addView(strip);
         recentHome.addView(hs);
         recentCarousel = hs;
+        hs.post(() -> hs.scrollTo(0, 0));
 
         // Dots: one per page, the current one in rust.
         recentDots = new LinearLayout(this);
