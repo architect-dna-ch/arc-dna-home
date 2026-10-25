@@ -423,7 +423,7 @@ final class MusicCard {
             if (phaseLabel != null) paintPhase(p);
         }
         // Every kick nods the ring animal along; lastBeat keeps it to real beats (≥ 0.25 s apart).
-        if (lo > loS * 1.25f && lo > 0.04f && now - lastBeat > 250) {
+        if (lo > loS * 1.25f && lo > 0.04f && now - lastBeat > 380) {
             lastBeat = now;
             if (gauge != null) gauge.pulse();
         }
@@ -952,6 +952,7 @@ final class MusicCard {
 
         private boolean playing;
         private long beatAt = -1;
+        private float vibe;
 
         void playing(boolean on) {
             if (on == playing) return;
@@ -1010,14 +1011,18 @@ final class MusicCard {
             u = rad / 10f;
             ox = cx;
             oy = cy;
-            // While music plays: a constant gentle sway, plus a little head nod on every kick.
+            // While music plays: a gentle sway that eases in over ~1 s (and out on pause), plus a
+            // soft nod on each kick that rises and falls smoothly instead of snapping.
             long tNow = android.os.SystemClock.uptimeMillis();
-            float bob = beatAt >= 0 && tNow - beatAt < 240 ? 1 - (tNow - beatAt) / 240f : 0;
-            float sway = playing ? (float) Math.sin(tNow / 1000.0 * Math.PI * 1.1) : 0;
+            vibe += ((playing ? 1f : 0f) - vibe) * 0.05f;
+            if (vibe < 0.002f) vibe = 0;
+            float k = beatAt >= 0 ? (tNow - beatAt) / 320f : 1;
+            float bob = k < 1 ? (float) Math.sin(Math.PI * k) * vibe : 0;
+            float sway = (float) Math.sin(tNow / 1000.0 * Math.PI * 1.1) * vibe;
             c.save();
-            if (playing) {
-                c.translate(0, -bob * 0.7f * u);
-                c.rotate(sway * 3f - bob * 5f, ox, oy + 4f * u);
+            if (vibe > 0) {
+                c.translate(0, -bob * 0.45f * u);
+                c.rotate(sway * 3f - bob * 3f, ox, oy + 4f * u);
             }
             if (kind == 3 && playing) flames(c, tNow);
             if (kind == 0) {
@@ -1109,7 +1114,7 @@ final class MusicCard {
                 }
             }
             c.restore();
-            if (playing) postInvalidateOnAnimation();
+            if (playing || vibe > 0) postInvalidateOnAnimation();
         }
 
         private float u, ox, oy;
