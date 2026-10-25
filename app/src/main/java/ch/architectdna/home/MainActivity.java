@@ -909,10 +909,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout head2 = settingsGroup(col, "Kopf-Scroll");
         settingsRow(head2, "In der Mediathek", () -> {
             String m = headMode();
-            return m.equals("nod") ? "Nicken" : m.equals("gaze") ? "Blick" : "Aus";
+            return m.equals("nod") ? "Nicken" : "Aus";
         }, v -> cycleHeadMode(), null);
         settingsRow(head2, "Nicken kalibrieren", () -> prefs.contains("nodMid") ? "kalibriert" : "noch nie", v -> calibrate("nod"), null);
-        settingsRow(head2, "Blick kalibrieren", () -> prefs.contains("gazeMid") ? "kalibriert" : "noch nie", v -> calibrate("gaze"), null);
         settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
             v -> showAppScrollSettings(), null);
 
@@ -1674,8 +1673,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         list.addView(status);
 
         TextView hint = text(12, ink3, false);
-        hint.setText("Pro App antippen: AUS → NICKEN → BLICK. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause, lange drücken = NICKEN ↔ BLICK. "
-            + "Kalibrieren: ⚙ Einstellungen → Kopf-Scroll → Nicken / Blick kalibrieren.");
+        hint.setText("Pro App antippen: AUS ↔ NICKEN. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause. "
+            + "Kalibrieren: ⚙ Einstellungen → Kopf-Scroll → Nicken kalibrieren.");
         hint.setLineSpacing(0, 1.2f);
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
@@ -1732,7 +1731,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         final AlertDialog[] dialog = new AlertDialog[1];
         allChip.setOnClickListener(v -> {
             String now = prefs.getString("appScrollAll", "off");
-            String next = now.equals("off") ? "nod" : now.equals("nod") ? "gaze" : "off";
+            String next = now.equals("off") ? "nod" : "off";
             SharedPreferences.Editor e = prefs.edit().putString("appScrollAll", next);
             for (String k : prefs.getAll().keySet()) if (k.startsWith("appScroll:")) e.remove(k);   // everyone follows
             e.apply();
@@ -1772,7 +1771,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             paintAppScroll(chip, appScrollMode(pkg));
             chip.setOnClickListener(v -> {
                 String now = appScrollMode(pkg);
-                String next = now.equals("off") ? "nod" : now.equals("nod") ? "gaze" : "off";
+                String next = now.equals("off") ? "nod" : "off";
                 prefs.edit().putString("appScroll:" + pkg, next).apply();
                 paintAppScroll(chip, next);
                 if (!next.equals("off") && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -1793,7 +1792,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** The app's own setting, else the "Alle Apps" switch. */
     private String appScrollMode(String pkg) {
-        return prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
+        String m = prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
+        return m.equals("gaze") ? "nod" : m;
     }
 
     private void paintAppScroll(TextView chip, String mode) {
@@ -1837,17 +1837,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Head / gaze scrolling ================= */
 
-    /** "off", "nod" (head tilt) or "gaze" (eyes). Older versions stored a boolean. */
+    /**
+     * "off" or "nod" (head tilt). BLICK (eyes) is gone: a phone camera sees the eyes too coarsely
+     * to steer reliably; an old "gaze" setting now means NICKEN. Older versions stored a boolean.
+     */
     private String headMode() {
         String m = prefs.getString("headMode", null);
         if (m == null) m = prefs.getBoolean("headScroll", false) ? "nod" : "off";
-        return m;
+        return m.equals("gaze") ? "nod" : m;
     }
 
-    /** Toggle in the Mediathek cycles AUS → NICKEN → BLICK → AUS. */
+    /** Toggle in the Mediathek: AUS ↔ NICKEN. */
     private void cycleHeadMode() {
         String m = headMode();
-        String next = m.equals("off") ? "nod" : m.equals("nod") ? "gaze" : "off";
+        String next = m.equals("off") ? "nod" : "off";
         prefs.edit().putString("headMode", next).remove("headScroll").apply();
         paintHeadToggle();
         stopHead();

@@ -159,7 +159,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         // Main switch first: unless you allowed it, the camera never starts outside the launcher.
         boolean allowed = prefs.getBoolean("scrollOutside", false);
         String m = !allowed || pkg.equals(getPackageName()) ? "off"
-            : prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off"));
+            : prefs.getString("appScroll:" + pkg, prefs.getString("appScrollAll", "off")).replace("gaze", "nod");
         // Package names of other apps are not logged, only whether scrolling is on for them.
         DiagLog.log("front app changed" + (pkg.equals(getPackageName()) ? " (launcher)" : "") + ", scroll mode=" + m);
         apply(m);
@@ -238,7 +238,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_cube)
                 .setContentTitle("ARC-DNA Kopf-Scroll aktiv")
-                .setContentText("Kamera liest Kopf/Blick, nur auf dem Handy.")
+                .setContentText("Kamera liest die Kopfneigung, nur auf dem Handy.")
                 .setOngoing(true)
                 .build();
             if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA);
@@ -418,18 +418,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (pill == null) {
             CameraRing ring = new CameraRing();
             ring.setClickable(true);
-            ring.setContentDescription("Kopf-Scroll: dreimal tippen = Pause, lange drücken = Nicken/Blick");
-            ring.setOnLongClickListener(v -> {
-                if (mode.equals("off") || currentPkg.isEmpty()) return false;
-                String next = mode.equals("gaze") ? "nod" : "gaze";
-                prefs.edit().putString("appScroll:" + currentPkg, next).apply();
-                DiagLog.log("ring: switched to " + next);
-                v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-                apply(next);
-                android.widget.Toast.makeText(this, next.equals("gaze") ? "Kopf-Scroll: BLICK" : "Kopf-Scroll: NICKEN",
-                    android.widget.Toast.LENGTH_SHORT).show();
-                return true;
-            });
+            ring.setContentDescription("Kopf-Scroll: dreimal tippen = Pause");
             ring.setOnTouchListener((v, e) -> {
                 // Every touch elsewhere on the screen: your finger is in charge for a moment.
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
