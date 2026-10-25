@@ -246,7 +246,8 @@ public class ArcWallpaper extends WallpaperService {
         private static final float BASE_YAW = (float) Math.toRadians(45), BASE_PITCH = (float) Math.toRadians(35.264);
         private final float[][] proj = new float[8][3];
         private float yaw = BASE_YAW, pitch = BASE_PITCH, drawnYaw = Float.NaN, drawnPitch = Float.NaN;
-        private static final float NEUTRAL_TILT = (float) Math.toRadians(45);
+        /** At a normal ~45° grip the cube shows the pose it used to have lying flat (your pick). */
+        private static final float NEUTRAL_TILT = (float) Math.toRadians(90);
         private float tiltX, tiltY, baseX = Float.NaN;
         private android.hardware.SensorManager sensors;
 
@@ -263,8 +264,8 @@ public class ArcWallpaper extends WallpaperService {
                 }
                 tiltX = tiltX * 0.8f + x * 0.2f;
                 tiltY = tiltY * 0.8f + y * 0.2f;
-                // Fixed calibration: held normally (upright, tilted ~45° towards you) the cube is
-                // exactly the static wallpaper's logo; tilting away from that turns it.
+                // Fixed calibration (see NEUTRAL_TILT): held normally at ~45° the cube sits in its
+                // home pose, rust edge from the centre to the top right; tilting turns it.
                 yaw = BASE_YAW - tiltX * 1.4f;
                 pitch = Math.max(-1.4f, Math.min(1.4f, BASE_PITCH + (tiltY - NEUTRAL_TILT) * 1.4f));
                 if (visible && cubeMoving()) {
