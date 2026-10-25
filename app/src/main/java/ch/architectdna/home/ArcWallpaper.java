@@ -349,7 +349,7 @@ public class ArcWallpaper extends WallpaperService {
             c.translate(x, y + bob);
             switch (slot) {
                 case 0: bear(c, size, dark); break;
-                case 1: car(c, size, ink, rust); break;
+                case 1: car(c, size, dark ? 0xFFFFFF : ink, dark ? 0xFFFF6A4F : rust); break;
                 case 2: art(c, size, false); break;
                 default: art(c, size, true); break;
             }
@@ -368,7 +368,9 @@ public class ArcWallpaper extends WallpaperService {
             List<String> rows = wrap(translated ? line[1] : line[0], bw - 44 * s);
             float lineH = paint.getTextSize() * 1.25f, bh = rows.size() * lineH + 36 * s + (translated ? 30 * s : 0);
             box.set(bx, by - bh / 2, bx + bw, by + bh / 2);
-            paint.setColor(dark ? 0xE61C1C1A : 0xF2FFFFFF);
+            // Dark mode: the lock screen dims the wallpaper, so the bubble is lighter and outlined in rust.
+            int glow = dark ? 0xFFFF6A4F : rust;
+            paint.setColor(dark ? 0xF2393632 : 0xF2FFFFFF);
             c.drawRoundRect(box, 22 * s, 22 * s, paint);
             path.reset();
             path.moveTo(bx + 2 * s, by - 12 * s);
@@ -376,17 +378,24 @@ public class ArcWallpaper extends WallpaperService {
             path.lineTo(bx + 2 * s, by + 14 * s);
             path.close();
             c.drawPath(path, paint);
+            if (dark) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.5f * s);
+                paint.setColor(glow);
+                c.drawRoundRect(box, 22 * s, 22 * s, paint);
+                paint.setStyle(Paint.Style.FILL);
+            }
             float ty = box.top + 18 * s + paint.getTextSize();
             if (translated) {
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(20 * s);
-                paint.setColor(rust);
+                paint.setColor(glow);
                 c.drawText("ÜBERSETZT:", bx + 22 * s, box.top + 18 * s + 20 * s, paint);
                 paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 paint.setTextSize(34 * s);
                 ty += 30 * s;
             }
-            paint.setColor(translated ? (0xFF000000 | ink) : rust);
+            paint.setColor(translated ? (dark ? 0xFFFFFFFF : 0xFF000000 | ink) : glow);
             for (String row : rows) {
                 c.drawText(row, bx + 22 * s, ty, paint);
                 ty += lineH;
@@ -547,7 +556,7 @@ public class ArcWallpaper extends WallpaperService {
                     int b = a | bit;
                     if (b == a) continue;
                     float depth = (proj[a][2] + proj[b][2]) / 2f;           // -1.7 (back) … 1.7 (front)
-                    float alpha = 0.06f + 0.06f * (depth + 1.7f) / 3.4f;
+                    float alpha = (0.06f + 0.06f * (depth + 1.7f) / 3.4f) * (night() ? 1.8f : 1f);
                     boolean accent = a == 4 && b == 5;                        // the logo's rust edge
                     paint.setColor(accent ? (rust & 0x00FFFFFF) | ((int) (255 * (0.3f + 0.25f * (depth + 1.7f) / 3.4f)) << 24)
                         : (ink & 0x00FFFFFF) | ((int) (255 * alpha) << 24));
@@ -617,7 +626,8 @@ public class ArcWallpaper extends WallpaperService {
                     float mix = w == 0 ? 1 - dna : dna;
                     if (mix <= 0.01f) continue;
                     String letter = String.valueOf((w == 0 ? ARC : DNA).charAt(f));
-                    paint.setColor((rust & 0x00FFFFFF) | ((int) (150 * face * mix) << 24));
+                    int strength = night() ? 230 : 150;
+                    paint.setColor(((night() ? 0xFF6A4F : rust) & 0x00FFFFFF) | ((int) (strength * face * mix) << 24));
                     c.drawText(letter, 50 - paint.measureText(letter) / 2f, 50 + 64 * 0.36f, paint);
                 }
                 c.restore();
