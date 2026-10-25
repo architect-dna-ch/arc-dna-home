@@ -111,10 +111,10 @@ public class MediaListener extends NotificationListenerService {
         if (playing != null && title != null) watchFavGesture(playing, title, artist);
     }
 
-    /* ---- ★ from the earbud volume: up, down, up within ~2.5 s ---- */
+    /* ---- ★ from the earbud volume: up, down, up, down within ~2 s ---- */
 
-    private final int[] volDir = new int[3];
-    private final long[] volAt = new long[3];
+    private final int[] volDir = new int[4];
+    private final long[] volAt = new long[4];
 
     private final android.content.BroadcastReceiver volume = new android.content.BroadcastReceiver() {
         @Override
@@ -123,26 +123,27 @@ public class MediaListener extends NotificationListenerService {
             int now = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", 0);
             int before = i.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", now);
             if (now == before) return;
-            System.arraycopy(volDir, 1, volDir, 0, 2);
-            System.arraycopy(volAt, 1, volAt, 0, 2);
-            volDir[2] = now > before ? 1 : -1;
-            volAt[2] = System.currentTimeMillis();
-            boolean zigzag = volDir[0] == 1 && volDir[1] == -1 && volDir[2] == 1 && volAt[2] - volAt[0] < 2500;
+            System.arraycopy(volDir, 1, volDir, 0, 3);
+            System.arraycopy(volAt, 1, volAt, 0, 3);
+            volDir[3] = now > before ? 1 : -1;
+            volAt[3] = System.currentTimeMillis();
+            // Up, down, up, down quickly: too deliberate to happen while just setting the volume.
+            boolean zigzag = volDir[0] == 1 && volDir[1] == -1 && volDir[2] == 1 && volDir[3] == -1 && volAt[3] - volAt[0] < 2000;
             if (!zigzag) return;
-            volDir[0] = volDir[1] = volDir[2] = 0;
+            java.util.Arrays.fill(volDir, 0);
             for (MediaController mc : watched) {
                 PlaybackState st = mc.getPlaybackState();
                 MediaMetadata m = mc.getMetadata();
                 if (st != null && st.getState() == PlaybackState.STATE_PLAYING && m != null
                     && m.getString(MediaMetadata.METADATA_KEY_TITLE) != null) {
-                    favourite(mc, m.getString(MediaMetadata.METADATA_KEY_TITLE), m.getString(MediaMetadata.METADATA_KEY_ARTIST));
+                    favourite(mc, m.getString(MediaMetadata.METADATA_KEY_TITLE), m.getString(MediaMetadata.METADATA_KEY_ARTIST), "volume");
                     return;
                 }
             }
         }
     };
 
-    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~15 s ---- */
+    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~7 s ---- */
 
     private String trackNow = "", trackBefore = "";
     private long changedAt, changedBeforeAt;
@@ -153,11 +154,12 @@ public class MediaListener extends NotificationListenerService {
         String key = title.trim().toLowerCase(java.util.Locale.ROOT);
         if (key.isEmpty() || key.equals(trackNow)) return;
         long now = System.currentTimeMillis();
-        // A → B → A, B lasting under ~15 s: "next, then back" from the earbuds (two presses take time).
-        boolean back = key.equals(trackBefore) && now - changedAt < 15_000 && now - changedBeforeAt < 30_000;
+        // A → B → A, B lasting under ~7 s: "next, then back" from the earbuds. Longer than that is
+        // usually just skipping and changing your mind, which shouldn't set a ★.
+        boolean back = key.equals(trackBefore) && now - changedAt < 7_000 && now - changedBeforeAt < 20_000;
         DiagLog.log("fav gesture: track change, back=" + back + ", B lasted " + (now - changedAt) / 1000 + " s");
         if (back) {
-            favourite(c, title, artist);
+            favourite(c, title, artist, "next-back");
             trackBefore = "";
         } else {
             trackBefore = trackNow;
@@ -167,7 +169,7 @@ public class MediaListener extends NotificationListenerService {
         changedAt = now;
     }
 
-    private void favourite(MediaController c, String title, String artist) {
+    private void favourite(MediaController c, String title, String artist, String how) {
         boolean liked = MusicStats.favourite(this, title, artist);
         // Press the app's own Like if it offers one (YouTube Music's thumb, Spotify's heart …).
         PlaybackState st = c.getPlaybackState();
@@ -187,6 +189,6 @@ public class MediaListener extends NotificationListenerService {
         // A little yip in the earbuds, so you know it worked without looking.
         if (voice == null) voice = new FoxVoice();
         voice.say(liked ? "Yip-yip!" : "Huff.");
-        DiagLog.log("earbud gesture: favourite " + (liked ? "on" : "off"));
+        DiagLog.log("earbud gesture (" + how + "): favourite " + (liked ? "on" : "off"));
     }
 }

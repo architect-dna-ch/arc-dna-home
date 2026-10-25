@@ -421,21 +421,38 @@ public class HistoryActivity extends Activity {
         n.setText(counts.get(key(p)) + "×");
         n.setPadding(dp(8), 0, 0, 0);
         r.addView(n);
-        if (fav) {
-            // ★ badge for favourites (set from the earbuds), rust like the accents.
-            TextView star = text(18, 0xFFFFFFFF, true);
-            star.setText("★");
-            star.setGravity(Gravity.CENTER);
-            GradientDrawable b = new GradientDrawable();
-            b.setShape(GradientDrawable.OVAL);
-            b.setColor(rust);
-            star.setBackground(b);
-            LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(dp(28), dp(28));
-            sl.leftMargin = dp(8);
-            r.addView(star, sl);
-        }
+        // ★ badge: filled rust for favourites, a faint outline otherwise. Tap it to switch.
+        TextView star = text(18, 0xFFFFFFFF, true);
+        star.setGravity(Gravity.CENTER);
+        paintStar(star, t1, fav);
+        star.setOnClickListener(v -> {
+            boolean now = MusicStats.favourite(this, p[1], p[2]);
+            paintStar(star, t1, now);
+            DiagLog.log("favourite " + (now ? "on" : "off") + " from the history");
+        });
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(dp(28), dp(28));
+        sl.leftMargin = dp(8);
+        r.addView(star, sl);
         r.setOnClickListener(v -> playAgain(p));
         return r;
+    }
+
+    private void paintStar(TextView star, TextView title, boolean fav) {
+        GradientDrawable b = new GradientDrawable();
+        b.setShape(GradientDrawable.OVAL);
+        if (fav) {
+            b.setColor(rust);
+            star.setText("★");
+            star.setTextColor(0xFFFFFFFF);
+        } else {
+            b.setColor(0x00000000);
+            b.setStroke(dp(1), ink3);
+            star.setText("☆");
+            star.setTextColor(ink3);
+        }
+        star.setBackground(b);
+        star.setAlpha(fav ? 1f : 0.55f);
+        title.setTextColor(fav ? rust : ink);
     }
 
     /** Ask the app the song came from to find and play it (works with YouTube Music, Spotify & co.). */
