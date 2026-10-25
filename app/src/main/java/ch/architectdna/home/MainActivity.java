@@ -290,6 +290,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private View buildUi() {
         FrameLayout root = new FrameLayout(this);
         rootFrame = root;
+        // Light mode while the phone's own theme is dark: Android dims the wallpaper then (grey
+        // page). So in light mode the launcher paints the light ARC wallpaper itself, undimmed.
+        if (!isNight() && prefs.getBoolean("autoWallpaper", true)) {
+            ImageView paper = new ImageView(this);
+            paper.setImageResource(R.drawable.wallpaper_light);
+            paper.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            root.addView(paper, new FrameLayout.LayoutParams(-1, -1));
+        }
 
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);

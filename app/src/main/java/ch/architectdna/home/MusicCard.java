@@ -141,8 +141,10 @@ final class MusicCard {
             p.edit().putBoolean("vizBars", !p.getBoolean("vizBars", false)).apply();
             spectrum.invalidate();
         });
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(46));
+        // The spectrum takes any extra height, so the player fills the card when the stats page is taller.
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, 0, 1f);
         slp.topMargin = dp(12);
+        spectrum.setMinimumHeight(dp(46));
         root.addView(spectrum, slp);
 
         // DJ read-out: the phase you're in, quick jumps, and the track timeline with the phases heard so far.
@@ -292,6 +294,9 @@ final class MusicCard {
         stats.setVisibility(View.GONE);
         // Takes up whatever height the card keeps from the player page; the chart grows into it.
         root.addView(stats, new LinearLayout.LayoutParams(-1, 0, 1f));
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (b - t != ob - ot || r - l != or - ol) main.post(this::syncHeight);
+        });
         paintDots();
 
         renderTrack();
@@ -484,16 +489,33 @@ final class MusicCard {
         }
     };
 
+    private int playerH;
+
+    /**
+     * Both pages get the same height: the taller of the two. The stats chart and the player's
+     * spectrum stretch into the difference, so neither page has an empty strip and nothing below
+     * the card ever jumps when it turns.
+     */
+    private void syncHeight() {
+        if (root == null || root.getWidth() == 0 || stats == null) return;
+        if (stats.getChildCount() == 0) renderStats();
+        int inner = root.getWidth() - root.getPaddingLeft() - root.getPaddingRight();
+        boolean gone = stats.getVisibility() == View.GONE;
+        stats.measure(View.MeasureSpec.makeMeasureSpec(inner, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        View top = root.getChildAt(0);
+        int statsH = root.getPaddingTop() + root.getPaddingBottom() + top.getHeight() + stats.getMeasuredHeight();
+        if (gone && !onStats) playerH = Math.max(playerH, root.getHeight());
+        int want = Math.max(statsH, playerH);
+        if (want > 0 && Math.abs(root.getMinimumHeight() - want) > 1) root.setMinimumHeight(want);
+    }
+
     void flip(int dir) {
         main.removeCallbacks(autoFlip);
         main.postDelayed(autoFlip, AUTO_FLIP_MS);
         boolean toStats = !onStats;
         float w = root.getWidth();
         root.animate().cancel();
-        // The player sets the card's height; the stats page fits into it, so nothing below jumps
-        // and the player never gets an empty strip.
-        if (toStats) root.setMinimumHeight(root.getHeight());
-        else root.setMinimumHeight(0);
         root.animate().translationX(dir * w * 0.3f).alpha(0f).setDuration(140).withEndAction(() -> {
             showStats(toStats);
             root.setTranslationX(-dir * w * 0.3f);
