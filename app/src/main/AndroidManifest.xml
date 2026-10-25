@@ -18,6 +18,8 @@
     <!-- Head / eye scrolling in other apps runs as a camera foreground service with a notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- VOID FREQ keeps playing in the background. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Music card: the audio visualizer reads the phone's output mix (Android files this under
          RECORD_AUDIO; nothing is recorded or stored). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -103,7 +105,7 @@
             </intent-filter>
         </activity>
 
-        <!-- VOID FREQ focus studio inside ARC-DNA: its own app tile and task, sound keeps playing at home. -->
+        <!-- VOID FREQ, native: its own app tile and task; the sound runs in FreqService. -->
         <activity
             android:name=".FreqActivity"
             android:exported="true"
@@ -118,6 +120,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".FreqService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Bear alarm: full screen over the lock screen, its own task so Home stays the launcher. -->
         <activity
