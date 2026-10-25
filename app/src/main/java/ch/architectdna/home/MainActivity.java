@@ -332,6 +332,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.addView(torchChip);
         net = monoText(11, ink3);
         top.addView(net);
+        top.addView(gearButton());
         content.addView(top);
 
         updateHome = text(14, ink, true);
@@ -774,6 +775,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         head.addView(headToggle);
+        head.addView(gearButton());
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(14), dp(4), dp(4), dp(4));
@@ -822,63 +824,151 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showTokenDialog();
             return true;
         });
-        body.addView(updateLib, margins(-1, -2, 0, dp(16), 0, 0));
+        TextView settingsLink = monoText(11, ink2);
+        settingsLink.setText("⚙ EINSTELLUNGEN →");
+        settingsLink.setPadding(dp(4), dp(16), dp(4), dp(8));
+        settingsLink.setOnClickListener(v -> showSettings());
+        body.addView(settingsLink, margins(-1, -2, 0, dp(16), 0, 0));
+        return lib;
+    }
 
-        TextView recentSetting = monoText(11, ink2);
-        recentSetting.setPadding(dp(4), dp(12), dp(4), dp(8));
-        Runnable paintRecent = () -> recentSetting.setText("ZULETZT-KARUSSELL: " + prefs.getInt("recentCount", 8) + " APPS →");
-        paintRecent.run();
-        recentSetting.setOnClickListener(v -> {
+    /* ================= Settings: one screen, grouped, reachable from ⚙ on home and in the Mediathek ================= */
+
+    private FrameLayout settingsSheet;
+
+    private TextView gearButton() {
+        TextView g = text(18, ink2, false);
+        g.setText("⚙");
+        g.setPadding(dp(14), dp(2), dp(4), dp(2));
+        g.setContentDescription("Einstellungen");
+        g.setOnClickListener(v -> showSettings());
+        return g;
+    }
+
+    private void showSettings() {
+        if (settingsSheet != null) return;
+        hideKeyboard();
+        FrameLayout sheet = new FrameLayout(this);
+        sheet.setBackgroundColor(panel);
+        sheet.setClickable(true);
+        ScrollView sv = new ScrollView(this);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        android.graphics.Insets in = android.graphics.Insets.NONE;
+        if (Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null) {
+            in = rootFrame.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+        }
+        col.setPadding(dp(22) + in.left, dp(18) + in.top, dp(22) + in.right, dp(40) + in.bottom);
+        sv.addView(col);
+        sheet.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(label("Einstellungen"), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView close = text(18, ink, true);
+        close.setText("✕");
+        close.setPadding(dp(14), dp(4), dp(4), dp(4));
+        close.setContentDescription("Einstellungen schliessen");
+        close.setOnClickListener(v -> closeSettings());
+        head.addView(close);
+        col.addView(head);
+
+        LinearLayout home = settingsGroup(col, "Startseite");
+        settingsRow(home, "Buddy unten links", () -> BUDDIES[buddy()][0], v -> {
+            prefs.edit().putInt("buddy", (buddy() + 1) % BUDDIES.length).apply();
+            applyBuddy();
+            hop();
+            say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
+        }, null);
+        settingsRow(home, "Zuletzt-Karussell", () -> prefs.getInt("recentCount", 8) + " Apps", v -> {
             int[] steps = {4, 8, 12, 16, 24};
             int now = prefs.getInt("recentCount", 8), next = steps[0];
             for (int i = 0; i < steps.length; i++) if (steps[i] == now) next = steps[(i + 1) % steps.length];
             prefs.edit().putInt("recentCount", next).apply();
-            paintRecent.run();
             refreshRecents();
-        });
-        body.addView(recentSetting);
+        }, null);
+        settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
+            v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
-        TextView torchSetting = monoText(11, ink2);
-        torchSetting.setPadding(dp(4), dp(12), dp(4), dp(8));
-        Runnable paintTorchSetting = () -> torchSetting.setText("TASCHENLAMPE IM DUNKELN: "
-            + (prefs.getBoolean("autoTorch", true) ? "AUTOMATISCH" : "AUS") + " →");
-        paintTorchSetting.run();
-        torchSetting.setOnClickListener(v -> {
-            prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply();
-            paintTorchSetting.run();
-        });
-        body.addView(torchSetting);
+        LinearLayout head2 = settingsGroup(col, "Kopf-Scroll");
+        settingsRow(head2, "In der Mediathek", () -> {
+            String m = headMode();
+            return m.equals("nod") ? "Nicken" : m.equals("gaze") ? "Blick" : "Aus";
+        }, v -> cycleHeadMode(), null);
+        settingsRow(head2, "Neu kalibrieren", () -> headMode().equals("off") ? "erst Modus wählen" : "", v -> {
+            if (headMode().equals("off")) return;
+            closeSettings();
+            openLibrary();
+            handler.postDelayed(this::startGazeCalibration, 450);
+        }, null);
+        settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
+            v -> showAppScrollSettings(), null);
 
-        TextView buddySetting = monoText(11, ink2);
-        buddySetting.setPadding(dp(4), dp(12), dp(4), dp(8));
-        Runnable paintBuddySetting = () -> buddySetting.setText("BUDDY UNTEN LINKS: "
-            + BUDDIES[buddy()][0].toUpperCase(Locale.GERMAN) + " →");
-        paintBuddySetting.run();
-        buddySetting.setOnClickListener(v -> {
-            prefs.edit().putInt("buddy", (buddy() + 1) % BUDDIES.length).apply();
-            applyBuddy();
-            paintBuddySetting.run();
-            hop();
-            say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
+        LinearLayout sys = settingsGroup(col, "System");
+        settingsRow(sys, "Updates", () -> updateLib.getText().toString(), v -> updateLib.performClick(), v -> {
+            showTokenDialog();
+            return true;
         });
-        body.addView(buddySetting);
-
-        TextView diag = monoText(11, ink2);
-        diag.setText("DIAGNOSE-LOG AN CLAUDE SENDEN (ANONYM) →");
-        diag.setPadding(dp(4), dp(12), dp(4), dp(8));
-        diag.setOnClickListener(v -> uploadDiagnostics());
-        diag.setOnLongClickListener(v -> {
+        settingsRow(sys, "Diagnose an Claude senden", () -> "anonym · halten = teilen", v -> uploadDiagnostics(), v -> {
             shareDiagnostics();
             return true;
         });
-        body.addView(diag);
 
-        TextView appScroll = monoText(11, ink2);
-        appScroll.setText("EINSTELLUNGEN · KOPF-SCROLL PRO APP →");
-        appScroll.setPadding(dp(4), dp(12), dp(4), dp(8));
-        appScroll.setOnClickListener(v -> showAppScrollSettings());
-        body.addView(appScroll);
-        return lib;
+        settingsSheet = sheet;
+        rootFrame.addView(sheet, new FrameLayout.LayoutParams(-1, -1));
+        sheet.setAlpha(0f);
+        sheet.setTranslationY(dp(40));
+        sheet.animate().alpha(1f).translationY(0).setDuration(260).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+    }
+
+    private void closeSettings() {
+        FrameLayout sheet = settingsSheet;
+        settingsSheet = null;
+        if (sheet == null) return;
+        sheet.animate().alpha(0f).translationY(dp(40)).setDuration(200)
+            .withEndAction(() -> rootFrame.removeView(sheet)).start();
+    }
+
+    private LinearLayout settingsGroup(LinearLayout col, String title) {
+        col.addView(label(title), margins(-1, -2, 0, dp(26), 0, dp(10)));
+        LinearLayout group = new LinearLayout(this);
+        group.setOrientation(LinearLayout.VERTICAL);
+        group.setBackground(box(card, line, 8));
+        col.addView(group);
+        return group;
+    }
+
+    /** One setting: name left, current value right in rust; tap changes it, the value repaints. */
+    private void settingsRow(LinearLayout card, String name, java.util.function.Supplier<String> value,
+                             View.OnClickListener tap, View.OnLongClickListener hold) {
+        if (card.getChildCount() > 0) {
+            View div = new View(this);
+            div.setBackgroundColor(line);
+            card.addView(div, new LinearLayout.LayoutParams(-1, Math.max(1, dp(1) / 2)));
+        }
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(15), dp(14), dp(15));
+        TextView n = text(15, ink, true);
+        n.setText(name);
+        row.addView(n, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView val = monoText(11, rust);
+        val.setLetterSpacing(0.08f);
+        val.setGravity(Gravity.END);
+        val.setMaxWidth(dp(170));
+        Runnable paint = () -> val.setText(value.get().toUpperCase(Locale.GERMAN));
+        paint.run();
+        row.addView(val);
+        TextView chev = text(15, ink3, false);
+        chev.setText("  ›");
+        row.addView(chev);
+        row.setOnClickListener(v -> {
+            tap.onClick(v);
+            paint.run();
+            v.postDelayed(paint, 600);      // async ones (update check) repaint a moment later
+        });
+        if (hold != null) row.setOnLongClickListener(hold);
+        card.addView(row);
     }
 
     private void openLibrary() {
@@ -1336,7 +1426,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             headSpeed = 0;          // the finger takes over at once; head scrolling rests for 4 s
             handler.removeCallbacks(headScroller);
         }
-        boolean gestures = !libraryOpen && calibStage < 0 && game == null;
+        boolean gestures = !libraryOpen && settingsSheet == null && calibStage < 0 && game == null;
         if (action == MotionEvent.ACTION_DOWN) {
             strokeMulti = false;
             circling = false;
@@ -3018,7 +3108,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             Toast.makeText(this, "3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (calibStage >= 0) endGazeCalibration();
+        if (settingsSheet != null) closeSettings();
+        else if (calibStage >= 0) endGazeCalibration();
         else if (libraryOpen) closeLibrary();
         else if (hidden) setHidden(false);
         else {
