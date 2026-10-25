@@ -207,7 +207,8 @@ public class ArcWallpaper extends WallpaperService {
             int bg = dark ? 0xFF121211 : 0xFFFAFAF8;
             int ink = dark ? 0xECEBE6 : 0x1A1A1A;
             int rust = dark ? 0xFFC9402F : 0xFFB5271E;
-            float s = width / 1080f;
+            // Sized by the shorter side, so a landscape tablet doesn't get a giant cube.
+            float s = Math.min(width, height) / 1080f;
             float t = SystemClock.uptimeMillis() / 1000f;
             c.drawColor(bg);
 
@@ -243,7 +244,34 @@ public class ArcWallpaper extends WallpaperService {
 
             if (!lock) return;
 
-            // Fingerprint: pulsing rainbow halo plus glitter.
+            // Fingerprint: pulsing rainbow halo plus glitter (only where we know the sensor: Pixel, portrait).
+            if (pixelPortrait()) fingerprint(c, s, t);
+
+            // Front camera: rotating rainbow ring (only around a real camera hole).
+            if (camera != null) {
+                float cx = camera.exactCenterX(), cy = camera.exactCenterY();
+                float cr = Math.max(camera.width(), camera.height()) / 2f * 1.7f
+                    * (1 + 0.06f * (float) Math.sin(t * 3.1f) + 0.25f * beat);
+                rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f);
+                paint.setShader(null);
+            }
+
+            // While music plays: a flowing rainbow frame behind the system's media card (Pixel only:
+            // other lock screens put their card elsewhere), and a little stage bottom-left where a
+            // character takes turns every 15 s.
+            if (audio == null) audio = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audio != null && audio.isMusicActive()) {
+                if (pixelPortrait()) musicFrame(c, s, t);
+                stage(c, s, dark, ink, rust);
+            }
+        }
+
+        /** The lock screen layout the fingerprint ring and media frame were measured on. */
+        private boolean pixelPortrait() {
+            return Build.MODEL != null && Build.MODEL.startsWith("Pixel") && height > width;
+        }
+
+        private void fingerprint(Canvas c, float s, float t) {
             float fx = width * FP_X, fy = height * FP_Y, r0 = width * 0.085f;
             float pulse = r0 * (1.35f + 0.08f * (float) Math.sin(t * 3.9f) + 0.35f * beat);
             rainbowRing(c, fx, fy, pulse, 9 * s, t * 120, 0.95f);
@@ -258,22 +286,6 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawCircle(fx + (float) Math.cos(ang) * rr, fy + (float) Math.sin(ang) * rr, g[5] * s * (0.6f + a), paint);
             }
             paint.setStyle(Paint.Style.STROKE);
-
-            // Front camera: rotating rainbow ring.
-            float cx = camera != null ? camera.exactCenterX() : width / 2f;
-            float cy = camera != null ? camera.exactCenterY() : height * 0.0475f;
-            float cr = (camera != null ? Math.max(camera.width(), camera.height()) / 2f : 22 * s) * 1.7f
-                * (1 + 0.06f * (float) Math.sin(t * 3.1f) + 0.25f * beat);
-            rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f);
-            paint.setShader(null);
-
-            // While music plays: a flowing rainbow frame behind the system's media card, and a
-            // little stage bottom-left where a character takes turns every 15 s.
-            if (audio == null) audio = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
-            if (audio != null && audio.isMusicActive()) {
-                musicFrame(c, s, t);
-                stage(c, s, dark, ink, rust);
-            }
         }
 
         /* ---- Lock screen while music plays ---- */
@@ -330,7 +342,7 @@ public class ArcWallpaper extends WallpaperService {
             float k = (ms % 15000) / 1000f;                 // seconds into this character's turn
             // Slide in during the first second, out during the last.
             float in = Math.min(1f, k) * Math.min(1f, 15f - k);
-            float size = width * 0.17f;
+            float size = Math.min(width, height) * 0.17f;
             float x = width * 0.06f - (1 - in) * size * 1.4f, y = height * 0.85f;   // between fingerprint and the bottom shortcuts
             float bob = (float) Math.sin(k * 6) * size * 0.03f * (1 + beat);
             c.save();
@@ -347,7 +359,7 @@ public class ArcWallpaper extends WallpaperService {
             if (k < 1.2f || k > 14f) return;
             boolean translated = k > 5f;
             // Speech bubble to the right.
-            float bx = width * 0.06f + size * 1.15f, bw = width * 0.94f - bx, by = y - size * 0.15f;
+            float bx = width * 0.06f + size * 1.15f, bw = Math.min(width * 0.94f - bx, Math.min(width, height) * 0.8f), by = y - size * 0.15f;
             paint.setShader(null);
             paint.setStyle(Paint.Style.FILL);
             paint.setTypeface(translated ? android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
@@ -683,7 +695,7 @@ public class ArcWallpaper extends WallpaperService {
                     float hue = random.nextFloat() * 360;
                     if (lock) {
                         rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, 0.9f, hue, 1});
-                        rings.add(new float[]{width * FP_X, height * FP_Y, width * 0.12f, 0.8f, hue + 120, 1});
+                        if (pixelPortrait()) rings.add(new float[]{width * FP_X, height * FP_Y, width * 0.12f, 0.8f, hue + 120, 1});
                     } else {
                         rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, 0.3f, 0, 0});
                     }

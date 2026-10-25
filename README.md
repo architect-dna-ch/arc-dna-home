@@ -193,3 +193,10 @@ that shares its playback with Android, e.g. Spotify or YouTube Music.)
 "Alle Apps" at the top of Mediathek → Kopf-Scroll pro App switches head / eye scrolling for every
 app at once (AUS → NICKEN → BLICK, also for apps installed later); single apps can still be set
 differently afterwards.
+
+## Other devices (tablets)
+
+The same APK adapts: on a Pixel in portrait the lock screen gets everything (fingerprint ring,
+media-card frame). Elsewhere – e.g. a landscape tablet – it leaves out what was measured on the
+Pixel (fingerprint ring, media-card frame), draws the camera ring only around a real camera hole,
+and sizes the cube, rings and characters by the shorter screen side.
