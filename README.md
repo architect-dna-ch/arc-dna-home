@@ -130,7 +130,7 @@ slowing down; edges further back are drawn fainter.
 
 ## Auto torch
 
-At home in the dark (front light sensor under ~3 lux for 2 s, proximity sensor free), the back
+At home in the dark (front light sensor under ~8 lux for 1.2 s, proximity sensor free), the back
 camera takes a one-second look; if the room is really dark the torch goes on and the fox says
 so. Off when it gets bright, when you leave home, or tap "🔦 AUS" in the top row (stays off
 until you come back). Mediathek → "TASCHENLAMPE IM DUNKELN" switches the feature off.

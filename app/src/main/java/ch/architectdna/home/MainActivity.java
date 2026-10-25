@@ -2447,7 +2447,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private long darkSince = -1, lastProbe;
 
     /**
-     * At home in the dark: the front light sensor reads under ~3 lux for 2 s → the back camera
+     * At home in the dark: the front light sensor reads under ~8 lux for 1.2 s → the back camera
      * takes a one-second look (so a phone lying face down on a lit table doesn't count) → torch on.
      * Off again when it gets bright, when you leave home, or by tapping the 🔦 chip.
      */
@@ -2461,12 +2461,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             return;
         }
-        if (lux >= 3 || covered || libraryOpen || game != null || torchDeclined || !homeInFront) {
+        if (lux >= 8 || covered || libraryOpen || game != null || torchDeclined || !homeInFront) {
             darkSince = -1;
             return;
         }
         if (darkSince < 0) darkSince = now;
-        if (now - darkSince < 2000 || torch.isProbing() || now - lastProbe < 20000) return;
+        if (now - darkSince < 1200 || torch.isProbing() || now - lastProbe < 10000) return;
         lastProbe = now;
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             DiagLog.log("auto torch: no camera permission, using the light sensor only");
@@ -2474,7 +2474,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         torch.probe(luma -> {
-            if (luma >= 0 && luma < 28 && homeInFront && !torch.isOn()) torchOn();
+            if (luma >= 0 && luma < 45 && homeInFront && !torch.isOn()) torchOn();
         });
     }
 
