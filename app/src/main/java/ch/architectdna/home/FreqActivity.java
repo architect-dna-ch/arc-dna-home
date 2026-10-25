@@ -17,35 +17,38 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 /**
- * VOID FREQ inside ARC-DNA: the same focus studio as freq.architect-dna.ch and the iOS app
- * (www/index.html from void-freq-ios, bundled in assets, works offline), not rebuilt, just framed:
- * its own tile in the Mediathek, ARC-DNA close button, and an ARC-DNA skin in the bundled copy
- * (night palette, rust accent, grid; footer hidden).
+ * VOID FREQ inside ARC-DNA: VOID FREQ's own sound engine (from void-freq-ios www/index.html,
+ * bundled in assets, works offline) with a new ARC-DNA interface around it, light or dark like
+ * the launcher. Its own tile in the Mediathek and its own task.
  * The sound keeps playing when you go home; ✕ or back stops it.
  */
 public class FreqActivity extends Activity {
 
-    private static final int BG = 0xFF121211;     // ARC-DNA night background (the page's skin uses it too)
+    private int bg;
     private WebView web;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(BG);
+        // Light or dark like the launcher.
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        bg = night ? 0xFF121211 : 0xFFFAFAF8;
+        getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
         if (android.os.Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
-            getWindow().getInsetsController().setSystemBarsAppearance(0,
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+            int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            getWindow().getInsetsController().setSystemBarsAppearance(night ? 0 : bits, bits);
         }
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(BG);
+        root.setBackgroundColor(bg);
         root.setFitsSystemWindows(true);
 
         web = new WebView(this);
-        web.setBackgroundColor(BG);
+        web.setBackgroundColor(bg);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);                  // session counter (vf_sessions)
@@ -53,13 +56,6 @@ public class FreqActivity extends Activity {
         s.setAllowFileAccess(true);
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                // Fit into ARC-DNA: no web footer (share / mail) inside the launcher.
-                view.evaluateJavascript("(function(){var s=document.createElement('style');"
-                    + "s.textContent='.footer{display:none!important}';document.head.appendChild(s);})()", null);
-            }
-
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest req) {
                 // mailto / web links open outside, the studio stays here.
@@ -70,20 +66,20 @@ public class FreqActivity extends Activity {
                 return true;
             }
         });
-        web.loadUrl("file:///android_asset/voidfreq/index.html");
+        web.loadUrl("file:///android_asset/voidfreq/index.html" + (night ? "?night=1" : ""));
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
 
         // ARC-DNA close button, top right, in the page's cyan.
         TextView close = new TextView(this);
         close.setText("✕");
-        close.setTextColor(0xFFEDEDE8);
+        close.setTextColor(night ? 0xFFEDEDE8 : 0xFF1A1A1A);
         close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         close.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         close.setGravity(Gravity.CENTER);
         GradientDrawable b = new GradientDrawable();
         b.setShape(GradientDrawable.OVAL);
-        b.setColor(0xFF1C1C1A);
-        b.setStroke(dp(1), 0x22FFFFFF);
+        b.setColor(night ? 0xFF1C1C1A : 0xFFFFFFFF);
+        b.setStroke(dp(1), night ? 0xFF2C2C2A : 0xFFE0E0D8);
         close.setBackground(b);
         close.setContentDescription("VOID FREQ schliessen");
         close.setOnClickListener(v -> finish());

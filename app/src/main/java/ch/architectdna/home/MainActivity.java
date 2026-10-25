@@ -2698,6 +2698,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void updateFolds() {
         if (content == null || scroll.getHeight() == 0) return;
         int limit = scroll.getScrollY() + scroll.getHeight() - foldInset;
+        // At the very end of the page nothing can scroll up any more: show everything sharp.
+        if (!scroll.canScrollVertically(1)) limit = Integer.MAX_VALUE / 2;
         int n = content.getChildCount();
         for (int i = 0; i < n; i++) {
             View child = content.getChildAt(i);
