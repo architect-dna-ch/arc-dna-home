@@ -428,6 +428,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Zuletzt: always on, one row.
         recentHome = new LinearLayout(this);
         recentHome.setOrientation(LinearLayout.VERTICAL);
+        // Keep the row's last height while the apps load (theme switch, restart), so nothing jumps.
+        recentHome.setMinimumHeight(prefs.getInt("recentH", 0));
         foldable("Zuletzt", "recentRow", true, recentHome, dp(22));   // new key: the old "recent" fold was closed by default
 
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
@@ -1187,6 +1189,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private LinearLayout recentDots;
 
     private void renderRecentCarousel(List<AppEntry> recent) {
+        boolean first = recentHome.getChildCount() == 0;
+        if (first && !recent.isEmpty()) {
+            recentHome.setAlpha(0f);
+            recentHome.animate().alpha(1f).setDuration(220).start();
+        }
+        recentHome.post(() -> {
+            int h = recentHome.getHeight();
+            if (h > 0 && !recent.isEmpty()) prefs.edit().putInt("recentH", h).apply();
+        });
         recentHome.removeAllViews();
         recentCarousel = null;
         if (recent.isEmpty()) {
