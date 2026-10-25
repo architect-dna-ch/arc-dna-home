@@ -2005,13 +2005,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         smoothTilt = smoothTilt * 0.5f + delta * 0.5f;
         float frac = nodFraction(prefs, smoothTilt);
         boolean sameWay = headSpeed != 0 && Math.signum(headSpeed) == (smoothTilt > 0 ? -1 : 1);
-        if (frac < (sameWay ? 0.3f : 0.5f)) {
-            if (frac < 0.3f) basePitch = basePitch * 0.997f + pitch * 0.003f;
+        if (frac < (sameWay ? 0.4f : 0.6f)) {
+            if (frac < 0.4f) basePitch = basePitch * 0.997f + pitch * 0.003f;
             setHeadSpeed(0);
             return;
         }
-        float speed = (0.25f + 0.75f * Math.min(1f, (frac - 0.3f) / 0.7f)) * dp(26);
+        float speed = nodSpeed(frac) * dp(40);
         setHeadSpeed(smoothTilt > 0 ? -speed : speed); // looking up scrolls up
+    }
+
+    /**
+     * Speed from how far you tilt (0.08 … 1): just past the calm zone it creeps, at your full
+     * calibrated nod it's about half speed, tilting further (1.3×) gives full speed. Quadratic, so
+     * small changes near the middle stay gentle.
+     */
+    static float nodSpeed(float frac) {
+        float k = Math.max(0f, Math.min(1f, (frac - 0.4f) / 0.9f));
+        return 0.08f + 0.92f * k * k;
     }
 
     /** How far along your own calibrated nod the tilt is (0 = neutral, 1 = your full nod). */

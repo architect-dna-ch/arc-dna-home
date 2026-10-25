@@ -85,8 +85,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 scrolling = false;
                 return;
             }
-            swipe(speed);
-            main.postDelayed(this, 420);
+            // Faster = bigger swipes, closer together (650 ms apart when creeping, 270 ms flat out).
+            long every = Math.round(650 - 380 * Math.min(1f, Math.abs(speed)));
+            swipe(speed, Math.min(380, every - 40));
+            main.postDelayed(this, every);
         }
     };
 
@@ -269,14 +271,14 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         // within 30 %; two readings in a row to start. Neutral follows posture only slowly.
         float frac = MainActivity.nodFraction(prefs, d);
         boolean sameWay = speed != 0 && Math.signum(speed) == (d > 0 ? -1 : 1);
-        if (frac < (sameWay ? 0.3f : 0.5f)) {
+        if (frac < (sameWay ? 0.4f : 0.6f)) {
             overN = 0;
-            if (frac < 0.3f) base = base * 0.997f + pitch * 0.003f;
+            if (frac < 0.4f) base = base * 0.997f + pitch * 0.003f;
             setSpeed(0);
             return;
         }
         if (speed == 0 && ++overN < 2) return;
-        float s = 0.25f + 0.75f * Math.min(1f, (frac - 0.3f) / 0.7f);
+        float s = MainActivity.nodSpeed(frac);
         setSpeed(d > 0 ? -s : s);   // looking up scrolls up
     }
 
@@ -330,19 +332,19 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     }
 
     /** One gentle swipe in the middle of the screen; slow enough not to fling. */
-    private void swipe(float s) {
+    private void swipe(float s, long ms) {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         float h = dm.heightPixels, x = dm.widthPixels * 0.5f, y = h * 0.55f;
-        float dist = h * (0.08f + 0.16f * Math.abs(s));
+        float dist = h * (0.04f + 0.26f * Math.min(1f, Math.abs(s)));
         Path path = new Path();
         path.moveTo(x, y);
         path.lineTo(x, s > 0 ? y - dist : y + dist);   // finger up = content scrolls down
         // Our own swipe also shows up as a touch outside the pill; don't let it pause us.
-        ownGestureUntil = SystemClock.uptimeMillis() + 380 + 120;
+        ownGestureUntil = SystemClock.uptimeMillis() + ms + 120;
         swipesN++;
         try {
             boolean ok = dispatchGesture(new GestureDescription.Builder()
-                .addStroke(new GestureDescription.StrokeDescription(path, 0, 380)).build(), new GestureResultCallback() {
+                .addStroke(new GestureDescription.StrokeDescription(path, 0, ms)).build(), new GestureResultCallback() {
                     @Override
                     public void onCancelled(GestureDescription g) {
                         // Your finger landed while our swipe ran (the system cancels ours then):
