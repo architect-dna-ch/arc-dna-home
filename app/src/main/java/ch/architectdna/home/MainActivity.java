@@ -440,6 +440,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         appTilesBox.addView(appTiles());
         foldable("Apps", "apps", true, appTilesBox, dp(22));
 
+        // ARC-DNA's own native apps, folded away until opened.
+        foldable("ARC-DNA Apps", "arcApps", false, arcApps(), dp(22));
+
         // Zuletzt: always on, one row.
         recentHome = new LinearLayout(this);
         recentHome.setOrientation(LinearLayout.VERTICAL);
@@ -1176,7 +1179,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             List<AppEntry> list = new ArrayList<>();
             for (ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
                 // Our own entries: only the built-in apps (VOID FREQ), not the launcher itself.
-                if (getPackageName().equals(ri.activityInfo.packageName) && !FreqActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                if (getPackageName().equals(ri.activityInfo.packageName) && !FreqActivity.class.getName().equals(ri.activityInfo.name)
+                    && !GlobusActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -3251,6 +3255,26 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         t.setText(s.toUpperCase(Locale.GERMAN));
         t.setPadding(dp(10), 0, 0, 0);
         row.addView(t);
+        return row;
+    }
+
+    /** {name, activity, icon}: the native apps built into ARC-DNA. */
+    private View arcApps() {
+        LinearLayout row = new LinearLayout(this);
+        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.void_freq_icon}, {"Globus", GlobusActivity.class, R.drawable.ic_globus}};
+        int cols = cols(), gap = dp(8);
+        for (int i = 0; i < cols; i++) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
+            lp.leftMargin = i == 0 ? 0 : gap;
+            if (i < own.length) {
+                Object[] a = own[i];
+                View t = tile((String) a[0], getDrawable((Integer) a[2]), 32);
+                t.setOnClickListener(v -> open(new Intent(this, (Class<?>) a[1])));
+                row.addView(t, lp);
+            } else {
+                row.addView(new View(this), lp);
+            }
+        }
         return row;
     }
 
