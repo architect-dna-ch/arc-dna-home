@@ -94,9 +94,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final int REQ_CAMERA = 7;
     private static final int REQ_AUDIO = 8;
     private static final int REQ_NOTIFY = 9;
-    private static final String[] FOX_CALLS = {
-        "Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."
-    };
     private static final String[][] PROJECTS = {
         {"VOID FREQ", " · Fokus", "https://freq.architect-dna.ch"},
         {"Einspruch", "", "https://einspruch.architect-dna.ch"},
@@ -473,7 +470,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         foldable("Projekte", "projects", false, projectChips(), dp(22));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Fuchs: tippen = Yip, halten = Erdbeben · schütteln = Erdbeben");
+        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Buddy (Fuchs, Bär, Hase oder F1 – in den Einstellungen): tippen = Wecker, Akku, Musik, Heute zählt · halten = Tritt ins Glas · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
         foldable("Tipps", "hints", false, hint, dp(20));
 
@@ -528,7 +525,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         root.addView(calibOverlay, new FrameLayout.LayoutParams(-1, -1));
 
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
-        fox.setContentDescription("Fuchs");
+        applyBuddy();
         fox.setOnClickListener(v -> foxCall());
         // Hold the fox: it kicks the glass, which cracks somewhere new every time.
         fox.setOnLongClickListener(v -> {
@@ -849,6 +846,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             paintTorchSetting.run();
         });
         body.addView(torchSetting);
+
+        TextView buddySetting = monoText(11, ink2);
+        buddySetting.setPadding(dp(4), dp(12), dp(4), dp(8));
+        Runnable paintBuddySetting = () -> buddySetting.setText("BUDDY UNTEN LINKS: "
+            + BUDDIES[buddy()][0].toUpperCase(Locale.GERMAN) + " →");
+        paintBuddySetting.run();
+        buddySetting.setOnClickListener(v -> {
+            prefs.edit().putInt("buddy", (buddy() + 1) % BUDDIES.length).apply();
+            applyBuddy();
+            paintBuddySetting.run();
+            hop();
+            say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
+        });
+        body.addView(buddySetting);
 
         TextView diag = monoText(11, ink2);
         diag.setText("DIAGNOSE-LOG AN CLAUDE SENDEN (ANONYM) →");
@@ -2748,11 +2759,58 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .start();
     }
 
+    /* ---- The buddy: fox, bear, rabbit or F1 racer, chosen in the settings ---- */
+
+    /** {name, "der/die …" for the greeting, its calls}. Drawables and eyes in BUDDY_ART. */
+    private static final String[][] BUDDIES = {
+        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}};
+    private static final String[][] BUDDY_CALLS = {
+        {"Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."},
+        {"Brumm.", "Hrrmm?", "Grrmpf!", "Mmmh, Honig."},
+        {"Mümmel!", "Tipp-tapp!", "Snff?", "Hüpf!"},
+        {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."}};
+    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {57.8f, 28f, 3.4f, 1.8f}};
+    private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy};
+    private int tipIndex;
+
+    private int buddy() {
+        return Math.max(0, Math.min(BUDDIES.length - 1, prefs.getInt("buddy", 0)));
+    }
+
+    private void applyBuddy() {
+        int b = buddy();
+        float[] e = BUDDY_EYES[b];
+        fox.buddy(BUDDY_ART[b], e[0], e[1], e[2], e[3]);
+        fox.setContentDescription(BUDDIES[b][0]);
+    }
+
+    /** Tap the buddy: its call, plus something useful, a different thing each tap. */
     private void foxCall() {
         hop();
-        String call = FOX_CALLS[random.nextInt(FOX_CALLS.length)];
-        say(call, 1400);
+        String[] calls = BUDDY_CALLS[buddy()];
+        String call = calls[random.nextInt(calls.length)];
         voice.say(call);
+        java.util.List<String> tips = buddyTips();
+        String tip = tips.isEmpty() ? null : tips.get(tipIndex++ % tips.size());
+        say(tip == null ? call : call + " " + tip, tip == null ? 1400 : 3200);
+    }
+
+    private java.util.List<String> buddyTips() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (prefs.getBoolean("alarmOn", false)) {
+            long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
+            out.add("Wecker in " + (in / 60) + " h " + (in % 60) + " min.");
+        }
+        android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
+        if (bm != null) {
+            int pct = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            if (pct > 0) out.add("Akku " + pct + " %" + (bm.isCharging() ? ", lädt." : pct <= 20 ? " – bald laden!" : "."));
+        }
+        long[] week = MusicStats.week(this);
+        if (week[6] > 0) out.add("Heute " + (week[6] / 60 > 0 ? week[6] / 60 + " h " : "") + week[6] % 60 + " min Musik.");
+        String f = prefs.getString("focus", "");
+        if (!f.isEmpty() && today().equals(prefs.getString("focusDay", ""))) out.add("Heute zählt: " + f);
+        return out;
     }
 
     private void say(String s, long ms) {

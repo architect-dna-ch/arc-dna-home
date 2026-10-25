@@ -13,8 +13,9 @@ import android.widget.ImageView;
  */
 final class FoxView extends ImageView {
 
-    /** The eye in the drawable's 96 × 64 viewport. */
-    private static final float EYE_X = 75f, EYE_Y = 31f, EYE_R = 3.6f, PUPIL_R = 1.8f, REACH = 1.6f;
+    /** The eye in the drawable's 96 × 64 viewport (set per buddy). */
+    private float EYE_X = 75f, EYE_Y = 31f, EYE_R = 3.6f, PUPIL_R = 1.8f;
+    private static final float REACH = 1.6f;
     private static final long BACK_TO_YOU_MS = 1500;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -30,6 +31,16 @@ final class FoxView extends ImageView {
         this.ink = ink;
         this.paper = paper;
         setImageResource(R.drawable.fox);
+    }
+
+    /** Swap the buddy: drawable (96 × 64 frame) and where its eye sits. */
+    void buddy(int drawable, float eyeX, float eyeY, float eyeR, float pupilR) {
+        setImageResource(drawable);
+        EYE_X = eyeX;
+        EYE_Y = eyeY;
+        EYE_R = eyeR;
+        PUPIL_R = pupilR;
+        invalidate();
     }
 
     /** A finger on the screen (raw screen coordinates); null-touch = released. */

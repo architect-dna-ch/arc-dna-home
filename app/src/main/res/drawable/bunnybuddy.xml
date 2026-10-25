@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Buddy: the rabbit from the fox hunt, scaled into the fox's 96 × 64 frame. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <group android:translateX="12" android:scaleX="1.55" android:scaleY="1.55" android:translateY="2">
+        <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2"
+            android:pathData="M5.4,27a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0" />
+        <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.2"
+            android:pathData="M9,28a13,8.5 0 1,0 26,0a13,8.5 0 1,0 -26,0" />
+        <path android:strokeColor="@color/ink" android:strokeWidth="2.2" android:strokeLineCap="round"
+            android:pathData="M17,36L27,36" />
+        <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2" android:strokeLineJoin="round"
+            android:pathData="M32,16C29,5 32,0 35,2C37,5 36,11 35.5,15M36.5,15C38,5 42,2 43.5,4C44.5,8 41.5,13 39,16.5" />
+        <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.2"
+            android:pathData="M28,21.5a7,7 0 1,0 14,0a7,7 0 1,0 -14,0" />
+        <path android:fillColor="@color/ink" android:pathData="M36.3,20.5a1.3,1.3 0 1,0 2.6,0a1.3,1.3 0 1,0 -2.6,0" />
+        <path android:fillColor="@color/rust" android:pathData="M40.5,22.6a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0" />
+    </group>
+</vector>
