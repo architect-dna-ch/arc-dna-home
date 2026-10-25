@@ -286,7 +286,7 @@ public class ArcWallpaper extends WallpaperService {
         private void musicFrame(Canvas c, float s, float t) {
             float pad = 5 * s;
             box.set(width * CARD_L - pad, height * CARD_T - pad, width * CARD_R + pad, height * CARD_B + pad);
-            float r = width * 0.052f + pad;
+            float r = width * 0.068f + pad;          // Pixel's media card has a ~28 dp corner
             int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
             android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.05f,
                 hues, null, android.graphics.Shader.TileMode.REPEAT);

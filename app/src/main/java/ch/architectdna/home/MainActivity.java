@@ -1325,7 +1325,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Almost black, ghosts drifting; the finger is a torch over the apps. Above the page, below the fox. */
     private void enterGhosts() {
         ghosts = new GhostView(this);
-        rootFrame.addView(ghosts, rootFrame.indexOfChild(scroll) + 1, new FrameLayout.LayoutParams(-1, -1));
+        // Above the page and the light fades behind the status / nav bar (so it's black edge to edge),
+        // below the fox, rabbit button and seismograph.
+        int above = Math.max(rootFrame.indexOfChild(topScrim), rootFrame.indexOfChild(bottomScrim));
+        rootFrame.addView(ghosts, Math.max(rootFrame.indexOfChild(scroll), above) + 1, new FrameLayout.LayoutParams(-1, -1));
+        systemBarIcons(false);
         ghosts.start();
         voice.say("Whoa-whoa!");
         hop();
@@ -1334,11 +1338,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         DiagLog.log("ghost level on");
     }
 
+    /** Dark icons on a light screen, light icons on the dark one (and in the Geister-Level). */
+    private void systemBarIcons(boolean dark) {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        getWindow().getInsetsController().setSystemBarsAppearance(dark ? bits : 0, bits);
+    }
+
     private void exitGhosts() {
         GhostView g = ghosts;
         ghosts = null;
         if (g == null) return;
         g.stop(() -> rootFrame.removeView(g));
+        systemBarIcons(!isNight());
         say("Licht an. Die Geister sind weg.", 1600);
         syncLever();
     }
