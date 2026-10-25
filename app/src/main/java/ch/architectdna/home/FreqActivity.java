@@ -187,7 +187,11 @@ public class FreqActivity extends Activity {
             public void onStopTrackingTouch(SeekBar s) {
             }
         });
-        vol.addView(volume, new LinearLayout.LayoutParams(0, -2, 1f));
+        // Room between the label and the slider (the system slider draws past its own edge).
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(0, -2, 1f);
+        sl.leftMargin = dp(14);
+        volume.setPadding(dp(14), 0, dp(14), 0);
+        vol.addView(volume, sl);
         col.addView(vol);
         FreqService.engine().setVolume(prefs.getFloat("volume", 0.7f));
 

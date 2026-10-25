@@ -7,9 +7,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
-import android.media.AudioAttributes;
-import android.media.AudioFocusRequest;
-import android.media.AudioManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -31,7 +28,6 @@ public class FreqService extends Service {
     private static FreqService instance;
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private AudioFocusRequest focus;
 
     static FreqEngine engine() {
         return engine;
@@ -96,18 +92,8 @@ public class FreqService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        AudioManager am = getSystemService(AudioManager.class);
-        if (am != null && Build.VERSION.SDK_INT >= 26) {
-            focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setOnAudioFocusChangeListener(change -> {
-                    // Another app starts playing (or a call): VOID FREQ steps aside.
-                    if (change == AudioManager.AUDIOFOCUS_LOSS) main.post(() -> play(this, ""));
-                })
-                .build();
-            am.requestAudioFocus(focus);
-        }
+        // No audio focus on purpose: VOID FREQ runs underneath your music (YouTube Music keeps
+        // playing), as a focus bed you mix with the volume slider.
         main.post(tick);
     }
 
@@ -160,8 +146,6 @@ public class FreqService extends Service {
     public void onDestroy() {
         instance = null;
         main.removeCallbacks(tick);
-        AudioManager am = getSystemService(AudioManager.class);
-        if (am != null && focus != null) am.abandonAudioFocusRequest(focus);
         super.onDestroy();
     }
 
