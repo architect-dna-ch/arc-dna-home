@@ -847,6 +847,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         library.animate().alpha(1f).translationY(0).setDuration(260)
             .setInterpolator(new DecelerateInterpolator()).start();
         libScroll.scrollTo(0, 0);
+        floaters(false);
         // Head / eye scrolling only works in the Mediathek: the camera starts here …
         if (!headMode().equals("off")) startHead();
     }
@@ -860,6 +861,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         libSearch.setText("");
         library.animate().alpha(0f).translationY(dp(60)).setDuration(200)
             .withEndAction(() -> library.setVisibility(View.GONE)).start();
+        floaters(true);
+    }
+
+    /** Fox, rabbit button, speech bubble and seismograph float over the page: out of the way in the Mediathek. */
+    private void floaters(boolean show) {
+        for (View v : new View[]{fox, gameButton, bubble, seismo}) {
+            if (v == null) continue;
+            v.animate().cancel();
+            if (show) {
+                if (v == bubble) continue;            // the bubble only comes back when the fox speaks
+                v.setVisibility(View.VISIBLE);
+                v.animate().alpha(1f).setDuration(200).start();
+            } else {
+                v.animate().alpha(0f).setDuration(150).withEndAction(() -> v.setVisibility(View.INVISIBLE)).start();
+            }
+        }
     }
 
     /**
