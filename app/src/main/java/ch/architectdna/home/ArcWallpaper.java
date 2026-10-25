@@ -40,7 +40,7 @@ public class ArcWallpaper extends WallpaperService {
 
     private final class ArcEngine extends Engine {
         // Pixel 9a: under-display fingerprint sensor centre, as a fraction of the screen.
-        private static final float FP_X = 0.5f, FP_Y = 0.7225f;
+        private static final float FP_X = 0.5f, FP_Y = 0.7245f;   // measured on the lock icon in a screenshot
 
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
