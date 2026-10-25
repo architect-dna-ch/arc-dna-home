@@ -190,9 +190,32 @@ final class MusicCard {
             return true;
         });
         // Speaker row: the line plus "ANC ↗" while a JBL is connected (ANC lives in JBL's own app).
+        // Device card: a battery ring with the device drawn inside, name + details, and two buttons.
         outputRow = new LinearLayout(activity);
         outputRow.setGravity(Gravity.CENTER_VERTICAL);
-        outputRow.addView(output, new LinearLayout.LayoutParams(0, -2, 1f));
+        outputRow.setPadding(dp(10), dp(8), dp(10), dp(8));
+        outputRow.setBackground(box(card, line, 8));
+        gauge = new DeviceGauge();
+        gauge.setOnClickListener(v -> showOutputSwitcher());
+        outputRow.addView(gauge, new LinearLayout.LayoutParams(dp(58), dp(58)));
+        LinearLayout devTexts = new LinearLayout(activity);
+        devTexts.setOrientation(LinearLayout.VERTICAL);
+        devTexts.setPadding(dp(12), 0, dp(6), 0);
+        deviceName = label(14, ink, true);
+        deviceName.setMaxLines(1);
+        devTexts.addView(deviceName);
+        output.setMaxLines(1);
+        devTexts.addView(output);
+        outputRow.addView(devTexts, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout buttons = new LinearLayout(activity);
+        buttons.setOrientation(LinearLayout.VERTICAL);
+        TextView sw = label(11, ink2, true);
+        sw.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        sw.setText("⇄ AUSGANG");
+        sw.setPadding(dp(10), dp(5), dp(10), dp(5));
+        sw.setBackground(box(card, line, 14));
+        sw.setOnClickListener(v -> showOutputSwitcher());
+        buttons.addView(sw);
         anc = label(11, rust, true);
         anc.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         anc.setText("ANC ↗");
@@ -200,9 +223,11 @@ final class MusicCard {
         anc.setBackground(box(card, rust, 14));
         anc.setVisibility(View.GONE);
         anc.setOnClickListener(v -> openSpeakerApp());
-        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
-        al.leftMargin = dp(8);
-        outputRow.addView(anc, al);
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, -2);
+        al.topMargin = dp(6);
+        anc.setGravity(Gravity.CENTER);
+        buttons.addView(anc, al);
+        outputRow.addView(buttons);
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(-1, -2);
         olp.topMargin = dp(8);
         root.addView(outputRow, olp);
@@ -794,6 +819,72 @@ final class MusicCard {
     /* ---- Speaker control: output switcher, battery, the speaker's own app ---- */
 
     private int lastBattery = -1;
+    private DeviceGauge gauge;
+    private TextView deviceName;
+
+    /**
+     * A battery ring like Android's device page (green, orange under 30 %, red under 15 %) with the
+     * device drawn inside: 0 = earbuds, 1 = speaker, 2 = phone. Without a level the ring stays grey.
+     */
+    private final class DeviceGauge extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF();
+        private int kind = 2, level = -1;
+
+        DeviceGauge() {
+            super(activity);
+        }
+
+        void set(int k, int lvl) {
+            kind = k;
+            level = lvl;
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, rad = Math.min(w, h) / 2 - dp(3);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(dp(4));
+            p.setColor(line);
+            c.drawCircle(cx, cy, rad, p);
+            if (level >= 0) {
+                p.setColor(level < 15 ? 0xFFE0281E : level < 30 ? 0xFFF29A1F : 0xFF1E9E4A);
+                r.set(cx - rad, cy - rad, cx + rad, cy + rad);
+                c.drawArc(r, -90, 360f * level / 100f, false, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(ink);
+            float u = rad / 10f;
+            if (kind == 0) {
+                // Two in-ear buds: round head + stem, mirrored.
+                for (int side = -1; side <= 1; side += 2) {
+                    float bx = cx + side * u * 3.2f, by = cy - u * 1.5f;
+                    c.drawCircle(bx, by, u * 2.4f, p);
+                    r.set(bx - u * 0.9f + side * u * 0.6f, by, bx + u * 0.9f + side * u * 0.6f, by + u * 5.5f);
+                    c.drawRoundRect(r, u, u, p);
+                    p.setColor(card);
+                    c.drawCircle(bx - side * u * 0.9f, by - u * 0.4f, u * 0.8f, p);
+                    p.setColor(ink);
+                }
+            } else if (kind == 1) {
+                // Speaker: rounded body with two cones.
+                r.set(cx - u * 4, cy - u * 6, cx + u * 4, cy + u * 6);
+                c.drawRoundRect(r, u * 1.6f, u * 1.6f, p);
+                p.setColor(card);
+                c.drawCircle(cx, cy + u * 2, u * 2.4f, p);
+                c.drawCircle(cx, cy - u * 3, u * 1.2f, p);
+            } else {
+                // Phone.
+                r.set(cx - u * 3.2f, cy - u * 6, cx + u * 3.2f, cy + u * 6);
+                c.drawRoundRect(r, u * 1.2f, u * 1.2f, p);
+                p.setColor(card);
+                r.set(cx - u * 2.4f, cy - u * 4.6f, cx + u * 2.4f, cy + u * 4.2f);
+                c.drawRect(r, p);
+            }
+        }
+    }
     private LinearLayout outputRow;
     private TextView anc;
 
@@ -886,14 +977,20 @@ final class MusicCard {
             String since = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(btSince));
             askBluetoothOnce();
             int battery = speakerBattery();
-            output.setText("● " + btName + (battery >= 0 ? " · 🔋 " + battery + " %" : "") + " · SEIT " + since + "  ⇄");
+            deviceName.setText(btName);
+            output.setText((battery >= 0 ? battery + " % · " : "") + "BLUETOOTH · SEIT " + since);
             output.setTextColor(rust);
+            gauge.set(btName.toLowerCase(Locale.ROOT).matches(".*(buds|beam|pods|tune|ear|wf-|tws|free).*") ? 0 : 1, battery);
         } else if (wired != null) {
-            output.setText("● " + wired.getProductName() + " · KABEL");
+            deviceName.setText(String.valueOf(wired.getProductName()));
+            output.setText("KABEL");
             output.setTextColor(ink2);
+            gauge.set(0, -1);
         } else {
-            output.setText("○ HANDY-LAUTSPRECHER");
+            deviceName.setText("Handy-Lautsprecher");
+            output.setText("TIPPEN = AUSGANG WECHSELN");
             output.setTextColor(ink3);
+            gauge.set(2, -1);
         }
         syncVolume();
     }
