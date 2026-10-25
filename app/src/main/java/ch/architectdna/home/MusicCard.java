@@ -268,7 +268,11 @@ final class MusicCard {
         art.setOnClickListener(v -> openPlayer());
         art.setContentDescription("Player-App öffnen");
         root.setOnTouchListener((v, e) -> {
-            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) sliding = e.getY() >= outputRow.getBottom() + dp(2);
+            // Only a band around the slider itself counts as sliding, not the rest of the card.
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                sliding = !onStats && volume.isShown()
+                    && e.getY() >= volume.getTop() - dp(14) && e.getY() <= volume.getBottom() + dp(14);
+            }
             if (!sliding) return false;
             // Hand the touch to the slider in its own coordinates, so the thumb lands under the finger.
             MotionEvent m = MotionEvent.obtain(e);
@@ -486,8 +490,10 @@ final class MusicCard {
         boolean toStats = !onStats;
         float w = root.getWidth();
         root.animate().cancel();
-        // Both pages keep the taller page's height, so the sections below never jump.
-        root.setMinimumHeight(Math.max(root.getMinimumHeight(), root.getHeight()));
+        // The player sets the card's height; the stats page fits into it, so nothing below jumps
+        // and the player never gets an empty strip.
+        if (toStats) root.setMinimumHeight(root.getHeight());
+        else root.setMinimumHeight(0);
         root.animate().translationX(dir * w * 0.3f).alpha(0f).setDuration(140).withEndAction(() -> {
             showStats(toStats);
             root.setTranslationX(-dir * w * 0.3f);
@@ -586,7 +592,7 @@ final class MusicCard {
         };
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, 0, 1f);
         clp.topMargin = dp(14);
-        chart.setMinimumHeight(dp(100));
+        chart.setMinimumHeight(dp(56));
         stats.addView(chart, clp);
 
         // Today's top artists, one per line, ranked.
@@ -662,7 +668,7 @@ final class MusicCard {
         int[] card = new int[2];
         root.getLocationOnScreen(card);
         return rawX >= card[0] && rawX <= card[0] + root.getWidth()
-            && rawY >= at[1] - dp(12) - output.getHeight() && rawY <= card[1] + root.getHeight();
+            && rawY >= at[1] - dp(14) && rawY <= at[1] + volume.getHeight() + dp(14);
     }
 
     /* ---------------- Lifecycle ---------------- */
