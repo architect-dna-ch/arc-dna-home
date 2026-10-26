@@ -64,7 +64,7 @@ final class DinoView extends View {
     private static final int FIGHT = 0, KO = 1, FLIGHT = 2, UPLOAD = 3, SAVED = 4, LOST = 5;
     private long fightAt = -1;
     private int fstate, level, eaten, cutAt, hurt;
-    private float hp, maxHp, timeLimit, phaseAt, lastZap, nextEat, knock, lastFt;
+    private float hp, maxHp, timeLimit, phaseAt, lastZap, nextEat, knock, knockY, lastFt;
     private boolean buddyEaten;
     private final RectF dinoRect = new RectF();
     private final List<float[]> pops = new ArrayList<>();       // x, y, time, hit?
@@ -106,6 +106,7 @@ final class DinoView extends View {
             if (hit) {
                 hp = Math.max(0, hp - 1);
                 knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
+                knockY = dp(46);             // every kick knocks it down a bit, it springs back up
                 host.stomp();
             }
             pops.add(new float[]{x, y, ft, hit ? 1 : 0});
@@ -149,7 +150,12 @@ final class DinoView extends View {
         float ft = (now - fightAt) / 1000f, dt = Math.max(0, Math.min(0.05f, ft - lastFt));
         lastFt = ft;
         knock *= 0.8f;
+        knockY *= 0.86f;
+        ground = h * 0.62f;             // the whole fight plays mid-screen
         if (fstate == FIGHT) {
+            // The fight happens mid-screen: up where you can reach it; higher levels also hop up and down.
+            float hop = h * 0.12f * Math.min(1, level / 50f) * (float) Math.sin(ft * (0.5f + level * 0.01f) * Math.PI * 2 + 1);
+            ground += hop + knockY;
             // The dino dodges more and faster the higher its level; above 30 it heals a little.
             float amp = w * 0.32f * Math.min(1, level / 40f), freq = 0.35f + level * 0.012f;
             float fx = mid + amp * (float) Math.sin(ft * freq * Math.PI * 2) + knock;
@@ -164,6 +170,7 @@ final class DinoView extends View {
             if (hurt >= 4) c.rotate(6 * (float) Math.sin(ft * 5), fx, ground);
             drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, ft, amp > 0, !right);
             c.restore();
+            if (hurt >= 4) smoke(c, fx, ground, k, ft);
             markDino(fx, ground, k, 1);
             float rx = Math.min(w - dp(40), fx + 100 * k), ry = ground - 150 * k + (float) Math.sin(ft * 3) * dp(4);
             drawRobot(c, rx, ry, dp(1), ft - lastZap < 0.2f);
@@ -853,16 +860,19 @@ final class DinoView extends View {
             c.drawCircle(8 * k, -44 * k, 5 * k, p);
             c.drawCircle(-12 * k, -32 * k, 3.5f * k, p);
         }
-        if (hurt >= 4) {
-            p.setStyle(Paint.Style.FILL);
-            float tt = SystemClock.uptimeMillis() / 1000f;
-            for (int i = 0; i < 3; i++) {
-                float rise = (tt * 0.8f + i / 3f) % 1f;
-                p.setColor(0x669A9A98);
-                c.drawCircle((10 + i * 10) * k, (-62 - rise * 30) * k, (4 + rise * 6) * k, p);
-            }
-        }
         c.restore();
+    }
+
+    /** Smoke from its back, in screen space: always rises, grows and fades (it used to fall when the dino tilted). */
+    private void smoke(Canvas c, float x, float g, float k, float t) {
+        p.setStyle(Paint.Style.FILL);
+        for (int i = 0; i < 4; i++) {
+            float rise = (t * 0.7f + i / 4f) % 1f;
+            p.setColor(0xFF9A9A98);
+            p.setAlpha((int) (150 * (1 - rise)));
+            c.drawCircle(x + (8 + i * 6 + rise * 10 * (i % 2 == 0 ? 1 : -1)) * k, g - (62 + rise * 70) * k, (4 + rise * 9) * k, p);
+        }
+        p.setAlpha(255);
     }
 
     private void leg(Canvas c, float hx, float hy, float swing, float k) {
