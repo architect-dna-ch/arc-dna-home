@@ -754,7 +754,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 wrap.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
             Intent intent = (Intent) items[i][2];
+            tileTint = YELLOW;
             View tile = tile((String) items[i][0], getDrawable((Integer) items[i][1]), 28);
+            tileTint = 0;
             tile.setOnClickListener(v -> open(intent));
             // Telefon: long-press = the system phone app (favourites, voicemail, settings).
             if (i == 0) tile.setOnLongClickListener(v -> {
@@ -1545,7 +1547,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileW, -2);
             lp.leftMargin = i == 0 ? 0 : gap;
             AppEntry app = recent.get(i);
+            tileTint = GREEN;
             View tile = tile(app.label, app.icon, 32);
+            tileTint = 0;
             tile.setOnClickListener(v -> launch(app));
             strip.addView(tile, lp);
         }
@@ -3676,7 +3680,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 wrap.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
             Object[] a = own[i];
+            tileTint = PURPLE;
             View t = tile((String) a[0], getDrawable((Integer) a[2]), 28);
+            tileTint = 0;
             t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
             row.addView(t, weighted(i % cols != 0));
         }
@@ -3684,12 +3690,28 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return wrap;
     }
 
+    /* Vibrant section colours (like the DROP red): strong yellow, green, light purple, see-through. */
+    static final int YELLOW = 0xFFFFD60A, GREEN = 0xFF2BD96B, PURPLE = 0xFFA77BFF;
+    private int tileTint;
+
+    /** A tile tinted in the section's colour: a light see-through fill and a clear edge. */
+    private android.graphics.drawable.Drawable tinted(int colour) {
+        boolean night = isNight();
+        int fill = (colour & 0x00FFFFFF) | ((night ? 0x2E : 0x3D) << 24);
+        int edge = (colour & 0x00FFFFFF) | ((night ? 0x99 : 0xB3) << 24);
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(fill);
+        d.setStroke(dp(1.5f), edge);
+        d.setCornerRadius(dp(16));
+        return d;
+    }
+
     private View tile(String name, Drawable icon, int iconDp) {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
         t.setPadding(dp(4), dp(12), dp(4), dp(10));
-        t.setBackground(box(card, line, 16));
+        t.setBackground(tileTint != 0 ? tinted(tileTint) : box(card, line, 16));
 
         ImageView iv = new ImageView(this);
         if (icon != null) iv.setImageDrawable(icon);
