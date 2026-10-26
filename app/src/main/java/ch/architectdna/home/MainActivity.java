@@ -947,12 +947,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         LinearLayout type = settingsGroup(col, "Typografie");
         settingsRow(type, "Schrift", () -> FONTS[Math.max(0, Math.min(FONTS.length - 1, prefs.getInt("font", 0)))], v -> {
-            prefs.edit().putInt("font", (prefs.getInt("font", 0) + 1) % FONTS.length).commit();
-            recreate();       // every text on the home picks up the new font
+            prefs.edit().putInt("font", (prefs.getInt("font", 0) + 1) % FONTS.length).apply();
+            applyTypography();
         }, null);
         settingsRow(type, "Textgrösse", () -> SIZES[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))], v -> {
-            prefs.edit().putInt("fontSize", (prefs.getInt("fontSize", 1) + 1) % SIZES.length).commit();
-            recreate();
+            prefs.edit().putInt("fontSize", (prefs.getInt("fontSize", 1) + 1) % SIZES.length).apply();
+            applyTypography();
         }, null);
 
         LinearLayout sync = settingsGroup(col, "Musik-Sync · Bluetooth");
@@ -3879,17 +3879,38 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return SIZE_SCALE[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))];
     }
 
+    /** Every text made by text()/monoText(): {sp, bold, mono}, so a font change restyles them in place. */
+    private final java.util.WeakHashMap<TextView, float[]> styled = new java.util.WeakHashMap<>();
+
     private TextView text(float sp, int colour, boolean bold) {
         TextView t = new TextView(this);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp * fontScale());
         t.setTextColor(colour);
         t.setTypeface(face(bold));
+        styled.put(t, new float[]{sp, bold ? 1 : 0, 0});
         return t;
+    }
+
+    /** Font or size changed in ⚙: restyle every text live (no restart, settings stay open), with a soft fade. */
+    private void applyTypography() {
+        float scale = fontScale();
+        for (java.util.Map.Entry<TextView, float[]> e : new ArrayList<>(styled.entrySet())) {
+            TextView t = e.getKey();
+            float[] st = e.getValue();
+            if (t == null) continue;
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, st[0] * scale);
+            if (st[2] == 0) t.setTypeface(face(st[1] > 0));
+        }
+        View fade = settingsSheet != null ? settingsSheet : rootFrame;
+        fade.setAlpha(0.55f);
+        fade.animate().alpha(1f).setDuration(260).start();
+        rootFrame.post(this::reflow);
     }
 
     private TextView monoText(float sp, int colour) {
         TextView t = text(sp, colour, false);
         t.setTypeface(mono, Typeface.BOLD);
+        styled.get(t)[2] = 1;
         t.setLetterSpacing(0.12f);
         return t;
     }
