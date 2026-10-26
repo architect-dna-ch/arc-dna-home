@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Dezibel tile: gauge arc, rust needle. -->
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M5,17.5a8,8 0 1,1 14,0" />
+    <path android:strokeColor="@color/rust" android:strokeWidth="1.9" android:strokeLineCap="round" android:pathData="M12,14.5l4.2,-4.6" />
+    <path android:fillColor="@color/ink" android:pathData="M10.6,14.5a1.4,1.4 0 1,0 2.8,0a1.4,1.4 0 1,0 -2.8,0" />
+</vector>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dezibel launcher icon: a gauge arc with a rust needle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="6" android:strokeLineCap="round"
+        android:pathData="M24,66 A28,28 0 1,1 72,66" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M48,56 L64,38" />
+    <path android:fillColor="#1A1A1A" android:pathData="M43,56a5,5 0 1,0 10,0a5,5 0 1,0 -10,0" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M38,76h4M46,72v8M54,70v12M62,74v4" />
+</vector>
