@@ -48,7 +48,8 @@ public class EnergyActivity extends Activity {
         ink3 = 0xFF6F6E69, rust = 0xFFD9472F, green = 0xFF2BD96B, amber = 0xFFE8B931;
     private FrameLayout root;
     private LinearLayout panel;
-    private TextView big, state, details, saverState, torchState;
+    private TextView big, state, details, saverState, torchState, zenState, soundState;
+    private LinearLayout sound;
     private Curve curve;
     private LinearLayout drains;
     private boolean torchOn;
@@ -115,8 +116,8 @@ public class EnergyActivity extends Activity {
         tile(grid, "🌐", "Internet", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_INTERNET_CONNECTIVITY : null, Settings.ACTION_WIRELESS_SETTINGS));
         tile(grid, "ᛒ", "Bluetooth", v -> open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)));
         torchState = tile(grid, "🔦", "Lampe", v -> torch());
-        tile(grid, "🔊", "Laut", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_VOLUME : null, Settings.ACTION_SOUND_SETTINGS));
-        tile(grid, "🌙", "Ruhe", v -> open(new Intent("android.settings.ZEN_MODE_SETTINGS")));
+        soundState = tile(grid, "🔊", "Laut", v -> toggleSound());
+        zenState = tile(grid, "🌙", "Ruhe", v -> toggleZen());
         tile(grid, "📊", "System", v -> open(new Intent(Intent.ACTION_POWER_USAGE_SUMMARY)));
 
         // Brightness.
@@ -152,8 +153,36 @@ public class EnergyActivity extends Activity {
             public void onStopTrackingTouch(SeekBar b) {
             }
         });
+        arc(bright);
         bl.addView(bright, new LinearLayout.LayoutParams(0, -2, 1f));
         panel.addView(bl);
+
+        // Volume, our own (instead of Android's grey panel): opens under the tiles.
+        sound = new LinearLayout(this);
+        sound.setOrientation(LinearLayout.VERTICAL);
+        sound.setBackground(box(card, line, 16));
+        sound.setPadding(dp(14), dp(10), dp(14), dp(12));
+        sound.setVisibility(View.GONE);
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
+        sl.topMargin = dp(12);
+        panel.addView(sound, sl);
+        volume("♪", "Medien", android.media.AudioManager.STREAM_MUSIC);
+        volume("☎", "Anruf", android.media.AudioManager.STREAM_VOICE_CALL);
+        volume("🔔", "Klingeln", android.media.AudioManager.STREAM_RING);
+        volume("✉", "Mitteilungen", android.media.AudioManager.STREAM_NOTIFICATION);
+        TextView out = mono(10, rust);
+        out.setText("AUSGABE WÄHLEN ↗");
+        out.setPadding(dp(4), dp(10), 0, dp(2));
+        out.setOnClickListener(v -> {
+            // Android's own output switcher (headphones, speaker, cast): only the system may switch.
+            try {
+                startActivity(new Intent("com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG")
+                    .setPackage("com.android.systemui").putExtra("package_name", getPackageName()));
+            } catch (RuntimeException e) {
+                open(new Intent(Settings.ACTION_SOUND_SETTINGS));
+            }
+        });
+        sound.addView(out);
 
         // Last 24 h.
         panel.addView(head("Letzte 24 Stunden"));
@@ -250,6 +279,10 @@ public class EnergyActivity extends Activity {
         saverState.setTextColor(saver ? amber : ink2);
         saverState.setText(saver ? "SPAREN AN" : "SPAREN");
         torchState.setTextColor(torchOn ? amber : ink2);
+        android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
+        boolean zen = nm != null && nm.getCurrentInterruptionFilter() > android.app.NotificationManager.INTERRUPTION_FILTER_ALL;
+        zenState.setTextColor(zen ? amber : ink2);
+        zenState.setText(zen ? "RUHE AN" : "RUHE");
     }
 
     private double lastRate = -1;
@@ -339,6 +372,85 @@ public class EnergyActivity extends Activity {
     private static String hm(long ms) {
         long m = ms / 60_000;
         return m >= 60 ? (m / 60) + " h " + (m % 60) + " min" : m + " min";
+    }
+
+    /* ---------------- volume and do-not-disturb, in ARC-DNA style ---------------- */
+
+    private void toggleSound() {
+        boolean show = sound.getVisibility() != View.VISIBLE;
+        sound.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) {
+            sound.setAlpha(0f);
+            sound.setTranslationY(-dp(10));
+            sound.animate().alpha(1f).translationY(0).setDuration(200).start();
+        }
+        soundState.setTextColor(show ? amber : ink2);
+    }
+
+    private void volume(String icon, String name, int stream) {
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        LinearLayout r = new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(0, dp(4), 0, dp(4));
+        TextView i = text(16, ink2, false);
+        i.setText(icon);
+        i.setGravity(Gravity.CENTER);
+        r.addView(i, new LinearLayout.LayoutParams(dp(28), -2));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView n = mono(9, ink3);
+        n.setText(name.toUpperCase(Locale.GERMAN));
+        n.setPadding(dp(14), 0, 0, 0);
+        col.addView(n);
+        SeekBar s = new SeekBar(this);
+        arc(s);
+        s.setMax(am.getStreamMaxVolume(stream));
+        s.setProgress(am.getStreamVolume(stream));
+        s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar b, int p, boolean user) {
+                if (!user) return;
+                try {
+                    am.setStreamVolume(stream, p, 0);
+                } catch (SecurityException e) {
+                    // Ring / notifications can't change while do-not-disturb holds them.
+                    b.setProgress(am.getStreamVolume(stream));
+                    n.setText((name + " · in Ruhe gesperrt").toUpperCase(Locale.GERMAN));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar b) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar b) {
+            }
+        });
+        col.addView(s);
+        r.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        sound.addView(r);
+    }
+
+    /** Do-not-disturb straight from the tile (Android asks once for the access). */
+    private void toggleZen() {
+        android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
+        if (nm == null) return;
+        if (!nm.isNotificationPolicyAccessGranted()) {
+            open(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            return;
+        }
+        boolean on = nm.getCurrentInterruptionFilter() != android.app.NotificationManager.INTERRUPTION_FILTER_ALL;
+        nm.setInterruptionFilter(on ? android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+            : android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+        paintNow();
+    }
+
+    /** Sliders in ARC-DNA colours: rust track, light thumb, dark rail. */
+    private void arc(SeekBar s) {
+        s.setProgressTintList(android.content.res.ColorStateList.valueOf(rust));
+        s.setThumbTintList(android.content.res.ColorStateList.valueOf(ink));
+        s.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(line));
     }
 
     /* ---------------- switches ---------------- */
