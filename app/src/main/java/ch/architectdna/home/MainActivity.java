@@ -664,7 +664,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(14), dp(12), dp(14), dp(10));
-        box.setBackground(tinted(LIGHT_RED));     // Suche in light red, like the other sections' colours
+        box.setBackground(box(card, line, 16));
 
         TextView k = monoText(10, ink3);
         k.setLetterSpacing(0.16f);
@@ -704,6 +704,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             webSearch();
             return true;
         });
+        webQuery.setBackground(tinted(LIGHT_RED));     // Suche in light red, like the other sections' colours
         row.addView(webQuery, new LinearLayout.LayoutParams(0, dp(50), 1f));
 
         TextView go = text(18, 0xFFFFFFFF, true);
