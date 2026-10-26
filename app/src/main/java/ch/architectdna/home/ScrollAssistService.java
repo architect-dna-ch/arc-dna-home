@@ -451,8 +451,9 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 return;
             }
             float breathe = 0.75f + 0.25f * (float) Math.sin(now / 420.0);
-            int alpha = paused ? 80 : resting ? 140 : (int) (255 * breathe);
-            p.setColor((alpha << 24) | (rust & 0xFFFFFF));
+            int alpha = paused ? 255 : resting ? 140 : (int) (255 * breathe);
+            // Green = ready but paused (tap to go on); orange = watching.
+            p.setColor((alpha << 24) | ((paused ? 0xFF2BBF6A : rust) & 0xFFFFFF));
             p.setStrokeWidth(dp(2.5f));
             c.drawCircle(cx, cy, r, p);
             // Just unlocked: the lock screen's rainbow ring first, melting into the orange.
@@ -521,8 +522,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                         setSpeed(0);
                         v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
                         DiagLog.log("head scroll " + (paused ? "paused" : "resumed") + " by tap");
-                        android.widget.Toast.makeText(this, paused ? "Kopf-Scroll pausiert · tippen = weiter" : "Kopf-Scroll läuft",
-                            android.widget.Toast.LENGTH_SHORT).show();
+                        bigNote(paused ? "⏸  KOPF-SCROLL PAUSIERT · TIPPEN = WEITER" : "▶  KOPF-SCROLL LÄUFT", paused ? 0xFF2BBF6A : 0xFFE0552F);
                         v.invalidate();
                     }
                 }
@@ -561,6 +561,59 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         error = message != null && message.startsWith("○");
         if (error) android.widget.Toast.makeText(this, message.substring(1).trim(), android.widget.Toast.LENGTH_LONG).show();
         pill.invalidate();
+    }
+
+    /** A big notice just under the camera for 2 s (toasts are small and can't be styled from here). */
+    private android.widget.TextView note;
+
+    private void bigNote(String text, int colour) {
+        if (windows == null) return;
+        if (note != null) {
+            try {
+                windows.removeView(note);
+            } catch (RuntimeException ignored) {
+            }
+        }
+        android.widget.TextView t = new android.widget.TextView(this);
+        t.setText(text);
+        t.setTextColor(0xFFFFFFFF);
+        t.setTextSize(16);
+        t.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+        t.setLetterSpacing(0.06f);
+        t.setPadding(dp(20), dp(14), dp(20), dp(14));
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0xF0121211);
+        bg.setStroke(dp(2), colour);
+        bg.setCornerRadius(dp(28));
+        t.setBackground(bg);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        lp.y = dp(64);
+        try {
+            windows.addView(t, lp);
+        } catch (RuntimeException e) {
+            return;
+        }
+        note = t;
+        t.setAlpha(0f);
+        t.setScaleX(0.85f);
+        t.setScaleY(0.85f);
+        t.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start();
+        main.postDelayed(() -> {
+            if (note != t) return;
+            t.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                try {
+                    windows.removeView(t);
+                } catch (RuntimeException ignored) {
+                }
+                if (note == t) note = null;
+            }).start();
+        }, 2000);
     }
 
     /** Centre the ring window on the camera hole (from the display cutout; top centre as a fallback). */
