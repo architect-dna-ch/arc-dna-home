@@ -96,6 +96,12 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     static ScrollAssistService instance;
 
     /** The launcher came to the front: no pill and no camera here (it frees the camera for home). */
+    /** Lock the phone now (the accessibility "lock screen" action); false if the service isn't on. */
+    static boolean lockScreen() {
+        ScrollAssistService s = instance;
+        return s != null && Build.VERSION.SDK_INT >= 28 && s.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
+    }
+
     static void homeInFront(String pkg) {
         ScrollAssistService s = instance;
         if (s == null) return;

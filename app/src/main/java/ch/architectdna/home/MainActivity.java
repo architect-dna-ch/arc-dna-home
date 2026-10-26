@@ -950,7 +950,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
-        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 5 Min" : "Aus",
+        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 5 s" : "Aus",
+            v -> prefs.edit().putBoolean("dinoLock", !prefs.getBoolean("dinoLock", true)).apply(), v -> {
+                closeSettings();
+                handler.postDelayed(() -> startDino(true), 450);
+                return true;
+            });
+        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 2 Min" : "Aus",
             v -> prefs.edit().putBoolean("dino", !prefs.getBoolean("dino", true)).apply(), v -> {
                 closeSettings();
                 handler.postDelayed(this::startDino, 450);
@@ -2660,8 +2666,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         long now = android.os.SystemClock.uptimeMillis();
         lastFaceEvent = now;
         if (faceLostAt == 0) faceLostAt = now;
-        if (now - faceLostAt > 3000 && now - lastDinoAt > DINO_EVERY && homeInFront && prefs.getBoolean("dino", true)) {
-            startDino();
+        // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
+        if (now - faceLostAt > 5000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
+            startDino(true);
             if (dino != null) lastDinoAt = now;
         }
     }
@@ -3491,15 +3498,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Dino visit: every 5 minutes on the home screen ================= */
 
-    private static final long DINO_EVERY = 5 * 60_000L;
+    private static final long DINO_EVERY = 2 * 60_000L;
     private DinoView dino;
     private long faceLostAt, lastFaceEvent, lastDinoAt = -DINO_EVERY;
     private final Runnable dinoTick = new Runnable() {
         @Override
         public void run() {
-            // With the camera on, the dino only comes when you look away (onLost); the timer is for camera off.
-            boolean cameraOn = android.os.SystemClock.uptimeMillis() - lastFaceEvent < 10_000;
-            if (homeInFront && prefs.getBoolean("dino", true) && !cameraOn) {
+            // The comic visit while you're looking (camera on and a face seen) or with the camera off;
+            // looking away belongs to the black-hole dino.
+            if (homeInFront && prefs.getBoolean("dino", true) && faceLostAt == 0) {
                 lastDinoAt = android.os.SystemClock.uptimeMillis();
                 startDino();
             }
@@ -3509,6 +3516,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     };
 
     private void startDino() {
+        startDino(false);
+    }
+
+    /** blackHole: the dino swallows the home and the phone locks (looking away); else the comic visit. */
+    private void startDino(boolean blackHole) {
         if (dino != null || rootFrame == null || rootFrame.getWidth() == 0 || game != null || settingsSheet != null
             || calibStage >= 0 || fox == null || !fox.isShown()) return;
         int paper = isNight() ? 0xFF2A2A28 : 0xFFFFFFFF;
@@ -3558,7 +3570,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             public void done() {
                 endDino();
             }
+
+            @Override
+            public void vacuum(float k, float x, float y) {
+                for (View v : new View[]{scroll, fox}) {
+                    int[] a = new int[2], r = new int[2];
+                    v.getLocationInWindow(a);
+                    rootFrame.getLocationInWindow(r);
+                    v.setPivotX(x - (a[0] - r[0]) + v.getTranslationX());
+                    v.setPivotY(y - (a[1] - r[1]) + v.getTranslationY());
+                    v.setScaleX(Math.max(0.01f, 1 - k));
+                    v.setScaleY(Math.max(0.01f, 1 - k));
+                    v.setRotation(540 * k);
+                    v.setAlpha(1 - 0.7f * k);
+                }
+            }
+
+            @Override
+            public void lockNow() {
+                if (!ScrollAssistService.lockScreen()) {
+                    Toast.makeText(MainActivity.this, "Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen)", Toast.LENGTH_LONG).show();
+                }
+                DiagLog.log("dino black hole → lock");
+            }
         });
+        if (blackHole) dino.blackHole();
         rootFrame.addView(dino, new FrameLayout.LayoutParams(-1, -1));
         DiagLog.log("dino visit");
     }
@@ -3567,6 +3603,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (dino == null) return;
         rootFrame.removeView(dino);
         dino = null;
+        scroll.setScaleX(1f);
+        scroll.setScaleY(1f);
+        scroll.setRotation(0f);
+        scroll.setAlpha(1f);
+        fox.setRotation(0f);
+        faceLostAt = 0;
         fox.animate().cancel();
         fox.setAlpha(1f);
         fox.setScaleX(1f);

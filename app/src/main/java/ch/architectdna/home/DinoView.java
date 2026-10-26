@@ -36,6 +36,20 @@ final class DinoView extends View {
         void chomp();
 
         void done();
+
+        /** Black hole: pull the home towards (x, y), k = 0 … 1. */
+        void vacuum(float k, float x, float y);
+
+        /** The end of the black hole: lock the phone. */
+        void lockNow();
+    }
+
+    private boolean vacuum, locked;
+
+    /** The other scene: the dino swallows the whole home like a black hole (7.5 s) and the phone locks. */
+    DinoView blackHole() {
+        vacuum = true;
+        return this;
     }
 
     /* {roar, translation, buddy, roar2, translation2, robot after chomp, roar3, translation3, buddy after, leave roar, translation4} */
@@ -98,6 +112,10 @@ final class DinoView extends View {
         float[] b = host.buddy();
         float ground = b[1], size = Math.min(dp(170), Math.min(w, h) * 0.42f), k = size / 100f;
         float mid = w / 2;
+        if (vacuum) {
+            drawVacuum(c, t, w, h, ground, size, k, mid);
+            return;
+        }
 
         // ---- dino position and pose ----
         float x;
@@ -182,6 +200,63 @@ final class DinoView extends View {
 
         if (t < 37) postInvalidateOnAnimation();
         else post(host::done);
+    }
+
+    /* ---------- black hole: walk in (1.5 s), mouth opens into a vortex, everything spirals in, lock at 7.5 s ---------- */
+
+    private void drawVacuum(Canvas c, float t, float w, float h, float ground, float size, float k, float mid) {
+        if (t < 1.5f) {
+            float x = w + 80 * k - (w + 80 * k - mid) * ease(t / 1.5f);
+            if ((int) (t * 2.4f) != lastStep) {
+                lastStep = (int) (t * 2.4f);
+                host.stomp();
+            }
+            drawSide(c, x, ground, k, 0, t, true, true);
+            return;
+        }
+        float mx = mid, my = ground - 72 * k;
+        float pull = clamp((t - 1.8f) / 5.2f);
+        host.vacuum(pull * pull, mx, my);
+        if (once(6, t, 1.8f)) host.chomp();
+        drawFront(c, mid, ground, k, 1, t);
+        // The vortex in the mouth: a dark disc with spiral arms, growing.
+        float rr = (10 + 60 * pull) * k;
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFF000000);
+        c.drawCircle(mx, my, rr, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        for (int arm = 0; arm < 4; arm++) {
+            path.reset();
+            for (int i = 0; i <= 24; i++) {
+                float f = i / 24f;
+                double a = arm * Math.PI / 2 + f * 5 - t * 6;
+                float d = rr * (0.2f + 2.6f * f);
+                float px = mx + (float) Math.cos(a) * d, py = my + (float) Math.sin(a) * d;
+                if (i == 0) path.moveTo(px, py);
+                else path.lineTo(px, py);
+            }
+            p.setColor(arm % 2 == 0 ? rust : 0xFF8A4BFF);
+            p.setAlpha((int) (200 * (0.3f + pull)));
+            p.setStrokeWidth(dp(2.5f));
+            c.drawPath(path, p);
+        }
+        p.setAlpha(255);
+        // Fade to black, then lock.
+        if (t > 6.9f) {
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF000000);
+            p.setAlpha((int) (255 * clamp((t - 6.9f) / 0.6f)));
+            c.drawRect(0, 0, w, h, p);
+            p.setAlpha(255);
+        }
+        if (t >= 7.5f && !locked) {
+            locked = true;
+            host.lockNow();
+            postDelayed(host::done, 400);
+            return;
+        }
+        if (!locked) postInvalidateOnAnimation();
     }
 
     /* ---------- dino, side view (facing left), feet centre at (x, g) ---------- */
