@@ -3232,6 +3232,147 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private RaceOverlay raceOverlay;
 
+    /* ---------- The racer's burnout: gas on, held back as if on a rope, tyre smoke; now and then it breaks free ---------- */
+
+    private int burnouts;
+    private boolean burning;
+    private Smoke smoke;
+
+    private void burnout() {
+        if (burning || rootFrame == null) return;
+        burning = true;
+        burnouts++;
+        boolean escape = burnouts >= 5 || (burnouts >= 3 && random.nextFloat() < 0.45f);
+        if (smoke == null) {
+            smoke = new Smoke();
+            rootFrame.addView(smoke, new FrameLayout.LayoutParams(-1, -1));
+        }
+        smoke.bringToFront();
+        fox.bringToFront();
+        voice.say("Brrm!");
+        fox.animate().cancel();
+        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0, 1);
+        a.setDuration(1400);
+        a.setInterpolator(new android.view.animation.LinearInterpolator());
+        a.addUpdateListener(v -> {
+            float t = (float) v.getAnimatedValue(), ph = (t * 5) % 1f;
+            // Surges forward, the rope snaps it back.
+            float x = ph < 0.7f ? dp(14) * (float) Math.sin(ph / 0.7f * Math.PI / 2) : dp(14) * (1 - (ph - 0.7f) / 0.3f);
+            fox.setTranslationX(x);
+            fox.setTranslationY((random.nextFloat() - 0.5f) * dp(2));
+            fox.setRotation(-2.5f * (float) Math.sin(ph * Math.PI));
+            smoke.puffAt(rearWheel(), 2);
+        });
+        a.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator an) {
+                fox.setRotation(0);
+                fox.setTranslationY(0);
+                if (escape) breakFree();
+                else {
+                    fox.animate().translationX(0).setDuration(150).start();
+                    burning = false;
+                }
+            }
+        });
+        a.start();
+    }
+
+    /** The rope snaps: flame from the exhaust, off it goes, and the race begins. */
+    private void breakFree() {
+        burnouts = 0;
+        say("Box, box … LOS!", 1400);
+        voice.say("Nyeeoow!");
+        smoke.flame(fox);
+        float out = rootFrame.getWidth() + fox.getWidth();
+        fox.animate().translationX(out).setDuration(520).setInterpolator(new android.view.animation.AccelerateInterpolator(2.2f))
+            .withEndAction(() -> {
+                if (!f1) setF1(true);
+                else race(true);
+                // Back in from the left after its lap.
+                fox.setTranslationX(-rootFrame.getWidth());
+                fox.animate().translationX(0).setStartDelay(1600).setDuration(700)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).withEndAction(() -> burning = false).start();
+            }).start();
+    }
+
+    /** Where the rear wheel touches the ground, in rootFrame coordinates (the car faces right). */
+    private float[] rearWheel() {
+        int[] a = new int[2], r = new int[2];
+        fox.getLocationInWindow(a);
+        rootFrame.getLocationInWindow(r);
+        return new float[]{a[0] - r[0] + fox.getWidth() * 0.24f, a[1] - r[1] + fox.getHeight() * 0.88f};
+    }
+
+    /** Tyre smoke and the exhaust flame, drawn over the home (touches pass through). */
+    private final class Smoke extends View {
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final java.util.List<float[]> puffs = new java.util.ArrayList<>();     // x, y, vx, vy, age, size
+        private View flameOn;
+        private long flameAt;
+
+        Smoke() {
+            super(MainActivity.this);
+            setClickable(false);
+        }
+
+        void puffAt(float[] at, int n) {
+            for (int i = 0; i < n; i++) {
+                puffs.add(new float[]{at[0], at[1], -dp(30 + random.nextFloat() * 50), -dp(10 + random.nextFloat() * 25), 0,
+                    dp(6 + random.nextFloat() * 8)});
+            }
+            invalidate();
+        }
+
+        void flame(View car) {
+            flameOn = car;
+            flameAt = android.os.SystemClock.uptimeMillis();
+            invalidate();
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            return false;
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            float dt = 0.016f;
+            for (int i = puffs.size() - 1; i >= 0; i--) {
+                float[] q = puffs.get(i);
+                q[4] += dt;
+                if (q[4] > 1.1f) {
+                    puffs.remove(i);
+                    continue;
+                }
+                q[0] += q[2] * dt;
+                q[1] += q[3] * dt;
+                q[2] *= 0.97f;
+                p.setColor(isNight() ? 0xFFB8B8B2 : 0xFF9A9A98);
+                p.setAlpha((int) (150 * (1 - q[4] / 1.1f)));
+                c.drawCircle(q[0], q[1], q[5] * (1 + q[4] * 2.2f), p);
+            }
+            p.setAlpha(255);
+            long since = android.os.SystemClock.uptimeMillis() - flameAt;
+            if (flameOn != null && since < 700) {
+                // Exhaust at the car's tail: a flickering cone pointing backwards.
+                int[] a = new int[2], r = new int[2];
+                flameOn.getLocationInWindow(a);
+                getLocationInWindow(r);
+                float x = a[0] - r[0] + flameOn.getWidth() * 0.06f, y = a[1] - r[1] + flameOn.getHeight() * 0.6f;
+                for (int i = 0; i < 14; i++) {
+                    float f = i / 14f, len = dp(26 + random.nextFloat() * 22);
+                    p.setColor(f < 0.4f ? 0xFFFFF27A : f < 0.75f ? 0xFFFFA62B : 0xFF3C8CFF);
+                    p.setAlpha((int) (230 * (1 - since / 700f)));
+                    c.drawCircle(x - len * f, y + (random.nextFloat() - 0.5f) * dp(6) * f, dp(7) * (1 - f * 0.6f), p);
+                }
+                p.setAlpha(255);
+            }
+            if (!puffs.isEmpty() || since < 700) postInvalidateOnAnimation();
+        }
+    }
+
     /** With the F1 board open and the racer as buddy: the race track over the whole home. */
     private void race(boolean on) {
         boolean want = on && buddy() == 3 && rootFrame != null;
@@ -3589,6 +3730,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** One full twist per volume step; quick presses stack up into a longer spin. */
     private void spinFox() {
         if (fox == null || game != null) return;
+        if (buddy() == 3) {
+            burnout();          // the racer doesn't spin: it revs on the spot
+            return;
+        }
         float from = fox.getRotation();
         boolean spinning = foxSpin != null && foxSpin.isRunning();
         spinTarget = (spinning ? spinTarget : (float) Math.ceil(from / 360f) * 360) + 360;
