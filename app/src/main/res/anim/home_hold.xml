@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home screen stays put (and dims a little) while the app slides over it. -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="340"
+    android:fromAlpha="1"
+    android:toAlpha="0.85" />

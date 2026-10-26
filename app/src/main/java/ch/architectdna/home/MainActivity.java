@@ -1293,10 +1293,48 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void launch(AppEntry app) {
-        open(new Intent(Intent.ACTION_MAIN)
+        openApp(new Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
             .setComponent(app.component)
-            .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
+            .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED), app.icon);
+    }
+
+    /* ---- Opening and coming back: slide up; back home the app is crushed and binned ---- */
+
+    private Drawable leftIcon;
+    private long leftAt;
+    private boolean crumplePending;
+
+    /** Start an app sliding up from the bottom; remember it for the paper ball on the way back. */
+    private void openApp(Intent intent, Drawable icon) {
+        try {
+            startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold).toBundle());
+            leftIcon = icon == null ? null : icon.getConstantState() != null ? icon.getConstantState().newDrawable().mutate() : icon;
+            leftAt = System.currentTimeMillis();
+            crumplePending = true;
+        } catch (ActivityNotFoundException | SecurityException e) {
+            Toast.makeText(this, "Keine passende App gefunden.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Back home after using an app: whoosh, crush, throw it in the bin next to the buddy. */
+    private void playCrumple() {
+        if (rootFrame == null || rootFrame.getWidth() == 0) return;
+        float binX, binY;
+        if (fox != null && fox.isShown() && fox.getAlpha() > 0.5f) {
+            binX = fox.getRight() + dp(34);
+            binY = fox.getTop() + fox.getHeight() * 0.45f;
+        } else {
+            binX = dp(48);
+            binY = dp(130);
+        }
+        int paper = isNight() ? 0xFF2A2A28 : 0xFFFFFFFF;
+        CrumpleView[] holder = new CrumpleView[1];
+        holder[0] = new CrumpleView(this, leftIcon, binX, binY, paper, line, ink, rust,
+            () -> rootFrame.removeView(holder[0]));
+        rootFrame.addView(holder[0], new FrameLayout.LayoutParams(-1, -1));
+        leftIcon = null;
     }
 
     private void open(Intent intent) {
@@ -3209,6 +3247,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        if (crumplePending) {
+            crumplePending = false;
+            // Only after real use (not a launch that bounced straight back).
+            if (System.currentTimeMillis() - leftAt > 900 && game == null && ghosts == null) rootFrame.post(this::playCrumple);
+        }
         hideNavBar();
         ScrollAssistService.homeInFront(getPackageName());
         volumeReceiver = new BroadcastReceiver() {
@@ -3355,7 +3398,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (i < own.length) {
                 Object[] a = own[i];
                 View t = tile((String) a[0], getDrawable((Integer) a[2]), 32);
-                t.setOnClickListener(v -> open(new Intent(this, (Class<?>) a[1])));
+                t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
                 row.addView(t, lp);
             } else {
                 row.addView(new View(this), lp);
