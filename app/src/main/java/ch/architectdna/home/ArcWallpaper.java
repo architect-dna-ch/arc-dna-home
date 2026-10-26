@@ -674,12 +674,13 @@ public class ArcWallpaper extends WallpaperService {
                 warped[1] = y;
                 return;
             }
-            float nd;
-            if (d < r) {
-                nd = r * (float) Math.pow(d / r, 0.62f + 0.06f * (spread - 1));      // magnified
+            // Continuous at the rim (no gap, so lines bend instead of breaking).
+            float nd, u = d / r;
+            if (u < 1) {
+                nd = r * (u + (0.45f + 0.08f * (spread - 1)) * u * (1 - u));       // magnified in the middle
             } else {
-                float out = (d - r) / r;
-                nd = d + r * 0.3f * spread * (float) Math.exp(-out * 2.2f);         // bent round the rim
+                float out = u - 1;
+                nd = d + r * 0.9f * spread * out * (float) Math.exp(-out / 0.3f);   // bent round the rim
             }
             warped[0] = lensX + dx / d * nd;
             warped[1] = lensY + dy / d * nd;
@@ -696,7 +697,7 @@ public class ArcWallpaper extends WallpaperService {
                 return;
             }
             int base = paint.getColor();
-            int n = 48;
+            int n = 64;
             if (near < lensR * 1.5f) {
                 // Fringes: red bent less, blue bent more, both faint.
                 int a = Math.min(255, (int) (((base >>> 24) & 0xFF) * (cube ? 1.4f : 2.2f)));
