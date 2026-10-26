@@ -29,6 +29,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Music card: the Bluetooth speaker's battery level ("Nearby devices"). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -141,6 +142,22 @@
             android:launchMode="singleTask"
             android:roundIcon="@drawable/ic_recorder"
             android:taskAffinity="ch.architectdna.home.recorder"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ARC-DNA Kamera: thirds grid, a buddy coach with on-device hints, photos onto the Galerie globe. -->
+        <activity
+            android:name=".CameraActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_arccam"
+            android:label="ARC Kamera"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_arccam"
+            android:taskAffinity="ch.architectdna.home.arccam"
             android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

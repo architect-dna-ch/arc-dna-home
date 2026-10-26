@@ -195,6 +195,35 @@ public class GalleryActivity extends Activity {
         else ask();
     }
 
+    /** From the ARC-DNA camera: the photo just taken, straight on the globe and open. */
+    private String focus;
+
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+        if (i.getStringExtra("focus") != null && hasAccess()) load();
+    }
+
+    private void focusFromIntent() {
+        String f = getIntent() == null ? null : getIntent().getStringExtra("focus");
+        if (f == null || f.equals(focus)) return;
+        focus = f;
+        long id;
+        try {
+            id = ContentUris.parseId(Uri.parse(f));
+        } catch (RuntimeException e) {
+            return;
+        }
+        for (Photo p : photos) {
+            if (ContentUris.parseId(p.uri) == id) {
+                select(p);
+                main.postDelayed(this::open, 500);
+                return;
+            }
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -260,6 +289,7 @@ public class GalleryActivity extends Activity {
                 count.setText(photos.size() + " FOTOS");
                 globe.invalidate();
                 loadThumbs();
+                focusFromIntent();
             });
         });
     }

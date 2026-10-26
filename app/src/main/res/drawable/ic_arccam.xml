@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ARC Kamera launcher icon: camera body with a thirds grid in the lens, rust crossing. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M18,32h14l5,-7h22l5,7h14v38h-60z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="3" android:pathData="M34,51a14,14 0 1,0 28,0a14,14 0 1,0 -28,0" />
+    <path android:strokeColor="#9A9A98" android:strokeWidth="1.5" android:pathData="M43,38v26M53,38v26M35,46h26M35,56h26" />
+    <path android:fillColor="#B5271E" android:pathData="M50.5,46a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0" />
+</vector>

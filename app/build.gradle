@@ -60,6 +60,10 @@ dependencies {
     implementation 'androidx.camera:camera-camera2:1.4.1'
     implementation 'androidx.camera:camera-lifecycle:1.4.1'
     implementation 'com.google.mlkit:face-detection:16.1.7'
+    // ARC-DNA Kamera: preview view, plus on-device subject boxes and labels for the coach's hints.
+    implementation 'androidx.camera:camera-view:1.4.1'
+    implementation 'com.google.mlkit:object-detection:17.0.2'
+    implementation 'com.google.mlkit:image-labeling:17.0.9'
     implementation 'com.google.guava:listenablefuture:1.0'
     // Gaze scrolling: MediaPipe Face Landmarker (eye blendshapes). The model is fetched in CI.
     implementation 'com.google.mediapipe:tasks-vision:0.10.14'
