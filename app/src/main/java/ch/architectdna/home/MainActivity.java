@@ -203,8 +203,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private int calibFrames;
     private float calibSum, basePitch, smoothTilt;
     private final Object calibToken = new Object();
-    private View calibOverlay, calibDot;
-    private TextView calibText;
+    private View calibOverlay, calibDot, calibCursor;
+    private TextView calibText, calibLive;
+    private LinearLayout calibResult;
+    private HeadDebugView calibDebug;
+    private float calibRef = Float.NaN;
+    private boolean headDbgOn;
     private int calibStage = -1, calibRetries;
     private boolean calibCollect;
     private float[] calibAcc = new float[3];
@@ -328,6 +332,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headLabel = monoText(11, rust);
         headLabel.setText("◉ KOPF  ");
         headLabel.setVisibility(View.GONE);
+        // Long hold on the camera ◉: calibrate the nod by hand (live camera, guided dots, confirm / redo).
+        headLabel.setOnLongClickListener(v -> {
+            startGazeCalibration();
+            return true;
+        });
         top.addView(headLabel);
         torchChip = monoText(11, rust);
         torchChip.setText("🔦 AUS  ");
@@ -949,6 +958,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return m.equals("nod") ? "Nicken" : "Aus";
         }, v -> cycleHeadMode(), null);
         settingsRow(head2, "Nicken kalibrieren", () -> prefs.contains("nodMid") ? "kalibriert" : "noch nie", v -> calibrate("nod"), null);
+        settingsRow(head2, "Bei jedem Start kalibrieren", () -> prefs.getBoolean("nodAlwaysCalib", true) ? "An" : "Aus",
+            v -> prefs.edit().putBoolean("nodAlwaysCalib", !prefs.getBoolean("nodAlwaysCalib", true)).apply(), null);
         settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
             v -> showAppScrollSettings(), null);
 
@@ -984,9 +995,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         paintHeadToggle();
         closeSettings();
         stopHead();
+        prefs.edit().remove(mode.equals("nod") ? "nodMid" : "gazeMid").apply();   // forces the calibration on start
         if (!libraryOpen) openLibrary();
         else startHead();
-        handler.postDelayed(this::startGazeCalibration, 500);
+        if (calibStage < 0) handler.postDelayed(() -> {
+            if (calibStage < 0) startGazeCalibration();
+        }, 500);
     }
 
     /**
@@ -2064,9 +2078,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibSum = 0;
         smoothTilt = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
         boolean gaze = m.equals("gaze");
+        // NICKEN calibrates on every start (can be switched off in ⚙); the calibration shows the live camera.
+        boolean willCalib = gaze ? !prefs.contains("gazeMid")
+            : !prefs.contains("nodMid") || prefs.getBoolean("nodAlwaysCalib", true);
         boolean dbg = prefs.getBoolean("camDebug", false);
         head.stop();
-        head.setDebug(dbg);
+        head.setDebug(dbg || willCalib);
+        headDbgOn = dbg || willCalib;
         head.start(gaze ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         if (dbg && headDebug == null) {
             headDebug = new HeadDebugView(this, rust);
@@ -2079,7 +2097,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeLight.watch(true);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
-        if (gaze ? !prefs.contains("gazeMid") : !prefs.contains("nodMid")) startGazeCalibration();
+        if (willCalib) startGazeCalibration();
         else if (!gaze) Toast.makeText(this, "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_SHORT).show();
     }
 
@@ -2203,10 +2221,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onTilt(float pitch) {
         if (edgeLight != null) edgeLight.face(true);
         if (calibStage >= 0) {
-            if (calibCollect) {
+            if (calibCollect && calibStage < 3) {
                 calibAcc[calibStage] += pitch;
                 calibN[calibStage]++;
             }
+            calibFollow(pitch);
             return;
         }
         if (fox != null && calibFrames >= 6) fox.userTilt(pitch - basePitch);
@@ -2260,7 +2279,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onGaze(float vertical) {
         if (edgeLight != null) edgeLight.face(true);
         if (calibStage >= 0) {
-            if (calibCollect) {
+            if (calibCollect && calibStage < 3) {
                 calibAcc[calibStage] += vertical;
                 calibN[calibStage]++;
             }
@@ -2291,7 +2310,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibAcc = new float[3];
         calibN = new int[3];
         calibRetries = 0;
+        calibRef = Float.NaN;
         setHeadSpeed(0);
+        calibResult.setVisibility(View.GONE);
+        calibDot.setVisibility(View.VISIBLE);
+        calibCursor.setVisibility(View.VISIBLE);
+        calibLive.setText("");
+        // The live camera with the tracked lines, in the corner of the calibration screen.
+        if (head != null && !headDbgOn) {
+            head.stop();
+            head.setDebug(true);
+            headDbgOn = true;
+            head.start(headMode().equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
+        }
         calibOverlay.setVisibility(View.VISIBLE);
         calibOverlay.setAlpha(0f);
         calibOverlay.animate().alpha(1f).setDuration(200).start();
@@ -2338,17 +2369,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (calibN[0] < 5 || calibN[2] < 5 || up - mid < 1.5f || mid - down < 1.5f) {
                 // Hardly any movement (or no face) between the dots: don't save a useless calibration.
                 DiagLog.log(String.format(Locale.ROOT, "nod calibration rejected: up %+.1f°, down %+.1f°", up - mid, down - mid));
-                endGazeCalibration();
-                Toast.makeText(this, "Kein Nicken erkannt – nochmal kalibrieren und deutlicher nicken", Toast.LENGTH_LONG).show();
+                calibText.setText("Kein Nicken erkannt – deutlicher nicken");
+                calibLive.setText(String.format(Locale.ROOT, "OBEN %+.1f°  ·  UNTEN %+.1f°", up - mid, down - mid));
+                showCalibButtons(false, null);
                 return;
             }
-            prefs.edit().putFloat("nodUp", up).putFloat("nodMid", mid).putFloat("nodDown", down).apply();
-            DiagLog.log(String.format(java.util.Locale.ROOT, "nod calibrated: up %+.1f°, down %+.1f° from neutral", up - mid, down - mid));
-            endGazeCalibration();
-            basePitch = mid;
-            calibFrames = 6;
-            smoothTilt = 0;
-            Toast.makeText(this, "Nicken kalibriert – Neu kalibrieren: Knopf lange drücken", Toast.LENGTH_SHORT).show();
+            showCalibResult(up, mid, down);
             return;
         }
         float top = calibN[0] > 0 ? calibAcc[0] / calibN[0] : -0.1f;
@@ -2360,10 +2386,69 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Toast.makeText(this, "Blick kalibriert – Neu kalibrieren: Knopf lange drücken", Toast.LENGTH_SHORT).show();
     }
 
+    /** Manual check before saving: your three positions, then ✓ Übernehmen or ↻ Nochmal. */
+    private void showCalibResult(float up, float mid, float down) {
+        calibStage = 3;              // results on screen: the cursor keeps following, nothing is sampled
+        calibCollect = false;
+        calibText.setText("Passt das?");
+        calibLive.setText(String.format(Locale.ROOT, "OBEN %+.1f°  ·  MITTE  ·  UNTEN %+.1f°", up - mid, down - mid));
+        showCalibButtons(true, () -> {
+            prefs.edit().putFloat("nodUp", up).putFloat("nodMid", mid).putFloat("nodDown", down).apply();
+            DiagLog.log(String.format(java.util.Locale.ROOT, "nod calibrated: up %+.1f°, down %+.1f° from neutral", up - mid, down - mid));
+            endGazeCalibration();
+            basePitch = mid;
+            calibFrames = 6;
+            smoothTilt = 0;
+            Toast.makeText(this, "Nicken übernommen", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void showCalibButtons(boolean canSave, Runnable save) {
+        handler.removeCallbacksAndMessages(calibToken);
+        calibStage = 3;
+        calibDot.setVisibility(View.GONE);
+        calibResult.removeAllViews();
+        if (canSave) {
+            TextView ok = text(15, card, true);
+            ok.setText("✓ ÜBERNEHMEN");
+            ok.setGravity(Gravity.CENTER);
+            ok.setPadding(dp(20), dp(12), dp(20), dp(12));
+            ok.setBackground(box(rust, rust, 24));
+            ok.setOnClickListener(v -> save.run());
+            calibResult.addView(ok);
+        }
+        TextView again = text(15, ink, true);
+        again.setText("↻ NOCHMAL");
+        again.setGravity(Gravity.CENTER);
+        again.setPadding(dp(20), dp(12), dp(20), dp(12));
+        again.setBackground(box(card, line, 24));
+        again.setOnClickListener(v -> startGazeCalibration());
+        calibResult.addView(again, margins(-2, -2, canSave ? dp(12) : 0, 0, 0, 0));
+        calibResult.setVisibility(View.VISIBLE);
+    }
+
+    /** The ring follows your head live (relative to where you started), so you can see it meet the dots. */
+    private void calibFollow(float pitch) {
+        if (calibCursor == null) return;
+        if (calibStage >= 1 && calibN[1] > 5) calibRef = calibAcc[1] / calibN[1];     // once known: your neutral
+        else if (Float.isNaN(calibRef)) calibRef = pitch;
+        float range = calibOverlay.getHeight() / 2f - dp(80);
+        float y = Math.max(-range, Math.min(range, -(pitch - calibRef) / 10f * range));
+        calibCursor.setTranslationY(y);
+        if (calibStage < 3) calibLive.setText(String.format(Locale.ROOT, "KOPF %+.1f°", pitch - calibRef));
+    }
+
     private void endGazeCalibration() {
         handler.removeCallbacksAndMessages(calibToken);
+        boolean was = calibStage >= 0;
         calibStage = -1;
         calibCollect = false;
+        if (was && head != null && headDbgOn && !prefs.getBoolean("camDebug", false) && libraryOpen && !headMode().equals("off")) {
+            head.stop();
+            head.setDebug(false);
+            headDbgOn = false;
+            head.start(headMode().equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
+        }
         if (calibOverlay.getVisibility() == View.VISIBLE) {
             calibOverlay.animate().alpha(0f).setDuration(200)
                 .withEndAction(() -> calibOverlay.setVisibility(View.GONE)).start();
@@ -2395,8 +2480,32 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         tlp.topMargin = dp(70);
         o.addView(calibText, tlp);
 
+        // The live head ring (follows your nod) and the readout under the instruction.
+        calibCursor = new View(this);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL);
+        ring.setStroke(dp(2), ink);
+        calibCursor.setBackground(ring);
+        o.addView(calibCursor, new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER));
+        calibLive = monoText(12, rust);
+        calibLive.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams llp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        llp.topMargin = dp(150);
+        o.addView(calibLive, llp);
+        calibResult = new LinearLayout(this);
+        calibResult.setGravity(Gravity.CENTER);
+        calibResult.setVisibility(View.GONE);
+        FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        rlp.topMargin = dp(210);
+        o.addView(calibResult, rlp);
+        // Live camera with the tracked lines (top right).
+        calibDebug = new HeadDebugView(this, rust);
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(dp(130), dp(130 * 4 / 3 + 64), Gravity.TOP | Gravity.END);
+        clp.setMargins(0, dp(40), dp(12), 0);
+        o.addView(calibDebug, clp);
+
         TextView skip = monoText(11, ink3);
-        skip.setText("BLICK-KALIBRIERUNG · TIPPEN = ABBRECHEN");
+        skip.setText("KALIBRIERUNG · DANEBEN TIPPEN = ABBRECHEN");
         skip.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
         slp.topMargin = dp(120);
@@ -2406,6 +2515,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onDebug(HeadTracker.Debug d) {
+        if (calibStage >= 0 && calibDebug != null) calibDebug.update(d, d.face ? "GESICHT ✓" : "KEIN GESICHT");
         if (headDebug == null) return;
         String dec;
         if (calibStage >= 0) dec = "KALIBRIERT …";
