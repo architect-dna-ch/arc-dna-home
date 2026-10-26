@@ -680,7 +680,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         focus.setHint("Eine Sache für heute…");
         focus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         focus.setTypeface(Typeface.DEFAULT_BOLD);
-        focus.setSingleLine(true);
+        // Wraps onto up to 4 lines instead of scrolling sideways; Enter still means done.
+        focus.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        focus.setHorizontallyScrolling(false);
+        focus.setMaxLines(4);
         focus.setImeOptions(EditorInfo.IME_ACTION_DONE);
         focus.setOnEditorActionListener((v, actionId, event) -> {
             hideKeyboard();
@@ -945,7 +948,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         settingsRow(home, "Gesichts-Sperre nach dem Entsperren", () -> prefs.getBoolean("faceLock", false) ? "An" : "Aus", v -> {
             boolean on = !prefs.getBoolean("faceLock", false);
             if (on && !biometricReady()) {
-                Toast.makeText(this, "Erst Gesichtsentsperrung oder Fingerabdruck in Android einrichten", Toast.LENGTH_LONG).show();
+                pop("Erst Gesichtsentsperrung oder Fingerabdruck in Android einrichten");
                 return;
             }
             prefs.edit().putBoolean("faceLock", on).apply();
@@ -960,9 +963,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 return true;
             });
         settingsRow(home, "Dino-Level · tippen den Dino = Kampf", () -> "LV " + prefs.getInt("dinoLevel", 1) + " / 99",
-            v -> Toast.makeText(this, "Halten = zurück auf Level 1", Toast.LENGTH_SHORT).show(), v -> {
+            v -> pop("Halten = zurück auf Level 1"), v -> {
                 prefs.edit().putInt("dinoLevel", 1).apply();
-                Toast.makeText(this, "Dino wieder auf Level 1", Toast.LENGTH_SHORT).show();
+                pop("Dino wieder auf Level 1");
                 return true;
             });
         settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 2 Min" : "Aus",
@@ -994,9 +997,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 31);
                 return;
             }
-            Toast.makeText(this, "Suche gekoppelte Geräte mit ARC-DNA …", Toast.LENGTH_SHORT).show();
+            pop("Suche gekoppelte Geräte mit ARC-DNA …");
             BtSync.syncSoon(this, 0, name -> {
-                Toast.makeText(this, name != null ? "Abgeglichen mit " + name + "." : "Kein Partner gefunden: beide Geräte koppeln, Bluetooth an, ARC-DNA auf beiden.", Toast.LENGTH_LONG).show();
+                pop(name != null ? "Abgeglichen mit " + name + "." : "Kein Partner gefunden.\nBeide Geräte koppeln, Bluetooth an und ARC-DNA auf beiden öffnen.");
                 if (music != null) music.refreshStats();
             });
         }, null);
@@ -1419,7 +1422,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             leftAt = System.currentTimeMillis();
             crumplePending = true;
         } catch (ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(this, "Keine passende App gefunden.", Toast.LENGTH_SHORT).show();
+            pop("Keine passende App gefunden.");
         }
     }
 
@@ -1470,7 +1473,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         try {
             startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(this, "Keine passende App gefunden.", Toast.LENGTH_SHORT).show();
+            pop("Keine passende App gefunden.");
         }
     }
 
@@ -1670,7 +1673,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ask.setPadding(dp(14), dp(12), dp(14), dp(12));
         ask.setBackground(box(card, line, 16));
         ask.setOnClickListener(v -> {
-            Toast.makeText(this, "ARC-DNA antippen und Zugriff erlauben", Toast.LENGTH_LONG).show();
+            pop("ARC-DNA antippen und Zugriff erlauben");
             open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
         });
         into.addView(ask);
@@ -1857,7 +1860,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void switchNight(boolean dark, float x, float y) {
         if (Build.VERSION.SDK_INT < 31) {
-            Toast.makeText(this, "Braucht Android 12 oder neuer.", Toast.LENGTH_SHORT).show();
+            pop("Braucht Android 12 oder neuer.");
             return;
         }
         // Already dark: one more ← opens the Geister-Level; → leaves it first.
@@ -2289,7 +2292,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (!on) AlarmScheduler.cancelSnooze(this);
         paintAlarm();
         if (!on) {
-            Toast.makeText(this, "Wecker aus. Der Bär schläft.", Toast.LENGTH_SHORT).show();
+            pop("Wecker aus. Der Bär schläft.");
             return;
         }
         long in = AlarmScheduler.next(prefs) - System.currentTimeMillis();
@@ -2316,7 +2319,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
                         Uri.parse("package:" + getPackageName())));
                 } catch (RuntimeException e) {
-                    Toast.makeText(this, "Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen", Toast.LENGTH_LONG).show();
+                    pop("Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen");
                 }
             })
             .setNegativeButton("Später", null)
@@ -2328,7 +2331,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQ_NOTIFY) {
             if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) checkFullScreenAccess();
-            else Toast.makeText(this, "Ohne Benachrichtigungen klingelt der Bär nur, wenn ARC-DNA offen ist.", Toast.LENGTH_LONG).show();
+            else pop("Ohne Benachrichtigungen klingelt der Bär nur, wenn ARC-DNA offen ist.");
             return;
         }
         if (requestCode == REQ_AUDIO) {
@@ -2341,7 +2344,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         } else {
             prefs.edit().putString("headMode", "off").apply();
             paintHeadToggle();
-            Toast.makeText(this, "Ohne Kamera kein Kopf-Scroll.", Toast.LENGTH_SHORT).show();
+            pop("Ohne Kamera kein Kopf-Scroll.");
         }
     }
 
@@ -2526,7 +2529,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putFloat("gazeTop", top).putFloat("gazeMid", mid).putFloat("gazeBottom", bottom).apply();
         endGazeCalibration();
         smoothTilt = mid;
-        Toast.makeText(this, "Blick kalibriert – Neu kalibrieren: Knopf lange drücken", Toast.LENGTH_SHORT).show();
+        pop("Blick kalibriert – Neu kalibrieren: Knopf lange drücken");
     }
 
     /** Manual check before saving: your three positions, then ✓ Übernehmen or ↻ Nochmal. */
@@ -2542,7 +2545,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             basePitch = mid;
             calibFrames = 6;
             smoothTilt = 0;
-            Toast.makeText(this, "Nicken übernommen", Toast.LENGTH_SHORT).show();
+            pop("Nicken übernommen");
         });
     }
 
@@ -2605,7 +2608,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         o.setVisibility(View.GONE);
         o.setOnClickListener(v -> {
             endGazeCalibration();
-            Toast.makeText(this, "Kalibrierung abgebrochen", Toast.LENGTH_SHORT).show();
+            pop("Kalibrierung abgebrochen");
         });
 
         calibDot = new View(this);
@@ -2700,6 +2703,47 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         awayChip.bringToFront();
     }
 
+    private TextView note;
+    private final Runnable hideNote = () -> {
+        if (note != null) note.animate().alpha(0f).setDuration(200).withEndAction(() -> note.setVisibility(View.GONE)).start();
+    };
+
+    /**
+     * Our own toast: the system one cuts text after two lines. Wraps the whole message, stays
+     * longer for longer text, tap = away. Falls back to a toast while the home isn't on screen.
+     */
+    private void pop(CharSequence text) {
+        if (rootFrame == null || isFinishing()) {
+            Toast.makeText(this, text, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (note == null) {
+            note = new TextView(this);
+            note.setTextColor(0xFF1A1A1A);
+            note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            note.setLineSpacing(0, 1.15f);
+            note.setPadding(dp(18), dp(14), dp(18), dp(14));
+            note.setBackground(box(0xFFFAFAF8, rust, 18));
+            note.setElevation(dp(8));
+            note.setOnClickListener(v -> {
+                handler.removeCallbacks(hideNote);
+                hideNote.run();
+            });
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            lp.leftMargin = lp.rightMargin = dp(20);
+            lp.bottomMargin = dp(150);
+            rootFrame.addView(note, lp);
+        }
+        note.setText(text);
+        note.setVisibility(View.VISIBLE);
+        note.bringToFront();
+        note.animate().cancel();
+        note.setAlpha(0f);
+        note.animate().alpha(1f).setDuration(160).start();
+        handler.removeCallbacks(hideNote);
+        handler.postDelayed(hideNote, Math.min(8000, 1800 + text.length() * 55L));
+    }
+
     private void hideAwayChip() {
         if (awayChip != null) awayChip.setVisibility(View.GONE);
     }
@@ -2745,7 +2789,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onError(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        pop(message);
         prefs.edit().putString("headMode", "off").apply();
         paintHeadToggle();
         stopHead();
@@ -2815,7 +2859,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Sends the same anonymous report to the private drop on architect-dna.ch, where Claude reads it. */
     private void uploadDiagnostics() {
         String report = diagnosticsText();
-        Toast.makeText(this, "Diagnose wird gesendet …", Toast.LENGTH_SHORT).show();
+        pop("Diagnose wird gesendet …");
         new Thread(() -> {
             int code = -1;
             try {
@@ -2835,7 +2879,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 DiagLog.log("diag upload failed: " + e.getClass().getSimpleName());
             }
             int result = code;
-            runOnUiThread(() -> Toast.makeText(this, result == 200 ? "Gesendet ✓ — sag Claude: „check the log“" : "Senden fehlgeschlagen (" + result + ") — lang drücken zum Teilen", Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> pop(result == 200 ? "Gesendet ✓ — sag Claude: „check the log“" : "Senden fehlgeschlagen (" + result + ") — lang drücken zum Teilen"));
         }).start();
     }
 
@@ -2959,7 +3003,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }
                 int which = pick - 1;
                 if (which == 0) {
-                    Toast.makeText(this, "Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“", Toast.LENGTH_LONG).show();
+                    pop("Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“");
                     Intent live = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                         .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
                     try {
@@ -2979,13 +3023,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                         }
                     }
                     applyWallpaperIfNeeded();
-                    Toast.makeText(this, "Statisches Wallpaper: hell/dunkel automatisch", Toast.LENGTH_SHORT).show();
+                    pop("Statisches Wallpaper: hell/dunkel automatisch");
                 } else if (which == 2) {
                     prefs.edit().putBoolean("autoWallpaper", false).apply();
-                    Toast.makeText(this, "Wallpaper bleibt, wie es ist", Toast.LENGTH_SHORT).show();
+                    pop("Wallpaper bleibt, wie es ist");
                 } else {
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
-                    Toast.makeText(this, "Hell/Dunkel folgt wieder dem System", Toast.LENGTH_SHORT).show();
+                    pop("Hell/Dunkel folgt wieder dem System");
                 }
             })
             .show();
@@ -3133,7 +3177,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Changing system brightness needs "Modify system settings"; ask once, then it just works. */
     private boolean canWriteSettings() {
         if (Settings.System.canWrite(this)) return true;
-        Toast.makeText(this, "ARC-DNA erlauben, Systemeinstellungen zu ändern – dann nochmal schieben", Toast.LENGTH_LONG).show();
+        pop("ARC-DNA erlauben, Systemeinstellungen zu ändern – dann nochmal schieben");
         open(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
         return false;
     }
@@ -3209,7 +3253,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         voice.say(buddy() == 2 ? "Hüpf!" : "Yip-yip!");
         game.resume();
         startGameNod();
-        Toast.makeText(this, "Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+        pop("Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück");
     }
 
     /* A head bump up = jump: a fast reading vs. a slow baseline; a lift of ~2.5° jumps, re-armed once the head is back. */
@@ -3754,7 +3798,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 boolean ok = ScrollAssistService.lockScreen();
                 DiagLog.log("dino lock: " + (ok ? "locked" : "accessibility service not running"));
                 if (!ok) {
-                    Toast.makeText(MainActivity.this, "Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen)", Toast.LENGTH_LONG).show();
+                    pop("Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen)");
                 }
                 DiagLog.log("dino black hole → lock");
             }
@@ -4162,7 +4206,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (game != null) {
             long now = android.os.SystemClock.uptimeMillis();
             if (now - lastHomePress < 1500) exitGame();
-            else Toast.makeText(this, "Nochmal Home = Fuchsjagd beenden", Toast.LENGTH_SHORT).show();
+            else pop("Nochmal Home = Fuchsjagd beenden");
             lastHomePress = now;
             return;
         }
@@ -4176,7 +4220,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (game != null) {
-            Toast.makeText(this, "3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
+            pop("3× tippen oder 2× Home = zurück");
             return;
         }
         if (settingsSheet != null) closeSettings();
