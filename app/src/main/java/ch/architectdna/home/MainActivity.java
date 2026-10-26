@@ -3062,8 +3062,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int offNow = tz.getOffset(now), offBefore = tz.getOffset(weekAgo);
         if (offNow == offBefore) {
             oldTime.setVisibility(View.GONE);
+            dstOldOffset = Integer.MIN_VALUE;
             return;
         }
+        dstOldOffset = offBefore;
+        oldTime.setTextColor(oldColour());
         // Find the change to the minute (offsets change once in a week).
         long lo = weekAgo, hi = now;
         while (hi - lo > 60_000) {
@@ -3086,15 +3089,63 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         oldTime.setVisibility(View.VISIBLE);
     }
 
+    /** The old (pre-change) time's colour: a warm amber, neutral but clearly not "now". */
+    private int oldColour() {
+        return isNight() ? 0xFFE8B931 : 0xFFB8860B;
+    }
+
+    private int dstOldOffset = Integer.MIN_VALUE;
+    private boolean clockShowsOld, flipArmed;
+
+    /** In the week after a time change the big clock swipes between today's and the old time every 12.5 s. */
+    private final Runnable clockFlip = new Runnable() {
+        @Override
+        public void run() {
+            handler.removeCallbacks(this);
+            flipArmed = false;
+            if (dstOldOffset == Integer.MIN_VALUE || clock == null) {
+                if (clockShowsOld) {
+                    clockShowsOld = false;
+                    updateClock();
+                }
+                return;
+            }
+            clockShowsOld = !clockShowsOld;
+            float d = dp(26);
+            clock.animate().cancel();
+            clock.animate().translationY(-d).alpha(0f).setDuration(200).withEndAction(() -> {
+                updateClock();
+                clock.setTranslationY(d);
+                clock.animate().translationY(0).alpha(1f).setDuration(260)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            }).start();
+            if (homeInFront) {
+                flipArmed = true;
+                handler.postDelayed(this, 12_500);
+            }
+        }
+    };
+
     private void updateClock() {
         Calendar c = Calendar.getInstance();
+        paintOldTime(c);
+        boolean old = clockShowsOld && dstOldOffset != Integer.MIN_VALUE;
+        Calendar shown = c;
+        if (old) {
+            shown = Calendar.getInstance(new java.util.SimpleTimeZone(dstOldOffset, "old"));
+            shown.setTimeInMillis(c.getTimeInMillis());
+        }
         int h = c.get(Calendar.HOUR_OF_DAY);
-        String time = String.format(Locale.ROOT, "%02d:%02d", h, c.get(Calendar.MINUTE));
+        String time = String.format(Locale.ROOT, "%02d:%02d", shown.get(Calendar.HOUR_OF_DAY), shown.get(Calendar.MINUTE));
         SpannableString s = new SpannableString(time);
-        s.setSpan(new ForegroundColorSpan(rust), 2, 3, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (old) s.setSpan(new ForegroundColorSpan(oldColour()), 0, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        else s.setSpan(new ForegroundColorSpan(rust), 2, 3, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         clock.setText(s);
         date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(c.getTime()));
-        paintOldTime(c);
+        if (dstOldOffset != Integer.MIN_VALUE && !flipArmed && homeInFront) {
+            flipArmed = true;
+            handler.postDelayed(clockFlip, 12_500);
+        }
         String hello = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : h < 22 ? "Guten Abend" : "Gute Nacht";
         greet.setText(hello + ", Muharrem.");
 
@@ -4017,6 +4068,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (n % 5 == 0) handler.postDelayed(dinoTick, 1800);
         }
         handler.postDelayed(this::startFaceWatch, 1500);
+        handler.removeCallbacks(clockFlip);
+        flipArmed = dstOldOffset != Integer.MIN_VALUE;
+        if (flipArmed) handler.postDelayed(clockFlip, 12_500);
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
@@ -4066,6 +4120,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         pausedAt = System.currentTimeMillis();
+        handler.removeCallbacks(clockFlip);
+        flipArmed = false;
         homeInFront = false;
         handler.removeCallbacks(dinoTick);
         endDino();

@@ -89,7 +89,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 return;
             }
             // Faster = bigger swipes, closer together (650 ms apart when creeping, 270 ms flat out).
-            long every = Math.round(650 - 380 * Math.min(1f, Math.abs(speed)));
+            // Beyond full speed (the boost after holding the tilt) the swipes also come closer together.
+            long every = Math.round((650 - 380 * Math.min(1f, Math.abs(speed))) / Math.sqrt(Math.max(1f, Math.abs(speed))));
             swipe(speed, Math.min(380, every - 40));
             main.postDelayed(this, every);
         }
@@ -370,6 +371,15 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         }
         if (speed == 0 && ++overN < 3) return;
         float s = MainActivity.nodSpeed(frac);
+        // Held at full tilt for 5 s: it speeds up, +10 % at once, then +10 % a second, up to double.
+        long now = SystemClock.uptimeMillis();
+        if (s >= 0.9f) {
+            if (fullSince == 0) fullSince = now;
+            long held = now - fullSince;
+            if (held > 5000) s *= 1 + Math.min(1f, 0.1f + 0.1f * (held - 5000) / 1000f);
+        } else {
+            fullSince = 0;
+        }
         setSpeed(d > 0 ? -s : s);   // looking up scrolls up
     }
 
@@ -410,7 +420,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         showPill("○ " + message.toUpperCase());
     }
 
+    private long fullSince;
+
     private void setSpeed(float s) {
+        if (s == 0) fullSince = 0;
         boolean resting = paused || SystemClock.uptimeMillis() < pauseUntil;
         if (resting) s = 0;
         if (s != 0 && speed == 0) DiagLog.log("scrolling " + (s > 0 ? "down" : "up"));
@@ -431,7 +444,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         }
         DisplayMetrics dm = getResources().getDisplayMetrics();
         float h = dm.heightPixels, x = dm.widthPixels * 0.5f, y = h * 0.55f;
-        float dist = h * (0.04f + 0.26f * Math.min(1f, Math.abs(s)));
+        float dist = Math.min(h * 0.48f, h * (0.04f + 0.26f * Math.min(1f, Math.abs(s))) * (float) Math.sqrt(Math.max(1f, Math.abs(s))));
         Path path = new Path();
         path.moveTo(x, y);
         path.lineTo(x, s > 0 ? y - dist : y + dist);   // finger up = content scrolls down
