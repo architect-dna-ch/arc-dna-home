@@ -242,9 +242,11 @@ public class ArcWallpaper extends WallpaperService {
             for (float y = 40 * s; y < height; y += cell) lensLine(c, 0, y, width, y, false);
 
             // The cube, as on the website wallpaper, but real 3D: two fingers on the home screen turn it.
+            // The orb's rim and specks first, then the cube: its edges and letters stay on top (the blue
+            // circles ran through the letters).
+            orbFront(c, dark, t, s);
             stepCube();
             drawCube(c, width / 2f, height * 0.52f, cubeScale, ink, rust);
-            orbFront(c, dark, t, s);
 
             // Rave / beat rings.
             beat *= 0.9f;

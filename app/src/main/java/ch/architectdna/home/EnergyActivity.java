@@ -329,7 +329,7 @@ public class EnergyActivity extends Activity {
             int n = 0;
             for (BatteryLog.Drain x : list) {
                 if (n++ >= (k == 0 ? 6 : 4)) break;
-                drains.addView(drainRow(x, max, n == 1 && x.rate() > 4));
+                drains.addView(drainRow(x, max, n == 1 && list.size() > 1 && x.rate() > 4));     // ⚠ only against others
             }
         }
     }
