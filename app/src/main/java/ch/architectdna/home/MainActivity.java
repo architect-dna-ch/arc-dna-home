@@ -1362,7 +1362,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 if (getPackageName().equals(ri.activityInfo.packageName) && !FreqActivity.class.getName().equals(ri.activityInfo.name)
                     && !GlobusActivity.class.getName().equals(ri.activityInfo.name)
                     && !NexusActivity.class.getName().equals(ri.activityInfo.name)
-                    && !BoardActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !BoardActivity.class.getName().equals(ri.activityInfo.name)
+                    && !RecorderActivity.class.getName().equals(ri.activityInfo.name)
+                    && !GalleryActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -4282,7 +4284,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int id = FreqActivity.class.getName().equals(activity) ? R.drawable.ic_line_freq
             : GlobusActivity.class.getName().equals(activity) ? R.drawable.ic_line_globus
             : NexusActivity.class.getName().equals(activity) ? R.drawable.ic_line_nexus
-            : BoardActivity.class.getName().equals(activity) ? R.drawable.ic_line_board : 0;
+            : BoardActivity.class.getName().equals(activity) ? R.drawable.ic_line_board
+            : RecorderActivity.class.getName().equals(activity) ? R.drawable.ic_line_recorder
+            : GalleryActivity.class.getName().equals(activity) ? R.drawable.ic_line_gallery : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4291,7 +4295,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
             {"Nexus Breach", NexusActivity.class, R.drawable.ic_line_nexus, R.drawable.ic_nexus},
-            {"Dr. Overloaded", BoardActivity.class, R.drawable.ic_line_board, R.drawable.ic_board}};
+            {"Dr. Overloaded", BoardActivity.class, R.drawable.ic_line_board, R.drawable.ic_board},
+            {"Rekorder", RecorderActivity.class, R.drawable.ic_line_recorder, R.drawable.ic_recorder},
+            {"Galerie", GalleryActivity.class, R.drawable.ic_line_gallery, R.drawable.ic_gallery}};
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;

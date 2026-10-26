@@ -24,6 +24,11 @@
     <!-- Music card: the audio visualizer reads the phone's output mix (Android files this under
          RECORD_AUDIO; nothing is recorded or stored). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Galerie: photos on the globe (Android 14+ also works with "only selected photos"). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Music card: the Bluetooth speaker's battery level ("Nearby devices"). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -127,6 +132,38 @@
             </intent-filter>
         </activity>
 
+        <!-- Rekorder: voice recordings, keeps recording with the screen off. -->
+        <activity
+            android:name=".RecorderActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_recorder"
+            android:label="Rekorder"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_recorder"
+            android:taskAffinity="ch.architectdna.home.recorder"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Galerie: photos on a globe, one region per month. -->
+        <activity
+            android:name=".GalleryActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_gallery"
+            android:label="Galerie"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_gallery"
+            android:taskAffinity="ch.architectdna.home.gallery"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Whiteboard: boards with pseudo doctor titles ("Dr. Overloaded"). -->
         <activity
             android:name=".BoardActivity"
@@ -182,6 +219,11 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".RecorderService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".FreqService"

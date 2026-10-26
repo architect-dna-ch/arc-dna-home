@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rekorder launcher icon in ARC-DNA style: a microphone, rust record dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M38,24a10,10 0 0,1 20,0v22a10,10 0 0,1 -20,0z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M30,44a18,18 0 0,0 36,0M48,62v10M38,74h20" />
+    <path android:fillColor="#B5271E" android:pathData="M66,22a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+</vector>

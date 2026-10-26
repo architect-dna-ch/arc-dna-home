@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Galerie launcher icon: a globe with small photo frames on it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3"
+        android:pathData="M18,48 A30,30 0 1,0 78,48 A30,30 0 1,0 18,48 Z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="2" android:pathData="M48,18 C36,30 36,66 48,78 M48,18 C60,30 60,66 48,78" />
+    <path android:fillColor="#B5271E" android:pathData="M52,30h14v12h-14z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M30,46h12v10h-12z" />
+    <path android:fillColor="#B5271E" android:pathData="M50,56h10v9h-10z" />
+</vector>
