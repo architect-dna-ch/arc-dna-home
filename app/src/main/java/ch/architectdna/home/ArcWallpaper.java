@@ -423,6 +423,12 @@ public class ArcWallpaper extends WallpaperService {
             c.restore();
 
             String[] line = LINES[slot][(int) (cycle % LINES[slot].length)];
+            // Easter egg: an assistant opened over the lock screen in the last 12 s → they talk about it.
+            String who = ScrollAssistService.assistant;
+            if (System.currentTimeMillis() - ScrollAssistService.assistantAt < 12_000 && !who.isEmpty()) {
+                String[][] egg = ASSISTANT.get(who);
+                if (egg != null) line = egg[slot];
+            }
             if (k < 1.2f || k > 14f) return;
             boolean translated = k > 5f;
             // The robot translator gets it wrong about every third time, then corrects itself.
@@ -479,6 +485,27 @@ public class ArcWallpaper extends WallpaperService {
                 float rs = size * 0.42f;
                 robot(c, box.right - rs * 1.1f, box.top - rs * 0.62f, rs, dark, glow, fixed && k < 10.6f, k);
             }
+        }
+
+        /** What each character says when Gemini / Claude / ChatGPT shows up (gibberish, translation). */
+        private static final java.util.Map<String, String[][]> ASSISTANT = new java.util.HashMap<>();
+
+        static {
+            ASSISTANT.put("gemini", new String[][]{
+                {"Grrr… blinke-blink?", "Gemini? Ich dachte, ich bin hier der Bunte."},
+                {"Nyeeoow-PIT!", "Gemini im Rückspiegel. Ich lass ihn nicht vorbei."},
+                {"Mümmel… bling?", "Ein Stern mit Glitzer! Kann der Karotten finden?"},
+                {"Yip-yip-hmm?", "Frag Gemini, was der Fuchs sagt. Ich warte."}});
+            ASSISTANT.put("claude", new String[][]{
+                {"Brumm-brumm, Chef!", "Claude ist da. Alle so tun, als wär der Code fertig."},
+                {"Vroom… tak.", "Der Ingenieur! Bitte keinen neuen Boxenstopp."},
+                {"Tipp-tapp-psst!", "Claude hat mich gezeichnet. Ohren zu gross, danke."},
+                {"Gekk! Gekk!", "Hallo Erbauer. Der Dino war nicht meine Idee."}});
+            ASSISTANT.put("chatgpt", new String[][]{
+                {"Hrrmpf!", "Die Konkurrenz. Ich schlaf weiter."},
+                {"Pfft-pfft.", "Andere Box, anderes Team."},
+                {"Snff?", "Riecht nach fremder KI."},
+                {"Yip…?", "Ich sag nichts ohne meinen Anwalt."}});
         }
 
         /** Things the robot thinks they said, before it notices. */

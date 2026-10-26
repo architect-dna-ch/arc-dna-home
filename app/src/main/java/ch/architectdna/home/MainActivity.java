@@ -3615,6 +3615,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return out;
     }
 
+    /** Easter egg: Gemini (or Claude, ChatGPT) opens over the home screen and the buddy notices. */
+    private void assistantArrived(String who) {
+        if (!homeInFront || isFinishing() || bubble == null || fox == null || game != null) return;
+        String[] lines = who.equals("claude")
+            ? new String[]{"Claude! Der hat mich gebaut. Benimm dich.", "Psst – Claude ist da. Tu so, als wär alles fertig.", "Oh, der Chef. Ich war nur kurz Pause."}
+            : who.equals("chatgpt")
+            ? new String[]{"Die Konkurrenz? Hier drin?!", "Ich sag nichts. Ich bin nur Deko."}
+            : new String[]{"Psst, Gemini hört mit. Ich sag nix.", "Gemini! Frag mal, ob der Dino echt ist.", "Ein Kollege! Aber ich bin der mit dem Fell.",
+                "Hey Gemini – nicht meine Kacheln essen, das macht schon der Dino."};
+        handler.postDelayed(() -> {
+            if (!homeInFront || bubble == null) return;
+            say(lines[random.nextInt(lines.length)], 3600);
+            if (voice != null) voice.say("Yip?");
+            fox.animate().cancel();
+            fox.animate().translationY(-dp(18)).setDuration(160).withEndAction(() ->
+                fox.animate().translationY(0).setDuration(260).setInterpolator(new android.view.animation.BounceInterpolator()).start()).start();
+        }, 700);
+    }
+
     private void say(String s, long ms) {
         bubble.setText(s);
         bubble.setVisibility(View.VISIBLE);
@@ -3951,6 +3970,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        ScrollAssistService.onAssistant = this::assistantArrived;
         if (crumplePending) {
             crumplePending = false;
             // Only after real use (not a launch that bounced straight back).

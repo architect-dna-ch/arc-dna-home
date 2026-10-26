@@ -98,6 +98,41 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     /** Same process as the launcher, so it can say "home is in front" without relying on events. */
     static ScrollAssistService instance;
 
+    /* ---------- Easter egg: another assistant pops up over the home or the lock screen ---------- */
+
+    /** Which assistant was last seen ("gemini", "claude", "chatgpt") and when (wall clock). */
+    static volatile String assistant = "";
+    static volatile long assistantAt;
+    /** The home screen listens to react with the buddy. */
+    static java.util.function.Consumer<String> onAssistant;
+
+    private static String assistantOf(String pkg) {
+        switch (pkg) {
+            case "com.google.android.googlequicksearchbox":     // Gemini overlay, Circle to Search
+            case "com.google.android.apps.bard":
+                return "gemini";
+            case "com.anthropic.claude":
+                return "claude";
+            case "com.openai.chatgpt":
+                return "chatgpt";
+            default:
+                return null;
+        }
+    }
+
+    private void noteAssistant(String pkg) {
+        String who = assistantOf(pkg);
+        if (who == null) return;
+        long now = System.currentTimeMillis();
+        boolean fresh = !who.equals(assistant) || now - assistantAt > 20_000;
+        assistant = who;
+        assistantAt = now;
+        if (!fresh) return;
+        DiagLog.log("assistant on top: " + who);
+        java.util.function.Consumer<String> l = onAssistant;
+        if (l != null) main.post(() -> l.accept(who));
+    }
+
     /** The launcher came to the front: no pill and no camera here (it frees the camera for home). */
     /** Lock the phone now (the accessibility "lock screen" action); false if the service isn't on. */
     static boolean lockScreen() {
@@ -169,6 +204,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         String pkg = event.getPackageName().toString();
         int type = event.getEventType();
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            noteAssistant(pkg);
             // Overlays, dialogs and keyboards report windows too, for a moment; only real apps
             // (with a launcher icon) that stay in front ~0.5 s may switch the mode.
             if (pkg.equals("com.android.systemui")) {
