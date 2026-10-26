@@ -309,9 +309,11 @@ public class ArcWallpaper extends WallpaperService {
          * around with the clock size and notifications, so the frame kept landing in the wrong place.)
          */
         private void musicFrame(Canvas c, float s, float t) {
-            float in = 4 * s;
+            // A little in from the glass, with the corners rounder than the reported radius so the
+            // whole curve stays visible on the physical corner.
+            float in = 8 * s;
             box.set(in, in, width - in, height - in);
-            float r = screenCorner() - in;
+            float r = screenCorner() * 1.2f - in;
             int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
             android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.4f,
                 hues, null, android.graphics.Shader.TileMode.REPEAT);
