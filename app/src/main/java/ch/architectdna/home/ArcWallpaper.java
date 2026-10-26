@@ -420,7 +420,7 @@ public class ArcWallpaper extends WallpaperService {
             // Slide in during the first second, out during the last.
             float in = Math.min(1f, k) * Math.min(1f, 15f - k);
             float size = Math.min(width, height) * 0.17f;
-            float x = width * 0.06f - (1 - in) * size * 1.4f, y = height * 0.85f;   // between fingerprint and the bottom shortcuts
+            float x = width * 0.06f - (1 - in) * size * 1.4f, y = height * 0.885f;   // under "See what's playing", above the shortcuts
             float bob = (float) Math.sin(k * 6) * size * 0.03f * (1 + beat);
             c.save();
             c.translate(x, y + bob);
