@@ -216,6 +216,22 @@
             </intent-filter>
         </activity>
 
+        <!-- VPN: ARC-DNA's face for Proton VPN (status, IP, country). -->
+        <activity
+            android:name=".VpnActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_vpn"
+            android:label="VPN"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_vpn"
+            android:taskAffinity="ch.architectdna.home.vpn"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Galerie: photos on a globe, one region per month. -->
         <activity
             android:name=".GalleryActivity"

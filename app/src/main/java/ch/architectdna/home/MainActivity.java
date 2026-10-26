@@ -1381,7 +1381,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     && !CameraActivity.class.getName().equals(ri.activityInfo.name)
                     && !DecibelActivity.class.getName().equals(ri.activityInfo.name)
                     && !PlayerActivity.class.getName().equals(ri.activityInfo.name)
-                    && !EnergyActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !EnergyActivity.class.getName().equals(ri.activityInfo.name)
+                    && !VpnActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -4713,7 +4714,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : CameraActivity.class.getName().equals(activity) ? R.drawable.ic_line_arccam
             : DecibelActivity.class.getName().equals(activity) ? R.drawable.ic_line_decibel
             : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player
-            : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy : 0;
+            : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy
+            : VpnActivity.class.getName().equals(activity) ? R.drawable.ic_line_vpn : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4728,7 +4730,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"ARC Kamera", CameraActivity.class, R.drawable.ic_line_arccam, R.drawable.ic_arccam},
             {"Dezibel", DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel},
             {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player},
-            {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy}};
+            {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy},
+            {"VPN", VpnActivity.class, R.drawable.ic_line_vpn, R.drawable.ic_vpn},
+            // Not built yet: greyed out, a tap says what's coming.
+            {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -4742,7 +4747,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             tileTint = PURPLE;
             View t = tile((String) a[0], getDrawable((Integer) a[2]), 28);
             tileTint = 0;
-            t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
+            if (a[1] == null) {
+                t.setAlpha(0.35f);
+                t.setOnClickListener(v -> pop("Kommt bald: dein eigenes ARC-DNA-VPN mit deinen Proton-Servern (WireGuard) – "
+                    + "verbinden direkt hier, ohne Proton-App."));
+            } else {
+                t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
+            }
             row.addView(t, weighted(i % cols != 0));
         }
         for (int i = own.length % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));

@@ -50,6 +50,7 @@ public class EnergyActivity extends Activity {
     private LinearLayout panel;
     private TextView big, state, details, saverState, torchState, zenState, soundState;
     private LinearLayout sound;
+    private TextView vpnState;
     private Curve curve;
     private LinearLayout drains;
     private boolean torchOn;
@@ -119,6 +120,7 @@ public class EnergyActivity extends Activity {
         soundState = tile(grid, "🔊", "Laut", v -> toggleSound());
         zenState = tile(grid, "🌙", "Ruhe", v -> toggleZen());
         tile(grid, "📊", "System", v -> open(new Intent(Intent.ACTION_POWER_USAGE_SUMMARY)));
+        vpnState = tile(grid, "🛡", "VPN", v -> open(new Intent(this, VpnActivity.class)));
 
         // Brightness.
         LinearLayout bl = new LinearLayout(this);
@@ -283,6 +285,9 @@ public class EnergyActivity extends Activity {
         boolean zen = nm != null && nm.getCurrentInterruptionFilter() > android.app.NotificationManager.INTERRUPTION_FILTER_ALL;
         zenState.setTextColor(zen ? amber : ink2);
         zenState.setText(zen ? "RUHE AN" : "RUHE");
+        boolean vpn = VpnActivity.vpnOn(getSystemService(android.net.ConnectivityManager.class));
+        vpnState.setTextColor(vpn ? green : ink2);
+        vpnState.setText(vpn ? "VPN AN" : "VPN");
     }
 
     private double lastRate = -1;

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- VPN launcher icon: a shield with a rust check. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3.5" android:strokeLineJoin="round"
+        android:pathData="M48,18l24,9c0,24 -8,42 -24,51c-16,-9 -24,-27 -24,-51z" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M37,48l8,8 15,-16" />
+</vector>
