@@ -2935,8 +2935,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 continue;
             }
             // A tall block (the open Mediathek) folds row by row, not as one piece.
+            // The music card is never frosted, not even row by row (clear anything left from before).
+            if (block == musicView && block instanceof ViewGroup) {
+                ViewGroup g = (ViewGroup) block;
+                for (int k = 0; k < g.getChildCount(); k++) frost(g.getChildAt(k), 0);
+            }
             if (isLabel && block instanceof LinearLayout && block.getVisibility() == View.VISIBLE
-                && block.getHeight() > scroll.getHeight() / 2) {
+                && block != musicView && block.getHeight() > scroll.getHeight() / 2) {
                 frost(child, 0);
                 frost(block, 0);
                 LinearLayout rows = (LinearLayout) block;

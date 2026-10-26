@@ -441,30 +441,33 @@ final class FoxRunView extends View {
         paint.setTextSize(dp(11));
         String hint = crash > 0 ? "EEEK! NOCHMAL …" : "TIPPEN ODER KOPF HOCH = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK";
         float hintW = paint.measureText(hint);
-        // Narrow (portrait) screen: the hint goes under the score instead of next to the title.
-        if (w - right - hintW < left + dp(150)) c.drawText(hint, left, top + dp(76), paint);
-        else c.drawText(hint, w - right - hintW, top + dp(13), paint);
+        // One left-aligned column: title, distance, then record (and carrots) under it.
         paint.setLetterSpacing(0.02f);
         paint.setTextSize(dp(34));
         paint.setColor(ink);
-        String run = String.format(Locale.ROOT, "%05d M", (int) distance);
-        c.drawText(run, left, top + dp(52), paint);
-        float runW = paint.measureText(run);
+        c.drawText(String.format(Locale.ROOT, "%05d M", (int) distance), left, top + dp(52), paint);
         paint.setLetterSpacing(0.14f);
         paint.setTextSize(dp(12));
         paint.setColor(distance > best && best > 0 ? rust : ink3);
-        c.drawText(distance > best && best > 0 ? "NEUER REKORD!" : String.format(Locale.ROOT, "REKORD %05d M", best),
-            left + runW + dp(16), top + dp(52), paint);
+        String rec = distance > best && best > 0 ? "NEUER REKORD!" : String.format(Locale.ROOT, "REKORD %05d M", best);
+        c.drawText(rec, left, top + dp(72), paint);
         if (bunny) {
+            float rw = paint.measureText(rec + "   ");
             paint.setColor(0xFFF29A1F);
-            c.drawText("▼ " + carrotCount + " KAROTTEN", left + runW + dp(16), top + dp(34), paint);
-            if (sceneBanner > 0) {
-                paint.setTextAlign(Paint.Align.CENTER);
-                paint.setTextSize(dp(28));
-                paint.setColor(alpha(ink, (int) (255 * Math.min(1, sceneBanner))));
-                c.drawText("— " + SCENES[Math.max(0, scene)] + " —", w / 2, getHeight() * 0.42f, paint);
-                paint.setTextAlign(Paint.Align.LEFT);
-            }
+            c.drawText("▼ " + carrotCount + " KAROTTEN", left + rw, top + dp(72), paint);
+        }
+        paint.setColor(ink3);
+        paint.setTextSize(dp(11));
+        paint.setLetterSpacing(0.16f);
+        // Narrow (portrait) screen: the hint goes under the column instead of top right.
+        if (w - right - hintW < left + dp(320)) c.drawText(hint, left, top + dp(92), paint);
+        else c.drawText(hint, w - right - hintW, top + dp(13), paint);
+        if (bunny && sceneBanner > 0) {
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTextSize(dp(28));
+            paint.setColor(alpha(ink, (int) (255 * Math.min(1, sceneBanner))));
+            c.drawText("— " + SCENES[Math.max(0, scene)] + " —", w / 2, getHeight() * 0.42f, paint);
+            paint.setTextAlign(Paint.Align.LEFT);
         }
     }
 
