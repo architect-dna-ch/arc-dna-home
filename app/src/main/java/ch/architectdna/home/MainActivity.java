@@ -953,7 +953,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 2 s" : "Aus",
             v -> prefs.edit().putBoolean("dinoLock", !prefs.getBoolean("dinoLock", true)).apply(), v -> {
                 closeSettings();
-                handler.postDelayed(() -> startDino(true), 450);
+                handler.postDelayed(() -> {
+                    startDino(true);
+                    if (dino != null) dino.test = true;
+                }, 450);
                 return true;
             });
         settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 2 Min" : "Aus",

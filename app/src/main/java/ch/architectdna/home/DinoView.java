@@ -46,6 +46,8 @@ final class DinoView extends View {
     }
 
     private boolean vacuum, locked, look, dead;
+    /** Started by hand from the settings: plays the whole black hole even though you're looking. */
+    boolean test;
 
     /* Looked back in time: the dino runs off and hides behind a bush; tap the bush and it plays dead. */
     private float scaredAt = -1, deadAt = -1, scaredFromX;
@@ -53,7 +55,7 @@ final class DinoView extends View {
 
     /** You looked at the screen again. In the first 2 s of the black hole that scares the dino off. */
     void lookedBack() {
-        if (!vacuum || scaredAt >= 0 || locked || start < 0) return;
+        if (!vacuum || test || scaredAt >= 0 || locked || start < 0) return;
         float t = (SystemClock.uptimeMillis() - start) / 1000f;
         if (t > 2.0f) return;               // too late: the sucking has started
         scaredAt = t;
@@ -251,6 +253,7 @@ final class DinoView extends View {
                 host.stomp();
             }
             drawSide(c, x, ground, k, 0, t, true, true);
+            postInvalidateOnAnimation();      // keep walking in (this frame request was missing)
             return;
         }
         // 1.4–2.6 s: turns to you and comes up to the glass (like the bin), mouth opening wide.
@@ -315,7 +318,7 @@ final class DinoView extends View {
             float d = t - deadAt;
             // Falls over onto its back in front of the bush, legs up, X eyes.
             float fall = ease(Math.min(1, d / 0.5f));
-            drawBush(c, bx, ground, k, 0);
+            drawBush(c, bx, ground, k, 1);
             c.save();
             c.rotate(180 * fall, bx - 20 * k, ground - 47 * k * fall);
             dead = fall > 0.5f;
