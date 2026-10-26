@@ -950,7 +950,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
-        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 2 s" : "Aus",
+        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 5 s" : "Aus",
             v -> prefs.edit().putBoolean("dinoLock", !prefs.getBoolean("dinoLock", true)).apply(), v -> {
                 closeSettings();
                 handler.postDelayed(() -> {
@@ -2731,12 +2731,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             faceLostAt = now;
             DiagLog.log("looking away");
         }
-        if (dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
-            long left = Math.max(1, 2 - (now - faceLostAt) / 1000);
+        if (dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
+            long left = Math.max(1, 5 - (now - faceLostAt) / 1000);
             showAwayChip("◉ WEGGESCHAUT · DINO IN " + left);
         }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
-        if (now - faceLostAt > 2000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
+        if (now - faceLostAt > 5000 && dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
             hideAwayChip();
             startDino(true);
             if (dino != null) lastDinoAt = now;
@@ -3239,7 +3239,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (head == null) head = new HeadTracker(this, this);
         nodFast = Float.NaN;
         nodArmed = true;
-        head.start(HeadTracker.Mode.NOD);
+        hideAwayChip();
+        // Restart the camera once the screen has turned to landscape: the face watcher's camera was set up
+        // for portrait, its frames came in sideways and no face (no nod) was found.
+        head.stop();
+        handler.postDelayed(() -> {
+            if (game != null && head != null) {
+                head.setDebug(false);
+                head.start(HeadTracker.Mode.NOD);
+            }
+        }, 900);
     }
 
     private void exitGame() {
