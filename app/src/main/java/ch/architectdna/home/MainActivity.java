@@ -497,6 +497,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 hop();
                 MainActivity.this.say(text, 1800);
             }
+
+            @Override
+            public void pickDj() {
+                showDjPicker();
+            }
         });
         musicView = music.view();
         foldable("Musik", "music", true, musicView, dp(26));
@@ -3707,6 +3712,92 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .withEndAction(() -> bubble.setVisibility(View.GONE)).start();
     }
 
+    /* ================= Buddy DJs: pick who puts on the music ================= */
+
+    private DjPicker djPicker;
+
+    private void showDjPicker() {
+        if (djPicker != null || rootFrame == null) return;
+        djPicker = new DjPicker(this, MusicStats.favoriteArtist(this), new DjPicker.Listener() {
+            @Override
+            public void onPick(DjPicker.Dj dj) {
+                DiagLog.log("dj: " + dj.name + " (" + dj.query + ")");
+                playFromSearch(dj.query);
+                handler.postDelayed(() -> {
+                    removeDjPicker();
+                    say(dj.name + " legt auf: " + dj.kind.toLowerCase(Locale.GERMAN) + " 🎧", 2600);
+                }, 700);
+            }
+
+            @Override
+            public void onClose() {
+                removeDjPicker();
+            }
+        });
+        rootFrame.addView(djPicker, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void removeDjPicker() {
+        if (djPicker == null) return;
+        rootFrame.removeView(djPicker);
+        djPicker = null;
+    }
+
+    /**
+     * Asks the music app to search and play right away (the same way voice assistants do); YouTube
+     * Music first, then Spotify, else any app that can. ARC-DNA comes back to the front after a moment.
+     */
+    private void playFromSearch(String query) {
+        Intent i = new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+            .putExtra(android.app.SearchManager.QUERY, query)
+            .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        for (String pkg : new String[]{"com.google.android.apps.youtube.music", "com.spotify.music"}) {
+            try {
+                getPackageManager().getPackageInfo(pkg, 0);
+                i.setPackage(pkg);
+                break;
+            } catch (PackageManager.NameNotFoundException ignored) {
+            }
+        }
+        try {
+            startActivity(i);
+        } catch (RuntimeException e) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(query)))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException ignored) {
+                pop("Keine Musik-App gefunden.");
+                return;
+            }
+        }
+        // Back home once the music runs (the home button via the accessibility service, else ourselves).
+        handler.postDelayed(() -> {
+            if (homeInFront) return;
+            if (ScrollAssistService.instance == null || !ScrollAssistService.instance.performGlobalAction(
+                android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)) {
+                try {
+                    startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (RuntimeException ignored) {
+                }
+            }
+        }, 3200);
+    }
+
+    /** Now and then, with nothing playing: the buddy offers a DJ (at most every 3 h, daytime only). */
+    private void suggestDj() {
+        if (!homeInFront || dino != null || game != null || djPicker != null) return;
+        AudioManager am = getSystemService(AudioManager.class);
+        if (am == null || am.isMusicActive()) return;
+        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        long now = System.currentTimeMillis();
+        if (h < 7 || h >= 23 || now - prefs.getLong("djSuggestAt", 0) < 3 * 3600_000L) return;
+        prefs.edit().putLong("djSuggestAt", now).apply();
+        String[] lines = {"🎧 Stille? Soll ich auflegen? Musik-Titel antippen.", "🎧 Ich hätt da was. Titel im Musik-Kärtchen antippen.",
+            "🎧 DJ gesucht – tipp den Musik-Titel an."};
+        say(lines[random.nextInt(lines.length)], 3600);
+    }
+
     /* ================= Dino visit: every 5 minutes on the home screen ================= */
 
     private static final long DINO_EVERY = 2 * 60_000L;
@@ -4066,6 +4157,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             int n = prefs.getInt("homeReturns", 0) + 1;
             prefs.edit().putInt("homeReturns", n).apply();
             if (n % 5 == 0) handler.postDelayed(dinoTick, 1800);
+            else handler.postDelayed(this::suggestDj, 2600);
         }
         handler.postDelayed(this::startFaceWatch, 1500);
         handler.removeCallbacks(clockFlip);
@@ -4333,6 +4425,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (djPicker != null) {
+            djPicker.close();
+            return;
+        }
         if (game != null) {
             pop("3× tippen oder 2× Home = zurück");
             return;

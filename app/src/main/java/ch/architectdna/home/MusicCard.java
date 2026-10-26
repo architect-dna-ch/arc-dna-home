@@ -58,6 +58,10 @@ final class MusicCard {
 
         /** Short message for the fox's bubble. */
         void say(String text);
+
+        /** Nothing playing and the title tapped: let a buddy DJ pick the music. */
+        default void pickDj() {
+        }
     }
 
     private static final int BARS = 28;
@@ -119,7 +123,10 @@ final class MusicCard {
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(dp(12), 0, 0, 0);
         title = label(15, ink, true);
-        title.setOnClickListener(v -> openPlayer());
+        title.setOnClickListener(v -> {
+            if (controller == null || controller.getMetadata() == null) host.pickDj();
+            else openPlayer();
+        });
         artist = label(13, ink2, false);
         source = label(10, ink3, true);
         source.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -807,7 +814,7 @@ final class MusicCard {
         MediaMetadata meta = controller == null ? null : controller.getMetadata();
         if (meta == null) {
             title.setText(audio.isMusicActive() ? "Musik läuft" : "Nichts läuft");
-            artist.setText(hasAccess() ? "▶ setzt die letzte Musik fort" : "▶ ⏮ ⏭ steuern die aktuelle Musik-App");
+            artist.setText("🎧 Titel antippen = DJ wählen · ▶ = letzte Musik");
             source.setText("");
             art.setImageResource(R.drawable.ic_music);
             art.setScaleType(ImageView.ScaleType.CENTER);

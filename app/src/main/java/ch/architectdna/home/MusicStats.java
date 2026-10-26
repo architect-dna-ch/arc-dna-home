@@ -217,6 +217,25 @@ final class MusicStats {
         return prefs(c).getInt("musicTracks:" + d, 0) + BtSync.peer(c).getInt("musicTracks:" + d, 0);
     }
 
+    /** The most played artist of the last 7 days (own and partner device), or null. */
+    static String favoriteArtist(Context c) {
+        Map<String, Integer> all = new java.util.HashMap<>();
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < 7; i++) {
+            String d = day(now - i * 86_400_000L);
+            for (Map.Entry<String, Integer> en : artists(prefs(c), d).entrySet()) all.merge(en.getKey(), en.getValue(), Integer::sum);
+        }
+        String best = null;
+        int max = 0;
+        for (Map.Entry<String, Integer> en : all.entrySet()) {
+            if (en.getValue() > max && !en.getKey().trim().isEmpty()) {
+                max = en.getValue();
+                best = en.getKey();
+            }
+        }
+        return best;
+    }
+
     /** Up to three of today's artists, most played first. */
     static List<String> topArtists(Context c) {
         String d = day(System.currentTimeMillis());
