@@ -264,8 +264,7 @@ public class PlayerActivity extends Activity {
             disk.set(art, t != null ? t : "", colourOf(art));
         }
         PlaybackState s = controller == null ? null : controller.getPlaybackState();
-        boolean playing = s != null && s.getState() == PlaybackState.STATE_PLAYING;
-        playBtn.setText(playing ? "❚❚" : "▶");
+        paintPlay();
         // The app's own extra buttons: like, shuffle, repeat … whatever it offers.
         actions.removeAllViews();
         if (s != null) {
@@ -334,14 +333,32 @@ public class PlayerActivity extends Activity {
         return r;
     }
 
+    /** Playing (or about to: buffering, connecting) → pause sign; otherwise play. */
+    private boolean isPlaying() {
+        PlaybackState s = controller == null ? null : controller.getPlaybackState();
+        if (s == null) return false;
+        int st = s.getState();
+        return st == PlaybackState.STATE_PLAYING || st == PlaybackState.STATE_BUFFERING || st == PlaybackState.STATE_CONNECTING
+            || st == PlaybackState.STATE_FAST_FORWARDING || st == PlaybackState.STATE_REWINDING;
+    }
+
+    private long toggledAt;
+
+    private void paintPlay() {
+        if (SystemClock.uptimeMillis() - toggledAt < 700) return;      // give the app a moment to follow the tap
+        String want = isPlaying() ? "❚❚" : "▶";
+        if (!want.contentEquals(playBtn.getText())) playBtn.setText(want);
+    }
+
     private void togglePlay() {
         if (controller == null) {
             openDj();
             return;
         }
-        PlaybackState s = controller.getPlaybackState();
-        if (s != null && s.getState() == PlaybackState.STATE_PLAYING) controller.getTransportControls().pause();
+        if (isPlaying()) controller.getTransportControls().pause();
         else controller.getTransportControls().play();
+        playBtn.setText(isPlaying() ? "▶" : "❚❚");      // answer at once; the tick corrects it if the app disagrees
+        toggledAt = SystemClock.uptimeMillis();
     }
 
     private void openApp() {
@@ -439,6 +456,7 @@ public class PlayerActivity extends Activity {
         @Override
         public void run() {
             seek.invalidate();
+            paintPlay();          // follows the real state, also when the app changes it without telling us
             main.postDelayed(this, 33);
         }
     };
