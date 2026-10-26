@@ -159,7 +159,9 @@ final class EdgeLight extends View implements SensorEventListener {
         rect.set(in, in, w - in, h - in);
         rim.setStrokeWidth(dp(2));
         rim.setAlpha((int) (a * 0.7f));
-        // Exactly the glass: the display's own corner radius, less the inset (so the line runs parallel to it).
-        c.drawRoundRect(rect, Math.max(0, r - in), Math.max(0, r - in), rim);
+        // The glass curves wider than the radius Android reports (the reported one sits inside the
+        // curve), so the line uses 1.3× of it to hug the physical corner.
+        float rr = Math.max(0, r * 1.3f - in);
+        c.drawRoundRect(rect, rr, rr, rim);
     }
 }
