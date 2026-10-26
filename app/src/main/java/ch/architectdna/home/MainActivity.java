@@ -624,6 +624,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Mirror LEDs in the display corners when it's too dark for head / eye scrolling.
         edgeLight = new EdgeLight(this, null);
         android.content.IntentFilter uf = new android.content.IntentFilter(Intent.ACTION_USER_PRESENT);
+        uf.addAction(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(unlockReceiver, uf, RECEIVER_NOT_EXPORTED);
         else registerReceiver(unlockReceiver, uf);
         if (CALIBRATE_NOD.equals(getIntent().getAction())) handler.postDelayed(() -> calibrate("nod"), 600);
@@ -698,6 +699,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private View searchRow() {
         LinearLayout row = new LinearLayout(this);
+        row.setPadding(0, 0, 0, dp(4));       // room for the field's lower edge (it was clipped)
+        row.setClipToPadding(false);
         webQuery = field("Suchen…");
         webQuery.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         webQuery.setOnEditorActionListener((v, actionId, event) -> {
@@ -1785,6 +1788,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) maybePlayUnlock();
         if (hasFocus) hideNavBar();
     }
 
@@ -3532,11 +3536,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (System.currentTimeMillis() - leftAt > 900 && game == null && ghosts == null) rootFrame.post(this::playCrumple);
         }
         hideNavBar();
-        if (unlockPending) {
-            unlockPending = false;
-            // Only right after the unlock (home behind the lock screen), not later when coming back from an app.
-            if (android.os.SystemClock.uptimeMillis() - unlockAt < 2500) rootFrame.postDelayed(this::playUnlock, 120);
-        }
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
@@ -3620,20 +3619,40 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     static final String CALIBRATE_NOD = "ch.architectdna.home.CALIBRATE_NOD";
     private UnlockView unlockView;
-    private boolean unlockPending;
     private long unlockAt;
 
     private final BroadcastReceiver unlockReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
-            unlockPending = true;
-            unlockAt = android.os.SystemClock.uptimeMillis();
-            if (hasWindowFocus() && rootFrame != null) {
-                unlockPending = false;
-                rootFrame.postDelayed(MainActivity.this::playUnlock, 80);
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+                lockedSinceOff = true;
+                unlockAt = 0;
+                return;
             }
+            unlockAt = android.os.SystemClock.uptimeMillis();
+            maybePlayUnlock();
         }
     };
+
+    private boolean lockedSinceOff;
+
+    /**
+     * The home's first moment in front after the screen was off and the phone is unlocked. Face
+     * unlock is fast: the home can get focus before USER_PRESENT arrives, or after; either order works.
+     */
+    private void maybePlayUnlock() {
+        if (!lockedSinceOff || rootFrame == null || !hasWindowFocus()) return;
+        android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        if (km != null && km.isKeyguardLocked()) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (unlockAt > 0 && now - unlockAt > 3000) {
+            lockedSinceOff = false;          // unlocked into another app long ago: no show later
+            return;
+        }
+        lockedSinceOff = false;
+        DiagLog.log("unlock animation" + (unlockAt > 0 ? " after USER_PRESENT" : " on focus"));
+        rootFrame.postDelayed(this::playUnlock, 60);
+    }
 
     private void playUnlock() {
         if (unlockView != null || rootFrame == null || rootFrame.getWidth() == 0) return;
