@@ -2,7 +2,6 @@ package ch.architectdna.home;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -24,7 +23,6 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -58,6 +56,9 @@ public class RecorderActivity extends Activity {
     private MediaPlayer player;
     private Item playing;
     private final List<Item> items = new ArrayList<>();
+    private FrameLayout root;
+    private View scrim;
+    private LinearLayout sheet;
 
     private static final class Item {
         Uri uri;
@@ -84,7 +85,7 @@ public class RecorderActivity extends Activity {
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
 
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         root.setFitsSystemWindows(true);
         root.setBackgroundColor(bg);
         LinearLayout col = new LinearLayout(this);
@@ -406,49 +407,167 @@ public class RecorderActivity extends Activity {
         playIcon = null;
     }
 
+    /* ---------------- bottom sheet (instead of the grey system dialogs) ---------------- */
+
+    private LinearLayout openSheet(String title) {
+        closeSheet(false);
+        scrim = new View(this);
+        scrim.setBackgroundColor(0x99000000);
+        scrim.setAlpha(0f);
+        scrim.setOnClickListener(v -> closeSheet(true));
+        root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        scrim.animate().alpha(1f).setDuration(180).start();
+        sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setClickable(true);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(card);
+        g.setStroke(Math.max(1, dp(1)), line);
+        float rr = dp(24);
+        g.setCornerRadii(new float[]{rr, rr, rr, rr, 0, 0, 0, 0});
+        sheet.setBackground(g);
+        sheet.setPadding(dp(22), dp(10), dp(22), dp(22));
+        View grip = new View(this);
+        grip.setBackground(box(line, line, 3));
+        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(dp(36), dp(4));
+        gl.gravity = Gravity.CENTER_HORIZONTAL;
+        gl.bottomMargin = dp(16);
+        sheet.addView(grip, gl);
+        TextView t = text(18, ink, true);
+        t.setText(title);
+        t.setSingleLine(true);
+        t.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        t.setPadding(0, 0, 0, dp(12));
+        sheet.addView(t);
+        root.addView(sheet, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+        sheet.setTranslationY(dp(320));
+        sheet.animate().translationY(0).setDuration(240).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        return sheet;
+    }
+
+    private void closeSheet(boolean animate) {
+        View s = sheet, sc = scrim;
+        sheet = null;
+        scrim = null;
+        if (s == null) return;
+        if (!animate) {
+            root.removeView(s);
+            root.removeView(sc);
+            return;
+        }
+        s.animate().translationY(s.getHeight()).setDuration(200).withEndAction(() -> root.removeView(s)).start();
+        sc.animate().alpha(0f).setDuration(200).withEndAction(() -> root.removeView(sc)).start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (sheet != null) closeSheet(true);
+        else super.onBackPressed();
+    }
+
+    /** One action row: icon, label (rust for the dangerous one). */
+    private void action(LinearLayout into, String icon, String label, boolean danger, Runnable run) {
+        LinearLayout r = new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(dp(4), dp(14), dp(4), dp(14));
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
+        r.setBackgroundResource(tv.resourceId);
+        TextView i = text(18, danger ? rust : ink2, true);
+        i.setText(icon);
+        i.setGravity(Gravity.CENTER);
+        r.addView(i, new LinearLayout.LayoutParams(dp(32), -2));
+        TextView l = text(16, danger ? rust : ink, false);
+        l.setText(label);
+        l.setPadding(dp(14), 0, 0, 0);
+        r.addView(l);
+        r.setOnClickListener(v -> run.run());
+        into.addView(r, new LinearLayout.LayoutParams(-1, -2));
+    }
+
     private void menu(Item it) {
-        String[] actions = it.file == null ? new String[]{"Umbenennen", "Teilen", "Löschen"} : new String[]{"Umbenennen", "Löschen"};
-        new AlertDialog.Builder(this)
-            .setTitle(it.name)
-            .setItems(actions, (d, which) -> {
-                String a = actions[which];
-                if (a.equals("Umbenennen")) rename(it);
-                else if (a.equals("Teilen")) share(it);
-                else delete(it);
-            })
-            .show();
+        LinearLayout s = openSheet(it.name);
+        TextView meta = mono(11, ink3);
+        meta.setText(it.meta.getText());
+        meta.setPadding(0, 0, 0, dp(8));
+        s.addView(meta, 2);
+        action(s, "✎", "Umbenennen", false, () -> rename(it));
+        if (it.file == null) action(s, "↗", "Teilen", false, () -> {
+            closeSheet(true);
+            share(it);
+        });
+        action(s, "✕", "Löschen", true, () -> delete(it));
     }
 
     private void rename(Item it) {
-        EditText e = new EditText(this);
+        LinearLayout s = openSheet("Umbenennen");
+        android.widget.EditText e = new android.widget.EditText(this);
         e.setText(it.name);
         e.setSingleLine(true);
         e.setSelectAllOnFocus(true);
-        FrameLayout wrap = new FrameLayout(this);
-        wrap.setPadding(dp(20), dp(8), dp(20), 0);
-        wrap.addView(e);
-        new AlertDialog.Builder(this)
-            .setTitle("Umbenennen")
-            .setView(wrap)
-            .setPositiveButton("OK", (d, w) -> {
-                String n = e.getText().toString().trim().replaceAll("[\\\\/:*?\"<>|]", "-");
-                if (n.isEmpty()) return;
-                try {
-                    if (it.file != null) {
-                        //noinspection ResultOfMethodCallIgnored
-                        it.file.renameTo(new File(it.file.getParentFile(), n + ".m4a"));
-                    } else {
-                        ContentValues v = new ContentValues();
-                        v.put(MediaStore.Audio.Media.DISPLAY_NAME, n + ".m4a");
-                        getContentResolver().update(it.uri, v, null, null);
-                    }
-                } catch (RuntimeException ex) {
-                    Toast.makeText(this, "Umbenennen ging nicht.", Toast.LENGTH_SHORT).show();
+        e.setTextColor(ink);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        e.setBackground(box(bg, rust, 12));
+        e.setPadding(dp(14), dp(12), dp(14), dp(12));
+        e.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        s.addView(e, new LinearLayout.LayoutParams(-1, -2));
+        Runnable save = () -> {
+            String n = e.getText().toString().trim().replaceAll("[\\\\/:*?\"<>|]", "-");
+            hideKeyboard(e);
+            closeSheet(true);
+            if (n.isEmpty() || n.equals(it.name)) return;
+            try {
+                if (it.file != null) {
+                    //noinspection ResultOfMethodCallIgnored
+                    it.file.renameTo(new File(it.file.getParentFile(), n + ".m4a"));
+                } else {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Audio.Media.DISPLAY_NAME, n + ".m4a");
+                    getContentResolver().update(it.uri, v, null, null);
                 }
-                load();
-            })
-            .setNegativeButton("Abbrechen", null)
-            .show();
+            } catch (RuntimeException ex) {
+                Toast.makeText(this, "Umbenennen ging nicht.", Toast.LENGTH_SHORT).show();
+            }
+            load();
+        };
+        e.setOnEditorActionListener((v, id, ev) -> {
+            save.run();
+            return true;
+        });
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.END);
+        buttons.setPadding(0, dp(16), 0, 0);
+        TextView cancel = pill("ABBRECHEN", ink3, false);
+        cancel.setOnClickListener(v -> {
+            hideKeyboard(e);
+            closeSheet(true);
+        });
+        buttons.addView(cancel);
+        TextView ok = pill("SICHERN", rust, true);
+        ok.setOnClickListener(v -> save.run());
+        LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(-2, -2);
+        ol.leftMargin = dp(10);
+        buttons.addView(ok, ol);
+        s.addView(buttons, new LinearLayout.LayoutParams(-1, -2));
+        e.requestFocus();
+        e.postDelayed(() -> {
+            android.view.inputmethod.InputMethodManager im = getSystemService(android.view.inputmethod.InputMethodManager.class);
+            if (im != null) im.showSoftInput(e, 0);
+        }, 250);
+    }
+
+    private void hideKeyboard(View v) {
+        android.view.inputmethod.InputMethodManager im = getSystemService(android.view.inputmethod.InputMethodManager.class);
+        if (im != null) im.hideSoftInputFromWindow(v.getWindowToken(), 0);
+    }
+
+    private TextView pill(String s, int colour, boolean filled) {
+        TextView c = mono(12, filled ? 0xFFFFFFFF : colour);
+        c.setText(s);
+        c.setGravity(Gravity.CENTER);
+        c.setPadding(dp(18), dp(11), dp(18), dp(11));
+        c.setBackground(box(filled ? colour : card, colour, 22));
+        return c;
     }
 
     private void share(Item it) {
@@ -458,25 +577,36 @@ public class RecorderActivity extends Activity {
     }
 
     private void delete(Item it) {
-        new AlertDialog.Builder(this)
-            .setTitle("Löschen?")
-            .setMessage(it.name)
-            .setPositiveButton("Löschen", (d, w) -> {
-                if (playing == it) stopPlayer();
-                try {
-                    if (it.file != null) {
-                        //noinspection ResultOfMethodCallIgnored
-                        it.file.delete();
-                    } else {
-                        getContentResolver().delete(it.uri, null, null);
-                    }
-                } catch (RuntimeException e) {
-                    Toast.makeText(this, "Löschen ging nicht.", Toast.LENGTH_SHORT).show();
+        LinearLayout s = openSheet("„" + it.name + "“ löschen?");
+        TextView note = text(14, ink2, false);
+        note.setText("Die Aufnahme ist danach weg – auch für andere Apps.");
+        s.addView(note);
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.END);
+        buttons.setPadding(0, dp(18), 0, 0);
+        TextView cancel = pill("ABBRECHEN", ink3, false);
+        cancel.setOnClickListener(v -> closeSheet(true));
+        buttons.addView(cancel);
+        TextView del = pill("LÖSCHEN", rust, true);
+        del.setOnClickListener(v -> {
+            closeSheet(true);
+            if (playing == it) stopPlayer();
+            try {
+                if (it.file != null) {
+                    //noinspection ResultOfMethodCallIgnored
+                    it.file.delete();
+                } else {
+                    getContentResolver().delete(it.uri, null, null);
                 }
-                load();
-            })
-            .setNegativeButton("Abbrechen", null)
-            .show();
+            } catch (RuntimeException e) {
+                Toast.makeText(this, "Löschen ging nicht.", Toast.LENGTH_SHORT).show();
+            }
+            load();
+        });
+        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-2, -2);
+        dl.leftMargin = dp(10);
+        buttons.addView(del, dl);
+        s.addView(buttons, new LinearLayout.LayoutParams(-1, -2));
     }
 
     private static String stripExt(String n) {
