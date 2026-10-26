@@ -159,6 +159,7 @@ final class EdgeLight extends View implements SensorEventListener {
         rect.set(in, in, w - in, h - in);
         rim.setStrokeWidth(dp(2));
         rim.setAlpha((int) (a * 0.7f));
-        c.drawRoundRect(rect, r * 1.1f - in, r * 1.1f - in, rim);
+        // Exactly the glass: the display's own corner radius, less the inset (so the line runs parallel to it).
+        c.drawRoundRect(rect, Math.max(0, r - in), Math.max(0, r - in), rim);
     }
 }
