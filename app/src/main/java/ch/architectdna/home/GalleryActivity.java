@@ -404,7 +404,9 @@ public class GalleryActivity extends Activity {
         private double yaw = 0.0, pitch = -0.2, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
         float zoom = 1f;
         private float targetZoom = Float.NaN, lastX, lastY, downX, downY;
-        private boolean pinched;
+        private boolean pinched, touched;
+        private android.graphics.RadialGradient shade;
+        private float shadeR;
         private long lastFrame;
         private final ScaleGestureDetector scaler = new ScaleGestureDetector(GalleryActivity.this,
             new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -455,8 +457,11 @@ public class GalleryActivity extends Activity {
                 vYaw *= 0.94;
                 vPitch *= 0.94;
                 moving = true;
+            } else if (!touched) {
+                yaw += dt * 0.12;   // a slow spin until you take it in hand
+                moving = true;
             } else {
-                moving = false;     // still: photos are easier to look at when the globe holds still
+                moving = false;     // after that it holds still: photos are easier to look at
             }
             if (!Float.isNaN(targetZoom)) {
                 zoom += (targetZoom - zoom) * Math.min(1, dt * 5);
@@ -465,14 +470,26 @@ public class GalleryActivity extends Activity {
             }
 
             float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.42f * zoom;
+            // Sphere: lit from the top left, darker towards the rim, so it reads as a ball.
+            if (shade == null || shadeR != r) {
+                shadeR = r;
+                int hi = night ? 0xFF34332F : 0xFFFFFFFF, lo = night ? 0xFF0C0C0B : 0xFFD9D8D0;
+                shade = new android.graphics.RadialGradient(cx - r * 0.35f, cy - r * 0.4f, r * 1.45f,
+                    new int[]{hi, card, lo}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+            }
             p.setStyle(Paint.Style.FILL);
-            p.setColor(card);
+            p.setShader(shade);
             c.drawCircle(cx, cy, r, p);
+            p.setShader(null);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(dp(1.2f));
             p.setColor(line);
             c.drawCircle(cx, cy, r, p);
             float[] s = new float[3];
+            // Grid: meridians and parallels every 30°, the back half faint.
+            p.setStrokeWidth(dp(1));
+            for (int mm = 0; mm < 12; mm++) gridLine(c, true, Math.toRadians(mm * 30), cx, cy, r, s);
+            for (int l = -60; l <= 60; l += 30) gridLine(c, false, Math.toRadians(l), cx, cy, r, s);
             for (Photo ph : photos) {
                 project(ph.lat, ph.lon, cx, cy, r, s);
                 ph.sx = s[0];
@@ -547,6 +564,27 @@ public class GalleryActivity extends Activity {
             if (moving) postInvalidateOnAnimation();
         }
 
+        private void gridLine(Canvas c, boolean meridian, double fixed, float cx, float cy, float r, float[] s) {
+            float px = 0, py = 0, pz = 0;
+            int steps = meridian ? 36 : 72;
+            int gridCol = night ? 0xFF3A3935 : 0xFFCFCEC6;
+            for (int i = 0; i <= steps; i++) {
+                double v = Math.toRadians(i * 5);
+                if (meridian) project(v - Math.PI / 2, fixed, cx, cy, r, s);
+                else project(fixed, v, cx, cy, r, s);
+                if (i > 0) {
+                    boolean front = s[2] > 0 && pz > 0;
+                    p.setColor(front ? gridCol : ink3);
+                    p.setAlpha(front ? 255 : 28);
+                    c.drawLine(px, py, s[0], s[1], p);
+                }
+                px = s[0];
+                py = s[1];
+                pz = s[2];
+            }
+            p.setAlpha(255);
+        }
+
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             scaler.onTouchEvent(e);
@@ -556,6 +594,7 @@ public class GalleryActivity extends Activity {
                 lastY = downY = e.getY();
                 vYaw = vPitch = 0;
                 pinched = false;
+                touched = true;
                 targetYaw = Double.NaN;
                 return true;
             }
