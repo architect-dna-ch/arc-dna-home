@@ -1509,6 +1509,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ---- Zuletzt carousel: N recent apps (setting), a page per row, dots show where you are ---- */
 
     private android.widget.HorizontalScrollView recentCarousel;
+    private int carouselWidth, carouselCols;
     private LinearLayout recentDots;
 
     private void renderRecentCarousel(List<AppEntry> recent) {
@@ -1532,6 +1533,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int width = content.getWidth() > 0 ? content.getWidth() - content.getPaddingLeft() - content.getPaddingRight()
             : getResources().getDisplayMetrics().widthPixels - dp(44);
         int gap = dp(8), tileW = (width - (cols - 1) * gap) / cols;
+        carouselWidth = width;
+        carouselCols = cols;
 
         android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
@@ -3049,6 +3052,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      */
     private void updateFolds() {
         if (content == null || scroll.getHeight() == 0) return;
+        int cw = content.getWidth() - content.getPaddingLeft() - content.getPaddingRight();
+        if (recentCarousel != null && cw > 0 && (Math.abs(cw - carouselWidth) > dp(4) || cols() != carouselCols)
+            && !lastRecent.isEmpty()) {
+            carouselWidth = cw;
+            carouselCols = cols();
+            content.post(() -> renderRecentCarousel(lastRecent));    // tiles were sized for another width
+        }
         int limit = scroll.getScrollY() + scroll.getHeight() - foldInset;
         // At the very end of the page nothing can scroll up any more: show everything sharp.
         if (!scroll.canScrollVertically(1)) limit = Integer.MAX_VALUE / 2;

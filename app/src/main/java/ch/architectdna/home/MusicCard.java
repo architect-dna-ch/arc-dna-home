@@ -437,6 +437,7 @@ final class MusicCard {
             lastBeat = now;
             if (gauge != null) gauge.pulse();
         }
+        if (gauge != null) gauge.dropping(phase == PhaseBar.Phase.DROP && audio.isMusicActive());
         // On a drop every kick flashes one of the bunny's ears, left, right, left …
         if (phase == PhaseBar.Phase.DROP && lo > loS * 1.3f && lo > 0.05f && now - lastKick > 180) {
             lastKick = now;
@@ -1044,6 +1045,16 @@ final class MusicCard {
             }
         }
 
+        /** On a drop the bunny goes wild: the ears dance crazy, swinging with every kick. */
+        private boolean dropping;
+        private float wild;
+
+        void dropping(boolean on) {
+            if (on == dropping) return;
+            dropping = on;
+            invalidate();
+        }
+
         void beat() {
             if (kind != 0) return;
             beatSide = -beatSide;
@@ -1084,7 +1095,7 @@ final class MusicCard {
             float sway = (float) Math.sin(tNow / 1000.0 * Math.PI * 1.1) * vibe;
             c.save();
             if (vibe > 0) {
-                c.translate(0, -bob * 0.45f * u);
+                c.translate(0, -bob * (0.45f + 0.9f * wild) * u);
                 c.rotate(sway * 3f - bob * 3f, ox, oy + 4f * u);
             }
             if (kind == 3 && playing) flames(c, tNow);
@@ -1092,8 +1103,21 @@ final class MusicCard {
                 // Bunny — long ears for the in-ears (left ear = left bud, right ear = right bud).
                 long now = android.os.SystemClock.uptimeMillis();
                 boolean busy = false;
+                wild += ((dropping ? 1f : 0f) - wild) * 0.08f;
+                if (wild < 0.003f) wild = 0;
+                if (wild > 0) busy = true;
                 for (int side = -1; side <= 1; side += 2) {
                     float angle = side * 12.6f;
+                    if (wild > 0) {
+                        // Crazy ear dance: each ear windmills on its own rhythm, and every kick throws
+                        // the ear on that side out wide.
+                        double ts = now / 1000.0;
+                        float swing = (float) (Math.sin(ts * (side < 0 ? 13.0 : 15.5) + (side < 0 ? 0 : 1.3)) * 28
+                            + Math.sin(ts * 7.3 + side) * 14);
+                        long kick = now - flashAt[side < 0 ? 0 : 1];
+                        float throwOut = flashAt[side < 0 ? 0 : 1] >= 0 && kick < 300 ? (1 - kick / 300f) * 38 : 0;
+                        angle += wild * (swing + side * throwOut);
+                    }
                     // Flick: the ear twitches outwards twice, quickly, then settles.
                     long fk = now - flickAt;
                     if (flickAt >= 0 && side == flickSide && fk < 520) {
