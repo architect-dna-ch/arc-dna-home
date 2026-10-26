@@ -39,8 +39,127 @@ public class HistoryActivity extends Activity {
     private int bg, ink, ink2, ink3, rust, card, line;
     private LinearLayout list;
     private TextView tabRecent, tabTop, tabAnimals;
-    private List<String[]> plays;
+    private List<String[]> plays, all;
     private final Map<String, Integer> counts = new HashMap<>();
+
+    /* ---- Search and filter layers: up to 10 stacked filters, each narrowing the selection ---- */
+
+    private static final String[] CATEGORIES = {"KÜNSTLER", "APP", "TAGESZEIT", "WOCHENTAG", "TAG", "TIER", "★"};
+    private final List<String[]> layers = new ArrayList<>();    // {category, value, label}
+    private String query = "";
+    private int mode;                                             // 0 Verlauf, 1 Top, 2 Tiere
+    private LinearLayout crumbs;
+    private View globe;
+    private final Map<String, Integer> animalOf = new HashMap<>();
+
+    private String valueOf(String cat, String[] p) {
+        long t = parse(p[0]);
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(t);
+        switch (cat) {
+            case "KÜNSTLER":
+                return p[2].isEmpty() ? "(ohne Künstler)" : p[2];
+            case "APP":
+                return appName(p[3]);
+            case "TAGESZEIT": {
+                int h = c.get(Calendar.HOUR_OF_DAY);
+                return h >= 5 && h < 11 ? "Morgen" : h < 14 && h >= 11 ? "Mittag" : h >= 14 && h < 18 ? "Nachmittag" : h >= 18 && h < 22 ? "Abend" : "Nacht";
+            }
+            case "WOCHENTAG":
+                return new SimpleDateFormat("EEEE", Locale.GERMAN).format(new Date(t));
+            case "TAG":
+                return dayLabel(t);
+            case "TIER":
+                return ANIMALS[animalIndex(p)][1];
+            default:
+                return MusicStats.isFavourite(this, p[1], p[2]) ? "Favoriten" : "Ohne Stern";
+        }
+    }
+
+    private int animalIndex(String[] p) {
+        Integer a = animalOf.get(key(p));
+        if (a == null) {
+            a = animal(shares(p));
+            animalOf.put(key(p), a);
+        }
+        return a;
+    }
+
+    private boolean matches(String[] p) {
+        if (!query.isEmpty()) {
+            String q = query.toLowerCase(Locale.GERMAN), hay = (p[1] + " " + p[2] + " " + appName(p[3])).toLowerCase(Locale.GERMAN);
+            if (!hay.contains(q)) return false;
+        }
+        for (String[] l : layers) if (!valueOf(l[0], p).equals(l[1])) return false;
+        return true;
+    }
+
+    /** Re-filter and redraw the current tab, the breadcrumb of layers and the globe. */
+    private void refresh() {
+        plays = new ArrayList<>();
+        for (String[] p : all) if (matches(p)) plays.add(p);
+        paintCrumbs();
+        if (globe != null) globe.invalidate();
+        if (mode == 1) showTop();
+        else if (mode == 2) showAnimals();
+        else showRecent();
+    }
+
+    private void paintCrumbs() {
+        crumbs.removeAllViews();
+        TextView total = mono(11, ink2);
+        total.setText(String.valueOf(all.size()));
+        crumbs.addView(total);
+        List<String[]> step = new ArrayList<>(all);
+        for (int i = 0; i < layers.size(); i++) {
+            String[] l = layers.get(i);
+            List<String[]> next = new ArrayList<>();
+            for (String[] p : step) if (valueOf(l[0], p).equals(l[1])) next.add(p);
+            step = next;
+            TextView arrow = mono(11, ink3);
+            arrow.setText(" → ");
+            crumbs.addView(arrow);
+            TextView chip = mono(10, 0xFFFFFFFF);
+            chip.setText("✕ " + l[2] + " · " + step.size());
+            chip.setPadding(dp(10), dp(6), dp(10), dp(6));
+            chip.setBackground(box(rust, 0));
+            int idx = i;
+            chip.setOnClickListener(v -> {
+                layers.remove(idx);
+                refresh();
+            });
+            crumbs.addView(chip);
+        }
+        if (!query.isEmpty() || !layers.isEmpty()) {
+            TextView now = mono(11, rust);
+            now.setText("  = " + plays.size());
+            crumbs.addView(now);
+        }
+    }
+
+    /** Pick a value of a category among what's still selected (most frequent first). */
+    private void pickLayer(String cat) {
+        if (layers.size() >= 10) {
+            Toast.makeText(this, "Maximal 10 Filter-Ebenen", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Map<String, Integer> n = new HashMap<>();
+        for (String[] p : plays) n.merge(valueOf(cat, p), 1, Integer::sum);
+        List<Map.Entry<String, Integer>> e = new ArrayList<>(n.entrySet());
+        Collections.sort(e, (a, b) -> b.getValue() - a.getValue());
+        int size = Math.min(40, e.size());
+        String[] labels = new String[size];
+        for (int i = 0; i < size; i++) labels[i] = e.get(i).getKey() + "  ·  " + e.get(i).getValue();
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(cat + " · Ebene " + (layers.size() + 1) + " / 10")
+            .setItems(labels, (d, w) -> {
+                String v = e.get(w).getKey();
+                layers.add(new String[]{cat, v, cat.equals("★") ? v : v});
+                refresh();
+            })
+            .setNegativeButton("Abbrechen", null)
+            .show();
+    }
 
     @Override
     protected void onCreate(Bundle state) {
@@ -56,10 +175,11 @@ public class HistoryActivity extends Activity {
         line = night ? 0xFF2C2C29 : 0xFFE0E0D8;
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
-        plays = MusicStats.history(this);
-        for (String[] p : plays) counts.merge(key(p), 1, Integer::sum);
+        all = MusicStats.history(this);
+        plays = all;
+        for (String[] p : all) counts.merge(key(p), 1, Integer::sum);
         setContentView(build());
-        showRecent();
+        refresh();
     }
 
     private static String key(String[] p) {
@@ -144,7 +264,7 @@ public class HistoryActivity extends Activity {
         TextView big = text(34, ink, true);
         big.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
         big.setLetterSpacing(-0.04f);
-        big.setText(plays.size() + " Titel");
+        big.setText(all.size() + " Titel");
         big.setPadding(0, dp(16), 0, 0);
         root.addView(big);
         TextView sub = mono(10, ink3);
@@ -155,20 +275,84 @@ public class HistoryActivity extends Activity {
         LinearLayout tabs = new LinearLayout(this);
         tabRecent = tab("VERLAUF");
         tabTop = tab("TOP");
-        tabRecent.setOnClickListener(v -> showRecent());
-        tabTop.setOnClickListener(v -> showTop());
+        tabRecent.setOnClickListener(v -> {
+            mode = 0;
+            showRecent();
+        });
+        tabTop.setOnClickListener(v -> {
+            mode = 1;
+            showTop();
+        });
         tabs.addView(tabRecent);
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
         tl.leftMargin = dp(8);
         tabs.addView(tabTop, tl);
         tabAnimals = tab("TIERE");
-        tabAnimals.setOnClickListener(v -> showAnimals());
+        tabAnimals.setOnClickListener(v -> {
+            mode = 2;
+            showAnimals();
+        });
         LinearLayout.LayoutParams tl2 = new LinearLayout.LayoutParams(-2, -2);
         tl2.leftMargin = dp(8);
         tabs.addView(tabAnimals, tl2);
         LinearLayout.LayoutParams tsl = new LinearLayout.LayoutParams(-1, -2);
         tsl.topMargin = dp(16);
         root.addView(tabs, tsl);
+
+        // Search, the globe of all plays (the selection lights up, the rest fades), categories, layers.
+        android.widget.EditText search = new android.widget.EditText(this);
+        search.setHint("Titel, Künstler, App suchen…");
+        search.setHintTextColor(ink3);
+        search.setTextColor(ink);
+        search.setTextSize(15);
+        search.setSingleLine(true);
+        search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        search.setBackground(box(card, line));
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable e) {
+                query = e.toString().trim();
+                refresh();
+            }
+        });
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
+        sl.topMargin = dp(12);
+        root.addView(search, sl);
+        root.setFocusableInTouchMode(true);     // no keyboard popping up on open
+        root.requestFocus();
+        globe = new PlayGlobe();
+        root.addView(globe, new LinearLayout.LayoutParams(-1, dp(150)));
+        android.widget.HorizontalScrollView cats = new android.widget.HorizontalScrollView(this);
+        cats.setHorizontalScrollBarEnabled(false);
+        LinearLayout catRow = new LinearLayout(this);
+        for (String cat : CATEGORIES) {
+            TextView ch = mono(10, ink2);
+            ch.setText("+ " + cat);
+            ch.setPadding(dp(12), dp(7), dp(12), dp(7));
+            ch.setBackground(box(card, line));
+            ch.setOnClickListener(v -> pickLayer(cat));
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
+            cl.rightMargin = dp(6);
+            catRow.addView(ch, cl);
+        }
+        cats.addView(catRow);
+        root.addView(cats);
+        android.widget.HorizontalScrollView crumbScroll = new android.widget.HorizontalScrollView(this);
+        crumbScroll.setHorizontalScrollBarEnabled(false);
+        crumbs = new LinearLayout(this);
+        crumbs.setGravity(Gravity.CENTER_VERTICAL);
+        crumbScroll.addView(crumbs);
+        LinearLayout.LayoutParams crl = new LinearLayout.LayoutParams(-1, -2);
+        crl.topMargin = dp(8);
+        root.addView(crumbScroll, crl);
 
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
@@ -265,6 +449,12 @@ public class HistoryActivity extends Activity {
         list.removeAllViews();
         Map<String, String[]> latest = new HashMap<>();
         for (String[] p : plays) latest.putIfAbsent(key(p), p);
+        if (latest.isEmpty()) {
+            TextView none = text(14, ink2, false);
+            none.setText("Nichts in dieser Auswahl.");
+            list.addView(none);
+            return;
+        }
         List<List<String[]>> groups = new ArrayList<>();
         List<Map<String, float[]>> why = new ArrayList<>();
         for (int i = 0; i < ANIMALS.length; i++) {
@@ -347,7 +537,8 @@ public class HistoryActivity extends Activity {
         list.removeAllViews();
         if (plays.isEmpty()) {
             TextView none = text(14, ink2, false);
-            none.setText("Noch nichts gehört. Spiel einen Titel ab – er erscheint hier (Benachrichtigungszugriff nötig).");
+            none.setText(all.isEmpty() ? "Noch nichts gehört. Spiel einen Titel ab – er erscheint hier (Benachrichtigungszugriff nötig)."
+                : "Nichts in dieser Auswahl – Filter oben antippen zum Entfernen.");
             list.addView(none);
             return;
         }
@@ -462,6 +653,65 @@ public class HistoryActivity extends Activity {
         title.setTextColor(fav ? rust : ink);
     }
 
+    /**
+     * Every play as a dot on a slowly turning globe: around = hour of the day, up/down = the artist.
+     * The current selection glows rust and big, everything filtered out shrinks to faint specks.
+     */
+    private final class PlayGlobe extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Map<String[], Double> hours = new java.util.IdentityHashMap<>();
+        private final java.util.Set<String[]> picked = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+        PlayGlobe() {
+            super(HistoryActivity.this);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            picked.clear();
+            picked.addAll(plays);
+            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.44f;
+            double yaw = android.os.SystemClock.uptimeMillis() / 9000.0;
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1));
+            p.setColor(line);
+            c.drawCircle(cx, cy, r, p);
+            c.drawOval(cx - r, cy - r * 0.3f, cx + r, cy + r * 0.3f, p);
+            boolean narrowed = plays.size() < all.size();
+            p.setStyle(Paint.Style.FILL);
+            for (int pass = 0; pass < 2; pass++) {
+                for (String[] q : all) {
+                    boolean in = picked.contains(q);
+                    if ((pass == 1) != in) continue;            // selection drawn on top
+                    Double hour = hours.get(q);
+                    if (hour == null) {
+                        Calendar cal = Calendar.getInstance();
+                        cal.setTimeInMillis(parse(q[0]));
+                        hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60.0;
+                        hours.put(q, hour);
+                    }
+                    double lon = hour / 24 * Math.PI * 2 + yaw;
+                    double lat = ((q[2].hashCode() & 0xFFFF) / 65535.0 - 0.5) * 2.4;
+                    double x = Math.cos(lat) * Math.sin(lon), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon);
+                    if (z < -0.2 && !in) continue;
+                    float sx = cx + (float) x * r, sy = cy - (float) y * r * 0.9f;
+                    float depth = (float) (0.55 + 0.45 * z);
+                    if (in) {
+                        p.setColor(rust);
+                        p.setAlpha((int) (255 * Math.max(0.35f, depth)));
+                        c.drawCircle(sx, sy, dp(narrowed ? 4 : 2.6f) * depth, p);
+                    } else {
+                        p.setColor(ink3);
+                        p.setAlpha((int) (70 * depth));
+                        c.drawCircle(sx, sy, dp(1.2f), p);
+                    }
+                }
+            }
+            p.setAlpha(255);
+            postInvalidateOnAnimation();
+        }
+    }
+
     /** Ask the app the song came from to find and play it (works with YouTube Music, Spotify & co.). */
     private void playAgain(String[] p) {
         String query = (p[1] + " " + p[2]).trim();
@@ -483,8 +733,18 @@ public class HistoryActivity extends Activity {
         }
     }
 
+    private final Map<String, String> appNames = new HashMap<>();
+
     private String appName(String pkg) {
         if (pkg == null || pkg.isEmpty()) return "";
+        String cached = appNames.get(pkg);
+        if (cached != null) return cached;
+        String name = lookupName(pkg);
+        appNames.put(pkg, name);
+        return name;
+    }
+
+    private String lookupName(String pkg) {
         try {
             PackageManager pm = getPackageManager();
             return String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)));
