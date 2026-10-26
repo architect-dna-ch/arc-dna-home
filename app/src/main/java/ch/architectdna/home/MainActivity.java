@@ -2225,6 +2225,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void stopHead() {
+        faceWatch = false;
         endGazeCalibration();
         if (head != null) head.stop();
         if (headDebug != null) {
@@ -2677,10 +2678,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onPose(float pitch, float yaw) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
         if (Float.isNaN(facingPitch)) facingPitch = pitch;
-        boolean away = Math.abs(yaw) > 25 || Math.abs(pitch - facingPitch) > 22;
+        boolean away = Math.abs(yaw) > 20 || Math.abs(pitch - facingPitch) > 18;
         if (away) {
             noteAway();
         } else {
+            if (faceLostAt != 0 && faceWatch) headLabel.setVisibility(View.GONE);
             faceLostAt = 0;
             facingPitch += (pitch - facingPitch) * 0.05f;      // follows how you hold the phone
         }
@@ -2689,9 +2691,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void noteAway() {
         long now = android.os.SystemClock.uptimeMillis();
         lastFaceEvent = now;
-        if (faceLostAt == 0) faceLostAt = now;
+        if (faceLostAt == 0) {
+            faceLostAt = now;
+            DiagLog.log("looking away");
+        }
+        if (faceWatch && dino == null && homeInFront) {
+            long left = Math.max(0, 5 - (now - faceLostAt) / 1000);
+            headLabel.setText("◉ WEGGESCHAUT · DINO IN " + left + "  ");
+            headLabel.setVisibility(View.VISIBLE);
+        }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
         if (now - faceLostAt > 5000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
+            if (faceWatch) headLabel.setVisibility(View.GONE);
             startDino(true);
             if (dino != null) lastDinoAt = now;
         }
@@ -3550,7 +3561,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** blackHole: the dino swallows the home and the phone locks (looking away); else the comic visit. */
     private void startDino(boolean blackHole) {
         if (dino != null || rootFrame == null || rootFrame.getWidth() == 0 || game != null || settingsSheet != null
-            || calibStage >= 0 || fox == null || !fox.isShown()) return;
+            || calibStage >= 0 || fox == null || (!blackHole && !fox.isShown())) {
+            DiagLog.log("dino skipped: dino=" + (dino != null) + " game=" + (game != null) + " settings=" + (settingsSheet != null)
+                + " calib=" + calibStage + " buddy=" + (fox != null && fox.isShown()));
+            return;
+        }
         int paper = isNight() ? 0xFF2A2A28 : 0xFFFFFFFF;
         dino = new DinoView(this, ink, paper, rust, new DinoView.Host() {
             @Override
@@ -3666,18 +3681,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private boolean faceWatch;
 
     private void startFaceWatch() {
-        if (!homeInFront || faceWatch || libraryOpen || game != null || !prefs.getBoolean("dinoLock", true)) return;
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;
+        handler.removeCallbacks(faceWatchdog);
+        if (!homeInFront || libraryOpen || game != null || !prefs.getBoolean("dinoLock", true)) return;
+        handler.postDelayed(faceWatchdog, 3000);
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            DiagLog.log("face watch: no camera permission");
+            return;
+        }
+        long now = android.os.SystemClock.uptimeMillis();
+        // Already watching and frames are coming in: nothing to do.
+        if (faceWatch && now - lastFaceEvent < 2500) return;
         if (head == null) head = new HeadTracker(this, this);
         head.stop();
         head.setDebug(false);
         head.start(HeadTracker.Mode.NOD);
         faceWatch = true;
         faceLostAt = 0;
-        lastFaceEvent = android.os.SystemClock.uptimeMillis();
+        lastFaceEvent = now;
+        DiagLog.log("face watch started");
     }
 
+    /** Every 3 s on the home: if the watcher's camera went quiet (stopped by something else), start it again. */
+    private final Runnable faceWatchdog = this::startFaceWatch;
+
     private void stopFaceWatch() {
+        handler.removeCallbacks(faceWatchdog);
         if (!faceWatch) return;
         faceWatch = false;
         if (head != null && !libraryOpen && game == null) head.stop();
