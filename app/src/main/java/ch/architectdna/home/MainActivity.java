@@ -1342,7 +1342,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
-                    ownIcon(ri.activityInfo.name, ShapeIcon.wrap(ri.loadIcon(pm), ri.activityInfo.packageName))));
+                    ownIcon(ri.activityInfo.name, ri.loadIcon(pm))));
             }
             Collator collator = Collator.getInstance(Locale.GERMAN);
             Collections.sort(list, (a, b) -> collator.compare(a.label, b.label));
@@ -3914,24 +3914,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private android.graphics.drawable.Drawable tinted(int colour) {
-        if (!vibrant()) return box(card, line, 16);
+        if (!vibrant()) return new HexTile(card, line, dp(1), dp(14));
         boolean night = isNight();
         int fill = (colour & 0x00FFFFFF) | ((night ? 0x2E : 0x3D) << 24);
         int edge = (colour & 0x00FFFFFF) | ((night ? 0x99 : 0xB3) << 24);
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(fill);
-        d.setStroke(dp(1.5f), edge);
-        d.setCornerRadius(dp(16));
-        return d;
+        return new HexTile(fill, edge, dp(1.5f), dp(14));
     }
 
     private View tile(String name, Drawable icon, int iconDp) {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
-        t.setPadding(dp(4), dp(12), dp(4), dp(10));
+        t.setPadding(dp(12), dp(12), dp(12), dp(10));     // the label stays clear of the slanted sides
+        // App cards are rounded hexagons, not rounded rectangles.
         if (tileTint != 0) tint(t, tileTint);
-        else t.setBackground(box(card, line, 16));
+        else t.setBackground(new HexTile(card, line, dp(1), dp(14)));
 
         ImageView iv = new ImageView(this);
         if (icon != null) iv.setImageDrawable(icon);
