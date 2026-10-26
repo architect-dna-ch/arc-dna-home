@@ -265,7 +265,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int savedY = prefs.getInt("homeScrollY", 0);
         if (savedY > 0) scroll.post(() -> scroll.scrollTo(0, savedY));
         updater = new Updater(this, prefs, this::onUpdateState);
-        setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
+        applyOrientation();
         prefs.edit().remove("hidden").apply();   // the old wallpaper-only mode became the Fuchsjagd game
         applyWallpaperIfNeeded();
         loadApps();
@@ -1859,7 +1859,77 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putInt("orient", i).commit();
         hop();
         voice.say(dir > 0 ? "Yip-yip!" : "Mrrp?");
-        handler.postDelayed(() -> setRequestedOrientation(ORIENTATIONS[i]), 180);
+        handler.postDelayed(this::applyOrientation, 180);
+    }
+
+    /*
+     * Screen turning: phones honour the requested orientation, but many refuse upside down (180°),
+     * and tablets ignore it and letterbox the home into a narrow strip. So: ask the system where it
+     * helps, then check where the screen really is and turn the home's own content for the rest.
+     */
+    private int softDeg;
+    private final Runnable softCheck = this::checkSoftRotation;
+
+    private boolean largeScreen() {
+        return getResources().getConfiguration().smallestScreenWidthDp >= 600;
+    }
+
+    private void applyOrientation() {
+        if (game != null) return;
+        int i = prefs.getInt("orient", 0);
+        setRequestedOrientation(largeScreen() ? ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED : ORIENTATIONS[i]);
+        handler.removeCallbacks(softCheck);
+        handler.postDelayed(softCheck, 700);
+    }
+
+    /** Where the screen really is, as 0 / 90 / 180 / 270 in the same steps as ORIENTATIONS. */
+    private int actualAngle() {
+        int rot = getDisplay() != null ? getDisplay().getRotation() : 0;
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        getDisplay().getRealMetrics(dm);
+        boolean wide = dm.widthPixels > dm.heightPixels;
+        boolean natPortrait = (rot == 0 || rot == 2) != wide;
+        return natPortrait ? rot * 90 : (rot * 90 + 90) % 360;
+    }
+
+    private void checkSoftRotation() {
+        if (game != null || rootFrame == null) {
+            setSoftRotation(0);
+            return;
+        }
+        int want = prefs.getInt("orient", 0) * 90;
+        setSoftRotation(((want - actualAngle()) % 360 + 360) % 360);
+    }
+
+    private void setSoftRotation(int deg) {
+        View parent = (View) rootFrame.getParent();
+        if (parent == null) return;
+        int w = parent.getWidth(), h = parent.getHeight();
+        if (w == 0 || h == 0) {
+            parent.post(() -> setSoftRotation(deg));
+            return;
+        }
+        boolean changed = deg != softDeg;
+        softDeg = deg;
+        android.view.ViewGroup.LayoutParams lp = rootFrame.getLayoutParams();
+        if (deg == 90 || deg == 270) {
+            lp.width = h;
+            lp.height = w;
+            rootFrame.setPivotX(h / 2f);
+            rootFrame.setPivotY(w / 2f);
+            rootFrame.setTranslationX((w - h) / 2f);
+            rootFrame.setTranslationY((h - w) / 2f);
+        } else {
+            lp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+            lp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+            rootFrame.setPivotX(w / 2f);
+            rootFrame.setPivotY(h / 2f);
+            rootFrame.setTranslationX(0);
+            rootFrame.setTranslationY(0);
+        }
+        rootFrame.setRotation(deg);
+        rootFrame.setLayoutParams(lp);
+        if (changed) rootFrame.post(this::reflow);
     }
 
     /* ================= Kopf-Scroll pro App ================= */
@@ -2903,7 +2973,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onConfigurationChanged(config);
         f1Panel.getLayoutParams().height = f1Height();
         f1Panel.requestLayout();
-        // Re-flow the grids for the new width (4 columns in portrait, up to 8 in landscape).
+        reflow();
+        // A turn by the system (or by hand on the tablet): check whether the home still needs turning.
+        handler.removeCallbacks(softCheck);
+        handler.postDelayed(softCheck, 300);
+    }
+
+    /** Re-flow the grids for the new width (4 columns in portrait, up to 8 in landscape). */
+    private void reflow() {
         appTilesBox.removeAllViews();
         appTilesBox.addView(appTiles());
         renderLibrary();
@@ -2917,6 +2994,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Tiles per row: about one per 100 dp of width, at least 4, at most 8. */
     private int cols() {
         int widthDp = getResources().getConfiguration().screenWidthDp;
+        // Turned by hand (90° / 270°): the home is as wide as the screen is tall.
+        if (softDeg == 90 || softDeg == 270) widthDp = getResources().getConfiguration().screenHeightDp;
         return Math.max(4, Math.min(8, widthDp / 100));
     }
 
@@ -2996,6 +3075,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         rootFrame.addView(game, new FrameLayout.LayoutParams(-1, -1));
         game.setAlpha(0f);
         game.animate().alpha(1f).setDuration(300).start();
+        setSoftRotation(0);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         voice.say(buddy() == 2 ? "Hüpf!" : "Yip-yip!");
         game.resume();
@@ -3039,7 +3119,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (head != null && !libraryOpen) head.stop();
         g.pause();
         g.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(g)).start();
-        setRequestedOrientation(ORIENTATIONS[prefs.getInt("orient", 0)]);
+        applyOrientation();
     }
 
     private void startF1Tick() {
