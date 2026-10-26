@@ -244,6 +244,7 @@ public class GlobusActivity extends Activity {
                     JSONObject o = a.getJSONObject(i);
                     marks.add(mark(o.optString("t"), o.optString("u")));
                 }
+                spread();
                 return;
             }
         } catch (Exception ignored) {
@@ -252,7 +253,25 @@ public class GlobusActivity extends Activity {
         save();
     }
 
+    /**
+     * Links of the same site share a region but no longer sit on top of each other: the first at the
+     * site's spot, the others around it on a sunflower spiral (about 16° apart).
+     */
+    private void spread() {
+        java.util.Map<String, Integer> count = new java.util.HashMap<>();
+        for (Mark k : marks) {
+            String h = host(k.url);
+            int hh = h.hashCode(), i = count.getOrDefault(h, 0);
+            count.put(h, i + 1);
+            double lon0 = (hh & 0xFFFF) / 65535.0 * 360 - 180, lat0 = ((hh >>> 16) & 0xFFFF) / 65535.0 * 110 - 55;
+            double rad = i == 0 ? 0 : 16 * Math.sqrt(i), ang = Math.toRadians(i * 137.5);
+            k.lat = Math.toRadians(Math.max(-75, Math.min(75, lat0 + rad * Math.sin(ang))));
+            k.lon = Math.toRadians(lon0 + rad * Math.cos(ang) / Math.max(0.3, Math.cos(Math.toRadians(lat0))));
+        }
+    }
+
     private void save() {
+        spread();
         JSONArray a = new JSONArray();
         try {
             for (Mark k : marks) a.put(new JSONObject().put("t", k.title).put("u", k.url));
@@ -287,12 +306,13 @@ public class GlobusActivity extends Activity {
         private final android.graphics.Path path = new android.graphics.Path();
         private double yaw = 0.6, pitch = -0.35, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
         private float zoom = 1f, lastX, lastY, downX, downY;
+        private boolean pinched;
         private long lastFrame;
         private final ScaleGestureDetector scaler = new ScaleGestureDetector(GlobusActivity.this,
             new ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 @Override
                 public boolean onScale(ScaleGestureDetector d) {
-                    zoom = Math.max(0.7f, Math.min(3.2f, zoom * d.getScaleFactor()));
+                    zoom = Math.max(0.7f, Math.min(4f, zoom * d.getScaleFactor()));
                     invalidate();
                     return true;
                 }
@@ -360,6 +380,12 @@ public class GlobusActivity extends Activity {
                 k.sx = s[0];
                 k.sy = s[1];
                 k.depth = s[2];
+            }
+            List<Mark> order = new ArrayList<>(marks);
+            java.util.Collections.sort(order, (a, b) -> a == selected ? -1 : b == selected ? 1 : Float.compare(b.depth, a.depth));
+            List<android.graphics.RectF> taken = new ArrayList<>();
+            for (Mark k : order) {
+                float[] s = {k.sx, k.sy, k.depth};
                 boolean front = s[2] > 0;
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(k == selected ? rust : front ? rust : ink3);
@@ -368,8 +394,15 @@ public class GlobusActivity extends Activity {
                 if (front && s[2] > 0.25f) {
                     p.setColor(k == selected ? ink : ink2);
                     p.setAlpha((int) (255 * Math.min(1, (s[2] - 0.25f) * 3)));
-                    String t = k.title.length() > 22 ? k.title.substring(0, 21) + "…" : k.title;
-                    c.drawText(t.toUpperCase(Locale.GERMAN), s[0] + dp(9), s[1] + dp(4), p);
+                    String t = (k.title.length() > 22 ? k.title.substring(0, 21) + "…" : k.title).toUpperCase(Locale.GERMAN);
+                    // A label only where it doesn't collide with a nearer one (zoom in to see the rest).
+                    android.graphics.RectF box = new android.graphics.RectF(s[0] + dp(7), s[1] - dp(8), s[0] + dp(11) + p.measureText(t), s[1] + dp(7));
+                    boolean free = true;
+                    for (android.graphics.RectF o : taken) if (android.graphics.RectF.intersects(o, box)) free = false;
+                    if (free) {
+                        taken.add(box);
+                        c.drawText(t, s[0] + dp(9), s[1] + dp(4), p);
+                    }
                 }
                 p.setAlpha(255);
             }
@@ -401,11 +434,25 @@ public class GlobusActivity extends Activity {
                 lastX = downX = e.getX();
                 lastY = downY = e.getY();
                 vYaw = vPitch = 0;
+                pinched = false;
                 targetYaw = Double.NaN;
                 return true;
             }
+            if (action == MotionEvent.ACTION_POINTER_DOWN) {
+                pinched = true;
+                vYaw = vPitch = 0;
+                return true;
+            }
+            if (action == MotionEvent.ACTION_POINTER_UP) {
+                // Continue from the finger that stays, without a jump.
+                int keep = e.getActionIndex() == 0 ? 1 : 0;
+                lastX = e.getX(keep);
+                lastY = e.getY(keep);
+                vYaw = vPitch = 0;
+                return true;
+            }
             if (action == MotionEvent.ACTION_MOVE) {
-                if (e.getPointerCount() > 1) return true;
+                if (e.getPointerCount() > 1 || scaler.isInProgress()) return true;
                 float r = Math.min(getWidth(), getHeight()) * 0.4f * zoom;
                 vYaw = (e.getX() - lastX) / r;
                 vPitch = (e.getY() - lastY) / r;
@@ -417,6 +464,11 @@ public class GlobusActivity extends Activity {
                 return true;
             }
             if (action == MotionEvent.ACTION_UP) {
+                if (pinched) {
+                    vYaw = vPitch = 0;      // a zoom ends where it is: no spin
+                    invalidate();
+                    return true;
+                }
                 if (Math.hypot(e.getX() - downX, e.getY() - downY) < dp(10)) {
                     // A tap: the nearest front point within reach.
                     Mark best = null;
