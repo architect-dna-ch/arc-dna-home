@@ -625,6 +625,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeLight = new EdgeLight(this, null);
         android.content.IntentFilter uf = new android.content.IntentFilter(Intent.ACTION_USER_PRESENT);
         uf.addAction(Intent.ACTION_SCREEN_OFF);
+        uf.addAction(Intent.ACTION_SCREEN_ON);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(unlockReceiver, uf, RECEIVER_NOT_EXPORTED);
         else registerReceiver(unlockReceiver, uf);
         if (CALIBRATE_NOD.equals(getIntent().getAction())) handler.postDelayed(() -> calibrate("nod"), 600);
@@ -3629,6 +3630,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 unlockAt = 0;
                 return;
             }
+            if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) {
+                // Screen on but no lock screen (still within the lock delay): nothing to unlock.
+                android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+                if (km != null && !km.isKeyguardLocked()) lockedSinceOff = false;
+                return;
+            }
             unlockAt = android.os.SystemClock.uptimeMillis();
             maybePlayUnlock();
         }
@@ -3645,12 +3652,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (km != null && km.isKeyguardLocked()) return;
         long now = android.os.SystemClock.uptimeMillis();
-        if (unlockAt > 0 && now - unlockAt > 3000) {
+        // Only a real unlock: Android says USER_PRESENT once the lock screen was actually passed
+        // (face, fingerprint, PIN). Screen just back on without a lock: no animation.
+        if (unlockAt == 0) return;
+        if (now - unlockAt > 3000) {
             lockedSinceOff = false;          // unlocked into another app long ago: no show later
             return;
         }
         lockedSinceOff = false;
-        DiagLog.log("unlock animation" + (unlockAt > 0 ? " after USER_PRESENT" : " on focus"));
+        DiagLog.log("unlock animation after a real unlock");
         rootFrame.postDelayed(this::playUnlock, 60);
     }
 
