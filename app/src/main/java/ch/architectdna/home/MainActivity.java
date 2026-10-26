@@ -149,6 +149,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private FoxRunView game;
     private ImageView gameButton;
     private BrightnessLever lever;
+    /** The stroke started on the brightness lever (its own drag, not the corner swipe). */
+    private boolean strokeOnLever;
     /** System brightness (0..255) for LO / MID / HI. */
     // Raw 0–255 values; Android's slider is log-like, so these sit at ≈ 20 % / 58 % / 100 % on it.
     private static final int[] BRIGHTNESS = {3, 30, 255};
@@ -1372,7 +1374,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     && !GalleryActivity.class.getName().equals(ri.activityInfo.name)
                     && !CameraActivity.class.getName().equals(ri.activityInfo.name)
                     && !DecibelActivity.class.getName().equals(ri.activityInfo.name)
-                    && !PlayerActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !PlayerActivity.class.getName().equals(ri.activityInfo.name)
+                    && !EnergyActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -1736,6 +1739,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             cardFlipped = false;
             // The Zuletzt carousel scrolls sideways itself: no dark / light swipe from there.
             strokeOnCarousel = recentCarousel != null && onView(recentCarousel, ev.getRawX(), ev.getRawY());
+            strokeOnLever = lever != null && lever.isShown() && onView(lever, ev.getRawX(), ev.getRawY());
         } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
             strokeMulti = true;
         } else if (action == MotionEvent.ACTION_MOVE) {
@@ -1777,6 +1781,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 && Math.abs(dx) > rootFrame.getWidth() * 0.4f && Math.abs(dy) < Math.abs(dx) * 0.4f
                 && ev.getEventTime() - downTime < 800) {
                 switchNight(dx < 0, ev.getX(), ev.getY());
+            }
+            // Down from the top-right corner: Energie drops in like a control centre.
+            if (gestures && !strokeMulti && !strokeOnLever && downX > rootFrame.getWidth() * 0.6f && downY < rootFrame.getHeight() * 0.2f
+                && dy > dp(110) && Math.abs(dx) < dy && ev.getEventTime() - downTime < 700) {
+                DiagLog.log("corner swipe: energy");
+                try {
+                    startActivity(new Intent(this, EnergyActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (RuntimeException ignored) {
+                }
+                return super.dispatchTouchEvent(ev);
             }
             // A strong, straight vertical swipe over at least half the screen: skip the home, straight
             // to the app globe.
@@ -4488,7 +4502,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : GalleryActivity.class.getName().equals(activity) ? R.drawable.ic_line_gallery
             : CameraActivity.class.getName().equals(activity) ? R.drawable.ic_line_arccam
             : DecibelActivity.class.getName().equals(activity) ? R.drawable.ic_line_decibel
-            : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player : 0;
+            : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player
+            : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4502,7 +4517,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Galerie", GalleryActivity.class, R.drawable.ic_line_gallery, R.drawable.ic_gallery},
             {"ARC Kamera", CameraActivity.class, R.drawable.ic_line_arccam, R.drawable.ic_arccam},
             {"Dezibel", DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel},
-            {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player}};
+            {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player},
+            {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy}};
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;

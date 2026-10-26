@@ -56,6 +56,14 @@ public class MediaListener extends NotificationListenerService {
             else registerReceiver(volume, vf);
         } catch (RuntimeException ignored) {
         }
+        // Battery diary for "Energie": every % change and every screen on / off.
+        try {
+            android.content.IntentFilter bf = new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED);
+            bf.addAction(android.content.Intent.ACTION_SCREEN_ON);
+            bf.addAction(android.content.Intent.ACTION_SCREEN_OFF);
+            registerReceiver(battery, bf);
+        } catch (RuntimeException ignored) {
+        }
         sessions = getSystemService(MediaSessionManager.class);
         if (sessions == null) return;
         try {
@@ -69,10 +77,23 @@ public class MediaListener extends NotificationListenerService {
         BtSync.startServer(this);
     }
 
+    private final android.content.BroadcastReceiver battery = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context c, android.content.Intent i) {
+            android.content.Intent b = android.content.Intent.ACTION_BATTERY_CHANGED.equals(i.getAction()) ? i : null;
+            android.content.Context app = c.getApplicationContext();
+            new Thread(() -> BatteryLog.sample(app, b), "arc-battery-log").start();
+        }
+    };
+
     @Override
     public void onListenerDisconnected() {
         try {
             unregisterReceiver(volume);
+        } catch (RuntimeException ignored) {
+        }
+        try {
+            unregisterReceiver(battery);
         } catch (RuntimeException ignored) {
         }
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(changed);

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Energie launcher icon: a battery with a rust bolt. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3.5" android:strokeLineJoin="round"
+        android:pathData="M30,24h36v52h-36zM41,18h14v6h-14z" />
+    <path android:fillColor="#B5271E" android:pathData="M52,32l-12,20h9l-4,16 13,-22h-9z" />
+</vector>

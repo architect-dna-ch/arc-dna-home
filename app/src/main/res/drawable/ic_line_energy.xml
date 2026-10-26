@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Energie tile: battery outline, rust bolt. -->
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.7" android:strokeLineJoin="round" android:pathData="M7.5,5h9v16h-9zM10,3h4v2h-4z" />
+    <path android:fillColor="@color/rust" android:pathData="M13,8l-3.5,5.5h2.5l-1,4 3.5,-5.5h-2.5z" />
+</vector>
