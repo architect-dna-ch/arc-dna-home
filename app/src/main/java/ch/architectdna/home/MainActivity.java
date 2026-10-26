@@ -345,7 +345,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         updateHome = text(14, ink, true);
         updateHome.setPadding(dp(14), dp(12), dp(14), dp(12));
-        updateHome.setBackground(box(card, rust, 8));
+        updateHome.setBackground(box(card, rust, 16));
         updateHome.setVisibility(View.GONE);
         updateHome.setOnClickListener(v -> updater.install());
         content.addView(updateHome, margins(-1, -2, 0, dp(14), 0, 0));
@@ -572,7 +572,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
 
         bubble = text(13, ink, true);
-        bubble.setBackground(box(ink, ink, 6));
+        bubble.setBackground(box(ink, ink, 12));
         bubble.setTextColor(0xFF000000 | (~ink & 0xFFFFFF));
         bubble.setPadding(dp(10), dp(6), dp(10), dp(6));
         bubble.setVisibility(View.GONE);
@@ -651,7 +651,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(14), dp(12), dp(14), dp(10));
-        box.setBackground(box(card, line, 8));
+        box.setBackground(box(card, line, 16));
 
         TextView k = monoText(10, ink3);
         k.setLetterSpacing(0.16f);
@@ -696,7 +696,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView go = text(18, 0xFF000000 | (~ink & 0xFFFFFF), true);
         go.setText("→");
         go.setGravity(Gravity.CENTER);
-        go.setBackground(box(ink, ink, 8));
+        go.setBackground(box(ink, ink, 16));
         go.setContentDescription("Suchen");
         go.setOnClickListener(v -> webSearch());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(50), dp(50));
@@ -1061,7 +1061,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(label(title), margins(-1, -2, 0, dp(26), 0, dp(10)));
         LinearLayout group = new LinearLayout(this);
         group.setOrientation(LinearLayout.VERTICAL);
-        group.setBackground(box(card, line, 8));
+        group.setBackground(box(card, line, 16));
         col.addView(group);
         return group;
     }
@@ -1206,7 +1206,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Bottom bar, so a long open list can be closed without scrolling back up to its title.
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackground(box(card, line, 8));
+        bar.setBackground(box(card, line, 16));
         TextView close = monoText(11, rust);
         close.setText("▴ ZUKLAPPEN");
         close.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -1581,7 +1581,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView ask = text(13, ink, true);
         ask.setText("Zuletzt verwendete Apps anzeigen →");
         ask.setPadding(dp(14), dp(12), dp(14), dp(12));
-        ask.setBackground(box(card, line, 8));
+        ask.setBackground(box(card, line, 16));
         ask.setOnClickListener(v -> {
             Toast.makeText(this, "ARC-DNA antippen und Zugriff erlauben", Toast.LENGTH_LONG).show();
             open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
@@ -1855,7 +1855,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout mainRow = new LinearLayout(this);
         mainRow.setGravity(Gravity.CENTER_VERTICAL);
         mainRow.setPadding(dp(12), dp(10), dp(12), dp(10));
-        mainRow.setBackground(box(card, rust, 8));
+        mainRow.setBackground(box(card, rust, 16));
         LinearLayout mainTexts = new LinearLayout(this);
         mainTexts.setOrientation(LinearLayout.VERTICAL);
         TextView mainName = text(14, ink, true);
@@ -2098,7 +2098,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (alarmTime != null) {
             alarmTime.setText(t);
             alarmTime.setTextColor(on ? ink : ink3);
-            alarmCard.setBackground(box(card, on ? rust : line, 8));
+            alarmCard.setBackground(box(card, on ? rust : line, 16));
             alarmCard.setAlpha(on ? 1f : 0.75f);
         }
     }
@@ -3462,7 +3462,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
         t.setPadding(dp(4), dp(12), dp(4), dp(10));
-        t.setBackground(box(card, line, 8));
+        t.setBackground(box(card, line, 16));
 
         ImageView iv = new ImageView(this);
         if (icon != null) iv.setImageDrawable(icon);
@@ -3487,7 +3487,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         e.setPadding(dp(14), 0, dp(14), 0);
         e.setGravity(Gravity.CENTER_VERTICAL);
-        e.setBackground(box(card, line, 8));
+        e.setBackground(box(card, line, 16));
         return e;
     }
 

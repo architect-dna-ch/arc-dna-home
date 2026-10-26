@@ -104,14 +104,14 @@ final class MusicCard {
         root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(14), dp(14), dp(14), dp(12));
-        root.setBackground(box(card, line, 8));
+        root.setBackground(box(card, line, 16));
         root.setForeground(frame);
 
         LinearLayout top = new LinearLayout(activity);
         top.setGravity(Gravity.CENTER_VERTICAL);
         art = new ImageView(activity);
         art.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        art.setBackground(box(card, line, 6));
+        art.setBackground(box(card, line, 12));
         art.setClipToOutline(true);
         top.addView(art, new LinearLayout.LayoutParams(dp(54), dp(54)));
 
@@ -198,7 +198,7 @@ final class MusicCard {
         outputRow = new LinearLayout(activity);
         outputRow.setGravity(Gravity.CENTER_VERTICAL);
         outputRow.setPadding(dp(10), dp(8), dp(10), dp(8));
-        outputRow.setBackground(box(card, line, 8));
+        outputRow.setBackground(box(card, line, 16));
         gauge = new DeviceGauge();
         gauge.setOnClickListener(v -> showOutputSwitcher());
         outputRow.addView(gauge, new LinearLayout.LayoutParams(dp(58), dp(58)));
@@ -864,7 +864,7 @@ final class MusicCard {
                 flow.setLocalMatrix(m);
                 p.setShader(flow);
                 p.setStyle(Paint.Style.STROKE);
-                float rad = dp(8);
+                float rad = dp(16);
                 // A soft inner glow, then the crisp line on the card's edge.
                 p.setStrokeWidth(dp(7));
                 p.setAlpha((int) (55 * shown));

@@ -1356,7 +1356,7 @@ public class NexusActivity extends Activity {
                 p.setTextAlign(Paint.Align.CENTER);
                 p.setColor(INK3);
                 p.setTextSize(11 * d);
-                c.drawText("Nächste Welle in " + (int) Math.ceil(waveTimer) + " …", CX, CY + ARENA_R + 22 * d, p);
+                c.drawText("Nächste Welle in " + (int) Math.ceil(waveTimer) + " …", CX, CY + ARENA_R * 0.6f, p);
             }
             // Ability buttons, bottom right, ARC pills.
             String[] names = {"DASH", "NOVA", "STORM", "PULL"};
@@ -1407,6 +1407,11 @@ public class NexusActivity extends Activity {
 
         float[][] buttons() {
             float R = 30 * d, pad = 18 * d + Math.max(insL, insR), gap = 66 * d, by = H - 18 * d - insB - R, bx = W - pad - R - gap * 3;
+            // Wide screen: a 2 × 2 block right of the arena, so no button covers it.
+            if (W - (CX + ARENA_R) >= pad + 2 * R + gap + 8 * d) {
+                float rx = W - pad - R, lx = rx - gap, ty = by - gap;
+                return new float[][]{{lx, by, R}, {lx, ty, R}, {rx, ty, R}, {rx, by, R}};
+            }
             return new float[][]{{bx, by, R}, {bx + gap, by - 34 * d, R}, {bx + gap * 2, by - 34 * d, R}, {bx + gap * 3, by, R}};
         }
 
@@ -1501,17 +1506,17 @@ public class NexusActivity extends Activity {
                 float cx0 = rect.left, cw = rect.width(), y = rect.top, ch = rect.height();
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(0xFF1C1C1A);
-                c.drawRoundRect(rect, 8 * d, 8 * d, p);
+                c.drawRoundRect(rect, 16 * d, 16 * d, p);
                 if (shopFlash[i] > 0 || bought) {
                     p.setColor(s.col);
                     p.setAlpha((int) (bought ? 28 + 150 * shopFlash[i] : 180 * shopFlash[i]));
-                    c.drawRoundRect(rect, 8 * d, 8 * d, p);
+                    c.drawRoundRect(rect, 16 * d, 16 * d, p);
                     p.setAlpha(255);
                 }
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth((i == shopPressed ? 2.5f : 1.5f) * d);
                 p.setColor(shopShake[i] > 0 ? RUST : can || bought ? s.col : LINE);
-                c.drawRoundRect(rect, 8 * d, 8 * d, p);
+                c.drawRoundRect(rect, 16 * d, 16 * d, p);
                 p.setStyle(Paint.Style.FILL);
                 p.setTextAlign(Paint.Align.LEFT);
                 p.setColor(can || bought ? INK : INK3);
@@ -1550,11 +1555,11 @@ public class NexusActivity extends Activity {
             weiterRect(rect);
             p.setStyle(Paint.Style.FILL);
             p.setColor(shopPressed == 3 ? RUST : 0xFF1C1C1A);
-            c.drawRoundRect(rect, 8 * d, 8 * d, p);
+            c.drawRoundRect(rect, 16 * d, 16 * d, p);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(1.5f * d);
             p.setColor(RUST);
-            c.drawRoundRect(rect, 8 * d, 8 * d, p);
+            c.drawRoundRect(rect, 16 * d, 16 * d, p);
             small(c, "WEITER →  " + (int) Math.ceil(shopTimer) + " S", rect.centerY() + 5 * d, 14, shopPressed == 3 ? INK : RUST);
         }
 
