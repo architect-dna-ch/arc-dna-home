@@ -942,6 +942,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             prefs.edit().putInt("recentCount", next).apply();
             refreshRecents();
         }, null);
+        settingsRow(home, "Gesichts-Sperre nach dem Entsperren", () -> prefs.getBoolean("faceLock", false) ? "An" : "Aus", v -> {
+            boolean on = !prefs.getBoolean("faceLock", false);
+            if (on && !biometricReady()) {
+                Toast.makeText(this, "Erst Gesichtsentsperrung oder Fingerabdruck in Android einrichten", Toast.LENGTH_LONG).show();
+                return;
+            }
+            prefs.edit().putBoolean("faceLock", on).apply();
+        }, null);
         settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
@@ -3670,8 +3678,73 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         lockedSinceOff = false;
         unlockAt = 0;
+        if (prefs.getBoolean("faceLock", false) && biometricReady()) {
+            holdLocked();
+            return;
+        }
         DiagLog.log("unlock animation after a real unlock");
         rootFrame.postDelayed(this::playUnlock, 60);
+    }
+
+    /* ---- Gesichts-Sperre: the home stays blurred behind a lock until Android's face / biometric check passes ---- */
+
+    private View lockVeil;
+
+    private boolean biometricReady() {
+        if (Build.VERSION.SDK_INT < 30) return false;
+        android.hardware.biometrics.BiometricManager bm = getSystemService(android.hardware.biometrics.BiometricManager.class);
+        return bm != null && bm.canAuthenticate(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            == android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS;
+    }
+
+    private void holdLocked() {
+        if (lockVeil != null) {
+            askFace();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 31) scroll.setRenderEffect(RenderEffect.createBlurEffect(dp(28), dp(28), Shader.TileMode.CLAMP));
+        scroll.setScaleX(0.96f);
+        scroll.setScaleY(0.96f);
+        LinearLayout v = new LinearLayout(this);
+        v.setOrientation(LinearLayout.VERTICAL);
+        v.setGravity(Gravity.CENTER);
+        v.setBackgroundColor((panel & 0x00FFFFFF) | 0x66000000);
+        v.setClickable(true);
+        TextView lock = text(44, ink, true);
+        lock.setText("🔒");
+        lock.setGravity(Gravity.CENTER);
+        v.addView(lock);
+        TextView hint = monoText(12, ink2);
+        hint.setText("GESICHT ZEIGEN · TIPPEN = NOCHMAL");
+        hint.setGravity(Gravity.CENTER);
+        hint.setPadding(0, dp(12), 0, 0);
+        v.addView(hint);
+        v.setOnClickListener(x -> askFace());
+        lockVeil = v;
+        rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        askFace();
+    }
+
+    private void askFace() {
+        if (Build.VERSION.SDK_INT < 30) return;
+        android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle("ARC-DNA")
+            .setSubtitle("Startseite entsperren")
+            .setConfirmationRequired(false)
+            .setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            .setNegativeButton("Später", getMainExecutor(), (d, w) -> { })
+            .build();
+        prompt.authenticate(new android.os.CancellationSignal(), getMainExecutor(),
+            new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult r) {
+                    View v = lockVeil;
+                    lockVeil = null;
+                    if (v != null) rootFrame.removeView(v);
+                    DiagLog.log("face lock passed");
+                    playUnlock();         // the lock springs open, the blur clears
+                }
+            });
     }
 
     private void playUnlock() {
