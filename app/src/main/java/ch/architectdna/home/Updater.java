@@ -53,8 +53,14 @@ final class Updater {
         this.ui = ui;
     }
 
+    /** The token, decrypted from the Keystore-sealed copy (an older plain copy is sealed on first read). */
     String token() {
-        return prefs.getString("ghToken", "");
+        String plain = prefs.getString("ghToken", null);
+        if (plain != null) {
+            prefs.edit().putString("ghTokenSealed", SecureStore.seal(plain)).remove("ghToken").apply();
+            return plain;
+        }
+        return SecureStore.open(prefs.getString("ghTokenSealed", ""));
     }
 
     /**
@@ -63,7 +69,7 @@ final class Updater {
      */
     void setToken(String token) {
         String clean = token.replaceAll("[^A-Za-z0-9_]", "");
-        prefs.edit().putString("ghToken", clean).remove("updateChecked").apply();
+        prefs.edit().putString("ghTokenSealed", SecureStore.seal(clean)).remove("ghToken").remove("updateChecked").apply();
     }
 
     int current() {

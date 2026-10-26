@@ -58,7 +58,11 @@
         </intent>
     </queries>
 
+    <!-- No backups or device transfer of the app's data (update token, history, favourites stay on this phone). -->
     <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/no_backup"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="ARC-DNA"
         android:supportsRtl="true"
@@ -160,9 +164,10 @@
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
             android:turnScreenOn="true" />
 
+        <!-- Not exported: only the system (boot, update) and our own alarm may reach it, no other app. -->
         <receiver
             android:name=".AlarmReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

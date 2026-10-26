@@ -191,6 +191,12 @@ public class GlobusActivity extends Activity {
 
     private void addLink(String title, String url) {
         if (!url.startsWith("http")) url = "https://" + url;
+        // Shared text comes from any app: keep it sane (web links only, bounded size and count).
+        if (!url.matches("https?://[^\\s]{3,2000}") || marks.size() >= 500) {
+            Toast.makeText(this, marks.size() >= 500 ? "Der Globus ist voll (500 Punkte)." : "Kein gültiger Link.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (title != null && title.length() > 120) title = title.substring(0, 120);
         for (Mark k : marks) {
             if (k.url.equals(url)) {
                 select(k);

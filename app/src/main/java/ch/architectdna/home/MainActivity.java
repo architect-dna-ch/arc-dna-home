@@ -935,6 +935,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
 
+        permissionsGroup(col);
+
         settingsSheet = sheet;
         rootFrame.addView(sheet, new FrameLayout.LayoutParams(-1, -1));
         sheet.setAlpha(0f);
@@ -951,6 +953,83 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (!libraryOpen) openLibrary();
         else startHead();
         handler.postDelayed(this::startGazeCalibration, 500);
+    }
+
+    /**
+     * Every permission ARC-DNA holds: what it's for, whether it's granted right now, and a tap to
+     * Android's own page where it can be changed or taken away. Nothing here leaves the phone.
+     */
+    private void permissionsGroup(LinearLayout col) {
+        LinearLayout g = settingsGroup(col, "Berechtigungen");
+        TextView note = monoText(10, ink3);
+        note.setSingleLine(false);
+        note.setText("ALLES BLEIBT AUF DEM HANDY · ANTIPPEN = IN ANDROID ÄNDERN ODER ENTZIEHEN");
+        note.setPadding(dp(16), dp(12), dp(16), dp(4));
+        g.addView(note);
+        Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+        Object[][] runtime = {
+            {"Kamera", "Kopf-Scroll, Taschenlampe im Dunkeln", Manifest.permission.CAMERA},
+            {"Mikrofon", "Musik-Visualizer (nur Pegel, keine Aufnahme)", Manifest.permission.RECORD_AUDIO},
+            {"Kontakte", "Namen im Telefon", Manifest.permission.READ_CONTACTS},
+            {"Anrufliste", "Letzte Anrufe im Telefon", Manifest.permission.READ_CALL_LOG},
+            {"Telefonieren", "Anrufen per Tipp im Telefon", Manifest.permission.CALL_PHONE},
+            {"Bluetooth", "Kopfhörer-Name und Akku", Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_CONNECT : null},
+            {"Benachrichtigungen", "Wecker, VOID FREQ, Kopf-Scroll", Build.VERSION.SDK_INT >= 33 ? Manifest.permission.POST_NOTIFICATIONS : null}};
+        for (Object[] p : runtime) {
+            String perm = (String) p[2];
+            if (perm == null) continue;
+            permissionRow(g, (String) p[0], (String) p[1],
+                () -> checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED, details);
+        }
+        android.app.AlarmManager am = getSystemService(android.app.AlarmManager.class);
+        permissionRow(g, "Nutzungszugriff", "Zuletzt benutzte Apps", this::hasUsageAccess,
+            new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        permissionRow(g, "Systemeinstellungen", "Helligkeits-Hebel", () -> Settings.System.canWrite(this),
+            new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
+        permissionRow(g, "Bedienungshilfe", "Kopf-Scroll in Apps (liest keine Inhalte)", this::scrollAssistOn,
+            new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        permissionRow(g, "Benachrichtigungszugriff", "Musik-Karte, Statistik (nur Mediensitzungen)", () -> {
+            String on = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+            return on != null && on.contains(getPackageName());
+        }, new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        permissionRow(g, "Apps installieren", "Nur ARC-DNA-Updates (Android prüft die Signatur)",
+            () -> getPackageManager().canRequestPackageInstalls(),
+            new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+        if (Build.VERSION.SDK_INT >= 31) {
+            permissionRow(g, "Exakte Wecker", "Bären-Wecker auf die Minute", () -> am == null || am.canScheduleExactAlarms(),
+                new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    private void permissionRow(LinearLayout card, String name, String why, java.util.function.BooleanSupplier granted, Intent where) {
+        View div = new View(this);
+        div.setBackgroundColor(line);
+        card.addView(div, new LinearLayout.LayoutParams(-1, Math.max(1, dp(1) / 2)));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(12), dp(14), dp(12));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        TextView n = text(15, ink, true);
+        n.setText(name);
+        texts.addView(n);
+        TextView w = text(12, ink3, false);
+        w.setText(why);
+        texts.addView(w);
+        row.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView val = monoText(11, rust);
+        Runnable paint = () -> {
+            boolean on = granted.getAsBoolean();
+            val.setText(on ? "ERLAUBT ›" : "AUS ›");
+            val.setTextColor(on ? rust : ink3);
+        };
+        paint.run();
+        row.addView(val);
+        row.setOnClickListener(v -> {
+            open(where);
+            v.postDelayed(paint, 1500);
+        });
+        card.addView(row);
     }
 
     private void closeSettings() {
