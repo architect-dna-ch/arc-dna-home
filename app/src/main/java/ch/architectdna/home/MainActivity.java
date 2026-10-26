@@ -2682,16 +2682,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Facing the screen? Head turned more than ~25° aside or tipped far up / down counts as looking away. */
     private float facingPitch = Float.NaN;
+    private long facingSince;
+    private TextView awayChip;
+
+    /** The look-away countdown: its own chip at the top centre (it used to squeeze the header). */
+    private void showAwayChip(String text) {
+        if (awayChip == null) {
+            awayChip = monoText(12, 0xFFFFFFFF);
+            awayChip.setPadding(dp(16), dp(10), dp(16), dp(10));
+            awayChip.setBackground(box(rust, rust, 20));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = dp(120);
+            rootFrame.addView(awayChip, lp);
+        }
+        awayChip.setText(text);
+        awayChip.setVisibility(View.VISIBLE);
+        awayChip.bringToFront();
+    }
+
+    private void hideAwayChip() {
+        if (awayChip != null) awayChip.setVisibility(View.GONE);
+    }
 
     @Override
     public void onPose(float pitch, float yaw) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
         if (Float.isNaN(facingPitch)) facingPitch = pitch;
         boolean away = Math.abs(yaw) > 20 || Math.abs(pitch - facingPitch) > 18;
+        long now = android.os.SystemClock.uptimeMillis();
         if (away) {
+            facingSince = 0;
             noteAway();
         } else {
-            if (faceLostAt != 0 && faceWatch) headLabel.setVisibility(View.GONE);
+            // Only a steady look back (0.4 s) counts; single frames that see the face don't reset the countdown.
+            if (facingSince == 0) facingSince = now;
+            if (now - facingSince < 400) return;
+            if (faceLostAt != 0) hideAwayChip();
             faceLostAt = 0;
             if (dino != null) dino.lookedBack();      // caught it in time: it runs and hides
             facingPitch += (pitch - facingPitch) * 0.05f;      // follows how you hold the phone
@@ -2705,14 +2731,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             faceLostAt = now;
             DiagLog.log("looking away");
         }
-        if (faceWatch && dino == null && homeInFront) {
-            long left = Math.max(0, 2 - (now - faceLostAt) / 1000);
-            headLabel.setText("◉ WEGGESCHAUT · DINO IN " + left + "  ");
-            headLabel.setVisibility(View.VISIBLE);
+        if (dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
+            long left = Math.max(1, 2 - (now - faceLostAt) / 1000);
+            showAwayChip("◉ WEGGESCHAUT · DINO IN " + left);
         }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
         if (now - faceLostAt > 2000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
-            if (faceWatch) headLabel.setVisibility(View.GONE);
+            hideAwayChip();
             startDino(true);
             if (dino != null) lastDinoAt = now;
         }
@@ -3929,6 +3954,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(dinoTick);
         endDino();
         stopFaceWatch();
+        hideAwayChip();
         if (volumeReceiver != null) {
             unregisterReceiver(volumeReceiver);
             volumeReceiver = null;
