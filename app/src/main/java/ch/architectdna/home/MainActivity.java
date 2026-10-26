@@ -707,7 +707,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             webSearch();
             return true;
         });
-        webQuery.setBackground(tinted(LIGHT_RED));     // Suche in light red, like the other sections' colours
+        tint(webQuery, LIGHT_RED);     // Suche in light red, like the other sections' colours
         row.addView(webQuery, new LinearLayout.LayoutParams(0, dp(50), 1f));
 
         TextView go = text(18, 0xFFFFFFFF, true);
@@ -1229,6 +1229,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         head.setOnClickListener(v -> {
             boolean now = block.getVisibility() != View.VISIBLE;
             prefs.edit().putBoolean("fold:" + key, now).apply();
+            if (java.util.Arrays.asList(TINT_FOLDS).contains(key)) recolour();
             arrow.setText(now ? "▾ ZU" : "▸ AUF");
             v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
             if (now) {
@@ -3891,7 +3892,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private int tileTint;
 
     /** A tile tinted in the section's colour: a light see-through fill and a clear edge. */
+    /** The colours only make sense together: tinted while Suche, Apps, ARC-DNA Apps and Zuletzt are all open, else plain. */
+    private static final String[] TINT_FOLDS = {"search", "apps", "arcApps", "recentRow"};
+    private static final boolean[] TINT_DEFAULTS = {true, true, false, true};
+    private final java.util.WeakHashMap<View, Integer> tintViews = new java.util.WeakHashMap<>();
+
+    private boolean vibrant() {
+        for (int i = 0; i < TINT_FOLDS.length; i++) if (!prefs.getBoolean("fold:" + TINT_FOLDS[i], TINT_DEFAULTS[i])) return false;
+        return true;
+    }
+
+    private void tint(View v, int colour) {
+        tintViews.put(v, colour);
+        v.setBackground(tinted(colour));
+    }
+
+    private void recolour() {
+        for (java.util.Map.Entry<View, Integer> e : new ArrayList<>(tintViews.entrySet())) {
+            if (e.getKey() != null) e.getKey().setBackground(tinted(e.getValue()));
+        }
+    }
+
     private android.graphics.drawable.Drawable tinted(int colour) {
+        if (!vibrant()) return box(card, line, 16);
         boolean night = isNight();
         int fill = (colour & 0x00FFFFFF) | ((night ? 0x2E : 0x3D) << 24);
         int edge = (colour & 0x00FFFFFF) | ((night ? 0x99 : 0xB3) << 24);
@@ -3907,7 +3930,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
         t.setPadding(dp(4), dp(12), dp(4), dp(10));
-        t.setBackground(tileTint != 0 ? tinted(tileTint) : box(card, line, 16));
+        if (tileTint != 0) tint(t, tileTint);
+        else t.setBackground(box(card, line, 16));
 
         ImageView iv = new ImageView(this);
         if (icon != null) iv.setImageDrawable(icon);
