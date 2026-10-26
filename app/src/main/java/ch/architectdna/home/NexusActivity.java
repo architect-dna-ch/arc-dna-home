@@ -50,6 +50,14 @@ public class NexusActivity extends Activity {
     }
 
     @Override
+    public void onWindowFocusChanged(boolean focus) {
+        super.onWindowFocusChanged(focus);
+        if (focus && Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
+            getWindow().getInsetsController().hide(WindowInsets.Type.systemBars());
+        }
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         game.pause();
@@ -214,6 +222,7 @@ public class NexusActivity extends Activity {
             }
             player.move(mx, my, dt);
             player.update(dt);
+            separate(dt);
             for (int i = enemies.size() - 1; i >= 0; i--) {
                 enemies.get(i).update(dt);
                 if (enemies.get(i).dead) enemies.remove(i);
@@ -260,7 +269,10 @@ public class NexusActivity extends Activity {
             if (waveActive && enemies.isEmpty()) {
                 waveActive = false;
                 waveTimer = 0;
+                int bonus = 3 + wave * 2;
+                coins += bonus;
                 text(CX, CY - 50 * S, "WELLE GESCHAFFT!", GREEN, 2, 20);
+                text(CX, CY - 24 * S, "+" + bonus + " MÜNZEN", GOLD, 2, 14);
                 boolean shop = wave == 2 || (wave > 2 && wave % 3 == 0);
                 if (shop) after(1.4f, () -> {
                     if (state.equals("playing")) openShop();
@@ -342,6 +354,24 @@ public class NexusActivity extends Activity {
             }
             shake(9);
             ring(CX, CY, 20, 140, 4, BLUE);
+        }
+
+        /** Enemies push each other apart instead of stacking into one blob. */
+        void separate(float dt) {
+            for (int i = 0; i < enemies.size(); i++) {
+                Enemy a = enemies.get(i);
+                for (int j = i + 1; j < enemies.size(); j++) {
+                    Enemy b = enemies.get(j);
+                    float dx = b.x - a.x, dy = b.y - a.y, dd = (float) Math.hypot(dx, dy), min = a.r + b.r + 2 * S;
+                    if (dd >= min || dd < 0.01f) continue;
+                    float push = (min - dd) * 0.5f * Math.min(1, dt * 12), nx = dx / dd, ny = dy / dd;
+                    float wa = b.r / (a.r + b.r), wb = 1 - wa;   // the bigger one moves less
+                    a.x -= nx * push * 2 * wa;
+                    a.y -= ny * push * 2 * wa;
+                    b.x += nx * push * 2 * wb;
+                    b.y += ny * push * 2 * wb;
+                }
+            }
         }
 
         void spawn(String type) {
@@ -540,6 +570,8 @@ public class NexusActivity extends Activity {
             }
         }
 
+        static final float SHOP_TIME = 20;
+
         void openShop() {
             List<Shop> pool = new ArrayList<>();
             pool.add(new Shop("REPARATUR", "50 HP zurück", 10, GREEN, () -> player.hp = Math.min(player.maxHp, player.hp + 50)));
@@ -558,7 +590,7 @@ public class NexusActivity extends Activity {
             pool.add(new Shop("VAMPIR", "5 % Lebensraub", 50, 0xFFFF5AA5, () -> player.lifesteal += 0.05f));
             Collections.shuffle(pool, rnd);
             shopItems = new ArrayList<>(pool.subList(0, 3));
-            shopTimer = 25;
+            shopTimer = SHOP_TIME;
             state = "shop";
         }
 
@@ -929,9 +961,9 @@ public class NexusActivity extends Activity {
                 onKill();
                 float hChance = type.equals("boss") ? 0.9f : type.equals("brute") ? 0.45f : 0.22f;
                 if (rnd.nextFloat() < hChance) orbs.add(new Orb(x, y, "health", 0));
-                int gc = type.equals("boss") ? 3 : type.equals("brute") ? 1 : rnd.nextFloat() < 0.4f ? 1 : 0;
+                int gc = type.equals("boss") ? 3 : type.equals("brute") ? 2 : rnd.nextFloat() < 0.7f ? 1 : 0;
                 for (int i = 0; i < gc; i++) {
-                    orbs.add(new Orb(x + rand(-8, 8) * S, y + rand(-8, 8) * S, "gold", type.equals("boss") ? 4 + rnd.nextInt(4) : 1 + rnd.nextInt(2)));
+                    orbs.add(new Orb(x + rand(-8, 8) * S, y + rand(-8, 8) * S, "gold", type.equals("boss") ? 6 + rnd.nextInt(5) : 2 + rnd.nextInt(3)));
                 }
                 orbs.add(new Orb(x, y, "xp", (int) (xp * 0.4f)));
                 if (type.equals("boss")) text(CX, CY - 70 * S, "BOSS BESIEGT!", GOLD, 3.5f, 30);
@@ -1049,7 +1081,7 @@ public class NexusActivity extends Activity {
                     x += vx * S * dt;
                     y += vy * S * dt;
                     float dd = dist(x, y, player.x, player.y);
-                    if (dd < 90 * S) {
+                    if (dd < 110 * S) {
                         double a = Math.atan2(player.y - y, player.x - x);
                         x += Math.cos(a) * 220 * S * dt;
                         y += Math.sin(a) * 220 * S * dt;
@@ -1063,7 +1095,7 @@ public class NexusActivity extends Activity {
                     if (kind.equals("health")) {
                         int heal = 18 + rnd.nextInt(15);
                         player.hp = Math.min(player.maxHp, player.hp + heal);
-                        text(x, y - 20 * S, "+" + heal + " HP", GREEN, 0.9f, 15);
+                        text(player.x, player.y - 44 * S, "+" + heal + " HP", GREEN, 1.1f, 15);
                         burst(x, y, 10, 80, 4, GREEN);
                     } else if (kind.equals("gold")) {
                         coins += val;
@@ -1263,8 +1295,22 @@ public class NexusActivity extends Activity {
             if (player != null) drawHud(c);
         }
 
+        float insL, insT, insR, insB;
+
+        void readInsets() {
+            WindowInsets wi = getRootWindowInsets();
+            insL = insT = insR = insB = 0;
+            if (wi == null || Build.VERSION.SDK_INT < 30) return;
+            android.graphics.Insets in = wi.getInsetsIgnoringVisibility(WindowInsets.Type.displayCutout());
+            insL = in.left;
+            insT = in.top;
+            insR = in.right;
+            insB = in.bottom;
+        }
+
         void drawHud(Canvas c) {
-            float pad = 16 * d, top = 18 * d;
+            readInsets();
+            float pad = 16 * d + Math.max(insL, insR), top = 18 * d + insT;
             p.setTextAlign(Paint.Align.LEFT);
             p.setStyle(Paint.Style.FILL);
             // Label like the home screen: rust dash, mono caps.
@@ -1343,14 +1389,19 @@ public class NexusActivity extends Activity {
                 c.drawCircle(joySX + jx, joySY + jy, 16 * S, p);
             }
             // Pause.
-            p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(INK3);
-            p.setTextSize(12 * d);
-            c.drawText("‖", W - pad - 4 * d, top + 80 * d, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.5f * d);
+            p.setColor(LINE);
+            rect.set(W - pad - 34 * d, top + 72 * d, W - pad, top + 106 * d);
+            c.drawRoundRect(rect, 6 * d, 6 * d, p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(INK2);
+            c.drawRect(W - pad - 22 * d, top + 81 * d, W - pad - 19 * d, top + 97 * d, p);
+            c.drawRect(W - pad - 15 * d, top + 81 * d, W - pad - 12 * d, top + 97 * d, p);
         }
 
         float[][] buttons() {
-            float R = 30 * d, pad = 18 * d, gap = 66 * d, by = H - pad - R, bx = W - pad - R - gap * 3;
+            float R = 30 * d, pad = 18 * d + Math.max(insL, insR), gap = 66 * d, by = H - 18 * d - insB - R, bx = W - pad - R - gap * 3;
             return new float[][]{{bx, by, R}, {bx + gap, by - 34 * d, R}, {bx + gap * 2, by - 34 * d, R}, {bx + gap * 3, by, R}};
         }
 
@@ -1409,20 +1460,20 @@ public class NexusActivity extends Activity {
         }
 
         void drawShop(Canvas c) {
+            readInsets();
             overlay(c, 0xD1121211);
             small(c, "— SHOP", H * 0.12f, 12, INK3);
             small(c, "⬡ " + coins + " MÜNZEN", H * 0.12f + 26 * d, 15, GOLD);
             float bw = Math.min(W * 0.8f, 360 * d);
-            bar(c, CX - bw / 2, H * 0.12f + 40 * d, bw, 4 * d, shopTimer / 25f, RUST);
-            float ch = 74 * d, gap = 12 * d, y0 = H * 0.3f;
+            bar(c, CX - bw / 2, H * 0.12f + 40 * d, bw, 4 * d, shopTimer / SHOP_TIME, RUST);
             p.setTextAlign(Paint.Align.LEFT);
             for (int i = 0; i < shopItems.size(); i++) {
                 Shop s = shopItems.get(i);
-                float y = y0 + i * (ch + gap);
                 boolean can = coins >= s.cost;
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(0xFF1C1C1A);
-                rect.set(CX - bw / 2, y, CX + bw / 2, y + ch);
+                shopCard(i, rect);
+                float cx0 = rect.left, cw = rect.width(), y = rect.top, ch = rect.height();
                 c.drawRoundRect(rect, 8 * d, 8 * d, p);
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(1.5f * d);
@@ -1432,16 +1483,27 @@ public class NexusActivity extends Activity {
                 p.setTextAlign(Paint.Align.LEFT);
                 p.setColor(can ? INK : INK3);
                 p.setTextSize(15 * d);
-                c.drawText(s.name, CX - bw / 2 + 16 * d, y + 30 * d, p);
+                c.drawText(s.name, cx0 + 16 * d, y + 30 * d, p);
                 p.setColor(INK3);
                 p.setTextSize(11 * d);
-                c.drawText(s.desc, CX - bw / 2 + 16 * d, y + 52 * d, p);
-                p.setTextAlign(Paint.Align.RIGHT);
+                c.drawText(s.desc, cx0 + 16 * d, y + 52 * d, p);
                 p.setColor(can ? GOLD : INK3);
                 p.setTextSize(14 * d);
-                c.drawText("⬡ " + s.cost, CX + bw / 2 - 16 * d, y + 42 * d, p);
+                c.drawText("⬡ " + s.cost + (can ? "" : "  · FEHLEN " + (s.cost - coins)), cx0 + 16 * d, y + ch - 16 * d, p);
+                if (can) {
+                    p.setTextAlign(Paint.Align.RIGHT);
+                    p.setColor(s.col);
+                    c.drawText("KAUFEN", cx0 + cw - 16 * d, y + ch - 16 * d, p);
+                }
             }
-            small(c, "WEITER →", y0 + 3 * (ch + gap) + 30 * d, 14, RUST);
+            if (shopItems.isEmpty()) small(c, "ALLES GEKAUFT", H * 0.5f, 13, INK2);
+            float wy = H - 28 * d - insB;
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.5f * d);
+            p.setColor(RUST);
+            rect.set(CX - 90 * d, wy - 30 * d, CX + 90 * d, wy + 12 * d);
+            c.drawRoundRect(rect, 8 * d, 8 * d, p);
+            small(c, "WEITER →  " + (int) Math.ceil(shopTimer) + " S", wy - 3 * d, 14, RUST);
         }
 
         void drawDead(Canvas c) {
@@ -1477,7 +1539,7 @@ public class NexusActivity extends Activity {
                         shopTap(x, y);
                         return true;
                     case "playing":
-                        if (x > W - 60 * d && y < 120 * d) {
+                        if (x > W - 80 * d - Math.max(insL, insR) && y < 130 * d + insT) {
                             state = "paused";
                             return true;
                         }
@@ -1516,11 +1578,24 @@ public class NexusActivity extends Activity {
             return true;
         }
 
+        /** Card i of the shop: side by side on a wide screen, stacked on a tall one; WEITER stays visible below. */
+        void shopCard(int i, RectF out) {
+            float top = H * 0.12f + 60 * d, bottom = H - 70 * d - insB;
+            if (W > H) {
+                float cw = Math.min((W - 64 * d) / 3 - 12 * d, 260 * d), ch = Math.min(bottom - top, 140 * d);
+                float x0 = CX - (cw * 3 + 24 * d) / 2 + i * (cw + 12 * d), y0 = top + (bottom - top - ch) / 2;
+                out.set(x0, y0, x0 + cw, y0 + ch);
+            } else {
+                float bw = Math.min(W * 0.86f, 380 * d), ch = Math.min((bottom - top) / 3 - 12 * d, 96 * d);
+                float y0 = top + i * (ch + 12 * d);
+                out.set(CX - bw / 2, y0, CX + bw / 2, y0 + ch);
+            }
+        }
+
         void shopTap(float x, float y) {
-            float bw = Math.min(W * 0.8f, 360 * d), ch = 74 * d, gap = 12 * d, y0 = H * 0.3f;
             for (int i = 0; i < shopItems.size(); i++) {
-                float top = y0 + i * (ch + gap);
-                if (y >= top && y <= top + ch && Math.abs(x - CX) <= bw / 2) {
+                shopCard(i, rect);
+                if (rect.contains(x, y)) {
                     Shop s = shopItems.get(i);
                     if (coins < s.cost) return;
                     coins -= s.cost;
@@ -1531,7 +1606,7 @@ public class NexusActivity extends Activity {
                     return;
                 }
             }
-            if (y > y0 + 3 * (ch + gap)) closeShop();
+            if (y > H - 80 * d - insB) closeShop();
         }
     }
 }
