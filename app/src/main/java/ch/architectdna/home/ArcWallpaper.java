@@ -229,12 +229,22 @@ public class ArcWallpaper extends WallpaperService {
             paint.setStrokeWidth(2 * s);
             paint.setColor(0x0E000000 | ink);
             float cell = 84 * s;
-            for (float x = -2 * s; x < width; x += cell) c.drawLine(x, 0, x, height, paint);
-            for (float y = 40 * s; y < height; y += cell) c.drawLine(0, y, width, y, paint);
+            // A glass orb in the middle of the cube bends everything around it (grid, cube edges), with
+            // colour fringes at the rim, like a lens. It breathes with the music.
+            float cubeScale = 760 * s / 14f * 6f / (float) Math.sqrt(2);
+            lensX = width / 2f;
+            lensY = height * 0.52f;
+            lensR = cubeScale * 0.85f * (1 + 0.04f * (float) Math.sin(t * 1.3f) + 0.12f * beat);
+            orbBack(c, dark, t);
+            paint.setStrokeWidth(2 * s);
+            paint.setColor(0x0E000000 | ink);
+            for (float x = -2 * s; x < width; x += cell) lensLine(c, x, 0, x, height, false);
+            for (float y = 40 * s; y < height; y += cell) lensLine(c, 0, y, width, y, false);
 
             // The cube, as on the website wallpaper, but real 3D: two fingers on the home screen turn it.
             stepCube();
-            drawCube(c, width / 2f, height * 0.52f, 760 * s / 14f * 6f / (float) Math.sqrt(2), ink, rust);
+            drawCube(c, width / 2f, height * 0.52f, cubeScale, ink, rust);
+            orbFront(c, dark, t, s);
 
             // Rave / beat rings.
             beat *= 0.9f;
@@ -646,6 +656,120 @@ public class ArcWallpaper extends WallpaperService {
 
         private static final float BASE_YAW = (float) Math.toRadians(45), BASE_PITCH = (float) Math.toRadians(35.264);
         private final float[][] proj = new float[8][3];
+
+        /* ---- The glass orb (lens) ---- */
+
+        private float lensX, lensY, lensR;
+        private final float[] warped = new float[2];
+        private final android.graphics.Path lensPath = new android.graphics.Path();
+
+        /**
+         * Where a point shows up through the orb: magnified inside (pushed outwards), and outside the
+         * rim bent away a little, fading out. spread > 1 bends more (for the blue fringe).
+         */
+        private void warp(float x, float y, float spread) {
+            float dx = x - lensX, dy = y - lensY, d = (float) Math.hypot(dx, dy), r = lensR;
+            if (d < 1e-3f || r <= 0) {
+                warped[0] = x;
+                warped[1] = y;
+                return;
+            }
+            float nd;
+            if (d < r) {
+                nd = r * (float) Math.pow(d / r, 0.62f + 0.06f * (spread - 1));      // magnified
+            } else {
+                float out = (d - r) / r;
+                nd = d + r * 0.3f * spread * (float) Math.exp(-out * 2.2f);         // bent round the rim
+            }
+            warped[0] = lensX + dx / d * nd;
+            warped[1] = lensY + dy / d * nd;
+        }
+
+        /** A straight line as it looks through the orb; near the rim also a red and a blue fringe. */
+        private void lensLine(Canvas c, float x1, float y1, float x2, float y2, boolean cube) {
+            // Lines that don't come near the orb stay straight (cheap).
+            float lx = x2 - x1, ly = y2 - y1, len2 = lx * lx + ly * ly;
+            float tt = len2 == 0 ? 0 : Math.max(0, Math.min(1, ((lensX - x1) * lx + (lensY - y1) * ly) / len2));
+            float near = (float) Math.hypot(x1 + lx * tt - lensX, y1 + ly * tt - lensY);
+            if (lensR <= 0 || near > lensR * 2.2f) {
+                c.drawLine(x1, y1, x2, y2, paint);
+                return;
+            }
+            int base = paint.getColor();
+            int n = 48;
+            if (near < lensR * 1.5f) {
+                // Fringes: red bent less, blue bent more, both faint.
+                int a = Math.min(255, (int) (((base >>> 24) & 0xFF) * (cube ? 1.4f : 2.2f)));
+                float[] spreads = {0.8f, 1.3f};
+                int[] cols = {0x00FF4A3A, 0x003C8CFF};
+                for (int k = 0; k < 2; k++) {
+                    linePath(x1, y1, x2, y2, n, spreads[k]);
+                    paint.setColor(cols[k] | (Math.min(255, a * 2 / 3) << 24));
+                    c.drawPath(lensPath, paint);
+                }
+            }
+            linePath(x1, y1, x2, y2, n, 1);
+            paint.setColor(base);
+            c.drawPath(lensPath, paint);
+        }
+
+        private void linePath(float x1, float y1, float x2, float y2, int n, float spread) {
+            lensPath.reset();
+            for (int i = 0; i <= n; i++) {
+                float f = i / (float) n;
+                warp(x1 + (x2 - x1) * f, y1 + (y2 - y1) * f, spread);
+                if (i == 0) lensPath.moveTo(warped[0], warped[1]);
+                else lensPath.lineTo(warped[0], warped[1]);
+            }
+        }
+
+        /** Behind the cube: a soft blue glow and the glass body. */
+        private void orbBack(Canvas c, boolean dark, float t) {
+            float r = lensR;
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new android.graphics.RadialGradient(lensX, lensY, r * 1.9f,
+                new int[]{dark ? 0x553A5A9A : 0x333C6EC8, dark ? 0x22304A80 : 0x143C6EC8, 0x00000000},
+                new float[]{0.45f, 0.7f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+            c.drawCircle(lensX, lensY, r * 1.9f, paint);
+            paint.setShader(new android.graphics.RadialGradient(lensX - r * 0.25f, lensY - r * 0.3f, r * 1.25f,
+                new int[]{dark ? 0xFF1E2840 : 0xFFF4F7FC, dark ? 0xFF121826 : 0xFFE3EAF5, dark ? 0xFF0A0D14 : 0xFFCCD7E8},
+                new float[]{0f, 0.6f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+            paint.setAlpha(dark ? 150 : 120);
+            c.drawCircle(lensX, lensY, r, paint);
+            paint.setAlpha(255);
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+        }
+
+        /** In front: the glass rim (a bright arc top left, blue below right) and slow specks inside. */
+        private void orbFront(Canvas c, boolean dark, float t, float s) {
+            float r = lensR;
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3 * s);
+            paint.setColor(dark ? 0x664A72C8 : 0x553C6EC8);
+            c.drawCircle(lensX, lensY, r, paint);
+            paint.setStrokeWidth(5 * s);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            android.graphics.RectF o = new android.graphics.RectF(lensX - r * 0.94f, lensY - r * 0.94f, lensX + r * 0.94f, lensY + r * 0.94f);
+            paint.setColor(dark ? 0x40FFFFFF : 0x99FFFFFF);
+            c.drawArc(o, 195, 70, false, paint);
+            paint.setColor(dark ? 0x553C8CFF : 0x443C6EC8);
+            c.drawArc(o, 20, 80, false, paint);
+            // Specks drifting in the glass.
+            paint.setStyle(Paint.Style.FILL);
+            for (int i = 0; i < 28; i++) {
+                double a = i * 2.39996 + t * (0.05 + (i % 5) * 0.012);
+                float d = r * 0.85f * (float) Math.sqrt(((i * 37) % 100) / 100f);
+                float x = lensX + (float) Math.cos(a) * d, y = lensY + (float) Math.sin(a) * d;
+                float tw = 0.5f + 0.5f * (float) Math.sin(t * 2 + i);
+                paint.setColor(dark ? 0xFFDCE6FF : 0xFF3C5A8C);
+                paint.setAlpha((int) ((dark ? 90 : 70) * tw));
+                c.drawCircle(x, y, (1.4f + (i % 3)) * s, paint);
+            }
+            paint.setAlpha(255);
+            paint.setStyle(Paint.Style.STROKE);
+        }
         private float yaw = BASE_YAW, pitch = BASE_PITCH, drawnYaw = Float.NaN, drawnPitch = Float.NaN;
         /** At a normal ~45° grip the cube shows the pose it used to have lying flat (your pick). */
         private static final float NEUTRAL_TILT = (float) Math.toRadians(90);
@@ -729,7 +853,7 @@ public class ArcWallpaper extends WallpaperService {
                     boolean accent = a == 4 && b == 5;                        // the logo's rust edge
                     paint.setColor(accent ? (rust & 0x00FFFFFF) | ((int) (255 * (0.3f + 0.25f * (depth + 1.7f) / 3.4f)) << 24)
                         : (ink & 0x00FFFFFF) | ((int) (255 * alpha) << 24));
-                    c.drawLine(proj[a][0], proj[a][1], proj[b][0], proj[b][1], paint);
+                    lensLine(c, proj[a][0], proj[a][1], proj[b][0], proj[b][1], true);
                 }
             }
             faceLetters(c, rust);
