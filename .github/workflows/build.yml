@@ -47,6 +47,19 @@ jobs:
             ARC-DNA-Home.apk
             ARC-DNA-Home.aab
 
+      # Small in-app update patches: from each of the last 6 releases to this build (tools/apkdelta.py).
+      - name: Update patches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p deltas
+          for tag in $(gh api "repos/${{ github.repository }}/releases?per_page=6" --jq '.[].tag_name'); do
+            mkdir -p "old/$tag"
+            gh release download "$tag" -p ARC-DNA-Home.apk -D "old/$tag" -R "${{ github.repository }}" || continue
+            python3 tools/apkdelta.py "old/$tag/ARC-DNA-Home.apk" ARC-DNA-Home.apk "deltas/delta-$tag.bin" || rm -f "deltas/delta-$tag.bin"
+          done
+          ls -la deltas
+
       - name: Final build?
         id: final
         run: |
@@ -61,7 +74,9 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: ARC-DNA Home 1.0.${{ github.run_number }}${{ steps.final.outputs.suffix }}
-          files: ARC-DNA-Home.apk
+          files: |
+            ARC-DNA-Home.apk
+            deltas/*.bin
           make_latest: true
           body: |
             Download **ARC-DNA-Home.apk** on your Pixel, open it and allow installing from this source.

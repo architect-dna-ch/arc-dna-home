@@ -109,16 +109,19 @@ final class Updater {
                 JSONObject release = new JSONObject(readAll(c.getInputStream()));
                 String tag = release.getString("tag_name");                 // e.g. v1.0.12
                 int n = Integer.parseInt(tag.substring(tag.lastIndexOf('.') + 1));
-                long id = 0;
+                long id = 0, delta = 0;
+                String mine = "delta-v1.0." + current() + ".bin";      // a small patch from exactly this version
                 JSONArray assets = release.getJSONArray("assets");
                 for (int i = 0; i < assets.length(); i++) {
                     JSONObject a = assets.getJSONObject(i);
                     if (a.getString("name").endsWith(".apk")) id = a.getLong("id");
+                    if (a.getString("name").equals(mine)) delta = a.getLong("id");
                 }
                 latest = n;
                 assetId = id;
+                deltaId = delta;
                 prefs.edit().putLong("updateChecked", System.currentTimeMillis()).putInt("updateLatest", n)
-                    .putLong("updateAsset", id).apply();
+                    .putLong("updateAsset", id).putLong("updateDelta", delta).putInt("updateDeltaFor", current()).apply();
                 main.post(() -> {
                     showState();
                     if (manual && n <= current()) toast("ARC-DNA ist aktuell (1.0." + current() + ").");
@@ -144,6 +147,7 @@ final class Updater {
         if (latest == 0) {
             latest = prefs.getInt("updateLatest", 0);
             assetId = prefs.getLong("updateAsset", 0);
+            deltaId = prefs.getInt("updateDeltaFor", -1) == current() ? prefs.getLong("updateDelta", 0) : 0;
         }
         if (latest > current() && assetId != 0) ui.onUpdateState("Update 1.0." + latest + " → installieren", true);
         else ui.onUpdateState("ARC-DNA 1.0." + current() + " · aktuell", false);
@@ -163,19 +167,19 @@ final class Updater {
         new Thread(() -> {
             PackageInstaller.Session session = null;
             try {
-                // GitHub answers with a redirect to a signed download URL that must be fetched
-                // without the token, so follow it by hand.
-                HttpURLConnection c = open(REPO + "/releases/assets/" + assetId, "application/octet-stream", true);
-                c.setInstanceFollowRedirects(false);
-                int code = c.getResponseCode();
-                if (code / 100 == 3) {
-                    String location = c.getHeaderField("Location");
-                    c.disconnect();
-                    c = open(location, "application/octet-stream", false);
-                    code = c.getResponseCode();
+                // First choice: the small patch from the installed version (a few MB instead of the whole APK).
+                java.io.File built = deltaId != 0 ? fromDelta() : null;
+                InputStream source;
+                long length;
+                HttpURLConnection c = null;
+                if (built != null) {
+                    source = new java.io.FileInputStream(built);
+                    length = built.length();
+                } else {
+                    c = download(assetId);
+                    source = c.getInputStream();
+                    length = c.getContentLengthLong();
                 }
-                if (code != 200) throw new IOException("Download fehlgeschlagen (" + code + ")");
-                long length = c.getContentLengthLong();
 
                 PackageInstaller installer = activity.getPackageManager().getPackageInstaller();
                 PackageInstaller.SessionParams params =
@@ -183,7 +187,7 @@ final class Updater {
                 params.setAppPackageName(activity.getPackageName());
                 int id = installer.createSession(params);
                 session = installer.openSession(id);
-                try (InputStream in = c.getInputStream();
+                try (InputStream in = source;
                      OutputStream out = session.openWrite("ARC-DNA-Home.apk", 0, length)) {
                     byte[] buf = new byte[64 * 1024];
                     long done = 0;
@@ -194,7 +198,7 @@ final class Updater {
                         int pct = length > 0 ? (int) (done * 100 / length) : 0;
                         if (pct != lastPct) {
                             lastPct = pct;
-                            main.post(() -> ui.onUpdateState("Lädt Update … " + pct + " %", false));
+                            main.post(() -> ui.onUpdateState((built != null ? "Installiert Update … " : "Lädt Update … ") + pct + " %", false));
                         }
                     }
                     session.fsync(out);
@@ -216,6 +220,91 @@ final class Updater {
                 busy = false;
             }
         }).start();
+    }
+
+    private long deltaId;
+
+    /** A release asset; GitHub redirects to a signed URL that must be fetched without the token. */
+    private HttpURLConnection download(long id) throws IOException {
+        HttpURLConnection c = open(REPO + "/releases/assets/" + id, "application/octet-stream", true);
+        c.setInstanceFollowRedirects(false);
+        int code = c.getResponseCode();
+        if (code / 100 == 3) {
+            String location = c.getHeaderField("Location");
+            c.disconnect();
+            c = open(location, "application/octet-stream", false);
+            code = c.getResponseCode();
+        }
+        if (code != 200) throw new IOException("Download fehlgeschlagen (" + code + ")");
+        return c;
+    }
+
+    /**
+     * Downloads the patch from the installed version and rebuilds the new APK from the installed
+     * one (see tools/apkdelta.py): unchanged parts are copied, the rest comes with the patch. Only
+     * used if the result's SHA-256 matches; any problem → null, and the full APK is loaded instead.
+     */
+    private java.io.File fromDelta() {
+        java.io.File out = new java.io.File(activity.getCacheDir(), "update.apk");
+        try {
+            HttpURLConnection c = download(deltaId);
+            long total = c.getContentLengthLong();
+            main.post(() -> ui.onUpdateState("Lädt kleines Update (" + Math.max(1, total / 1_000_000) + " MB) …", false));
+            java.io.File patch = new java.io.File(activity.getCacheDir(), "update.delta");
+            try (InputStream in = c.getInputStream(); OutputStream o = new java.io.FileOutputStream(patch)) {
+                byte[] buf = new byte[64 * 1024];
+                for (int r; (r = in.read(buf)) != -1; ) o.write(buf, 0, r);
+            }
+            java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] want = new byte[32];
+            long size;
+            try (java.io.DataInputStream in = new java.io.DataInputStream(new java.io.BufferedInputStream(
+                     new java.util.zip.GZIPInputStream(new java.io.FileInputStream(patch)), 1 << 16));
+                 java.io.RandomAccessFile old = new java.io.RandomAccessFile(activity.getApplicationInfo().sourceDir, "r");
+                 OutputStream o = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out), 1 << 16)) {
+                byte[] magic = new byte[5];
+                in.readFully(magic);
+                if (!"ARCD1".equals(new String(magic, java.nio.charset.StandardCharsets.US_ASCII))) throw new IOException("kein Patch");
+                size = in.readLong();
+                in.readFully(want);
+                byte[] buf = new byte[1 << 16];
+                for (int op; (op = in.readUnsignedByte()) != 2; ) {
+                    if (op == 0) {
+                        long off = in.readLong();
+                        int n = in.readInt();
+                        old.seek(off);
+                        while (n > 0) {
+                            int r = old.read(buf, 0, Math.min(n, buf.length));
+                            if (r < 0) throw new IOException("Basis zu kurz");
+                            o.write(buf, 0, r);
+                            sha.update(buf, 0, r);
+                            n -= r;
+                        }
+                    } else if (op == 1) {
+                        int n = in.readInt();
+                        while (n > 0) {
+                            int r = in.read(buf, 0, Math.min(n, buf.length));
+                            if (r < 0) throw new IOException("Patch zu kurz");
+                            o.write(buf, 0, r);
+                            sha.update(buf, 0, r);
+                            n -= r;
+                        }
+                    } else {
+                        throw new IOException("Patch kaputt");
+                    }
+                }
+            }
+            //noinspection ResultOfMethodCallIgnored
+            patch.delete();
+            if (out.length() != size || !java.security.MessageDigest.isEqual(sha.digest(), want)) throw new IOException("Prüfsumme falsch");
+            DiagLog.log("update: patch " + total / 1000 + " kB instead of the full APK");
+            return out;
+        } catch (Exception e) {
+            DiagLog.log("update: patch failed (" + e.getMessage() + "), loading the full APK");
+            //noinspection ResultOfMethodCallIgnored
+            out.delete();
+            return null;
+        }
     }
 
     /** Result of a session commit, delivered to MainActivity.onNewIntent. */
