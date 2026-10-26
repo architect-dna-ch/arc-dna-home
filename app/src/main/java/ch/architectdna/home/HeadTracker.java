@@ -86,8 +86,10 @@ final class HeadTracker implements LifecycleOwner {
     void setDebug(boolean on) {
         if (on == debug) return;
         debug = on;
-        FaceDetector old = detector;
-        detector = null;          // rebuilt with (or without) contours on the next start
+        // The head angle always comes from the plain detector (ML Kit reports no Euler angles with
+        // contours on, which made calibration in debug mode read 0.0°); contours get their own.
+        FaceDetector old = contourDetector;
+        contourDetector = null;
         if (old != null) analysisExecutor.execute(old::close);
     }
 
@@ -99,7 +101,7 @@ final class HeadTracker implements LifecycleOwner {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Executor mainExecutor = main::post;
     private final ExecutorService analysisExecutor = Executors.newSingleThreadExecutor();
-    private FaceDetector detector;
+    private FaceDetector detector, contourDetector;
     private FaceLandmarker landmarker;
     private ProcessCameraProvider provider;
     private volatile boolean running;
@@ -126,7 +128,14 @@ final class HeadTracker implements LifecycleOwner {
             if (m == Mode.NOD && detector == null) {
                 detector = FaceDetection.getClient(new FaceDetectorOptions.Builder()
                     .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-                    .setContourMode(debug ? FaceDetectorOptions.CONTOUR_MODE_ALL : FaceDetectorOptions.CONTOUR_MODE_NONE)
+                    .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+                    .setMinFaceSize(0.2f)
+                    .build());
+            }
+            if (m == Mode.NOD && debug && contourDetector == null) {
+                contourDetector = FaceDetection.getClient(new FaceDetectorOptions.Builder()
+                    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                    .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
                     .setMinFaceSize(0.2f)
                     .build());
             }
@@ -165,6 +174,7 @@ final class HeadTracker implements LifecycleOwner {
         stop();
         analysisExecutor.execute(() -> {
             if (detector != null) detector.close();
+            if (contourDetector != null) contourDetector.close();
             if (landmarker != null) landmarker.close();
             if (debugLandmarker != null) debugLandmarker.close();
         });
@@ -216,7 +226,14 @@ final class HeadTracker implements LifecycleOwner {
             List<Face> faces = Tasks.await(detector.process(InputImage.fromBitmap(frame, 0)));
             if (debug && SystemClock.uptimeMillis() - lastDebug > 120) {
                 lastDebug = SystemClock.uptimeMillis();
-                Debug d = debugInfo(frame, faces);
+                List<Face> outline = faces;
+                if (contourDetector != null) {
+                    try {
+                        outline = Tasks.await(contourDetector.process(InputImage.fromBitmap(frame, 0)));
+                    } catch (Exception ignored) {
+                    }
+                }
+                Debug d = debugInfo(frame, faces, outline);
                 main.post(() -> {
                     if (running) listener.onDebug(d);
                 });
@@ -237,7 +254,7 @@ final class HeadTracker implements LifecycleOwner {
     }
 
     /** Debug corner: shrink the frame, collect ML Kit's contours and MediaPipe's eye points. */
-    private Debug debugInfo(Bitmap frame, List<Face> faces) {
+    private Debug debugInfo(Bitmap frame, List<Face> faces, List<Face> outline) {
         Debug d = new Debug();
         float fw = frame.getWidth(), fh = frame.getHeight();
         d.frame = Bitmap.createScaledBitmap(frame, 240, Math.max(1, Math.round(240 * fh / fw)), true);
@@ -248,7 +265,7 @@ final class HeadTracker implements LifecycleOwner {
             d.yaw = f.getHeadEulerAngleY();
             android.graphics.Rect b = f.getBoundingBox();
             d.box = new android.graphics.RectF(b.left / fw, b.top / fh, b.right / fw, b.bottom / fh);
-            for (FaceContour c : f.getAllContours()) {
+            for (FaceContour c : outline.isEmpty() ? f.getAllContours() : outline.get(0).getAllContours()) {
                 List<android.graphics.PointF> pts = c.getPoints();
                 float[] line = new float[pts.size() * 2];
                 for (int i = 0; i < pts.size(); i++) {

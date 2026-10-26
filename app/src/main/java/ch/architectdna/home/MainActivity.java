@@ -969,7 +969,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return m.equals("nod") ? "Nicken" : "Aus";
         }, v -> cycleHeadMode(), null);
         settingsRow(head2, "Nicken kalibrieren", () -> prefs.contains("nodMid") ? "kalibriert" : "noch nie", v -> calibrate("nod"), null);
-        settingsRow(head2, "Bei jedem Start kalibrieren", () -> prefs.getBoolean("nodAlwaysCalib", true) ? "An" : "Aus",
+        settingsRow(head2, "Bei jedem Start neu zentrieren", () -> prefs.getBoolean("nodAlwaysCalib", true) ? "Still, automatisch" : "Aus",
             v -> prefs.edit().putBoolean("nodAlwaysCalib", !prefs.getBoolean("nodAlwaysCalib", true)).apply(), null);
         settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
             v -> showAppScrollSettings(), null);
@@ -2168,7 +2168,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean gaze = m.equals("gaze");
         // NICKEN calibrates on every start (can be switched off in ⚙); the calibration shows the live camera.
         boolean willCalib = gaze ? !prefs.contains("gazeMid")
-            : !prefs.contains("nodMid") || prefs.getBoolean("nodAlwaysCalib", true);
+            : !prefs.contains("nodMid");      // later starts just re-centre quietly on your current posture
         boolean dbg = prefs.getBoolean("camDebug", false);
         head.stop();
         head.setDebug(dbg || willCalib);
@@ -2186,7 +2186,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
         if (willCalib) startGazeCalibration();
-        else if (!gaze) Toast.makeText(this, "Kopf gerade halten … dann nicken zum Scrollen", Toast.LENGTH_SHORT).show();
+        else if (!gaze && !prefs.getBoolean("nodAlwaysCalib", true)) {
+            // Re-centring switched off: start from the saved neutral position.
+            basePitch = prefs.getFloat("nodMid", 0f);
+            calibFrames = 6;
+        }
     }
 
     private void stopHead() {
@@ -2545,7 +2549,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private View buildCalibOverlay() {
         FrameLayout o = new FrameLayout(this);
-        o.setBackgroundColor(panel);
+        o.setBackgroundColor((panel & 0x00FFFFFF) | 0xD9000000);    // see-through, the home stays visible behind
         o.setClickable(true);
         o.setVisibility(View.GONE);
         o.setOnClickListener(v -> {
@@ -2562,7 +2566,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         dlp.setMargins(0, dp(70), 0, dp(70));
         o.addView(calibDot, dlp);
 
-        calibText = text(17, ink, true);
+        calibText = text(15, ink, true);
         calibText.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
         tlp.topMargin = dp(70);
