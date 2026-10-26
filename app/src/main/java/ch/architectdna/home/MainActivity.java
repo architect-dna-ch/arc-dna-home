@@ -409,6 +409,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addView(clockRow);
 
         f1Panel = new F1Panel(this, new int[]{ink, ink2, ink3, rust, card, line}, voice);
+        // The buddy's eye chases the car; a pass under 0.65 s is too fast and leaves it dizzy.
+        f1Panel.setWatcher(new F1Panel.Watcher() {
+            @Override
+            public void onCar(float x, float y, long passMs) {
+                if (fox != null && fox.isShown()) fox.watch(x, y);
+            }
+
+            @Override
+            public void onCarGone(long passMs) {
+                if (fox == null || !fox.isShown() || passMs >= 650) return;
+                fox.dizzy(1500);
+                if (random.nextInt(3) == 0) {
+                    String[] l = {"Wo ist er hin?!", "Zu schnell …", "Mir ist schwindlig."};
+                    say(l[random.nextInt(l.length)], 1300);
+                }
+            }
+        });
         f1Panel.setVisibility(View.GONE);
         f1Panel.setOnClickListener(v -> setF1(false));
         content.addView(f1Panel, margins(-1, f1Height(), 0, dp(14), 0, 0));

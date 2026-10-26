@@ -31,6 +31,23 @@ final class F1Panel extends View {
     private long start, lastLap = -1, carStart = -1, carFor = -1, soundFor = -1;
     /** The car's centre is mid-track halfway through its pass. */
     private static final long CAR_LEAD_MS = CAR_MS / 2;
+    /** This pass's duration: every lap a different speed (fast ones are hard to follow). */
+    private long carMs = CAR_MS, plannedMs = CAR_MS, planFor = -1;
+    private final java.util.Random rnd = new java.util.Random();
+
+    /** Someone watching the car (the buddy's eyes): its position on screen, and when it's gone. */
+    interface Watcher {
+        void onCar(float screenX, float screenY, long passMs);
+
+        void onCarGone(long passMs);
+    }
+
+    private Watcher watcher;
+    private final int[] at = new int[2];
+
+    void setWatcher(Watcher w) {
+        watcher = w;
+    }
     private boolean running;
     private android.media.AudioManager audio;
 
@@ -79,9 +96,15 @@ final class F1Panel extends View {
                 if (audio == null) audio = getContext().getSystemService(android.media.AudioManager.class);
                 if (audio != null && audio.isMusicActive()) voice.whooshAt(next);
             }
-            if (remaining <= CAR_LEAD_MS && carFor != next) {
+            // Each lap rolls its pass speed once (0.45–1.15 s); the middle still lands on the mark.
+            if (planFor != next) {
+                planFor = next;
+                plannedMs = 450 + rnd.nextInt(700);
+            }
+            if (carFor != next && remaining <= plannedMs / 2) {
                 carFor = next;
-                carStart = SystemClock.uptimeMillis() - (CAR_LEAD_MS - remaining);
+                carMs = plannedMs;
+                carStart = SystemClock.uptimeMillis() - (plannedMs / 2 - remaining);
             }
             lastLap = wall / LAP_MS;
             invalidate();
@@ -169,14 +192,19 @@ final class F1Panel extends View {
 
         // The car pass.
         if (carStart >= 0) {
-            float k = (now - carStart) / (float) CAR_MS;
+            float k = (now - carStart) / (float) carMs;
             if (k >= 1) {
                 carStart = -1;
+                if (watcher != null) watcher.onCarGone(carMs);
             } else {
                 float ease = k < 0.5f ? 2 * k * k : 1 - (float) Math.pow(-2 * k + 2, 2) / 2;
                 float carW = dp(84), carH = dp(24);
                 float cx = -carW + ease * (w + carW);   // centre exactly mid-track at k = 0.5
                 float cy = trackY + trackH - dp(5) - carH;
+                if (watcher != null) {
+                    getLocationOnScreen(at);
+                    watcher.onCar(at[0] + cx + carW / 2, at[1] + cy + carH / 2, carMs);
+                }
                 paint.setStrokeCap(Paint.Cap.ROUND);
                 paint.setStyle(Paint.Style.STROKE);
                 for (int i = 0; i < 4; i++) {
