@@ -2684,7 +2684,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void setHeadSpeed(float speed) {
         // Eyes rest for a moment after the screen was touched or scrolled by finger.
         // Any touch pauses head and eye scrolling for 4 s, so the finger wins.
-        boolean resting = android.os.SystemClock.uptimeMillis() - lastTouch < EYE_PAUSE_MS;
+        boolean resting = android.os.SystemClock.uptimeMillis() - lastTouch < EYE_PAUSE_MS
+            || ScrollAssistService.paused;      // paused by a tap on the camera ring
         if (resting) speed = 0;
         boolean wasIdle = headSpeed == 0;
         headSpeed = speed;

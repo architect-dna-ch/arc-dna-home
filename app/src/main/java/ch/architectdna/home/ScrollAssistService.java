@@ -44,7 +44,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private EdgeLight edge;
     private WindowManager.LayoutParams edgeParams;
     private String currentPkg = "", mode = "off";
-    private boolean paused, scrolling, foreground, gotFrame;
+    private boolean scrolling, foreground, gotFrame;
+    /** One pause for all head scrolling (in apps and in the launcher's Mediathek), toggled by a tap on the camera ring. */
+    static volatile boolean paused;
+    private boolean ringHeld;
 
     /** If the camera never delivers a reading, say so instead of sitting there silently. */
     private final Runnable frameWatchdog = () -> {
@@ -255,7 +258,6 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         calibFrames = 0;
         calibSum = 0;
         smooth = m.equals("gaze") ? prefs.getFloat("gazeMid", 0f) : 0;
-        paused = false;
         gotFrame = false;
         head.start(m.equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         DiagLog.log("head tracking started, mode=" + m);
@@ -482,11 +484,11 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     private boolean error;
     private long rainbowUntil;
-    private final long[] ringTaps = new long[3];
     private float downX, downY;
 
     /** Long hold on the ring: the launcher's nod calibration (live camera, dots, confirm / redo). */
     private final Runnable ringHold = () -> {
+        ringHeld = true;
         if (pill != null) pill.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
         android.content.Intent cal = new android.content.Intent(MainActivity.CALIBRATE_NOD)
             .setClass(this, MainActivity.class)
@@ -503,7 +505,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (pill == null) {
             CameraRing ring = new CameraRing();
             ring.setClickable(true);
-            ring.setContentDescription("Kopf-Scroll: dreimal tippen = Pause");
+            ring.setContentDescription("Kopf-Scroll: tippen = Pause, halten = kalibrieren");
             ring.setOnTouchListener((v, e) -> {
                 // Every touch elsewhere on the screen: your finger is in charge for a moment.
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
@@ -512,6 +514,17 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 }
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP || e.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
                     main.removeCallbacks(ringHold);
+                    // A tap (not a hold, not a drag) pauses / resumes.
+                    if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP && !ringHeld
+                        && Math.hypot(e.getRawX() - downX, e.getRawY() - downY) < dp(16)) {
+                        paused = !paused;
+                        setSpeed(0);
+                        v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+                        DiagLog.log("head scroll " + (paused ? "paused" : "resumed") + " by tap");
+                        android.widget.Toast.makeText(this, paused ? "Kopf-Scroll pausiert · tippen = weiter" : "Kopf-Scroll läuft",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                        v.invalidate();
+                    }
                 }
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_MOVE && Math.hypot(e.getRawX() - downX, e.getRawY() - downY) > dp(16)) {
                     main.removeCallbacks(ringHold);
@@ -519,19 +532,9 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
                     downX = e.getRawX();
                     downY = e.getRawY();
+                    ringHeld = false;
                     main.removeCallbacks(ringHold);
                     main.postDelayed(ringHold, 650);
-                    long now = SystemClock.uptimeMillis();
-                    System.arraycopy(ringTaps, 1, ringTaps, 0, 2);
-                    ringTaps[2] = now;
-                    if (ringTaps[0] > 0 && now - ringTaps[0] < 800) {
-                        ringTaps[0] = ringTaps[1] = ringTaps[2] = 0;
-                        paused = !paused;
-                        setSpeed(0);
-                        v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
-                        android.widget.Toast.makeText(this, paused ? "Kopf-Scroll pausiert" : "Kopf-Scroll läuft",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                    }
                 }
                 return false;
             });
