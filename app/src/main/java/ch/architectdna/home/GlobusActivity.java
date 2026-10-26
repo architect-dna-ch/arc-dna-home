@@ -32,10 +32,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Globus, native: your links as points on a globe you can turn (drag), zoom (pinch) and walk
- * around. Links of the same site sit close together. Tap a point: the globe turns it to the front
- * and a card offers open / remove. New links come from Chrome's "Teilen → Globus" or the field
- * below. (Android doesn't let apps read Chrome's bookmarks, so Globus keeps its own.)
+ * Globus, the app navigator: every installed app as its icon on a globe you can turn (drag) and
+ * zoom (pinch), one region per kind of app (games, music, photos, social, maps, work …), plus a WEB
+ * region with your saved links. Type to search: the globe turns to the app. Tap: a card offers open /
+ * app info (or open / remove for a link). Links still come from "Teilen → Globus".
  */
 public class GlobusActivity extends Activity {
 
@@ -58,6 +58,76 @@ public class GlobusActivity extends Activity {
         String title, url;
         double lat, lon;      // radians
         float sx, sy, depth;  // last projection
+        /** Apps: the component to start, its region and icon. Links have none. */
+        android.content.ComponentName app;
+        String region = "WEB";
+        android.graphics.Bitmap icon;
+    }
+
+    /** Regions: Android's app categories, in German; ARC-DNA's own apps and the links get their own. */
+    private static final String[] REGIONS = {"ARC-DNA", "SPIELE", "MUSIK & AUDIO", "VIDEO", "FOTOS", "SOZIAL", "NEWS",
+        "KARTEN", "ARBEIT", "HILFEN", "WEB", "WEITERE"};
+    private final List<Mark> apps = new ArrayList<>();
+    private final java.util.Map<String, double[]> regionCentre = new java.util.HashMap<>();
+
+    private static String regionOf(int category) {
+        switch (category) {
+            case 0: return "SPIELE";
+            case 1: return "MUSIK & AUDIO";
+            case 2: return "VIDEO";
+            case 3: return "FOTOS";
+            case 4: return "SOZIAL";
+            case 5: return "NEWS";
+            case 6: return "KARTEN";
+            case 7: return "ARBEIT";
+            case 8: return "HILFEN";
+            default: return "WEITERE";
+        }
+    }
+
+    /** All launchable apps with icon and region (background thread). */
+    private void loadApps() {
+        new Thread(() -> {
+            android.content.pm.PackageManager pm = getPackageManager();
+            Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+            List<Mark> found = new ArrayList<>();
+            int px = dp(40);
+            for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
+                String pkg = ri.activityInfo.packageName;
+                if (pkg.equals(getPackageName()) && ri.activityInfo.name.equals(GlobusActivity.class.getName())) continue;
+                Mark k = new Mark();
+                k.title = ri.loadLabel(pm).toString();
+                k.url = pkg;
+                k.app = new android.content.ComponentName(pkg, ri.activityInfo.name);
+                k.region = pkg.equals(getPackageName()) ? "ARC-DNA"
+                    : Build.VERSION.SDK_INT >= 26 ? regionOf(ri.activityInfo.applicationInfo.category) : "WEITERE";
+                try {
+                    android.graphics.drawable.Drawable d = ri.loadIcon(pm);
+                    android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888);
+                    Canvas cv = new Canvas(b);
+                    d.setBounds(0, 0, px, px);
+                    d.draw(cv);
+                    k.icon = b;
+                } catch (RuntimeException | OutOfMemoryError ignored) {
+                }
+                found.add(k);
+            }
+            java.util.Collections.sort(found, (a, b) -> a.title.compareToIgnoreCase(b.title));
+            runOnUiThread(() -> {
+                apps.clear();
+                apps.addAll(found);
+                spread();
+                showSheet();
+                globe.invalidate();
+            });
+        }).start();
+    }
+
+    /** Everything on the globe: apps and links. */
+    private List<Mark> all() {
+        List<Mark> out = new ArrayList<>(apps);
+        out.addAll(marks);
+        return out;
     }
 
     @Override
@@ -89,7 +159,7 @@ public class GlobusActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Globus · Lesezeichen"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label("Globus · Apps"), new LinearLayout.LayoutParams(0, -2, 1f));
         count = mono(11, rust);
         head.addView(count);
         TextView close = text(18, ink, true);
@@ -100,7 +170,7 @@ public class GlobusActivity extends Activity {
         col.addView(head);
 
         TextView hint = mono(10, ink3);
-        hint.setText("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · PUNKT = ÖFFNEN");
+        hint.setText("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · TIPPEN = APP");
         hint.setPadding(0, dp(10), 0, 0);
         col.addView(hint);
 
@@ -119,13 +189,20 @@ public class GlobusActivity extends Activity {
         sheet.addView(sheetUrl);
         LinearLayout actions = new LinearLayout(this);
         TextView open = chip("ÖFFNEN →", rust);
-        open.setOnClickListener(v -> {
-            if (selected != null) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(selected.url)));
-        });
+        open.setOnClickListener(v -> openSelected());
         actions.addView(open);
-        TextView remove = chip("ENTFERNEN", ink3);
+        remove = chip("ENTFERNEN", ink3);
         remove.setOnClickListener(v -> {
             if (selected == null) return;
+            if (selected.app != null) {
+                // Apps: their system info page.
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + selected.app.getPackageName())));
+                } catch (RuntimeException ignored) {
+                }
+                return;
+            }
             marks.remove(selected);
             selected = null;
             save();
@@ -142,7 +219,7 @@ public class GlobusActivity extends Activity {
 
         // Add a link by hand.
         EditText add = new EditText(this);
-        add.setHint("Link auf den Globus legen …");
+        add.setHint("App suchen … (oder Link einfügen)");
         add.setHintTextColor(ink3);
         add.setTextColor(ink);
         add.setSingleLine(true);
@@ -151,12 +228,31 @@ public class GlobusActivity extends Activity {
         add.setImeOptions(EditorInfo.IME_ACTION_DONE);
         add.setBackground(box(card, line, 8));
         add.setPadding(dp(14), dp(12), dp(14), dp(12));
+        add.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        add.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable e) {
+                Mark m = search(e.toString().trim());
+                if (m != null && m != selected) select(m);
+            }
+        });
         add.setOnEditorActionListener((v, id, e) -> {
             String u = add.getText().toString().trim();
-            if (!u.isEmpty()) {
-                addLink(null, u);
-                add.setText("");
+            if (u.isEmpty()) return true;
+            if (u.contains(".") && !u.contains(" ") && search(u) == null) {
+                addLink(null, u);          // looks like a web address: put it on the globe
+            } else if (selected != null) {
+                openSelected();
             }
+            add.setText("");
             return true;
         });
         col.addView(add);
@@ -170,6 +266,36 @@ public class GlobusActivity extends Activity {
         }
         handleShare(getIntent());
         showSheet();
+        loadApps();
+    }
+
+    private TextView remove;
+
+    /** Best match: name starts with the text, else contains it. */
+    private Mark search(String q) {
+        if (q.isEmpty()) return null;
+        String l = q.toLowerCase(Locale.GERMAN);
+        Mark contains = null;
+        for (Mark k : all()) {
+            String t = k.title.toLowerCase(Locale.GERMAN);
+            if (t.startsWith(l)) return k;
+            if (contains == null && t.contains(l)) contains = k;
+        }
+        return contains;
+    }
+
+    private void openSelected() {
+        if (selected == null) return;
+        try {
+            if (selected.app != null) {
+                startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setComponent(selected.app).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
+            } else {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(selected.url)));
+            }
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "Lässt sich nicht öffnen.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -258,15 +384,29 @@ public class GlobusActivity extends Activity {
      * site's spot, the others around it on a sunflower spiral (about 16° apart).
      */
     private void spread() {
+        // Region centres spread evenly over the globe (a Fibonacci sphere), filled regions only.
+        java.util.Map<String, Integer> size = new java.util.HashMap<>();
+        for (Mark k : all()) size.merge(k.region, 1, Integer::sum);
+        List<String> used = new ArrayList<>();
+        for (String r : REGIONS) if (size.containsKey(r)) used.add(r);
+        regionCentre.clear();
+        int n = used.size();
+        for (int i = 0; i < n; i++) {
+            double y = n == 1 ? 0 : 1 - 2.0 * (i + 0.5) / n;                 // -1 … 1
+            double lat = Math.asin(y * 0.8), lon = i * Math.toRadians(137.5);
+            regionCentre.put(used.get(i), new double[]{lat, lon});
+        }
+        // Each region's points round its centre on a sunflower spiral, closer when there are many.
         java.util.Map<String, Integer> count = new java.util.HashMap<>();
-        for (Mark k : marks) {
-            String h = host(k.url);
-            int hh = h.hashCode(), i = count.getOrDefault(h, 0);
-            count.put(h, i + 1);
-            double lon0 = (hh & 0xFFFF) / 65535.0 * 360 - 180, lat0 = ((hh >>> 16) & 0xFFFF) / 65535.0 * 110 - 55;
-            double rad = i == 0 ? 0 : 16 * Math.sqrt(i), ang = Math.toRadians(i * 137.5);
-            k.lat = Math.toRadians(Math.max(-75, Math.min(75, lat0 + rad * Math.sin(ang))));
-            k.lon = Math.toRadians(lon0 + rad * Math.cos(ang) / Math.max(0.3, Math.cos(Math.toRadians(lat0))));
+        for (Mark k : all()) {
+            double[] c = regionCentre.get(k.region);
+            if (c == null) continue;
+            int i = count.getOrDefault(k.region, 0);
+            count.put(k.region, i + 1);
+            double step = Math.min(9, 30 / Math.sqrt(Math.max(1, size.get(k.region))));
+            double rad = step * Math.sqrt(i), ang = Math.toRadians(i * 137.5), lat0 = Math.toDegrees(c[0]);
+            k.lat = Math.toRadians(Math.max(-80, Math.min(80, lat0 + rad * Math.sin(ang))));
+            k.lon = c[1] + Math.toRadians(rad * Math.cos(ang) / Math.max(0.3, Math.cos(c[0])));
         }
     }
 
@@ -279,7 +419,8 @@ public class GlobusActivity extends Activity {
         }
         prefs.edit().putString("marks", a.toString()).apply();
         // save() also runs while loading, before the header exists.
-        if (count != null) count.setText(marks.size() + (marks.size() == 1 ? " PUNKT" : " PUNKTE"));
+        if (count != null) count.setText(apps.size() + " APPS · " + marks.size() + " LINKS");
+        if (globe != null) globe.invalidate();
     }
 
     private void select(Mark k) {
@@ -289,13 +430,14 @@ public class GlobusActivity extends Activity {
     }
 
     private void showSheet() {
-        if (count != null) count.setText(marks.size() + (marks.size() == 1 ? " PUNKT" : " PUNKTE"));
+        if (count != null) count.setText(apps.size() + " APPS · " + marks.size() + " LINKS");
         if (selected == null) {
             sheet.setVisibility(View.GONE);
             return;
         }
         sheetTitle.setText(selected.title);
-        sheetUrl.setText(selected.url);
+        sheetUrl.setText(selected.app != null ? selected.region + " · " + selected.url : selected.url);
+        remove.setText(selected.app != null ? "APP-INFO" : "ENTFERNEN");
         sheet.setVisibility(View.VISIBLE);
     }
 
@@ -304,6 +446,7 @@ public class GlobusActivity extends Activity {
     private final class Globe extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path path = new android.graphics.Path();
+        private final android.graphics.RectF iconDst = new android.graphics.RectF();
         private double yaw = 0.6, pitch = -0.35, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
         private float zoom = 1f, lastX, lastY, downX, downY;
         private boolean pinched;
@@ -375,33 +518,71 @@ public class GlobusActivity extends Activity {
             // Points, back ones faint, front ones with a label.
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(10));
-            for (Mark k : marks) {
+            List<Mark> everything = all();
+            for (Mark k : everything) {
                 float[] s = project(k.lat, k.lon, cx, cy, r);
                 k.sx = s[0];
                 k.sy = s[1];
                 k.depth = s[2];
             }
-            List<Mark> order = new ArrayList<>(marks);
+            // Back to front, so near icons cover far ones; labels nearest first (they claim space).
+            List<Mark> back = new ArrayList<>(everything);
+            java.util.Collections.sort(back, (a, b) -> a == selected ? 1 : b == selected ? -1 : Float.compare(a.depth, b.depth));
+            float isz = dp(15) * (float) Math.sqrt(zoom);
+            for (Mark k : back) {
+                if (k.icon == null || k.depth <= 0) continue;
+                float half = isz * (0.5f + 0.5f * k.depth) * (k == selected ? 1.5f : 1f);
+                iconDst.set(k.sx - half, k.sy - half, k.sx + half, k.sy + half);
+                p.setAlpha((int) (120 + 135 * Math.min(1, k.depth * 1.5f)));
+                c.drawBitmap(k.icon, null, iconDst, p);
+                p.setAlpha(255);
+                if (k == selected) {
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(dp(2.5f));
+                    p.setColor(rust);
+                    c.drawCircle(k.sx, k.sy, half + dp(4), p);
+                    p.setStyle(Paint.Style.FILL);
+                }
+            }
+            // Region names over their centres.
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            for (java.util.Map.Entry<String, double[]> en : regionCentre.entrySet()) {
+                float[] s = project(en.getValue()[0], en.getValue()[1], cx, cy, r);
+                if (s[2] < 0.3f) continue;
+                p.setTextSize(dp(11));
+                p.setTextAlign(Paint.Align.CENTER);
+                p.setColor(rust);
+                p.setAlpha((int) (255 * Math.min(1, (s[2] - 0.3f) * 3)));
+                c.drawText(en.getKey(), s[0], s[1] - isz * 2.6f, p);
+                p.setAlpha(255);
+                p.setTextAlign(Paint.Align.LEFT);
+            }
+            p.setTextSize(dp(10));
+            List<Mark> order = new ArrayList<>(everything);
             java.util.Collections.sort(order, (a, b) -> a == selected ? -1 : b == selected ? 1 : Float.compare(b.depth, a.depth));
             List<android.graphics.RectF> taken = new ArrayList<>();
             for (Mark k : order) {
                 float[] s = {k.sx, k.sy, k.depth};
                 boolean front = s[2] > 0;
                 p.setStyle(Paint.Style.FILL);
-                p.setColor(k == selected ? rust : front ? rust : ink3);
-                p.setAlpha(front ? 255 : 70);
-                c.drawCircle(s[0], s[1], dp(k == selected ? 7 : 4.5f) * (0.7f + 0.3f * Math.max(0, s[2])), p);
-                if (front && s[2] > 0.25f) {
+                if (k.icon == null || !front) {
+                    p.setColor(k == selected ? rust : front ? rust : ink3);
+                    p.setAlpha(front ? 255 : 70);
+                    c.drawCircle(s[0], s[1], dp(k == selected ? 7 : front ? 4.5f : 2.5f) * (0.7f + 0.3f * Math.max(0, s[2])), p);
+                }
+                // Names only for the nearest (zoom in for more).
+                if (front && s[2] > (k == selected ? 0 : 0.55f)) {
                     p.setColor(k == selected ? ink : ink2);
                     p.setAlpha((int) (255 * Math.min(1, (s[2] - 0.25f) * 3)));
                     String t = (k.title.length() > 22 ? k.title.substring(0, 21) + "…" : k.title).toUpperCase(Locale.GERMAN);
                     // A label only where it doesn't collide with a nearer one (zoom in to see the rest).
-                    android.graphics.RectF box = new android.graphics.RectF(s[0] + dp(7), s[1] - dp(8), s[0] + dp(11) + p.measureText(t), s[1] + dp(7));
+                    float off = k.icon != null ? isz * (0.5f + 0.5f * s[2]) + dp(3) : dp(7);
+                    android.graphics.RectF box = new android.graphics.RectF(s[0] + off, s[1] - dp(8), s[0] + off + dp(4) + p.measureText(t), s[1] + dp(7));
                     boolean free = true;
                     for (android.graphics.RectF o : taken) if (android.graphics.RectF.intersects(o, box)) free = false;
                     if (free) {
                         taken.add(box);
-                        c.drawText(t, s[0] + dp(9), s[1] + dp(4), p);
+                        c.drawText(t, s[0] + off + dp(2), s[1] + dp(4), p);
                     }
                 }
                 p.setAlpha(255);
@@ -473,7 +654,7 @@ public class GlobusActivity extends Activity {
                     // A tap: the nearest front point within reach.
                     Mark best = null;
                     float bestD = dp(28);
-                    for (Mark k : marks) {
+                    for (Mark k : all()) {
                         if (k.depth <= 0) continue;
                         float d = (float) Math.hypot(k.sx - e.getX(), k.sy - e.getY());
                         if (d < bestD) {
