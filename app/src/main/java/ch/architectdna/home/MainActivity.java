@@ -3227,6 +3227,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             voice.say("Wow-wow!");
         }
         startF1Tick();
+        race(on);
+    }
+
+    private RaceOverlay raceOverlay;
+
+    /** With the F1 board open and the racer as buddy: the race track over the whole home. */
+    private void race(boolean on) {
+        boolean want = on && buddy() == 3 && rootFrame != null;
+        if (want) {
+            if (raceOverlay == null) {
+                raceOverlay = new RaceOverlay(this);
+                rootFrame.addView(raceOverlay, new FrameLayout.LayoutParams(-1, -1));
+            }
+            raceOverlay.bringToFront();
+            if (fox != null) fox.bringToFront();
+            raceOverlay.start();
+        } else if (raceOverlay != null && raceOverlay.getVisibility() == View.VISIBLE) {
+            raceOverlay.stop();
+        }
     }
 
     /** The timing board takes a bit under half the screen height. */
@@ -4212,6 +4231,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Box.setVisibility(View.GONE);
         f1Panel.setVisibility(f1 ? View.VISIBLE : View.GONE);
         if (f1) f1Panel.resume();
+        race(f1);
         if (game != null) {
             game.resume();
             startGameNod();
@@ -4252,6 +4272,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(ticker);
         f1Running = false;
         f1Panel.pause();
+        if (raceOverlay != null) raceOverlay.stop();
         if (game != null) game.pause();
         music.stop();
         if (sensors != null) sensors.unregisterListener(this);
