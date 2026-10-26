@@ -125,6 +125,23 @@
             </intent-filter>
         </activity>
 
+        <!-- NEXUS BREACH: the arena wave shooter, native. -->
+        <activity
+            android:name=".NexusActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_nexus"
+            android:label="Nexus Breach"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_nexus"
+            android:screenOrientation="sensorLandscape"
+            android:taskAffinity="ch.architectdna.home.nexus"
+            android:theme="@android:style/Theme.Black.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Globus: links on a globe; also takes links shared from Chrome ("Teilen → Globus"). -->
         <activity
             android:name=".GlobusActivity"

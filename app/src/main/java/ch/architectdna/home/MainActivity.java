@@ -1276,7 +1276,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             for (ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
                 // Our own entries: only the built-in apps (VOID FREQ), not the launcher itself.
                 if (getPackageName().equals(ri.activityInfo.packageName) && !FreqActivity.class.getName().equals(ri.activityInfo.name)
-                    && !GlobusActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !GlobusActivity.class.getName().equals(ri.activityInfo.name)
+                    && !NexusActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -3435,7 +3436,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** {name, activity, icon}: the native apps built into ARC-DNA. */
     private View arcApps() {
         LinearLayout row = new LinearLayout(this);
-        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_voidfreq}, {"Globus", GlobusActivity.class, R.drawable.ic_globus}};
+        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_voidfreq}, {"Globus", GlobusActivity.class, R.drawable.ic_globus},
+            {"Nexus Breach", NexusActivity.class, R.drawable.ic_nexus}};
         int cols = cols(), gap = dp(8);
         for (int i = 0; i < cols; i++) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);

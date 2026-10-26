@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NEXUS BREACH icon in ARC-DNA style: the arena ring, the player core and a rust breach shot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3"
+        android:pathData="M18,48 A30,30 0 1,0 78,48 A30,30 0 1,0 18,48 Z" />
+    <path android:strokeColor="#E0E0D8" android:strokeWidth="1.5" android:pathData="M48,20 V76 M20,48 H76" />
+    <path android:fillColor="#1A1A1A" android:pathData="M40,48 A8,8 0 1,0 56,48 A8,8 0 1,0 40,48 Z" />
+    <path android:fillColor="#B5271E" android:pathData="M44.5,48 A3.5,3.5 0 1,0 51.5,48 A3.5,3.5 0 1,0 44.5,48 Z" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M56,40 L64,32" />
+    <path android:fillColor="#B5271E" android:pathData="M64,26 L70,32 L64,38 L58,32 Z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M30,60 A3.5,3.5 0 1,0 37,60 A3.5,3.5 0 1,0 30,60 Z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M58,63 h7 v7 h-7 z" />
+</vector>
