@@ -2701,7 +2701,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             rootFrame.addView(awayChip, lp);
         }
         awayChip.setText(text);
-        awayChip.setVisibility(View.VISIBLE);
+        if (awayChip.getVisibility() != View.VISIBLE || awayChip.getAlpha() < 1f) {
+            awayChip.animate().cancel();
+            if (awayChip.getVisibility() != View.VISIBLE) awayChip.setAlpha(0f);
+            awayChip.setVisibility(View.VISIBLE);
+            awayChip.animate().alpha(1f).setDuration(220).start();
+        }
         awayChip.bringToFront();
     }
 
@@ -2747,7 +2752,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void hideAwayChip() {
-        if (awayChip != null) awayChip.setVisibility(View.GONE);
+        if (awayChip == null || awayChip.getVisibility() != View.VISIBLE) return;
+        TextView c = awayChip;
+        c.animate().cancel();
+        c.animate().alpha(0f).setDuration(220).withEndAction(() -> c.setVisibility(View.GONE)).start();
     }
 
     @Override
@@ -2760,9 +2768,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             facingSince = 0;
             noteAway();
         } else {
-            // Only a steady look back (0.4 s) counts; single frames that see the face don't reset the countdown.
+            // Only a steady look back (0.5 s) counts; single frames that see the face don't reset the countdown.
             if (facingSince == 0) facingSince = now;
-            if (now - facingSince < 400) return;
+            if (now - facingSince < 500) return;
             if (faceLostAt != 0) hideAwayChip();
             faceLostAt = 0;
             if (dino != null) dino.lookedBack();      // caught it in time: it runs and hides
@@ -2777,7 +2785,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             faceLostAt = now;
             DiagLog.log("looking away");
         }
-        if (dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
+        // The chip only once it's clear (away for over 1 s), so a glance aside doesn't flash it.
+        if (now - faceLostAt > 1000 && dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
             long left = Math.max(1, 5 - (now - faceLostAt) / 1000);
             showAwayChip("◉ WEGGESCHAUT · DINO IN " + left);
         }
