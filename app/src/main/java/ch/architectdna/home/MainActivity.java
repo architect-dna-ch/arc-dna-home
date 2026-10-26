@@ -926,6 +926,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
+        LinearLayout sync = settingsGroup(col, "Musik-Sync · Bluetooth");
+        settingsRow(sync, "Mit Tablet / Handy abgleichen", () -> {
+            String n = BtSync.peerName(this);
+            long at = BtSync.peer(this).getLong("at", 0);
+            return n == null ? "Jetzt ›" : n + " · " + new java.text.SimpleDateFormat("HH:mm", Locale.GERMAN).format(new java.util.Date(at));
+        }, v -> {
+            if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 31);
+                return;
+            }
+            Toast.makeText(this, "Suche gekoppelte Geräte mit ARC-DNA …", Toast.LENGTH_SHORT).show();
+            BtSync.syncSoon(this, 0, name -> {
+                Toast.makeText(this, name != null ? "Abgeglichen mit " + name + "." : "Kein Partner gefunden: beide Geräte koppeln, Bluetooth an, ARC-DNA auf beiden.", Toast.LENGTH_LONG).show();
+                if (music != null) music.refreshStats();
+            });
+        }, null);
+
         LinearLayout head2 = settingsGroup(col, "Kopf-Scroll");
         settingsRow(head2, "In der Mediathek", () -> {
             String m = headMode();
@@ -990,7 +1007,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Kontakte", "Namen im Telefon", Manifest.permission.READ_CONTACTS},
             {"Anrufliste", "Letzte Anrufe im Telefon", Manifest.permission.READ_CALL_LOG},
             {"Telefonieren", "Anrufen per Tipp im Telefon", Manifest.permission.CALL_PHONE},
-            {"Bluetooth", "Kopfhörer-Name und Akku", Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_CONNECT : null},
+            {"Bluetooth", "Kopfhörer-Name, Akku, Musik-Sync mit eigenen Geräten", Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_CONNECT : null},
             {"Benachrichtigungen", "Wecker, VOID FREQ, Kopf-Scroll", Build.VERSION.SDK_INT >= 33 ? Manifest.permission.POST_NOTIFICATIONS : null}};
         for (Object[] p : runtime) {
             String perm = (String) p[2];
@@ -3306,6 +3323,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         hideNavBar();
         ScrollAssistService.homeInFront(getPackageName());
+        BtSync.syncSoon(this, 3 * 60_000L, name -> {
+            if (name != null && music != null) music.refreshStats();
+        });
         volumeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {

@@ -547,6 +547,11 @@ final class MusicCard {
         dots.setTextColor(rust);
     }
 
+    /** New numbers arrived (Bluetooth sync): redraw the stats page if it's showing. */
+    void refreshStats() {
+        if (onStats) renderStats();
+    }
+
     private void renderStats() {
         stats.removeAllViews();
         if (!hasAccess()) {
@@ -563,7 +568,8 @@ final class MusicCard {
         TextView head = label(11, ink3, true);
         head.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         head.setLetterSpacing(0.12f);
-        head.setText("HEUTE GEHÖRT · NUR AUF DEM HANDY");
+        String partner = BtSync.peerName(activity);
+        head.setText(partner != null ? "HEUTE GEHÖRT · HIER + " + partner.toUpperCase(java.util.Locale.GERMAN) : "HEUTE GEHÖRT · NUR AUF DIESEM GERÄT");
         head.setPadding(0, dp(16), 0, dp(2));
         stats.addView(head);
         TextView big = label(46, ink, true);

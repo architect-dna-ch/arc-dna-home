@@ -43,6 +43,7 @@ public class MediaListener extends NotificationListenerService {
         @Override
         public void run() {
             report();
+            BtSync.syncSoon(MediaListener.this, 15 * 60_000L, null);
             main.postDelayed(this, 60_000);
         }
     };
@@ -65,6 +66,7 @@ public class MediaListener extends NotificationListenerService {
         }
         main.removeCallbacks(tick);
         main.postDelayed(tick, 60_000);
+        BtSync.startServer(this);
     }
 
     @Override
@@ -77,6 +79,7 @@ public class MediaListener extends NotificationListenerService {
         for (MediaController c : watched) c.unregisterCallback(callback);
         watched.clear();
         main.removeCallbacks(tick);
+        BtSync.stopServer();
         report();
     }
 

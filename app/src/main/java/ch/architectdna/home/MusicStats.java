@@ -14,7 +14,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Listening stats for the music card's second page, kept on the phone only: minutes listened per
+ * Listening stats for the music card's second page, kept on the device (plus the partner device's
+ * numbers when BtSync has swapped them over Bluetooth): minutes listened per
  * day (last 7 days), titles started today and today's top artists. Fed by MediaListener from the
  * active media sessions, so it counts in the background too.
  */
@@ -85,17 +86,34 @@ final class MusicStats {
         return s == null ? "" : s.replace('\t', ' ').replace('\n', ' ');
     }
 
-    /** Every logged play, newest first: {time, title, artist, package}. */
-    static List<String[]> history(Context c) {
+    private static List<String[]> readLog(java.io.File f) {
         List<String[]> out = new ArrayList<>();
         try {
-            for (String line : java.nio.file.Files.readAllLines(historyFile(c).toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
-                String[] f = line.split("\t", -1);
-                if (f.length >= 4) out.add(f);
+            for (String line : java.nio.file.Files.readAllLines(f.toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+                String[] x = line.split("\t", -1);
+                if (x.length >= 4) out.add(x);
             }
         } catch (java.io.IOException ignored) {
         }
-        Collections.reverse(out);
+        return out;
+    }
+
+    /** This device's plays only, oldest first (what Bluetooth sync sends). */
+    static List<String[]> ownHistory(Context c) {
+        return readLog(historyFile(c));
+    }
+
+    /** Every logged play on this device and the synced partner, newest first: {time, title, artist, package}. */
+    static List<String[]> history(Context c) {
+        List<String[]> out = readLog(historyFile(c));
+        out.addAll(readLog(BtSync.peerHistory(c)));
+        Collections.sort(out, (a, b) -> {
+            try {
+                return Long.compare(Long.parseLong(b[0]), Long.parseLong(a[0]));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        });
         return out;
     }
 
@@ -150,7 +168,8 @@ final class MusicStats {
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DAY_OF_YEAR, -6);
         for (int i = 0; i < 7; i++) {
-            out[i] = p.getLong("musicMs:" + day(cal.getTimeInMillis()), 0) / 60_000;
+            String d = day(cal.getTimeInMillis());
+            out[i] = (p.getLong("musicMs:" + d, 0) + BtSync.peer(c).getLong("musicMs:" + d, 0)) / 60_000;
             cal.add(Calendar.DAY_OF_YEAR, 1);
         }
         long since = p.getLong("msPlayStart", 0);
@@ -159,12 +178,16 @@ final class MusicStats {
     }
 
     static int tracksToday(Context c) {
-        return prefs(c).getInt("musicTracks:" + day(System.currentTimeMillis()), 0);
+        String d = day(System.currentTimeMillis());
+        return prefs(c).getInt("musicTracks:" + d, 0) + BtSync.peer(c).getInt("musicTracks:" + d, 0);
     }
 
     /** Up to three of today's artists, most played first. */
     static List<String> topArtists(Context c) {
-        List<Map.Entry<String, Integer>> list = new ArrayList<>(artists(prefs(c), day(System.currentTimeMillis())).entrySet());
+        String d = day(System.currentTimeMillis());
+        Map<String, Integer> all = artists(prefs(c), d);
+        for (Map.Entry<String, Integer> en : artists(BtSync.peer(c), d).entrySet()) all.merge(en.getKey(), en.getValue(), Integer::sum);
+        List<Map.Entry<String, Integer>> list = new ArrayList<>(all.entrySet());
         Collections.sort(list, (a, b) -> b.getValue() - a.getValue());
         List<String> out = new ArrayList<>();
         for (int i = 0; i < Math.min(3, list.size()); i++) out.add(list.get(i).getKey() + " · " + list.get(i).getValue() + "×");

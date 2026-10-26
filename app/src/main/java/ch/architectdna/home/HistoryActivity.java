@@ -149,7 +149,7 @@ public class HistoryActivity extends Activity {
         root.addView(big);
         TextView sub = mono(10, ink3);
         int favs = getSharedPreferences("favourites", MODE_PRIVATE).getAll().size();
-        sub.setText(counts.size() + " VERSCHIEDENE · ★ " + favs + " FAVORITEN · NUR AUF DEM HANDY");
+        sub.setText(counts.size() + " VERSCHIEDENE · ★ " + favs + " FAVORITEN" + (BtSync.peerName(this) != null ? " · HIER + " + BtSync.peerName(this).toUpperCase(java.util.Locale.GERMAN) : ""));
         root.addView(sub);
 
         LinearLayout tabs = new LinearLayout(this);
