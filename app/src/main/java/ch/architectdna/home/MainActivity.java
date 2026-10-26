@@ -1777,6 +1777,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 && ev.getEventTime() - downTime < 800) {
                 switchNight(dx < 0, ev.getX(), ev.getY());
             }
+            // A strong, straight vertical swipe over at least half the screen: skip the home, straight
+            // to the app globe.
+            if (gestures && !strokeMulti && !strokeOnSlider && Math.abs(dy) > rootFrame.getHeight() * 0.5f
+                && Math.abs(dx) < Math.abs(dy) * 0.35f && ev.getEventTime() - downTime < 450) {
+                DiagLog.log("strong swipe: app globe");
+                try {
+                    startActivity(new Intent(this, GlobusActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (RuntimeException ignored) {
+                }
+            }
         } else if (action == MotionEvent.ACTION_CANCEL) {
             circling = false;
         }

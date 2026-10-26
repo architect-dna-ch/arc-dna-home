@@ -131,6 +131,7 @@ final class MusicCard {
         source = label(10, ink3, true);
         source.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         source.setLetterSpacing(0.12f);
+        source.setOnClickListener(v -> openPlayer());      // "YOUTUBE MUSIC ↗" opens the app
         text.addView(title);
         text.addView(artist);
         text.addView(source);
@@ -170,7 +171,7 @@ final class MusicCard {
         prl.topMargin = dp(10);
         root.addView(phaseRow, prl);
         phaseBar = new PhaseBar(activity, ink, ink3, this::seekTo);
-        LinearLayout.LayoutParams pbl = new LinearLayout.LayoutParams(-1, dp(34));
+        LinearLayout.LayoutParams pbl = new LinearLayout.LayoutParams(-1, dp(40));
         pbl.topMargin = dp(8);
         root.addView(phaseBar, pbl);
 
@@ -834,7 +835,7 @@ final class MusicCard {
                 art.setScaleType(ImageView.ScaleType.CENTER);
                 art.setImageResource(R.drawable.ic_music);
             }
-            source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN));
+            source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN) + " ↗");
         }
         playButton.setImageResource(isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
         frame.run(isPlaying());

@@ -149,7 +149,7 @@ final class PhaseBar extends View {
 
     @Override
     protected void onDraw(Canvas c) {
-        float w = getWidth(), barTop = dp(4), barH = dp(10);
+        float w = getWidth(), barTop = dp(9), barH = dp(10);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor((ink3 & 0x00FFFFFF) | 0x44000000);
         rect.set(0, barTop, w, barTop + barH);
@@ -167,9 +167,25 @@ final class PhaseBar extends View {
                 c.drawRect(rect, paint);
             }
             paint.setAlpha(255);
+            // A soft white-blue shimmer floats along the bar every few seconds: "you can swipe here".
+            float k = (android.os.SystemClock.uptimeMillis() % 3600) / 3600f, band = dp(70);
+            float sx = -band + (w + 2 * band) * k;
+            paint.setShader(new android.graphics.LinearGradient(sx - band, 0, sx + band, 0,
+                new int[]{0x00BFE3FF, 0x88EAF6FF, 0xCCFFFFFF, 0x88BFE3FF, 0x00BFE3FF}, null, android.graphics.Shader.TileMode.CLAMP));
+            rect.set(0, barTop, w, barTop + barH);
+            c.drawRoundRect(rect, barH / 2, barH / 2, paint);
+            paint.setShader(null);
+            // The head: a knob with a light blue halo, easy to grab.
+            paint.setColor(0x553C8CFF);
+            c.drawCircle(head, barTop + barH / 2, dp(11), paint);
+            paint.setColor(0xFFFFFFFF);
+            c.drawCircle(head, barTop + barH / 2, dp(7), paint);
             paint.setColor(0xFF000000 | ink);
-            rect.set(head - dp(1.5f), barTop - dp(3), head + dp(1.5f), barTop + barH + dp(3));
-            c.drawRoundRect(rect, dp(1.5f), dp(1.5f), paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(2));
+            c.drawCircle(head, barTop + barH / 2, dp(7), paint);
+            paint.setStyle(Paint.Style.FILL);
+            if (isShown()) postInvalidateDelayed(33);
         }
         paint.setTextSize(dp(10));
         paint.setColor(ink3);
