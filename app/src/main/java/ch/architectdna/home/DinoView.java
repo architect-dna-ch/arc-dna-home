@@ -44,7 +44,7 @@ final class DinoView extends View {
         void lockNow();
     }
 
-    private boolean vacuum, locked;
+    private boolean vacuum, locked, look;
 
     /** The other scene: the dino swallows the whole home like a black hole (7.5 s) and the phone locks. */
     DinoView blackHole() {
@@ -177,7 +177,11 @@ final class DinoView extends View {
 
         c.save();
         c.translate(shake * (float) Math.sin(t * 60), 0);
-        if (front) drawFront(c, x, ground, k, jaw, t);
+        if (front) {
+            look = true;            // same dino, head turned to you (not a front-on smiley)
+            drawSide(c, x, ground, k, jaw, t, false, true);
+            look = false;
+        }
         else drawSide(c, x, ground, k, jaw, t, walking, facingLeft);
         c.restore();
 
@@ -186,14 +190,14 @@ final class DinoView extends View {
         if (tazing) zap(c, rx - dp(22), ry + rob + dp(10), x, ground - 55 * k);
 
         // ---- speech ----
-        if (t > 5 && t < 8) bubble(c, lines[0], x, ground - 112 * k, true, true);
+        if (t > 5 && t < 8) bubble(c, lines[0], x - 40 * k, ground - 116 * k, true, true);
         if (t > 7.4f && t < 10.5f) bubble(c, "🤖 " + lines[1], rx, ry + rob - dp(34), false, false);
-        if (t > 12 && t < 14) bubble(c, lines[3], x, ground - 112 * k, true, true);
+        if (t > 12 && t < 14) bubble(c, lines[3], x - 40 * k, ground - 116 * k, true, true);
         if (t > 13.4f && t < 16) bubble(c, "🤖 " + lines[4], rx, ry + rob - dp(34), false, false);
         if (t > 18.2f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
         if (t > 20.6f && t < 23) bubble(c, "🤖 " + lines[5], rx, ry + rob - dp(34), false, false);
         if (t > 22.4f && t < 25.5f) bubble(c, "BZZZZT!", rx - dp(40), ry + rob + dp(48), true, false);
-        if (t > 25 && t < 27.2f) bubble(c, lines[6], x, ground - 112 * k, true, true);
+        if (t > 25 && t < 27.2f) bubble(c, lines[6], x - 40 * k, ground - 116 * k, true, true);
         if (t > 26.4f && t < 29.6f) bubble(c, "🤖 " + lines[7], rx, ry + rob - dp(34), false, false);
         if (t > 29.6f && t < 31.6f) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
         if (t > 31.6f && t < 35) bubble(c, "🤖 " + lines[10], rx, ry + rob - dp(34), false, false);
@@ -214,11 +218,13 @@ final class DinoView extends View {
             drawSide(c, x, ground, k, 0, t, true, true);
             return;
         }
-        float mx = mid, my = ground - 72 * k;
+        float mx = mid - 54 * k, my = ground - 76 * k;      // its mouth
         float pull = clamp((t - 1.8f) / 5.2f);
         host.vacuum(pull * pull, mx, my);
         if (once(6, t, 1.8f)) host.chomp();
-        drawFront(c, mid, ground, k, 1, t);
+        look = true;
+        drawSide(c, mid, ground, k, 1, t, false, true);
+        look = false;
         // The vortex in the mouth: a dark disc with spiral arms, growing.
         float rr = (10 + 60 * pull) * k;
         p.setStyle(Paint.Style.FILL);
@@ -312,7 +318,16 @@ final class DinoView extends View {
         p.setColor(ink);
         p.setStrokeWidth(3 * k);
         c.drawLine(-24 * k, -42 * k, -32 * k, (-34 + step) * k, p);
-        // Head: skull, then the lower jaw hinged at the back.
+        // Head: skull, then the lower jaw hinged at the back. Looking at you, it throws the head up to roar.
+        c.save();
+        if (look) c.rotate(jaw * 14, -36 * k, -80 * k);
+        if (jaw > 0.05f) {
+            // Inside of the mouth.
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(rust);
+            r.set(-62 * k, -80 * k, -36 * k, (-74 + 16 * jaw) * k);
+            c.drawOval(r, p);
+        }
         r.set(-66 * k, -94 * k, -30 * k, -74 * k);
         p.setStyle(Paint.Style.FILL);
         p.setColor(paper);
@@ -333,11 +348,33 @@ final class DinoView extends View {
         p.setStrokeWidth(2 * k);
         for (int i = 0; i < 4; i++) c.drawLine((-60 + i * 6) * k, -80 * k, (-58 + i * 6) * k, -84 * k, p);
         c.restore();
-        // Eye and nostril.
+        // Eyes and nostril: side-on one eye; turned to you, both eyes with pupils looking out at you.
+        p.setStyle(Paint.Style.FILL);
+        if (look) {
+            for (int e = 0; e < 2; e++) {
+                float ex = (e == 0 ? -42 : -53) * k, ey = (e == 0 ? -88 : -90) * k, er = (e == 0 ? 4.6f : 3.8f) * k;
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(paper);
+                c.drawCircle(ex, ey, er, p);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(2 * k);
+                p.setColor(ink);
+                c.drawCircle(ex, ey, er, p);
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(ex - 0.6f * k, ey + 0.8f * k, er * 0.48f, p);
+            }
+            // Angry brow.
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2.4f * k);
+            c.drawLine(-58 * k, -96 * k, -38 * k, -94 * k, p);
+        } else {
+            p.setColor(ink);
+            c.drawCircle(-42 * k, -87 * k, 2.6f * k, p);
+        }
         p.setStyle(Paint.Style.FILL);
         p.setColor(ink);
-        c.drawCircle(-42 * k, -87 * k, 2.6f * k, p);
         c.drawCircle(-62 * k, -89 * k, 1.2f * k, p);
+        c.restore();
         c.restore();
     }
 
@@ -359,81 +396,6 @@ final class DinoView extends View {
         p.setColor(ink);
         p.setStrokeWidth(3 * getResources().getDisplayMetrics().density * 0.9f);
         c.drawPath(path, p);
-    }
-
-    /* ---------- dino, facing the screen ---------- */
-
-    private void drawFront(Canvas c, float x, float g, float k, float jaw, float t) {
-        c.save();
-        c.translate(x, g);
-        p.setStrokeCap(Paint.Cap.ROUND);
-        // Spikes behind the head.
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(rust);
-        for (int i = -2; i <= 2; i++) {
-            path.reset();
-            path.moveTo((i * 8 - 4) * k, -88 * k);
-            path.lineTo(i * 8 * k, (-104 + Math.abs(i) * 3) * k);
-            path.lineTo((i * 8 + 4) * k, -88 * k);
-            path.close();
-            c.drawPath(path, p);
-        }
-        // Legs and body.
-        p.setStyle(Paint.Style.STROKE);
-        p.setColor(ink);
-        p.setStrokeWidth(9 * k);
-        c.drawLine(-12 * k, -20 * k, -14 * k, 0, p);
-        c.drawLine(12 * k, -20 * k, 14 * k, 0, p);
-        r.set(-28 * k, -64 * k, 28 * k, -14 * k);
-        ovalFill(c);
-        // Belly stripes.
-        p.setStrokeWidth(2 * k);
-        for (int i = 0; i < 3; i++) c.drawLine(-12 * k, (-44 + i * 9) * k, 12 * k, (-44 + i * 9) * k, p);
-        // Arms.
-        p.setStrokeWidth(4 * k);
-        float wave = (float) Math.sin(t * 6) * 3;
-        c.drawLine(-22 * k, -50 * k, -32 * k, (-44 + wave) * k, p);
-        c.drawLine(22 * k, -50 * k, 32 * k, (-44 - wave) * k, p);
-        // Head.
-        r.set(-24 * k, -96 * k, 24 * k, -62 * k);
-        ovalFill(c);
-        // Eyes look at you.
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(ink);
-        c.drawCircle(-9 * k, -84 * k, 3.4f * k, p);
-        c.drawCircle(9 * k, -84 * k, 3.4f * k, p);
-        // Mouth: a grin, or wide open with teeth when roaring.
-        if (jaw > 0.05f) {
-            r.set(-13 * k, -76 * k, 13 * k, (-76 + 14 * jaw) * k);
-            p.setColor(rust);
-            c.drawOval(r, p);
-            p.setColor(paper);
-            for (int i = -2; i <= 2; i++) {
-                path.reset();
-                path.moveTo((i * 5 - 2) * k, -75 * k);
-                path.lineTo(i * 5 * k, -71 * k);
-                path.lineTo((i * 5 + 2) * k, -75 * k);
-                path.close();
-                c.drawPath(path, p);
-            }
-        } else {
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(2.5f * k);
-            p.setColor(ink);
-            r.set(-10 * k, -80 * k, 10 * k, -70 * k);
-            c.drawArc(r, 20, 140, false, p);
-        }
-        c.restore();
-    }
-
-    private void ovalFill(Canvas c) {
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(paper);
-        c.drawOval(r, p);
-        p.setStyle(Paint.Style.STROKE);
-        p.setColor(ink);
-        p.setStrokeWidth(3 * dp(0.9f));
-        c.drawOval(r, p);
     }
 
     /* ---------- the robot translator ---------- */
