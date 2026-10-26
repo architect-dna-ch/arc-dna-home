@@ -2187,6 +2187,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void startHead() {
         String m = headMode();
         if (m.equals("off")) return;
+        faceWatch = false;          // head scroll takes the camera over
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
             return;
@@ -2234,6 +2235,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         headSpeed = 0;
         handler.removeCallbacks(headScroller);
         headLabel.setVisibility(View.GONE);
+        handler.postDelayed(this::startFaceWatch, 800);     // back on the home: keep watching for the dino
     }
 
     /** On the Mediathek button while active: mode plus ↑ / ↓ / · (‖ = resting after a touch). */
@@ -2343,6 +2345,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onTilt(float pitch) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
         faceLostAt = 0;
+        if (faceWatch) {
+            if (edgeLight != null) edgeLight.face(true);
+            return;                 // only watching whether you face the screen; no scrolling
+        }
         if (edgeLight != null) edgeLight.face(true);
         if (calibStage >= 0) {
             if (calibCollect && calibStage < 3) {
@@ -3162,6 +3168,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Nod to jump: the front camera runs while the game is open (only if the camera is allowed). */
     private void startGameNod() {
+        faceWatch = false;
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;
         if (head == null) head = new HeadTracker(this, this);
         nodFast = Float.NaN;
@@ -3174,6 +3181,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         FoxRunView g = game;
         game = null;
         if (head != null && !libraryOpen) head.stop();
+        handler.postDelayed(this::startFaceWatch, 800);
         g.pause();
         g.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(g)).start();
         applyOrientation();
@@ -3501,6 +3509,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private static final long DINO_EVERY = 2 * 60_000L;
     private DinoView dino;
+    private boolean swapped;
     private long faceLostAt, lastFaceEvent, lastDinoAt = -DINO_EVERY;
     private final Runnable dinoTick = new Runnable() {
         @Override
@@ -3541,15 +3550,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
 
             @Override
-            public void swapBuddy() {
-                prefs.edit().putInt("buddy", (MainActivity.this.buddy() + 1) % BUDDIES.length).apply();
+            public void swapBuddy(String afterLine) {
+                int next = (MainActivity.this.buddy() + 1) % BUDDIES.length;
+                prefs.edit().putInt("buddy", next).apply();
                 applyBuddy();
+                swapped = true;
+                // Pops out of the ground with a spin, lands with a hop, then introduces itself.
                 fox.animate().cancel();
-                fox.setScaleX(0.3f);
-                fox.setScaleY(0.3f);
-                fox.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(360)
-                    .setInterpolator(new android.view.animation.OvershootInterpolator(2.4f)).start();
-                hop();
+                fox.setAlpha(0f);
+                fox.setScaleX(0.1f);
+                fox.setScaleY(0.1f);
+                fox.setRotation(-180f);
+                fox.animate().alpha(1f).scaleX(1.25f).scaleY(1.25f).rotation(0f).setDuration(420)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(() -> fox.animate().scaleX(1f).scaleY(1f).setDuration(260)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(3f))
+                        .withEndAction(MainActivity.this::hop).start()).start();
+                voice.say(BUDDY_CALLS[next][0]);
+                handler.postDelayed(() -> say("Tadaa! Ich bin " + BUDDIES[next][1] + ". " + afterLine, 2800), 600);
             }
 
             @Override
@@ -3604,16 +3622,44 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (dino == null) return;
         rootFrame.removeView(dino);
         dino = null;
+        boolean keepPop = swapped;       // the new buddy's entrance keeps running
+        swapped = false;
         scroll.setScaleX(1f);
         scroll.setScaleY(1f);
         scroll.setRotation(0f);
         scroll.setAlpha(1f);
-        fox.setRotation(0f);
         faceLostAt = 0;
-        fox.animate().cancel();
-        fox.setAlpha(1f);
-        fox.setScaleX(1f);
-        fox.setScaleY(1f);
+        if (!keepPop) {
+            fox.setRotation(0f);
+            fox.animate().cancel();
+            fox.setAlpha(1f);
+            fox.setScaleX(1f);
+            fox.setScaleY(1f);
+        }
+    }
+
+    /*
+     * Face watch: while the home is in front and the Dino-Sperre is on, the front camera only checks
+     * whether you're facing the screen (nothing is recorded or stored). No face for 5 s → black hole.
+     */
+    private boolean faceWatch;
+
+    private void startFaceWatch() {
+        if (!homeInFront || faceWatch || libraryOpen || game != null || !prefs.getBoolean("dinoLock", true)) return;
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;
+        if (head == null) head = new HeadTracker(this, this);
+        head.stop();
+        head.setDebug(false);
+        head.start(HeadTracker.Mode.NOD);
+        faceWatch = true;
+        faceLostAt = 0;
+        lastFaceEvent = android.os.SystemClock.uptimeMillis();
+    }
+
+    private void stopFaceWatch() {
+        if (!faceWatch) return;
+        faceWatch = false;
+        if (head != null && !libraryOpen && game == null) head.stop();
     }
 
     private void hop() {
@@ -3708,6 +3754,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hideNavBar();
         handler.removeCallbacks(dinoTick);
         handler.postDelayed(dinoTick, DINO_EVERY);
+        handler.postDelayed(this::startFaceWatch, 1500);
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
@@ -3759,6 +3806,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         homeInFront = false;
         handler.removeCallbacks(dinoTick);
         endDino();
+        stopFaceWatch();
         if (volumeReceiver != null) {
             unregisterReceiver(volumeReceiver);
             volumeReceiver = null;

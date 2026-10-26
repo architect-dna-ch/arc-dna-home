@@ -27,7 +27,8 @@ final class DinoView extends View {
 
         void hideBuddy();
 
-        void swapBuddy();
+        /** The next buddy pops out and introduces itself (afterLine: what it says after the intro). */
+        void swapBuddy(String afterLine);
 
         void buddySay(String text);
 
@@ -143,7 +144,7 @@ final class DinoView extends View {
             if (t > 25 && t < 27) jaw = 0.6f + 0.4f * (float) Math.abs(Math.sin(t * 9));
         } else if (t < 29) {
             x = eatX;
-            jaw = t < 28 ? clamp((t - 27) / 0.3f) : 1 - clamp((t - 28) / 0.4f);   // spits the buddy out
+            jaw = t < 28 ? clamp((t - 27) / 0.3f) : 1 - clamp((t - 28) / 0.4f);   // a big burp
         } else {
             x = eatX - (eatX + 120 * k) * ease((t - 29) / 4.5f);
             walking = true;
@@ -159,8 +160,8 @@ final class DinoView extends View {
             host.chomp();
             host.hideBuddy();
         }
-        if (once(4, t, 28)) host.swapBuddy();
-        if (once(5, t, 28.6f)) host.buddySay(lines[8]);
+        // The new buddy only shows up once dino and robot are both gone.
+        if (once(4, t, 36.4f)) host.swapBuddy(lines[8]);
 
         // ---- robot: flies in at 5 s, hovers, tazes 22–25.5 s, leaves at 35 s ----
         float rx = w - dp(70), ry = ground - size * 1.75f;
@@ -198,11 +199,12 @@ final class DinoView extends View {
         if (t > 20.6f && t < 23) bubble(c, "🤖 " + lines[5], rx, ry + rob - dp(34), false, false);
         if (t > 22.4f && t < 25.5f) bubble(c, "BZZZZT!", rx - dp(40), ry + rob + dp(48), true, false);
         if (t > 25 && t < 27.2f) bubble(c, lines[6], x - 40 * k, ground - 116 * k, true, true);
+        if (t > 27.4f && t < 29.2f) bubble(c, "*RÜLPS*", x - 40 * k, ground - 110 * k, true, false);
         if (t > 26.4f && t < 29.6f) bubble(c, "🤖 " + lines[7], rx, ry + rob - dp(34), false, false);
         if (t > 29.6f && t < 31.6f) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
         if (t > 31.6f && t < 35) bubble(c, "🤖 " + lines[10], rx, ry + rob - dp(34), false, false);
 
-        if (t < 37) postInvalidateOnAnimation();
+        if (t < 37.2f) postInvalidateOnAnimation();
         else post(host::done);
     }
 
