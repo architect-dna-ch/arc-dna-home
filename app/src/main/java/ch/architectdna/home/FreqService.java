@@ -74,14 +74,16 @@ public class FreqService extends Service {
         @Override
         public void run() {
             if (timerEnd > 0 && System.currentTimeMillis() >= timerEnd) {
-                // Done: the chime, and a finished session of 25+ minutes counts.
+                // Done: the chime, the sound fades out, and a finished session of 25+ minutes counts.
                 if (timerMins >= 25) {
                     android.content.SharedPreferences p = getSharedPreferences("voidfreq", MODE_PRIVATE);
                     p.edit().putInt("sessions", p.getInt("sessions", 0) + 1).apply();
                 }
-                engine.chime();
                 timerEnd = 0;
                 timerMins = 0;
+                engine.chime();
+                DiagLog.log("voidfreq timer done: stop");
+                play(FreqService.this, "");
             }
             refresh();
             if (instance != null) main.postDelayed(this, 1000);
