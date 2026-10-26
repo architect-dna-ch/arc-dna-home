@@ -1333,7 +1333,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
-                    ownIcon(ri.activityInfo.name, ri.loadIcon(pm))));
+                    ownIcon(ri.activityInfo.name, ShapeIcon.wrap(ri.loadIcon(pm), ri.activityInfo.packageName))));
             }
             Collator collator = Collator.getInstance(Locale.GERMAN);
             Collections.sort(list, (a, b) -> collator.compare(a.label, b.label));
