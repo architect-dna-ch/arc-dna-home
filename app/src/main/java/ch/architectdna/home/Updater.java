@@ -124,9 +124,13 @@ final class Updater {
                     if (manual && n <= current()) toast("ARC-DNA ist aktuell (1.0." + current() + ").");
                 });
             } catch (Exception e) {
+                DiagLog.log("update check failed: " + e.getMessage());
                 main.post(() -> {
-                    ui.onUpdateState("Update-Prüfung fehlgeschlagen", false);
-                    if (manual) toast(e.getMessage());
+                    ui.onUpdateState("Update-Prüfung fehlgeschlagen · tippen = im Browser laden", false);
+                    if (manual) {
+                        toast(e.getMessage() + " – lade im Browser");
+                        openInBrowser();
+                    }
                 });
             } finally {
                 busy = false;
@@ -245,6 +249,16 @@ final class Updater {
             byte[] buf = new byte[8192];
             for (int r; (r = s.read(buf)) != -1; ) out.write(buf, 0, r);
             return out.toString("UTF-8");
+        }
+    }
+
+    /** Fallback when the in-app check fails (e.g. an expired token): the newest APK straight from GitHub in the browser. */
+    private void openInBrowser() {
+        try {
+            activity.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://github.com/architect-dna-ch/arc-dna-home/releases/latest/download/ARC-DNA-Home.apk"))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (RuntimeException ignored) {
         }
     }
 
