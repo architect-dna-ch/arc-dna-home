@@ -131,7 +131,11 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 currentPkg = "";
                 if (!mode.equals("off")) DiagLog.log("screen off: head scroll stopped");
                 apply("off");
-            } else if (!lockedPkg.isEmpty()) {
+            } else if (android.content.Intent.ACTION_USER_PRESENT.equals(i.getAction())) {
+                rainbowUntil = SystemClock.uptimeMillis() + 2600;    // the ring starts in the lock screen's rainbow
+                if (pill != null) pill.invalidate();
+            }
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(i.getAction()) && !lockedPkg.isEmpty()) {
                 pendingPkg = lockedPkg;
                 lockedPkg = "";
                 main.removeCallbacks(settle);
@@ -443,6 +447,20 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             p.setColor((alpha << 24) | (rust & 0xFFFFFF));
             p.setStrokeWidth(dp(2.5f));
             c.drawCircle(cx, cy, r, p);
+            // Just unlocked: the lock screen's rainbow ring first, melting into the orange.
+            if (now < rainbowUntil) {
+                float k = Math.min(1f, (rainbowUntil - now) / 800f);
+                android.graphics.SweepGradient sw = new android.graphics.SweepGradient(cx, cy,
+                    new int[]{0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B}, null);
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                m.setRotate(-(now % 2000) * 0.18f * 2, cx, cy);
+                sw.setLocalMatrix(m);
+                p.setShader(sw);
+                p.setAlpha((int) (255 * k));
+                p.setStrokeWidth(dp(3));
+                c.drawCircle(cx, cy, r, p);
+                p.setShader(null);
+            }
             if (mode.equals("gaze")) c.drawCircle(cx, cy, r + dp(4), p);
             if (!paused && !resting && speed != 0) {
                 // A bright arc running round: clockwise = down, anticlockwise = up.
@@ -457,7 +475,22 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     }
 
     private boolean error;
+    private long rainbowUntil;
     private final long[] ringTaps = new long[3];
+    private float downX, downY;
+
+    /** Long hold on the ring: the launcher's nod calibration (live camera, dots, confirm / redo). */
+    private final Runnable ringHold = () -> {
+        if (pill != null) pill.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+        android.content.Intent cal = new android.content.Intent(MainActivity.CALIBRATE_NOD)
+            .setClass(this, MainActivity.class)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        try {
+            startActivity(cal);
+        } catch (RuntimeException e) {
+            DiagLog.log("ring calibrate failed: " + e);
+        }
+    };
 
     private void showPill(String message) {
         if (windows == null) return;
@@ -471,7 +504,17 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                     if (SystemClock.uptimeMillis() > ownGestureUntil) userTouched();
                     return true;
                 }
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP || e.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
+                    main.removeCallbacks(ringHold);
+                }
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_MOVE && Math.hypot(e.getRawX() - downX, e.getRawY() - downY) > dp(16)) {
+                    main.removeCallbacks(ringHold);
+                }
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
+                    downX = e.getRawX();
+                    downY = e.getRawY();
+                    main.removeCallbacks(ringHold);
+                    main.postDelayed(ringHold, 650);
                     long now = SystemClock.uptimeMillis();
                     System.arraycopy(ringTaps, 1, ringTaps, 0, 2);
                     ringTaps[2] = now;

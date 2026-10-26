@@ -623,6 +623,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         // Mirror LEDs in the display corners when it's too dark for head / eye scrolling.
         edgeLight = new EdgeLight(this, null);
+        android.content.IntentFilter uf = new android.content.IntentFilter(Intent.ACTION_USER_PRESENT);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(unlockReceiver, uf, RECEIVER_NOT_EXPORTED);
+        else registerReceiver(unlockReceiver, uf);
+        if (CALIBRATE_NOD.equals(getIntent().getAction())) handler.postDelayed(() -> calibrate("nod"), 600);
         root.addView(edgeLight, new FrameLayout.LayoutParams(-1, -1));
         return root;
     }
@@ -1312,7 +1316,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
-                    ri.loadIcon(pm)));
+                    ownIcon(ri.activityInfo.name, ri.loadIcon(pm))));
             }
             Collator collator = Collator.getInstance(Locale.GERMAN);
             Collections.sort(list, (a, b) -> collator.compare(a.label, b.label));
@@ -3432,6 +3436,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (System.currentTimeMillis() - leftAt > 900 && game == null && ghosts == null) rootFrame.post(this::playCrumple);
         }
         hideNavBar();
+        if (unlockPending) {
+            unlockPending = false;
+            // Only right after the unlock (home behind the lock screen), not later when coming back from an app.
+            if (android.os.SystemClock.uptimeMillis() - unlockAt < 2500) rootFrame.postDelayed(this::playUnlock, 120);
+        }
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
@@ -3503,14 +3512,79 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (packageReceiver != null) unregisterReceiver(packageReceiver);
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         if (cm != null && netCallback != null) cm.unregisterNetworkCallback(netCallback);
+        try {
+            unregisterReceiver(unlockReceiver);
+        } catch (RuntimeException ignored) {
+        }
         if (head != null) head.close();
         voice.close();
+    }
+
+    /* ================= Unlock: Face-ID style lock under the camera, home comes into focus ================= */
+
+    static final String CALIBRATE_NOD = "ch.architectdna.home.CALIBRATE_NOD";
+    private UnlockView unlockView;
+    private boolean unlockPending;
+    private long unlockAt;
+
+    private final BroadcastReceiver unlockReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            unlockPending = true;
+            unlockAt = android.os.SystemClock.uptimeMillis();
+            if (hasWindowFocus() && rootFrame != null) {
+                unlockPending = false;
+                rootFrame.postDelayed(MainActivity.this::playUnlock, 80);
+            }
+        }
+    };
+
+    private void playUnlock() {
+        if (unlockView != null || rootFrame == null || rootFrame.getWidth() == 0) return;
+        float cx = rootFrame.getWidth() / 2f, cy = dp(20), holeR = dp(8);
+        if (Build.VERSION.SDK_INT >= 31 && rootFrame.getRootWindowInsets() != null) {
+            android.view.DisplayCutout cut = rootFrame.getRootWindowInsets().getDisplayCutout();
+            if (cut != null && cut.getCutoutPath() != null) {
+                android.graphics.RectF b = new android.graphics.RectF();
+                cut.getCutoutPath().computeBounds(b, true);
+                int[] at = new int[2];
+                rootFrame.getLocationOnScreen(at);
+                if (!b.isEmpty() && b.width() < rootFrame.getWidth() / 3f) {
+                    cx = b.centerX() - at[0];
+                    cy = b.centerY() - at[1];
+                    holeR = Math.max(b.width(), b.height()) / 2f;
+                }
+            }
+        }
+        View target = scroll;
+        unlockView = new UnlockView(this, cx, cy, holeR, ink, rust, k -> {
+            // Blurred and a touch small at first, sharp by the time the lock has opened.
+            float blur = 1 - Math.min(1f, k / 0.6f);
+            if (Build.VERSION.SDK_INT >= 31) {
+                target.setRenderEffect(blur > 0.01f
+                    ? RenderEffect.createBlurEffect(dp(28) * blur, dp(28) * blur, Shader.TileMode.CLAMP) : null);
+            }
+            float sc = 1 - 0.04f * blur;
+            target.setScaleX(sc);
+            target.setScaleY(sc);
+        }, () -> {
+            if (Build.VERSION.SDK_INT >= 31) target.setRenderEffect(null);
+            target.setScaleX(1f);
+            target.setScaleY(1f);
+            rootFrame.removeView(unlockView);
+            unlockView = null;
+        });
+        rootFrame.addView(unlockView, new FrameLayout.LayoutParams(-1, -1));
     }
 
     /** Home pressed while already home: close the Mediathek, back to the top. Coming back from an app keeps the position. */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (CALIBRATE_NOD.equals(intent.getAction())) {
+            calibrate("nod");
+            return;
+        }
         if (Updater.ACTION_STATUS.equals(intent.getAction())) {
             updater.onStatus(intent);
             return;
@@ -3569,6 +3643,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return row;
     }
 
+    /** Our own apps get the bold line icon of the ARC-DNA Apps tiles everywhere (Zuletzt, Mediathek). */
+    private Drawable ownIcon(String activity, Drawable fallback) {
+        int id = FreqActivity.class.getName().equals(activity) ? R.drawable.ic_line_freq
+            : GlobusActivity.class.getName().equals(activity) ? R.drawable.ic_line_globus
+            : NexusActivity.class.getName().equals(activity) ? R.drawable.ic_line_nexus : 0;
+        return id == 0 ? fallback : getDrawable(id);
+    }
+
     /** {name, activity, line icon, launcher icon}: the native apps built into ARC-DNA, tiles like the APPS grid. */
     private View arcApps() {
         Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
@@ -3585,7 +3667,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             Object[] a = own[i];
             View t = tile((String) a[0], getDrawable((Integer) a[2]), 28);
-            t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[3])));
+            t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
             row.addView(t, weighted(i % cols != 0));
         }
         for (int i = own.length % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
