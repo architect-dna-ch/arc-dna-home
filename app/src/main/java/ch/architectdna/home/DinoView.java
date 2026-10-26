@@ -84,6 +84,7 @@ final class DinoView extends View {
     private final float[] fold = new float[4];                  // 0 … dp(120): TL, TR, BR, BL
     private final boolean[] folded = new boolean[4];
     private int dragCorner = -1;
+    private float dragFrom;
     private float warnAt = -10;
 
     /** Where the dino stands on screen this frame (for taps). */
@@ -129,11 +130,18 @@ final class DinoView extends View {
             float[][] corners = {{0, 0}, {w, 0}, {w, h}, {0, h}};
             if (a == android.view.MotionEvent.ACTION_DOWN) {
                 dragCorner = -1;
+                // Start anywhere near a corner (not right on the edge, where Android's home/back swipes live).
                 for (int i = 0; i < 4; i++) {
-                    if (!folded[i] && Math.hypot(x - corners[i][0], y - corners[i][1]) < dp(90)) dragCorner = i;
+                    float d = (float) Math.hypot(x - corners[i][0], y - corners[i][1]);
+                    if (!folded[i] && d < dp(170)) {
+                        dragCorner = i;
+                        dragFrom = d;
+                    }
                 }
             } else if (a == android.view.MotionEvent.ACTION_MOVE && dragCorner >= 0) {
-                fold[dragCorner] = Math.min(dp(150), (float) Math.hypot(x - corners[dragCorner][0], y - corners[dragCorner][1]) * 0.8f);
+                // Only the drag towards the middle counts.
+                float d = (float) Math.hypot(x - corners[dragCorner][0], y - corners[dragCorner][1]);
+                fold[dragCorner] = Math.max(0, Math.min(dp(150), (d - dragFrom) * 1.3f));
             } else if ((a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL) && dragCorner >= 0) {
                 int i = dragCorner;
                 dragCorner = -1;
@@ -262,6 +270,7 @@ final class DinoView extends View {
             look = false;
             if (eaten >= cutAt && eaten < cutAt + 2) bubble(c, "♪ … *KNIRSCH*", mid, ground - 116 * k, true, false);
             drawFolds(c, w, h);
+            if (fstate == FLIGHT && dragCorner < 0) foldHints(c, w, h, ft);
             int n = 0;
             for (boolean f : folded) if (f) n++;
             float rx = w - dp(60), ry = dp(170) + (float) Math.sin(ft * 3) * dp(4);
@@ -269,7 +278,7 @@ final class DinoView extends View {
             if (fstate == FLIGHT) {
                 hud(c, w, "BILDSCHIRM FALTEN · " + n + " / 4", n / 4f, -1, 0xFF3C8DFF);
                 bubble(c, ft - warnAt < 1.2f ? "🤖 Erst die Diagonale!" : n == 0
-                    ? "🤖 Ecken einfalten! Erst zwei gegenüber, dann die anderen." : "🤖 Weiter falten!", rx, ry - dp(30), false, false);
+                    ? "🤖 Ecke zur Mitte ziehen – wie ein Eselsohr!" : n == 1 ? "🤖 Jetzt die gegenüberliegende Ecke!" : "🤖 Noch die letzten Ecken!", rx, ry - dp(30), false, false);
                 if (n == 4) {
                     fstate = UPLOAD;
                     phaseAt = ft;
@@ -364,6 +373,49 @@ final class DinoView extends View {
             String s = q[3] > 0 ? (i % 3 == 0 ? "KICK!" : i % 3 == 1 ? "POW!" : "BAM!") : "daneben";
             c.drawText(s, q[0] - p.measureText(s) / 2, q[1] - age * dp(60), p);
             p.setAlpha(255);
+        }
+    }
+
+    /** Shows which corners to fold next: a pulsing dog-ear and a finger that swipes in towards the middle. */
+    private void foldHints(Canvas c, float w, float h, float ft) {
+        float[][] corners = {{0, 0}, {w, 0}, {w, h}, {0, h}};
+        float[][] dir = {{1, 1}, {-1, 1}, {-1, -1}, {1, -1}};
+        int n = 0, any = -1;
+        for (int i = 0; i < 4; i++) if (folded[i]) n++;
+        for (int i = 0; i < 4; i++) {
+            if (folded[i] || !foldAllowed(i)) continue;
+            if (n == 0) {
+                // First fold: hint only one corner (top left, or top right) so it's clear where to begin.
+                if (any >= 0) continue;
+                any = i;
+            }
+            float cx = corners[i][0], cy = corners[i][1], dx = dir[i][0], dy = dir[i][1];
+            float e = dp(34) + dp(8) * (float) Math.sin(ft * 6);
+            path.reset();
+            path.moveTo(cx, cy);
+            path.lineTo(cx + dx * e, cy);
+            path.lineTo(cx, cy + dy * e);
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(rust);
+            c.drawPath(path, p);
+            // Finger: from near the corner diagonally in, then again.
+            float k = (ft * 0.9f) % 1f, s = dp(60) + dp(110) * ease(k);
+            float fx = cx + dx * s * 0.7071f, fy = cy + dy * s * 0.7071f, sx = cx + dx * dp(42), sy = cy + dy * dp(42);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(dp(4));
+            p.setColor(0x99B5271E);
+            c.drawLine(sx, sy, fx, fy, p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFFAFAF8);
+            p.setAlpha((int) (255 * (1 - k * 0.6f)));
+            c.drawCircle(fx, fy, dp(15), p);
+            p.setAlpha(255);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(2.5f));
+            p.setColor(0xFF1A1A1A);
+            c.drawCircle(fx, fy, dp(15), p);
         }
     }
 
