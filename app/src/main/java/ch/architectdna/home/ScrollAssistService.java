@@ -84,7 +84,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private final Runnable scroller = new Runnable() {
         @Override
         public void run() {
-            if (speed == 0 || mode.equals("off")) {
+            if (speed == 0 || mode.equals("off") || paused) {
                 scrolling = false;
                 return;
             }
@@ -118,6 +118,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     protected void onServiceConnected() {
         instance = this;
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        paused = prefs.getBoolean("headPaused", false);
         windows = (WindowManager) getSystemService(WINDOW_SERVICE);
         DiagLog.init(this);
         DiagLog.log("scroll service connected");
@@ -387,6 +388,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     /** One gentle swipe in the middle of the screen; slow enough not to fling. */
     private void swipe(float s, long ms) {
+        if (paused) return;            // paused means no swipe at all, whatever asked for it
         if (systemOnTop()) {
             setSpeed(0);
             return;
@@ -519,6 +521,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                     if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP && !ringHeld
                         && Math.hypot(e.getRawX() - downX, e.getRawY() - downY) < dp(16)) {
                         paused = !paused;
+                        prefs.edit().putBoolean("headPaused", paused).apply();
                         setSpeed(0);
                         v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
                         DiagLog.log("head scroll " + (paused ? "paused" : "resumed") + " by tap");
