@@ -63,6 +63,9 @@ public class GlobusActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        // Our own screens slide up from the bottom for real.
+        if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.app_slide_up, R.anim.home_hold);
+        else overridePendingTransition(R.anim.app_slide_up, R.anim.home_hold);
         prefs = getSharedPreferences("globus", MODE_PRIVATE);
         night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         bg = night ? 0xFF121211 : 0xFFFAFAF8;

@@ -1308,8 +1308,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Start an app sliding up from the bottom; remember it for the paper ball on the way back. */
     private void openApp(Intent intent, Drawable icon) {
         try {
-            startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold).toBundle());
+            // Android ignores custom slides for app launches from a launcher (new task), but honours a
+            // clip reveal: starting from a thin strip along the bottom edge, the app grows upward.
+            int w = rootFrame.getWidth(), h = rootFrame.getHeight();
+            android.app.ActivityOptions o = w > 0 && h > 0
+                ? android.app.ActivityOptions.makeClipRevealAnimation(rootFrame, 0, h - 1, w, 1)
+                : android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold);
+            startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), o.toBundle());
             leftIcon = icon == null ? null : icon.getConstantState() != null ? icon.getConstantState().newDrawable().mutate() : icon;
             leftAt = System.currentTimeMillis();
             crumplePending = true;
