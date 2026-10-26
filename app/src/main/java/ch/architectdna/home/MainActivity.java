@@ -2816,6 +2816,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    /** After a lock that failed (no accessibility service): no new black hole for 3 min (it looped every 13 s). */
+    private long blackHoleRestUntil;
+
+    private boolean blackHoleAllowed(long now) {
+        return dino == null && homeInFront && game == null && settingsSheet == null && calibStage < 0
+            && now >= blackHoleRestUntil && prefs.getBoolean("dinoLock", true);
+    }
+
     private void noteAway() {
         long now = android.os.SystemClock.uptimeMillis();
         lastFaceEvent = now;
@@ -2824,12 +2832,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             DiagLog.log("looking away");
         }
         // The chip only once it's clear (away for over 1 s), so a glance aside doesn't flash it.
-        if (now - faceLostAt > 1000 && dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
+        if (now - faceLostAt > 1000 && blackHoleAllowed(now)) {
             long left = Math.max(1, 5 - (now - faceLostAt) / 1000);
             showAwayChip("◉ WEGGESCHAUT · DINO IN " + left);
         }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
-        if (now - faceLostAt > 5000 && dino == null && homeInFront && game == null && prefs.getBoolean("dinoLock", true)) {
+        if (now - faceLostAt > 5000 && blackHoleAllowed(now)) {
             hideAwayChip();
             startDino(true);
             if (dino != null) lastDinoAt = now;
@@ -3302,11 +3310,32 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .withEndAction(() -> {
                 if (!f1) setF1(true);
                 else race(true);
+                // The timing car smashes out of the board's glass with it: crack, a shout, and off they go.
+                f1Panel.post(this::glassBreak);
                 // Back in from the left after its lap.
                 fox.setTranslationX(-rootFrame.getWidth());
                 fox.animate().translationX(0).setStartDelay(1600).setDuration(700)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator()).withEndAction(() -> burning = false).start();
             }).start();
+    }
+
+    private void glassBreak() {
+        if (rootFrame == null || f1Panel == null || !f1Panel.isShown()) return;
+        int[] a = new int[2], r = new int[2];
+        f1Panel.getLocationInWindow(a);
+        rootFrame.getLocationInWindow(r);
+        float x = a[0] - r[0] + f1Panel.getWidth() * 0.7f, y = a[1] - r[1] + f1Panel.getHeight() * 0.86f;
+        voice.thud();
+        if (cracks == null) {
+            cracks = new CrackView(this, ink);
+            rootFrame.addView(cracks, new FrameLayout.LayoutParams(-1, -1));
+        }
+        cracks.bringToFront();
+        cracks.crack(x, y);
+        handler.postDelayed(() -> {
+            say("Hey, wir leben, Mann – das Leben ist gut! Tschiiuuu!", 2600);
+            voice.say("Nyeeoow!");
+        }, 450);
     }
 
     /** Where the rear wheel touches the ground, in rootFrame coordinates (the car faces right). */
@@ -4191,7 +4220,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 boolean ok = ScrollAssistService.lockScreen();
                 DiagLog.log("dino lock: " + (ok ? "locked" : "accessibility service not running"));
                 if (!ok) {
-                    pop("Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen)");
+                    blackHoleRestUntil = android.os.SystemClock.uptimeMillis() + 180_000;
+                    pop("Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen). Pause für 3 Minuten.");
                 }
                 DiagLog.log("dino black hole → lock");
             }
