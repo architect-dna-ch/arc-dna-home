@@ -42,7 +42,7 @@ final class RaceOverlay extends View {
 
     private static final class Car {
         int livery;
-        float s, speed, target, wide, wideTarget;
+        float s, speed, target, wide, wideTarget, lane;
         float x, y, angle;
         long nextChange;
     }
@@ -54,7 +54,8 @@ final class RaceOverlay extends View {
         for (int i = 0; i < 5; i++) {
             Car k = new Car();
             k.livery = i;
-            k.s = -i * 0.035f;          // on the grid, one behind the other
+            k.s = -i * 0.045f;          // on the grid, one behind the other
+            k.lane = (i % 2 == 0 ? -1 : 1) * dp(6);
             k.speed = 0;
             cars.add(k);
         }
@@ -83,14 +84,27 @@ final class RaceOverlay extends View {
         return v * getResources().getDisplayMetrics().density;
     }
 
+    private int topInset;
+
+    @Override
+    public android.view.WindowInsets onApplyWindowInsets(android.view.WindowInsets in) {
+        int t = in.getSystemWindowInsetTop();
+        if (t != topInset) {
+            topInset = t;
+            if (getWidth() > 0) onSizeChanged(getWidth(), getHeight(), 0, 0);
+        }
+        return super.onApplyWindowInsets(in);
+    }
+
     @Override
     protected void onSizeChanged(int w, int h, int ow, int oh) {
         // The circuit: round the edges of the screen with a chicane on the left and a hairpin at the bottom.
-        float m = dp(26), r = dp(70);
+        // The top straight stays below the status bar (cars vanished under the icons).
+        float m = dp(26), r = dp(70), top = Math.max(m, topInset + dp(20));
         track.reset();
-        track.moveTo(w * 0.5f, m);
-        track.lineTo(w - m - r, m);
-        track.quadTo(w - m, m, w - m, m + r);
+        track.moveTo(w * 0.5f, top);
+        track.lineTo(w - m - r, top);
+        track.quadTo(w - m, top, w - m, top + r);
         track.lineTo(w - m, h * 0.55f);
         track.cubicTo(w - m, h * 0.62f, w * 0.62f, h * 0.6f, w * 0.6f, h * 0.68f);      // swings inwards
         track.cubicTo(w * 0.58f, h * 0.76f, w - m, h * 0.74f, w - m, h * 0.82f);
@@ -101,8 +115,8 @@ final class RaceOverlay extends View {
         track.lineTo(m, h * 0.6f);
         track.cubicTo(m, h * 0.5f, w * 0.3f, h * 0.48f, w * 0.3f, h * 0.4f);              // the chicane
         track.cubicTo(w * 0.3f, h * 0.32f, m, h * 0.3f, m, h * 0.22f);
-        track.lineTo(m, m + r);
-        track.quadTo(m, m, m + r, m);
+        track.lineTo(m, top + r);
+        track.quadTo(m, top, m + r, top);
         track.close();
         measure = new PathMeasure(track, true);
         length = measure.getLength();
@@ -122,15 +136,15 @@ final class RaceOverlay extends View {
         p.setStrokeJoin(Paint.Join.ROUND);
         p.setPathEffect(null);
         p.setStrokeWidth(dp(34));
-        p.setColor(0x55303030);
+        p.setColor(0x38303030);
         c.drawPath(track, p);
         p.setStrokeWidth(dp(36));
         p.setPathEffect(new DashPathEffect(new float[]{dp(10), dp(10)}, 0));
-        p.setColor(0x66B5271E);
+        p.setColor(0x44B5271E);
         c.drawPath(track, p);
         p.setStrokeWidth(dp(30));
         p.setPathEffect(null);
-        p.setColor(0x88242424);
+        p.setColor(0x5C242424);
         c.drawPath(track, p);
         p.setStrokeWidth(dp(1.5f));
         p.setPathEffect(new DashPathEffect(new float[]{dp(12), dp(14)}, 0));
@@ -165,9 +179,22 @@ final class RaceOverlay extends View {
             while (turn < -180) turn += 360;
             k.wideTarget = -Math.signum(turn) * Math.min(dp(11), Math.abs(turn) * k.speed / dp(400) * dp(0.4f));
             k.wide += (k.wideTarget - k.wide) * Math.min(1, dt * 4);
+            // Someone just ahead: pull out to the side and pass (no more cars on top of each other).
+            float ahead = Float.MAX_VALUE, aheadLane = 0;
+            for (Car o : cars) {
+                if (o == k) continue;
+                float gap = ((o.s - k.s) % 1 + 1) % 1 * length;
+                if (gap < ahead) {
+                    ahead = gap;
+                    aheadLane = o.lane;
+                }
+            }
+            float laneTarget = ahead < dp(46) ? (aheadLane > 0 ? -dp(9) : dp(9)) : (k.livery - 2) * dp(2);
+            k.lane += (laneTarget - k.lane) * Math.min(1, dt * 5);
+            if (ahead < dp(20)) k.speed = Math.max(k.speed * 0.98f, 0);       // brakes rather than drive through
             float nx = -tan[1], ny = tan[0];
-            k.x = pos[0] + nx * (k.wide + (k.livery - 2) * dp(3.5f));
-            k.y = pos[1] + ny * (k.wide + (k.livery - 2) * dp(3.5f));
+            k.x = pos[0] + nx * (k.wide + k.lane);
+            k.y = pos[1] + ny * (k.wide + k.lane);
             float slide = turn * 0.6f * Math.min(1, k.speed / dp(400));      // drift angle in the corner
             k.angle = ang + slide;
             if (running && Math.abs(turn) > 18 && k.speed > dp(330) && rnd.nextFloat() < 0.5f) {
