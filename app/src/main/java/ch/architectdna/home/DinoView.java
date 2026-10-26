@@ -43,6 +43,323 @@ final class DinoView extends View {
 
         /** The end of the black hole: lock the phone. */
         void lockNow();
+
+        /** Fight: the dino's level (1 … 99) and one up after a win. */
+        int level();
+
+        void levelUp();
+
+        /** Flight: one app tile flies into the dino's mouth at (x, y); false when nothing is left. */
+        boolean eatOne(float x, float y);
+
+        /** Everything the dino ate comes back. */
+        void restoreEaten();
+
+        /** The dino bit through the music: pause it. */
+        void cutMusic();
+    }
+
+    /* ================= Fight: tap the dino ================= */
+
+    private static final int FIGHT = 0, KO = 1, FLIGHT = 2, UPLOAD = 3, SAVED = 4, LOST = 5;
+    private long fightAt = -1;
+    private int fstate, level, eaten, cutAt, hurt;
+    private float hp, maxHp, timeLimit, phaseAt, lastZap, nextEat, knock, lastFt;
+    private boolean buddyEaten;
+    private final RectF dinoRect = new RectF();
+    private final List<float[]> pops = new ArrayList<>();       // x, y, time, hit?
+    private final float[] fold = new float[4];                  // 0 … dp(120): TL, TR, BR, BL
+    private final boolean[] folded = new boolean[4];
+    private int dragCorner = -1;
+    private float warnAt = -10;
+
+    /** Where the dino stands on screen this frame (for taps). */
+    private void markDino(float x, float g, float k, float sc) {
+        dinoRect.set(x - 72 * k * sc, g - 104 * k * sc, x + 86 * k * sc, g);
+    }
+
+    private void startFight() {
+        fightAt = SystemClock.uptimeMillis();
+        level = Math.max(1, Math.min(99, host.level()));
+        maxHp = hp = 12 + level * 1.6f;
+        timeLimit = 20 + level * 0.2f;
+        fstate = FIGHT;
+        lastZap = 0;
+        buddyEaten = !vacuum && fired[3] && !fired[4];
+        host.vacuum(0, 0, 0);
+        host.stomp();
+        invalidate();
+    }
+
+    private void endFight() {
+        host.vacuum(0, 0, 0);
+        if (buddyEaten) host.swapBuddy("Danke fürs Retten!");
+        post(host::done);
+    }
+
+    private boolean fightTouch(android.view.MotionEvent e) {
+        int a = e.getActionMasked();
+        float x = e.getX(), y = e.getY(), w = getWidth(), h = getHeight();
+        if (fstate == FIGHT && a == android.view.MotionEvent.ACTION_DOWN) {
+            float ft = (SystemClock.uptimeMillis() - fightAt) / 1000f;
+            boolean hit = dinoRect.contains(x, y);
+            if (hit) {
+                hp = Math.max(0, hp - 1);
+                knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
+                host.stomp();
+            }
+            pops.add(new float[]{x, y, ft, hit ? 1 : 0});
+            return true;
+        }
+        if (fstate == FLIGHT || fstate == UPLOAD) {
+            float[][] corners = {{0, 0}, {w, 0}, {w, h}, {0, h}};
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                dragCorner = -1;
+                for (int i = 0; i < 4; i++) {
+                    if (!folded[i] && Math.hypot(x - corners[i][0], y - corners[i][1]) < dp(90)) dragCorner = i;
+                }
+            } else if (a == android.view.MotionEvent.ACTION_MOVE && dragCorner >= 0) {
+                fold[dragCorner] = Math.min(dp(150), (float) Math.hypot(x - corners[dragCorner][0], y - corners[dragCorner][1]) * 0.8f);
+            } else if ((a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL) && dragCorner >= 0) {
+                int i = dragCorner;
+                dragCorner = -1;
+                if (fold[i] > dp(85) && foldAllowed(i)) {
+                    folded[i] = true;
+                    fold[i] = dp(120);
+                    host.chomp();
+                } else {
+                    if (fold[i] > dp(85)) warnAt = (SystemClock.uptimeMillis() - fightAt) / 1000f;
+                    fold[i] = 0;
+                }
+            }
+            return true;
+        }
+        return true;
+    }
+
+    /** Diagonals first: any corner, then its opposite; then the other two. */
+    private boolean foldAllowed(int i) {
+        int n = 0;
+        for (boolean f : folded) if (f) n++;
+        if (n == 1) return folded[(i + 2) % 4];
+        return true;
+    }
+
+    private void drawFight(Canvas c, long now, float w, float h, float ground, float k, float mid) {
+        float ft = (now - fightAt) / 1000f, dt = Math.max(0, Math.min(0.05f, ft - lastFt));
+        lastFt = ft;
+        knock *= 0.8f;
+        if (fstate == FIGHT) {
+            // The dino dodges more and faster the higher its level; above 30 it heals a little.
+            float amp = w * 0.32f * Math.min(1, level / 40f), freq = 0.35f + level * 0.012f;
+            float fx = mid + amp * (float) Math.sin(ft * freq * Math.PI * 2) + knock;
+            boolean right = Math.cos(ft * freq * Math.PI * 2) > 0 && amp > 0;
+            if (level > 30) hp = Math.min(maxHp, hp + (level - 30) * 0.012f * dt);
+            if (ft - lastZap > 1.3f && ft > 1) {
+                lastZap = ft;
+                hp = Math.max(0, hp - 0.35f);           // the robot helps a bit
+            }
+            hurt = hp / maxHp > 0.8f ? 0 : hp / maxHp > 0.6f ? 1 : hp / maxHp > 0.4f ? 2 : hp / maxHp > 0.2f ? 3 : 4;
+            c.save();
+            if (hurt >= 4) c.rotate(6 * (float) Math.sin(ft * 5), fx, ground);
+            drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, ft, amp > 0, !right);
+            c.restore();
+            markDino(fx, ground, k, 1);
+            float rx = Math.min(w - dp(40), fx + 100 * k), ry = ground - 150 * k + (float) Math.sin(ft * 3) * dp(4);
+            drawRobot(c, rx, ry, dp(1), ft - lastZap < 0.2f);
+            if (ft - lastZap < 0.2f) zap(c, rx - dp(22), ry + dp(10), fx, ground - 55 * k);
+            drawPops(c, ft);
+            hud(c, w, "DINO · LV " + level, hp / maxHp, Math.max(0, timeLimit - ft), rust);
+            if (ft < 2.2f) bubble(c, "🤖 Hau ihn! Ich helfe!", rx, ry - dp(30), false, false);
+            if (hp <= 0) {
+                fstate = KO;
+                phaseAt = ft;
+                host.levelUp();
+                host.chomp();
+            } else if (ft >= timeLimit) {
+                fstate = FLIGHT;
+                phaseAt = ft;
+                nextEat = ft + 0.8f;
+                cutAt = 4 + rnd.nextInt(5);
+            }
+        } else if (fstate == KO) {
+            float d = ft - phaseAt, fall = ease(Math.min(1, d / 0.5f));
+            hurt = 5;
+            c.save();
+            c.rotate(180 * fall, mid, ground - 47 * k * fall);
+            dead = fall > 0.5f;
+            drawSide(c, mid, ground, k, 0.4f, ft, false, true);
+            dead = false;
+            c.restore();
+            // Stars circling.
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFFFC400);
+            for (int i = 0; i < 5; i++) {
+                double a = ft * 4 + i * Math.PI * 2 / 5;
+                c.drawCircle(mid + (float) Math.cos(a) * 30 * k, ground - 70 * k + (float) Math.sin(a) * 8 * k, 4 * k, p);
+            }
+            bubble(c, "K.O.!", mid, ground - 90 * k, true, true);
+            bubble(c, "🤖 Gewonnen! Dino jetzt Level " + Math.min(99, level + 1) + ".", w / 2, dp(150), false, false);
+            if (d > 2.6f) {
+                fight(false);
+                endFight();
+                return;
+            }
+        } else if (fstate == FLIGHT || fstate == UPLOAD) {
+            // It gets away and eats the screen: fold the 4 corners (diagonals first), the robot saves it to the cloud.
+            float mx = mid - 54 * k, my = ground - 76 * k;
+            if (ft >= nextEat) {
+                nextEat = ft + Math.max(0.45f, 1.1f - level * 0.006f);
+                if (host.eatOne(mx, my)) {
+                    eaten++;
+                    host.chomp();
+                    if (eaten == cutAt) host.cutMusic();
+                }
+                if (eaten >= 14) {
+                    fstate = LOST;
+                    phaseAt = ft;
+                }
+            }
+            look = true;
+            drawSide(c, mid, ground, k, (float) Math.abs(Math.sin(ft * 8)), ft, false, true);
+            look = false;
+            if (eaten >= cutAt && eaten < cutAt + 2) bubble(c, "♪ … *KNIRSCH*", mid, ground - 116 * k, true, false);
+            drawFolds(c, w, h);
+            int n = 0;
+            for (boolean f : folded) if (f) n++;
+            float rx = w - dp(60), ry = dp(170) + (float) Math.sin(ft * 3) * dp(4);
+            drawRobot(c, rx, ry, dp(1), false);
+            if (fstate == FLIGHT) {
+                hud(c, w, "BILDSCHIRM FALTEN · " + n + " / 4", n / 4f, -1, 0xFF3C8DFF);
+                bubble(c, ft - warnAt < 1.2f ? "🤖 Erst die Diagonale!" : n == 0
+                    ? "🤖 Ecken einfalten! Erst zwei gegenüber, dann die anderen." : "🤖 Weiter falten!", rx, ry - dp(30), false, false);
+                if (n == 4) {
+                    fstate = UPLOAD;
+                    phaseAt = ft;
+                }
+            } else {
+                float up = Math.min(1, (ft - phaseAt) / 3f);
+                hud(c, w, "UPLOAD IN DIE CLOUD ☁", up, -1, 0xFF2BBF6A);
+                bubble(c, "🤖 Lade hoch … " + Math.round(up * 100) + " %", rx, ry - dp(30), false, false);
+                if (up >= 1) {
+                    host.restoreEaten();
+                    fstate = SAVED;
+                    phaseAt = ft;
+                }
+            }
+        } else if (fstate == SAVED) {
+            float d = ft - phaseAt;
+            float x = mid - (mid + 120 * k) * ease(d / 1.6f);
+            drawSide(c, x, ground, k, 0.8f, ft * 1.6f, true, true);
+            bubble(c, "NEEEIN!", Math.max(dp(80), x), ground - 110 * k, true, true);
+            bubble(c, "🤖 Gesichert in der Cloud. Alles wieder da.", w / 2, dp(150), false, false);
+            if (d > 2.2f) {
+                fight(false);
+                endFight();
+                return;
+            }
+        } else {
+            // LOST: it ate everything.
+            float d = ft - phaseAt;
+            drawSide(c, mid, ground, k, 1, ft, false, true);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF000000);
+            p.setAlpha((int) (255 * clamp(d / 0.8f)));
+            c.drawRect(0, 0, w, h, p);
+            p.setAlpha(255);
+            if (d > 0.8f && !locked) {
+                locked = true;
+                host.lockNow();
+                postDelayed(host::done, 400);
+                return;
+            }
+        }
+        postInvalidateOnAnimation();
+    }
+
+    private void fight(boolean on) {
+        if (!on) hurt = 0;
+    }
+
+    /** Top bar: label, a bar (fraction), and a countdown when seconds ≥ 0. */
+    private void hud(Canvas c, float w, String label, float frac, float seconds, int colour) {
+        float top = dp(92), left = dp(24), right = w - dp(24);
+        r.set(left - dp(10), top - dp(26), right + dp(10), top + dp(24));
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xF2FAFAF8);
+        c.drawRoundRect(r, dp(14), dp(14), p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(dp(1.5f));
+        p.setColor(0xFF1A1A1A);
+        c.drawRoundRect(r, dp(14), dp(14), p);
+        p.setStyle(Paint.Style.FILL);
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextSize(dp(12));
+        p.setLetterSpacing(0.12f);
+        p.setColor(0xFF1A1A1A);
+        c.drawText(label, left, top - dp(6), p);
+        if (seconds >= 0) {
+            String s = String.format(java.util.Locale.ROOT, "%d:%02d", (int) seconds / 60, (int) Math.ceil(seconds) % 60);
+            p.setColor(seconds < 5 ? rust : 0xFF1A1A1A);
+            c.drawText(s, right - p.measureText(s), top - dp(6), p);
+        }
+        r.set(left, top + dp(2), right, top + dp(12));
+        p.setColor(0xFFE0E0D8);
+        c.drawRoundRect(r, dp(5), dp(5), p);
+        r.set(left, top + dp(2), left + (right - left) * clamp(frac), top + dp(12));
+        p.setColor(colour);
+        c.drawRoundRect(r, dp(5), dp(5), p);
+    }
+
+    private void drawPops(Canvas c, float ft) {
+        for (int i = pops.size() - 1; i >= 0; i--) {
+            float[] q = pops.get(i);
+            float age = ft - q[2];
+            if (age > 0.45f) {
+                pops.remove(i);
+                continue;
+            }
+            p.setStyle(Paint.Style.FILL);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(q[3] > 0 ? 20 : 12));
+            p.setColor(q[3] > 0 ? rust : 0xFF9A9A98);
+            p.setAlpha((int) (255 * (1 - age / 0.45f)));
+            String s = q[3] > 0 ? (i % 3 == 0 ? "KICK!" : i % 3 == 1 ? "POW!" : "BAM!") : "daneben";
+            c.drawText(s, q[0] - p.measureText(s) / 2, q[1] - age * dp(60), p);
+            p.setAlpha(255);
+        }
+    }
+
+    /** The folded-in corners: a turned-over paper triangle with an edge line. */
+    private void drawFolds(Canvas c, float w, float h) {
+        float[][] corners = {{0, 0}, {w, 0}, {w, h}, {0, h}};
+        float[][] dir = {{1, 1}, {-1, 1}, {-1, -1}, {1, -1}};
+        for (int i = 0; i < 4; i++) {
+            float f = fold[i];
+            if (f <= 0) continue;
+            float cx = corners[i][0], cy = corners[i][1], dx = dir[i][0], dy = dir[i][1];
+            path.reset();
+            path.moveTo(cx + dx * f, cy);
+            path.lineTo(cx, cy + dy * f);
+            path.lineTo(cx + dx * f, cy + dy * f);
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(folded[i] ? 0xFFE6E4DC : 0xFFF2F0EA);
+            c.drawPath(path, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(2));
+            p.setColor(0xFF1A1A1A);
+            c.drawPath(path, p);
+            // The hidden corner itself: dark.
+            path.reset();
+            path.moveTo(cx, cy);
+            path.lineTo(cx + dx * f, cy);
+            path.lineTo(cx, cy + dy * f);
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF121211);
+            c.drawPath(path, p);
+        }
     }
 
     private boolean vacuum, locked, look, dead;
@@ -67,6 +384,13 @@ final class DinoView extends View {
 
     @Override
     public boolean onTouchEvent(android.view.MotionEvent e) {
+        if (fightAt >= 0) return fightTouch(e);
+        // Tap the dino (while it's out and about, not after the lock started): the fight begins.
+        if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN && scaredAt < 0 && !locked && !dinoRect.isEmpty()
+            && dinoRect.contains(e.getX(), e.getY())) {
+            startFight();
+            return true;
+        }
         // Only the bush takes touches (and only while the dino hides there); the rest goes to the home.
         if (scaredAt < 0 || deadAt >= 0 || bush.isEmpty()) return false;
         if (e.getActionMasked() != android.view.MotionEvent.ACTION_DOWN) return true;
@@ -143,6 +467,10 @@ final class DinoView extends View {
         float[] b = host.buddy();
         float ground = b[1], size = Math.min(dp(170), Math.min(w, h) * 0.42f), k = size / 100f;
         float mid = w / 2;
+        if (fightAt >= 0) {
+            drawFight(c, now, w, h, ground, k, mid);
+            return;
+        }
         if (vacuum) {
             drawVacuum(c, t, w, h, ground, size, k, mid);
             return;
@@ -206,6 +534,7 @@ final class DinoView extends View {
             ry += (ground - size * 1.25f - ry) * g;
         }
 
+        markDino(x, ground, k, 1);
         c.save();
         c.translate(shake * (float) Math.sin(t * 60), 0);
         if (front) {
@@ -252,6 +581,7 @@ final class DinoView extends View {
                 lastStep = (int) (t * 2.4f);
                 host.stomp();
             }
+            markDino(x, ground, k, 1);
             drawSide(c, x, ground, k, 0, t, true, true);
             postInvalidateOnAnimation();      // keep walking in (this frame request was missing)
             return;
@@ -260,6 +590,7 @@ final class DinoView extends View {
         float come = ease((t - 1.4f) / 1.2f);
         float sc = 1 + 0.9f * come, groundC = ground + (h * 0.78f - ground) * come;
         float mx = mid - 54 * k * sc, my = groundC - 76 * k * sc;      // its mouth on screen
+        markDino(mid, groundC, k, sc);
         float pull = clamp((t - 2.4f) / 4.5f);
         host.vacuum(pull * pull, mx, my);
         if (once(6, t, 2.4f)) host.chomp();
@@ -484,7 +815,7 @@ final class DinoView extends View {
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(2.4f * k);
             c.drawLine(-58 * k, -96 * k, -38 * k, -94 * k, p);
-        } else if (dead) {
+        } else if (dead || hurt >= 3) {
             // X eyes.
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(2.4f * k);
@@ -498,7 +829,37 @@ final class DinoView extends View {
         p.setStyle(Paint.Style.FILL);
         p.setColor(ink);
         c.drawCircle(-62 * k, -89 * k, 1.2f * k, p);
+        if (hurt >= 2) {
+            // Plaster across the head.
+            c.save();
+            c.rotate(-20, -48 * k, -96 * k);
+            r.set(-58 * k, -99 * k, -38 * k, -93 * k);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFF2D7B6);
+            c.drawRect(r, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.5f * k);
+            p.setColor(ink);
+            c.drawRect(r, p);
+            c.restore();
+        }
         c.restore();
+        // Hurt in five steps: bruises, plaster, X eye, smoke, K.O. stars (drawn by the fight).
+        if (hurt >= 1) {
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xAA8A4BFF);
+            c.drawCircle(8 * k, -44 * k, 5 * k, p);
+            c.drawCircle(-12 * k, -32 * k, 3.5f * k, p);
+        }
+        if (hurt >= 4) {
+            p.setStyle(Paint.Style.FILL);
+            float tt = SystemClock.uptimeMillis() / 1000f;
+            for (int i = 0; i < 3; i++) {
+                float rise = (tt * 0.8f + i / 3f) % 1f;
+                p.setColor(0x669A9A98);
+                c.drawCircle((10 + i * 10) * k, (-62 - rise * 30) * k, (4 + rise * 6) * k, p);
+            }
+        }
         c.restore();
     }
 

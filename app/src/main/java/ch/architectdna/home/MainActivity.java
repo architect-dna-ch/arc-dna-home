@@ -959,6 +959,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }, 450);
                 return true;
             });
+        settingsRow(home, "Dino-Level · tippen den Dino = Kampf", () -> "LV " + prefs.getInt("dinoLevel", 1) + " / 99",
+            v -> Toast.makeText(this, "Halten = zurück auf Level 1", Toast.LENGTH_SHORT).show(), v -> {
+                prefs.edit().putInt("dinoLevel", 1).apply();
+                Toast.makeText(this, "Dino wieder auf Level 1", Toast.LENGTH_SHORT).show();
+                return true;
+            });
         settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 2 Min" : "Aus",
             v -> prefs.edit().putBoolean("dino", !prefs.getBoolean("dino", true)).apply(), v -> {
                 closeSettings();
@@ -3545,6 +3551,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final long DINO_EVERY = 2 * 60_000L;
     private DinoView dino;
     private boolean swapped;
+    /** Every app tile (for the dino to eat in a fight it won), and what it has eaten. */
+    private final java.util.WeakHashMap<View, Boolean> allTiles = new java.util.WeakHashMap<>();
+    private final List<View> eatenTiles = new ArrayList<>();
+
+    private void restoreEaten() {
+        for (View t : eatenTiles) {
+            t.animate().cancel();
+            t.animate().translationX(0).translationY(0).scaleX(1f).scaleY(1f).rotation(0).alpha(1f)
+                .setDuration(420).setInterpolator(new android.view.animation.OvershootInterpolator(1.6f)).start();
+        }
+        eatenTiles.clear();
+    }
     private long faceLostAt, lastFaceEvent, lastDinoAt = -DINO_EVERY;
     private final Runnable dinoTick = new Runnable() {
         @Override
@@ -3645,6 +3663,54 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
 
             @Override
+            public int level() {
+                return prefs.getInt("dinoLevel", 1);
+            }
+
+            @Override
+            public void levelUp() {
+                int l = Math.min(99, prefs.getInt("dinoLevel", 1) + 1);
+                prefs.edit().putInt("dinoLevel", l).apply();
+                DiagLog.log("dino beaten, now level " + l);
+            }
+
+            @Override
+            public boolean eatOne(float x, float y) {
+                // A random app tile that's on screen right now flies into the mouth.
+                List<View> fresh = new ArrayList<>();
+                android.graphics.Rect vis = new android.graphics.Rect();
+                for (View t : allTiles.keySet()) {
+                    if (t != null && t.isShown() && t.getAlpha() > 0.5f && !eatenTiles.contains(t) && t.getGlobalVisibleRect(vis)) fresh.add(t);
+                }
+                if (fresh.isEmpty()) return false;
+                View t = fresh.get(random.nextInt(fresh.size()));
+                int[] a = new int[2], r = new int[2];
+                t.getLocationInWindow(a);
+                rootFrame.getLocationInWindow(r);
+                float tx = x - (a[0] - r[0] + t.getWidth() / 2f), ty = y - (a[1] - r[1] + t.getHeight() / 2f);
+                eatenTiles.add(t);
+                t.animate().cancel();
+                t.animate().translationXBy(tx).translationYBy(ty).scaleX(0.05f).scaleY(0.05f).rotation(400).alpha(0f)
+                    .setDuration(450).setInterpolator(new android.view.animation.AccelerateInterpolator()).start();
+                return true;
+            }
+
+            @Override
+            public void restoreEaten() {
+                MainActivity.this.restoreEaten();
+            }
+
+            @Override
+            public void cutMusic() {
+                android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+                if (am != null && am.isMusicActive()) {
+                    am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE));
+                    am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE));
+                    DiagLog.log("dino cut the music");
+                }
+            }
+
+            @Override
             public void lockNow() {
                 boolean ok = ScrollAssistService.lockScreen();
                 DiagLog.log("dino lock: " + (ok ? "locked" : "accessibility service not running"));
@@ -3664,6 +3730,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (dino == null) return;
         rootFrame.removeView(dino);
         dino = null;
+        restoreEaten();
         boolean keepPop = swapped;       // the new buddy's entrance keeps running
         swapped = false;
         scroll.setScaleX(1f);
@@ -4180,6 +4247,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
         t.setPadding(dp(12), dp(12), dp(12), dp(10));     // the label stays clear of the slanted sides
+        allTiles.put(t, Boolean.TRUE);
         // App cards are rounded hexagons, not rounded rectangles.
         if (tileTint != 0) tint(t, tileTint);
         else t.setBackground(new HexTile(card, line, dp(1), dp(14)));
