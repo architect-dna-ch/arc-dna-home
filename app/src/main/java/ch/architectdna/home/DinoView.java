@@ -1,0 +1,480 @@
+package ch.architectdna.home;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.os.SystemClock;
+import android.view.View;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * Dino visit (every 5 minutes on the home screen, about 37 s): a dinosaur stomps in from the
+ * right, stops in the middle, turns to face you and roars; the little robot flies in and
+ * translates. Then it gobbles the buddy, the robot tazes it, it spits out a different buddy and
+ * stomps off to the left with a last word. Drawn in the ARC-DNA line style; touches pass through.
+ */
+final class DinoView extends View {
+
+    interface Host {
+        /** Buddy's feet centre in this view's coordinates: {x, y}. */
+        float[] buddy();
+
+        void hideBuddy();
+
+        void swapBuddy();
+
+        void buddySay(String text);
+
+        void stomp();
+
+        void chomp();
+
+        void done();
+    }
+
+    /* {roar, translation, buddy, roar2, translation2, robot after chomp, roar3, translation3, buddy after, leave roar, translation4} */
+    private static final String[][] SCRIPTS = {
+        {"ROOOAAAR!", "»Hallo. Ich habe Hunger.«", "Ähm … Hunger auf was?", "RAWR. RAWR.", "»Auf dich.«",
+            "Hey! Sofort ausspucken!", "RRRAWWR?!", "»Aua! Schmeckt eh nach Fell.«", "… wo bin ich?", "Grmpf.", "»Ich komme wieder.«"},
+        {"GRAAAOOOR!", "»Schönes Display hast du.«", "Danke …?", "RAWWR!", "»Was ist das Kleine da unten?«",
+            "Nein! Das ist der Buddy!", "RRRAAAW?!", "»Okay, okay! Nicht mehr tazen!«", "Echt jetzt?!", "Hmpf.", "»Nächstes Mal den Bären.«"},
+        {"ROAAAAR!", "»Ich bin vom letzten Update übrig.«", "Welches Update?", "RAWR!", "»1.0.∞ – der Snack-Patch.«",
+            "Nicht auf meiner Startseite!", "RAAWRR?!", "»Akku leer. Ich meine: Aua.«", "Alter?!", "Grrr.", "»Fünf Sterne. Würde wieder essen.«"},
+    };
+
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path path = new Path();
+    private final RectF r = new RectF();
+    private final Random rnd = new Random();
+    private final Host host;
+    private final int ink, paper, rust;
+    private final String[] lines;
+    private long start = -1;
+    private final boolean[] fired = new boolean[16];
+    private int lastStep = -1;
+
+    DinoView(Context c, int ink, int paper, int rust, Host host) {
+        super(c);
+        this.ink = ink;
+        this.paper = paper;
+        this.rust = rust;
+        this.host = host;
+        lines = SCRIPTS[rnd.nextInt(SCRIPTS.length)];
+        setClickable(false);
+        setFocusable(false);
+    }
+
+    private float dp(float v) {
+        return v * getResources().getDisplayMetrics().density;
+    }
+
+    private static float clamp(float v) {
+        return Math.max(0, Math.min(1, v));
+    }
+
+    private static float ease(float k) {
+        k = clamp(k);
+        return k < 0.5f ? 2 * k * k : 1 - (float) Math.pow(-2 * k + 2, 2) / 2;
+    }
+
+    private boolean once(int i, float t, float at) {
+        if (t < at || fired[i]) return false;
+        fired[i] = true;
+        return true;
+    }
+
+    @Override
+    protected void onDraw(Canvas c) {
+        long now = SystemClock.uptimeMillis();
+        if (start < 0) start = now;
+        float t = (now - start) / 1000f;
+        float w = getWidth(), h = getHeight();
+        float[] b = host.buddy();
+        float ground = b[1], size = Math.min(dp(170), Math.min(w, h) * 0.42f), k = size / 100f;
+        float mid = w / 2;
+
+        // ---- dino position and pose ----
+        float x;
+        boolean front = false, walking = false, facingLeft = true;
+        float jaw = 0, shake = 0;
+        float eatX = b[0] + 48 * k;          // head over the buddy
+        if (t < 4) {
+            x = w + 80 * k - (w + 80 * k - mid) * ease(t / 4f);
+            walking = true;
+        } else if (t < 15) {
+            x = mid;
+            front = t >= 4.6f;
+            if (front && ((t > 5 && t < 8) || (t > 12 && t < 14))) jaw = 0.6f + 0.4f * (float) Math.abs(Math.sin(t * 9));
+        } else if (t < 17) {
+            x = mid - (mid - eatX) * ease((t - 15) / 2f);
+            walking = true;
+            jaw = clamp((t - 16) / 0.6f);
+        } else if (t < 21) {
+            x = eatX;
+            jaw = t < 17.4f ? 1 - clamp((t - 17) / 0.4f) : (float) Math.abs(Math.sin((t - 17.4) * 7)) * 0.35f;   // chomp, then chew
+        } else if (t < 27) {
+            x = eatX;
+            front = true;
+            if (t > 22 && t < 25.5f) shake = dp(5);
+            if (t > 25 && t < 27) jaw = 0.6f + 0.4f * (float) Math.abs(Math.sin(t * 9));
+        } else if (t < 29) {
+            x = eatX;
+            jaw = t < 28 ? clamp((t - 27) / 0.3f) : 1 - clamp((t - 28) / 0.4f);   // spits the buddy out
+        } else {
+            x = eatX - (eatX + 120 * k) * ease((t - 29) / 4.5f);
+            walking = true;
+        }
+
+        // ---- events ----
+        if (walking && (int) (t * 2.4f) != lastStep) {
+            lastStep = (int) (t * 2.4f);
+            host.stomp();
+        }
+        if (once(2, t, 10)) host.buddySay(lines[2]);
+        if (once(3, t, 17.2f)) {
+            host.chomp();
+            host.hideBuddy();
+        }
+        if (once(4, t, 28)) host.swapBuddy();
+        if (once(5, t, 28.6f)) host.buddySay(lines[8]);
+
+        // ---- robot: flies in at 5 s, hovers, tazes 22–25.5 s, leaves at 35 s ----
+        float rx = w - dp(70), ry = ground - size * 1.75f;
+        if (t < 5) rx = w + dp(60);
+        else if (t < 6.5f) rx = w + dp(60) - (dp(130)) * ease((t - 5) / 1.5f);
+        else if (t > 35) rx = w - dp(70) + dp(140) * ease((t - 35) / 1.2f);
+        float rob = (float) Math.sin(t * 3) * dp(4);
+        if (t > 21 && t < 26) {
+            // Closer for the taser.
+            float g = ease(clamp((t - 21) / 0.8f)) * (1 - ease(clamp((t - 25.2f) / 0.8f)));
+            rx += (x + 40 * k - rx) * g * 0.6f;
+            ry += (ground - size * 1.25f - ry) * g;
+        }
+
+        c.save();
+        c.translate(shake * (float) Math.sin(t * 60), 0);
+        if (front) drawFront(c, x, ground, k, jaw, t);
+        else drawSide(c, x, ground, k, jaw, t, walking, facingLeft);
+        c.restore();
+
+        boolean tazing = t > 22 && t < 25.5f;
+        drawRobot(c, rx, ry + rob, dp(1), tazing);
+        if (tazing) zap(c, rx - dp(22), ry + rob + dp(10), x, ground - 55 * k);
+
+        // ---- speech ----
+        if (t > 5 && t < 8) bubble(c, lines[0], x, ground - 112 * k, true, true);
+        if (t > 7.4f && t < 10.5f) bubble(c, "🤖 " + lines[1], rx, ry + rob - dp(34), false, false);
+        if (t > 12 && t < 14) bubble(c, lines[3], x, ground - 112 * k, true, true);
+        if (t > 13.4f && t < 16) bubble(c, "🤖 " + lines[4], rx, ry + rob - dp(34), false, false);
+        if (t > 18.2f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
+        if (t > 20.6f && t < 23) bubble(c, "🤖 " + lines[5], rx, ry + rob - dp(34), false, false);
+        if (t > 22.4f && t < 25.5f) bubble(c, "BZZZZT!", rx - dp(40), ry + rob + dp(48), true, false);
+        if (t > 25 && t < 27.2f) bubble(c, lines[6], x, ground - 112 * k, true, true);
+        if (t > 26.4f && t < 29.6f) bubble(c, "🤖 " + lines[7], rx, ry + rob - dp(34), false, false);
+        if (t > 29.6f && t < 31.6f) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
+        if (t > 31.6f && t < 35) bubble(c, "🤖 " + lines[10], rx, ry + rob - dp(34), false, false);
+
+        if (t < 37) postInvalidateOnAnimation();
+        else post(host::done);
+    }
+
+    /* ---------- dino, side view (facing left), feet centre at (x, g) ---------- */
+
+    private void drawSide(Canvas c, float x, float g, float k, float jaw, float t, boolean walking, boolean left) {
+        c.save();
+        c.translate(x, g);
+        if (!left) c.scale(-1, 1);
+        float step = walking ? (float) Math.sin(t * 9) : 0;
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        // Back spikes (rust).
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        for (int i = 0; i < 7; i++) {
+            float sx = -22 + i * 11, sy = -56 + (i * i) * 0.45f;
+            path.reset();
+            path.moveTo((sx - 4) * k, sy * k + 3 * k);
+            path.lineTo(sx * k, (sy - 9) * k);
+            path.lineTo((sx + 4) * k, sy * k + 3 * k);
+            path.close();
+            c.drawPath(path, p);
+        }
+        // Tail.
+        path.reset();
+        path.moveTo(26 * k, -46 * k);
+        path.quadTo(60 * k, -40 * k, 84 * k, (-24 + step * 2) * k);
+        path.quadTo(58 * k, -26 * k, 26 * k, -28 * k);
+        path.close();
+        fillStroke(c);
+        // Legs (back one first).
+        leg(c, 14 * k, -24 * k, -step, k);
+        // Body.
+        r.set(-30 * k, -60 * k, 36 * k, -20 * k);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawOval(r, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(3 * k);
+        p.setColor(ink);
+        c.drawOval(r, p);
+        leg(c, -6 * k, -24 * k, step, k);
+        // Neck.
+        path.reset();
+        path.moveTo(-14 * k, -56 * k);
+        path.quadTo(-26 * k, -70 * k, -32 * k, -82 * k);
+        path.lineTo(-44 * k, -76 * k);
+        path.quadTo(-34 * k, -60 * k, -26 * k, -42 * k);
+        path.close();
+        fillStroke(c);
+        // Tiny arm.
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(3 * k);
+        c.drawLine(-24 * k, -42 * k, -32 * k, (-34 + step) * k, p);
+        // Head: skull, then the lower jaw hinged at the back.
+        r.set(-66 * k, -94 * k, -30 * k, -74 * k);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawRoundRect(r, 9 * k, 9 * k, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        c.drawRoundRect(r, 9 * k, 9 * k, p);
+        c.save();
+        c.rotate(-jaw * 32, -36 * k, -76 * k);
+        r.set(-64 * k, -80 * k, -32 * k, -70 * k);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawRoundRect(r, 5 * k, 5 * k, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        c.drawRoundRect(r, 5 * k, 5 * k, p);
+        // Teeth.
+        p.setStrokeWidth(2 * k);
+        for (int i = 0; i < 4; i++) c.drawLine((-60 + i * 6) * k, -80 * k, (-58 + i * 6) * k, -84 * k, p);
+        c.restore();
+        // Eye and nostril.
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(ink);
+        c.drawCircle(-42 * k, -87 * k, 2.6f * k, p);
+        c.drawCircle(-62 * k, -89 * k, 1.2f * k, p);
+        c.restore();
+    }
+
+    private void leg(Canvas c, float hx, float hy, float swing, float k) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(8 * k);
+        float fx = hx + swing * 7 * k;
+        c.drawLine(hx, hy, fx, 0, p);
+        p.setStrokeWidth(4 * k);
+        c.drawLine(fx, 0, fx - 7 * k, 0, p);
+    }
+
+    private void fillStroke(Canvas c) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawPath(path, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(3 * getResources().getDisplayMetrics().density * 0.9f);
+        c.drawPath(path, p);
+    }
+
+    /* ---------- dino, facing the screen ---------- */
+
+    private void drawFront(Canvas c, float x, float g, float k, float jaw, float t) {
+        c.save();
+        c.translate(x, g);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        // Spikes behind the head.
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        for (int i = -2; i <= 2; i++) {
+            path.reset();
+            path.moveTo((i * 8 - 4) * k, -88 * k);
+            path.lineTo(i * 8 * k, (-104 + Math.abs(i) * 3) * k);
+            path.lineTo((i * 8 + 4) * k, -88 * k);
+            path.close();
+            c.drawPath(path, p);
+        }
+        // Legs and body.
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(9 * k);
+        c.drawLine(-12 * k, -20 * k, -14 * k, 0, p);
+        c.drawLine(12 * k, -20 * k, 14 * k, 0, p);
+        r.set(-28 * k, -64 * k, 28 * k, -14 * k);
+        ovalFill(c);
+        // Belly stripes.
+        p.setStrokeWidth(2 * k);
+        for (int i = 0; i < 3; i++) c.drawLine(-12 * k, (-44 + i * 9) * k, 12 * k, (-44 + i * 9) * k, p);
+        // Arms.
+        p.setStrokeWidth(4 * k);
+        float wave = (float) Math.sin(t * 6) * 3;
+        c.drawLine(-22 * k, -50 * k, -32 * k, (-44 + wave) * k, p);
+        c.drawLine(22 * k, -50 * k, 32 * k, (-44 - wave) * k, p);
+        // Head.
+        r.set(-24 * k, -96 * k, 24 * k, -62 * k);
+        ovalFill(c);
+        // Eyes look at you.
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(ink);
+        c.drawCircle(-9 * k, -84 * k, 3.4f * k, p);
+        c.drawCircle(9 * k, -84 * k, 3.4f * k, p);
+        // Mouth: a grin, or wide open with teeth when roaring.
+        if (jaw > 0.05f) {
+            r.set(-13 * k, -76 * k, 13 * k, (-76 + 14 * jaw) * k);
+            p.setColor(rust);
+            c.drawOval(r, p);
+            p.setColor(paper);
+            for (int i = -2; i <= 2; i++) {
+                path.reset();
+                path.moveTo((i * 5 - 2) * k, -75 * k);
+                path.lineTo(i * 5 * k, -71 * k);
+                path.lineTo((i * 5 + 2) * k, -75 * k);
+                path.close();
+                c.drawPath(path, p);
+            }
+        } else {
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2.5f * k);
+            p.setColor(ink);
+            r.set(-10 * k, -80 * k, 10 * k, -70 * k);
+            c.drawArc(r, 20, 140, false, p);
+        }
+        c.restore();
+    }
+
+    private void ovalFill(Canvas c) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawOval(r, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(3 * dp(0.9f));
+        c.drawOval(r, p);
+    }
+
+    /* ---------- the robot translator ---------- */
+
+    private void drawRobot(Canvas c, float x, float y, float u, boolean tazing) {
+        p.setStrokeCap(Paint.Cap.ROUND);
+        // Rotor.
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(2.5f * u);
+        float spin = (float) Math.abs(Math.sin(SystemClock.uptimeMillis() / 40.0));
+        c.drawLine(x, y - 26 * u, x, y - 18 * u, p);
+        c.drawLine(x - 16 * u * spin, y - 26 * u, x + 16 * u * spin, y - 26 * u, p);
+        // Head box.
+        r.set(x - 20 * u, y - 18 * u, x + 20 * u, y + 14 * u);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(paper);
+        c.drawRoundRect(r, 8 * u, 8 * u, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        c.drawRoundRect(r, 8 * u, 8 * u, p);
+        // Screen face.
+        r.set(x - 14 * u, y - 11 * u, x + 14 * u, y + 7 * u);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFF1A1A1A);
+        c.drawRoundRect(r, 4 * u, 4 * u, p);
+        p.setColor(tazing ? 0xFFFFE680 : 0xFF33E0FF);
+        c.drawCircle(x - 6 * u, y - 3 * u, 2.6f * u, p);
+        c.drawCircle(x + 6 * u, y - 3 * u, 2.6f * u, p);
+        // Taser arm.
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        p.setStrokeWidth(3 * u);
+        c.drawLine(x - 20 * u, y + 6 * u, x - 30 * u, y + 12 * u, p);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        c.drawCircle(x - 30 * u, y + 12 * u, 3.4f * u, p);
+    }
+
+    /** Electric bolts from the taser to the dino, flickering. */
+    private void zap(Canvas c, float x1, float y1, float x2, float y2) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        for (int pass = 0; pass < 2; pass++) {
+            p.setColor(pass == 0 ? 0x6633AAFF : 0xFFFFF27A);
+            p.setStrokeWidth(dp(pass == 0 ? 7 : 2.5f));
+            for (int b = 0; b < 2; b++) {
+                path.reset();
+                path.moveTo(x1, y1);
+                for (int i = 1; i < 8; i++) {
+                    float f = i / 8f;
+                    path.lineTo(x1 + (x2 - x1) * f + (rnd.nextFloat() - 0.5f) * dp(26), y1 + (y2 - y1) * f + (rnd.nextFloat() - 0.5f) * dp(26));
+                }
+                path.lineTo(x2, y2);
+                c.drawPath(path, p);
+            }
+        }
+        // Sparks on the dino.
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFFFFF27A);
+        for (int i = 0; i < 6; i++) {
+            double a = rnd.nextFloat() * Math.PI * 2;
+            float d = dp(10 + rnd.nextFloat() * 22);
+            c.drawCircle(x2 + (float) Math.cos(a) * d, y2 + (float) Math.sin(a) * d, dp(2), p);
+        }
+    }
+
+    /* ---------- comic speech bubbles ---------- */
+
+    private void bubble(Canvas c, String text, float ax, float ay, boolean loud, boolean big) {
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextSize(dp(big ? 17 : 13));
+        p.setLetterSpacing(0.04f);
+        float maxW = Math.min(getWidth() - dp(32), dp(240));
+        List<String> rows = wrap(text, maxW - dp(24));
+        float tw = 0;
+        for (String s : rows) tw = Math.max(tw, p.measureText(s));
+        float lh = p.getTextSize() * 1.25f, bw = tw + dp(24), bh = rows.size() * lh + dp(16);
+        float left = Math.max(dp(12), Math.min(getWidth() - dp(12) - bw, ax - bw / 2)), top = Math.max(dp(40), ay - bh - dp(10));
+        r.set(left, top, left + bw, top + bh);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(loud ? 0xFFFFE680 : paper);
+        path.reset();
+        float tx = Math.max(left + dp(14), Math.min(left + bw - dp(14), ax));
+        path.moveTo(tx - dp(7), top + bh - 1);
+        path.lineTo(tx, top + bh + dp(10));
+        path.lineTo(tx + dp(7), top + bh - 1);
+        path.close();
+        c.drawRoundRect(r, dp(12), dp(12), p);
+        c.drawPath(path, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(dp(2));
+        p.setColor(0xFF1A1A1A);
+        c.drawRoundRect(r, dp(12), dp(12), p);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFF1A1A1A);
+        float y = top + dp(8) + p.getTextSize();
+        for (String s : rows) {
+            c.drawText(s, left + dp(12), y, p);
+            y += lh;
+        }
+    }
+
+    private List<String> wrap(String text, float max) {
+        List<String> out = new ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : text.split(" ")) {
+            String next = line.length() == 0 ? word : line + " " + word;
+            if (p.measureText(next) > max && line.length() > 0) {
+                out.add(line.toString());
+                line = new StringBuilder(word);
+            } else {
+                line = new StringBuilder(next);
+            }
+        }
+        if (line.length() > 0) out.add(line.toString());
+        return out;
+    }
+}

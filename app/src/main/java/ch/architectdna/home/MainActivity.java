@@ -950,6 +950,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
+        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 5 Min" : "Aus",
+            v -> prefs.edit().putBoolean("dino", !prefs.getBoolean("dino", true)).apply(), v -> {
+                closeSettings();
+                handler.postDelayed(this::startDino, 450);
+                return true;
+            });
         settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
@@ -3473,6 +3479,84 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .withEndAction(() -> bubble.setVisibility(View.GONE)).start();
     }
 
+    /* ================= Dino visit: every 5 minutes on the home screen ================= */
+
+    private static final long DINO_EVERY = 5 * 60_000L;
+    private DinoView dino;
+    private final Runnable dinoTick = new Runnable() {
+        @Override
+        public void run() {
+            if (homeInFront && prefs.getBoolean("dino", true)) startDino();
+            handler.removeCallbacks(this);
+            handler.postDelayed(this, DINO_EVERY);
+        }
+    };
+
+    private void startDino() {
+        if (dino != null || rootFrame == null || rootFrame.getWidth() == 0 || game != null || settingsSheet != null
+            || calibStage >= 0 || fox == null || !fox.isShown()) return;
+        int paper = isNight() ? 0xFF2A2A28 : 0xFFFFFFFF;
+        dino = new DinoView(this, ink, paper, rust, new DinoView.Host() {
+            @Override
+            public float[] buddy() {
+                int[] a = new int[2], r = new int[2];
+                fox.getLocationInWindow(a);
+                rootFrame.getLocationInWindow(r);
+                return new float[]{a[0] - r[0] + fox.getWidth() / 2f, a[1] - r[1] + fox.getHeight()};
+            }
+
+            @Override
+            public void hideBuddy() {
+                fox.animate().cancel();
+                fox.animate().alpha(0f).scaleX(0.3f).scaleY(0.3f).setDuration(180).start();
+            }
+
+            @Override
+            public void swapBuddy() {
+                prefs.edit().putInt("buddy", (MainActivity.this.buddy() + 1) % BUDDIES.length).apply();
+                applyBuddy();
+                fox.animate().cancel();
+                fox.setScaleX(0.3f);
+                fox.setScaleY(0.3f);
+                fox.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(360)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(2.4f)).start();
+                hop();
+            }
+
+            @Override
+            public void buddySay(String text) {
+                say(text, 2000);
+            }
+
+            @Override
+            public void stomp() {
+                voice.thud();
+            }
+
+            @Override
+            public void chomp() {
+                voice.crumple();
+            }
+
+            @Override
+            public void done() {
+                endDino();
+            }
+        });
+        rootFrame.addView(dino, new FrameLayout.LayoutParams(-1, -1));
+        DiagLog.log("dino visit");
+    }
+
+    private void endDino() {
+        if (dino == null) return;
+        rootFrame.removeView(dino);
+        dino = null;
+        fox.animate().cancel();
+        fox.setAlpha(1f);
+        fox.setScaleX(1f);
+        fox.setScaleY(1f);
+    }
+
     private void hop() {
         fox.animate().cancel();
         fox.animate().translationY(-dp(26)).setDuration(180)
@@ -3563,6 +3647,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (System.currentTimeMillis() - leftAt > 900 && game == null && ghosts == null) rootFrame.post(this::playCrumple);
         }
         hideNavBar();
+        handler.removeCallbacks(dinoTick);
+        handler.postDelayed(dinoTick, DINO_EVERY);
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
@@ -3612,6 +3698,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         homeInFront = false;
+        handler.removeCallbacks(dinoTick);
+        endDino();
         if (volumeReceiver != null) {
             unregisterReceiver(volumeReceiver);
             volumeReceiver = null;
