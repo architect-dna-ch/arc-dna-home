@@ -32,6 +32,14 @@ final class DinoView extends View {
 
         void buddySay(String text);
 
+        /** The buddy comes back (spat out). */
+        default void showBuddy() {
+        }
+
+        /** The buddy hops out of the way. */
+        default void buddyDodge() {
+        }
+
         void stomp();
 
         void chomp();
@@ -99,7 +107,7 @@ final class DinoView extends View {
         timeLimit = 20 + level * 0.2f;
         fstate = FIGHT;
         lastZap = 0;
-        buddyEaten = !vacuum && fired[3] && !fired[4];
+        buddyEaten = !vacuum && fired[3] && !fired[4] && (plot == EAT || plot == SPIT && !fired[7]);   // eaten and not yet back
         host.vacuum(0, 0, 0);
         host.stomp();
         invalidate();
@@ -515,6 +523,12 @@ final class DinoView extends View {
     private final String[] lines;
     private long start = -1;
     private final boolean[] fired = new boolean[16];
+
+    /* How the attack ends: EAT (robot tazes, burp, new buddy), SPIT (tastes bad, buddy back),
+       DODGE (buddy hops away, dino bites air and falls over), SNACK (robot throws it a pizza instead). */
+    private static final int EAT = 0, SPIT = 1, DODGE = 2, SNACK = 3;
+    private static int lastPlot = -1;
+    private final int plot;
     private int lastStep = -1;
 
     DinoView(Context c, int ink, int paper, int rust, Host host) {
@@ -524,6 +538,10 @@ final class DinoView extends View {
         this.rust = rust;
         this.host = host;
         lines = SCRIPTS[rnd.nextInt(SCRIPTS.length)];
+        // Four endings, never the same one twice in a row.
+        int pl;
+        do pl = rnd.nextInt(4); while (pl == lastPlot);
+        plot = lastPlot = pl;
         type = rnd.nextInt(5);
         skin = mix(paper, TYPE_TINT[type], type == REX ? 0 : 0.45f);
         setClickable(false);
@@ -578,6 +596,7 @@ final class DinoView extends View {
         float x;
         boolean front = false, walking = false, facingLeft = true;
         float jaw = 0, shake = 0;
+        tilt = 0;
         float eatX = b[0] + 48 * k;          // head over the buddy
         if (t < 4) {
             x = w + 80 * k - (w + 80 * k - mid) * ease(t / 4f);
@@ -586,6 +605,15 @@ final class DinoView extends View {
             x = mid;
             front = t >= 4.6f;
             if (front && ((t > 5 && t < 8) || (t > 12 && t < 14))) jaw = 0.6f + 0.4f * (float) Math.abs(Math.sin(t * 9));
+        } else if (plot != EAT) {
+            float[] pose = plotPose(t, mid, eatX, w, k);
+            x = pose[0];
+            jaw = pose[1];
+            front = pose[2] > 0;
+            walking = pose[3] > 0;
+            facingLeft = pose[4] > 0;
+            tilt = pose[5];
+            shake = pose[6];
         } else if (t < 17) {
             x = mid - (mid - eatX) * ease((t - 15) / 2f);
             walking = true;
@@ -612,20 +640,43 @@ final class DinoView extends View {
             host.stomp();
         }
         if (once(2, t, 10)) host.buddySay(lines[2]);
-        if (once(3, t, 17.2f)) {
-            host.chomp();
-            host.hideBuddy();
+        if (plot == EAT || plot == SPIT) {
+            if (once(3, t, 17.2f)) {
+                host.chomp();
+                host.hideBuddy();
+            }
         }
         // The new buddy only shows up once dino and robot are both gone.
-        if (once(4, t, 36.4f)) host.swapBuddy(lines[8]);
+        if (plot == EAT && once(4, t, 36.4f)) host.swapBuddy(lines[8]);
+        if (plot == SPIT) {
+            if (once(7, t, 21.7f)) {
+                host.chomp();
+                host.showBuddy();
+            }
+            if (once(8, t, 22.6f)) host.buddySay("Igitt. Dino-Spucke.");
+        } else if (plot == DODGE) {
+            if (once(7, t, 16.8f)) host.buddyDodge();
+            if (once(8, t, 17.3f)) host.chomp();
+            if (once(9, t, 18.4f)) host.buddySay("Zu langsam, Echse!");
+            if (once(10, t, 18.9f)) host.stomp();
+        } else if (plot == SNACK) {
+            if (once(7, t, 18.5f)) host.chomp();
+            if (once(8, t, 21.2f)) host.buddySay("Puh. Danke, Robo.");
+        }
 
         // ---- robot: flies in at 5 s, hovers, tazes 22–25.5 s, leaves at 35 s ----
         float rx = w - dp(70), ry = ground - size * 1.75f;
         if (t < 5) rx = w + dp(60);
         else if (t < 6.5f) rx = w + dp(60) - (dp(130)) * ease((t - 5) / 1.5f);
-        else if (t > 35) rx = w - dp(70) + dp(140) * ease((t - 35) / 1.2f);
+        else if (t > robotLeave()) rx = w - dp(70) + dp(140) * ease((t - robotLeave()) / 1.2f);
         float rob = (float) Math.sin(t * 3) * dp(4);
-        if (t > 21 && t < 26) {
+        if (plot == SNACK && t > 14.6f && t < 19) {
+            // Flies in between dino and buddy with the pizza.
+            float g = ease(clamp((t - 14.6f) / 0.8f)) * (1 - ease(clamp((t - 18.2f) / 0.8f)));
+            rx += ((mid + eatX) / 2 + dp(30) - rx) * g;
+            ry += (ground - size * 1.4f - ry) * g;
+        }
+        if (plot == EAT && t > 21 && t < 26) {
             // Closer for the taser.
             float g = ease(clamp((t - 21) / 0.8f)) * (1 - ease(clamp((t - 25.2f) / 0.8f)));
             rx += (x + 40 * k - rx) * g * 0.6f;
@@ -635,6 +686,7 @@ final class DinoView extends View {
         markDino(x, ground, k, 1);
         c.save();
         c.translate(shake * (float) Math.sin(t * 60), 0);
+        if (tilt != 0) c.rotate(tilt, x, ground);
         if (front) {
             look = true;            // same dino, head turned to you (not a front-on smiley)
             drawSide(c, x, ground, k, jaw, t, false, true);
@@ -642,8 +694,15 @@ final class DinoView extends View {
         }
         else drawSide(c, x, ground, k, jaw, t, walking, facingLeft);
         c.restore();
+        if (plot == DODGE && t > 18.9f && t < 23) stars(c, x - 40 * k, ground - 70 * k, k, t);
+        if (plot == SNACK && t > 16.4f && t < 18.6f) {
+            // The pizza slice arcs from the robot into the open mouth.
+            float f = ease((t - 16.4f) / 2.1f);
+            float px = rx + (x - 54 * k - rx) * f, py = ry + (ground - 80 * k - ry) * f - (float) Math.sin(f * Math.PI) * dp(70);
+            pizza(c, px, py, k, t * 300);
+        }
 
-        boolean tazing = t > 22 && t < 25.5f;
+        boolean tazing = plot == EAT && t > 22 && t < 25.5f;
         drawRobot(c, rx, ry + rob, dp(1), tazing);
         if (tazing) zap(c, rx - dp(22), ry + rob + dp(10), x, ground - 55 * k);
 
@@ -651,7 +710,14 @@ final class DinoView extends View {
         if (t > 5 && t < 8) bubble(c, lines[0], x - 40 * k, ground - 116 * k, true, true);
         if (t > 7.4f && t < 10.5f) bubble(c, "🤖 " + lines[1], rx, ry + rob - dp(34), false, false);
         if (t > 12 && t < 14) bubble(c, lines[3], x - 40 * k, ground - 116 * k, true, true);
-        if (t > 13.4f && t < 16) bubble(c, "🤖 " + lines[4], rx, ry + rob - dp(34), false, false);
+        if (t > 13.4f && t < (plot == SNACK ? 14.8f : 16)) bubble(c, "🤖 " + lines[4], rx, ry + rob - dp(34), false, false);
+        if (plot != EAT) {
+            plotSpeech(c, t, x, ground, k, rx, ry + rob);
+            float end = plotEnd();
+            if (t < end) postInvalidateOnAnimation();
+            else post(host::done);
+            return;
+        }
         if (t > 18.2f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
         if (t > 20.6f && t < 23) bubble(c, "🤖 " + lines[5], rx, ry + rob - dp(34), false, false);
         if (t > 22.4f && t < 25.5f) bubble(c, "BZZZZT!", rx - dp(40), ry + rob + dp(48), true, false);
@@ -663,6 +729,142 @@ final class DinoView extends View {
 
         if (t < 37.2f) postInvalidateOnAnimation();
         else post(host::done);
+    }
+
+    private float tilt;
+
+    private float robotLeave() {
+        return plot == EAT ? 35 : plot == SPIT ? 28.5f : plot == DODGE ? 26.5f : 27.5f;
+    }
+
+    private float plotEnd() {
+        return plot == SPIT ? 30.5f : plot == DODGE ? 28.5f : 30;
+    }
+
+    /** {x, jaw, front, walking, facingLeft, tilt°, shake} from 15 s on for the other endings. */
+    private float[] plotPose(float t, float mid, float eatX, float w, float k) {
+        float x = mid, jaw = 0, front = 0, walking = 0, left = 1, tilt = 0, shake = 0;
+        float off = -(eatX + 120 * k);       // walks off to the left
+        if (plot == SPIT) {
+            if (t < 17) {
+                x = mid - (mid - eatX) * ease((t - 15) / 2f);
+                walking = 1;
+                jaw = clamp((t - 16) / 0.6f);
+            } else if (t < 20) {
+                x = eatX;
+                jaw = t < 17.4f ? 1 - clamp((t - 17) / 0.4f) : (float) Math.abs(Math.sin((t - 17.4) * 7)) * 0.35f;
+            } else if (t < 21.4f) {
+                x = eatX;
+                front = 1;                   // it doesn't like the taste
+                shake = dp(3);
+                jaw = 0.15f;
+            } else if (t < 22.2f) {
+                x = eatX;
+                jaw = clamp((t - 21.4f) / 0.25f);          // ptui
+            } else if (t < 24) {
+                x = eatX;
+                front = 1;
+                jaw = 0.2f;
+            } else {
+                x = eatX + (off - eatX) * ease((t - 24) / 4.5f);
+                walking = 1;
+            }
+        } else if (plot == DODGE) {
+            if (t < 16.8f) {
+                x = mid - (mid - eatX) * ease((t - 15) / 1.8f);
+                walking = 1;
+                jaw = clamp((t - 15.8f) / 0.6f);
+            } else if (t < 17.4f) {
+                x = eatX - 14 * k * ease((t - 16.8f) / 0.4f);      // lunges … into nothing
+                jaw = 1 - clamp((t - 17.1f) / 0.2f);
+            } else if (t < 18.9f) {
+                x = eatX - 14 * k;
+                tilt = -8 * (float) Math.sin((t - 17.4f) * 9) * (1 - clamp((t - 17.4f) / 1.5f));   // wobbles
+                tilt -= 70 * ease(clamp((t - 18.4f) / 0.5f));                                       // and falls on its face
+            } else if (t < 22.5f) {
+                x = eatX - 14 * k;
+                tilt = -70;
+            } else if (t < 23.4f) {
+                x = eatX - 14 * k;
+                tilt = -70 * (1 - ease((t - 22.5f) / 0.9f));        // gets up
+            } else {
+                x = eatX - 14 * k + (off - eatX) * ease((t - 23.4f) / 4.2f);
+                walking = 1;
+            }
+        } else {            // SNACK: stays in the middle, the robot throws the pizza
+            if (t < 16.4f) {
+                front = 1;
+            } else if (t < 18.5f) {
+                front = 1;
+                jaw = clamp((t - 16.6f) / 0.6f);
+            } else if (t < 21) {
+                jaw = t < 18.8f ? 1 - clamp((t - 18.5f) / 0.3f) : (float) Math.abs(Math.sin((t - 18.8) * 7)) * 0.35f;
+            } else if (t < 24.6f) {
+                front = 1;
+                jaw = t > 23.4f && t < 24.4f ? 0.9f : 0.2f;     // happy, then a burp
+            } else {
+                x = mid + (off - mid) * ease((t - 24.6f) / 4.8f);
+                walking = 1;
+            }
+        }
+        return new float[]{x, jaw, front, walking, left, tilt, shake};
+    }
+
+    private void plotSpeech(Canvas c, float t, float x, float ground, float k, float rx, float ry) {
+        float hy = ground - 116 * k, by = ry - dp(34);
+        if (plot == SPIT) {
+            if (t > 18.2f && t < 20) bubble(c, "*mampf* … hm?", x - 30 * k, ground - 95 * k, true, false);
+            if (t > 20 && t < 21.6f) bubble(c, "BÄÄÄH!", x - 40 * k, hy, true, true);
+            if (t > 21.6f && t < 22.6f) bubble(c, "*PTUI*", x - 40 * k, ground - 100 * k, true, false);
+            if (t > 22.4f && t < 25.2f) bubble(c, "🤖 Übersetzt: »Schmeckt nach Akku und Fell.«", rx, by, false, false);
+            if (t > 25 && t < 28) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
+        } else if (plot == DODGE) {
+            if (t > 17.2f && t < 18.6f) bubble(c, "*SCHNAPP*", x - 40 * k, ground - 100 * k, true, false);
+            if (t > 19.2f && t < 21) bubble(c, "Aua.", x - 30 * k, ground - 60 * k, true, false);
+            if (t > 20.4f && t < 23.2f) bubble(c, "🤖 Übersetzt: »Das war Absicht. Ich wollte liegen.«", rx, by, false, false);
+            if (t > 23.4f && t < 26) bubble(c, lines[10], Math.max(dp(90), x), ground - 100 * k, true, false);
+        } else {
+            if (t > 14.8f && t < 17) bubble(c, "🤖 Halt! Nimm lieber das!", rx, by, false, false);
+            if (t > 18.8f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
+            if (t > 21 && t < 23.2f) bubble(c, "RAWR ♥", x - 40 * k, hy, true, true);
+            if (t > 21.8f && t < 24.8f) bubble(c, "🤖 Übersetzt: »Mit Ananas wär's perfekt.«", rx, by, false, false);
+            if (t > 23.4f && t < 24.6f) bubble(c, "*RÜLPS*", x - 40 * k, ground - 110 * k, true, false);
+        }
+    }
+
+    /** Dizzy stars over its head. */
+    private void stars(Canvas c, float x, float y, float k, float t) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFFFFC400);
+        for (int i = 0; i < 4; i++) {
+            double a = t * 4 + i * Math.PI / 2;
+            c.drawCircle(x + (float) Math.cos(a) * 24 * k, y + (float) Math.sin(a) * 7 * k, 3.6f * k, p);
+        }
+    }
+
+    /** A spinning pizza slice. */
+    private void pizza(Canvas c, float x, float y, float k, float deg) {
+        c.save();
+        c.rotate(deg, x, y);
+        path.reset();
+        path.moveTo(x, y - 14 * k);
+        path.lineTo(x + 11 * k, y + 9 * k);
+        path.lineTo(x - 11 * k, y + 9 * k);
+        path.close();
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFFFFD27A);
+        c.drawPath(path, p);
+        p.setColor(0xFFC8862E);
+        c.drawRect(x - 12 * k, y + 7 * k, x + 12 * k, y + 11 * k, p);
+        p.setColor(rust);
+        c.drawCircle(x - 3 * k, y + 2 * k, 2.2f * k, p);
+        c.drawCircle(x + 4 * k, y + 4 * k, 2 * k, p);
+        c.drawCircle(x, y - 5 * k, 1.8f * k, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(1.5f * k);
+        p.setColor(ink);
+        c.drawPath(path, p);
+        c.restore();
     }
 
     /* ---------- black hole: walk in (1.5 s), mouth opens into a vortex, everything spirals in, lock at 7.5 s ---------- */

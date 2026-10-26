@@ -3707,6 +3707,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
 
             @Override
+            public void showBuddy() {
+                fox.animate().cancel();
+                fox.setTranslationX(dp(40));
+                fox.animate().alpha(1f).scaleX(1f).scaleY(1f).translationX(0).setDuration(420)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(2f)).start();
+            }
+
+            @Override
+            public void buddyDodge() {
+                fox.animate().cancel();
+                fox.animate().translationX(dp(72)).translationY(-dp(46)).rotation(20).setDuration(260)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(() -> fox.animate().translationY(0).rotation(0).setDuration(320)
+                        .setInterpolator(new android.view.animation.BounceInterpolator())
+                        .withEndAction(() -> fox.animate().translationX(0).setStartDelay(4500).setDuration(600).start()).start())
+                    .start();
+            }
+
+            @Override
             public void swapBuddy(String afterLine) {
                 int next = (MainActivity.this.buddy() + 1) % BUDDIES.length;
                 prefs.edit().putInt("buddy", next).apply();
@@ -3848,6 +3867,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             fox.setAlpha(1f);
             fox.setScaleX(1f);
             fox.setScaleY(1f);
+            fox.setTranslationX(0f);
+            fox.setTranslationY(0f);
         }
     }
 
