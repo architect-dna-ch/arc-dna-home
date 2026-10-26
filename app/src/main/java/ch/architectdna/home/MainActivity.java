@@ -625,7 +625,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeLight = new EdgeLight(this, null);
         android.content.IntentFilter uf = new android.content.IntentFilter(Intent.ACTION_USER_PRESENT);
         uf.addAction(Intent.ACTION_SCREEN_OFF);
-        uf.addAction(Intent.ACTION_SCREEN_ON);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(unlockReceiver, uf, RECEIVER_NOT_EXPORTED);
         else registerReceiver(unlockReceiver, uf);
         if (CALIBRATE_NOD.equals(getIntent().getAction())) handler.postDelayed(() -> calibrate("nod"), 600);
@@ -945,6 +944,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }, null);
         settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
+
+        LinearLayout type = settingsGroup(col, "Typografie");
+        settingsRow(type, "Schrift", () -> FONTS[Math.max(0, Math.min(FONTS.length - 1, prefs.getInt("font", 0)))], v -> {
+            prefs.edit().putInt("font", (prefs.getInt("font", 0) + 1) % FONTS.length).commit();
+            recreate();       // every text on the home picks up the new font
+        }, null);
+        settingsRow(type, "Textgrösse", () -> SIZES[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))], v -> {
+            prefs.edit().putInt("fontSize", (prefs.getInt("fontSize", 1) + 1) % SIZES.length).commit();
+            recreate();
+        }, null);
 
         LinearLayout sync = settingsGroup(col, "Musik-Sync · Bluetooth");
         settingsRow(sync, "Mit Tablet / Handy abgleichen", () -> {
@@ -3634,12 +3643,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 unlockAt = 0;
                 return;
             }
-            if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) {
-                // Screen on but no lock screen (still within the lock delay): nothing to unlock.
-                android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-                if (km != null && !km.isKeyguardLocked()) lockedSinceOff = false;
-                return;
-            }
             unlockAt = android.os.SystemClock.uptimeMillis();
             maybePlayUnlock();
         }
@@ -3652,7 +3655,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * unlock is fast: the home can get focus before USER_PRESENT arrives, or after; either order works.
      */
     private void maybePlayUnlock() {
-        if (!lockedSinceOff || rootFrame == null || !hasWindowFocus()) return;
+        // USER_PRESENT itself means a lock screen was passed; face unlock with "skip lock screen"
+        // can already be done when the screen turns on, so nothing else is required.
+        if (rootFrame == null || !hasWindowFocus()) return;
         android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (km != null && km.isKeyguardLocked()) return;
         long now = android.os.SystemClock.uptimeMillis();
@@ -3664,6 +3669,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         lockedSinceOff = false;
+        unlockAt = 0;
         DiagLog.log("unlock animation after a real unlock");
         rootFrame.postDelayed(this::playUnlock, 60);
     }
@@ -3857,11 +3863,27 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return e;
     }
 
+    /* ---- Typografie (⚙): the home's font family and text size ---- */
+
+    static final String[] FONTS = {"Grotesk", "Kondensiert", "Serif", "Mono"};
+    static final String[] FONT_FAMILIES = {"sans-serif", "sans-serif-condensed", "serif", "monospace"};
+    static final String[] SIZES = {"Kompakt", "Normal", "Gross"};
+    static final float[] SIZE_SCALE = {0.9f, 1f, 1.12f};
+
+    private Typeface face(boolean bold) {
+        int f = Math.max(0, Math.min(FONTS.length - 1, prefs.getInt("font", 0)));
+        return Typeface.create(FONT_FAMILIES[f], bold ? Typeface.BOLD : Typeface.NORMAL);
+    }
+
+    private float fontScale() {
+        return SIZE_SCALE[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))];
+    }
+
     private TextView text(float sp, int colour, boolean bold) {
         TextView t = new TextView(this);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp * fontScale());
         t.setTextColor(colour);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTypeface(face(bold));
         return t;
     }
 

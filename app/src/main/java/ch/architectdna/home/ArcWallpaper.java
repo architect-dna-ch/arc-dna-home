@@ -209,7 +209,7 @@ public class ArcWallpaper extends WallpaperService {
                 startVisualizer();
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
-            boolean busy = lock || !rings.isEmpty() || cubeMoving();
+            boolean busy = lock || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
             handler.postDelayed(frame, busy ? 33 : 500);
         }
 
@@ -253,6 +253,17 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawCircle(r[0], r[1], r[2], paint);
             }
 
+            // Just unlocked: the lock under the camera springs open and fades, the rainbow ring with it.
+            long sinceUnlock = SystemClock.uptimeMillis() - unlockedAt;
+            if (!lock && unlockedAt > 0 && sinceUnlock < 1100 && camera != null) {
+                float k = sinceUnlock / 1100f, fade = 1 - Math.max(0, (k - 0.45f) / 0.55f);
+                float cx = camera.exactCenterX(), cy = camera.exactCenterY();
+                float cr = Math.max(camera.width(), camera.height()) / 2f * 1.7f;
+                rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f * fade);
+                paint.setShader(null);
+                lockIcon(c, cx, cy + cr + 44 * s, s, Math.min(1, k / 0.3f), fade, 0xFF000000 | ink, rust);
+            }
+
             if (!lock) return;
 
             // Fingerprint: pulsing rainbow halo plus glitter (only where we know the sensor: Pixel, portrait).
@@ -265,6 +276,8 @@ public class ArcWallpaper extends WallpaperService {
                     * (1 + 0.06f * (float) Math.sin(t * 3.1f) + 0.25f * beat);
                 rainbowRing(c, cx, cy, cr, 5 * s, -t * 160, 0.9f);
                 paint.setShader(null);
+                // Face ID style: a closed lock waits under the camera until the phone is unlocked.
+                lockIcon(c, cx, cy + cr + 44 * s, s, 0, 1, 0xFF000000 | ink, rust);
             }
 
             // While music plays: a rainbow flowing along the screen edge, and a little stage bottom-left where a
@@ -274,6 +287,32 @@ public class ArcWallpaper extends WallpaperService {
                 musicFrame(c, s, t);
                 stage(c, s, dark, ink, rust);
             }
+        }
+
+        /** A small padlock; open 0 = shut, 1 = shackle swung open (then rust). */
+        private void lockIcon(Canvas c, float x, float y, float s, float open, float alpha, int ink, int rust) {
+            if (alpha <= 0.01f) return;
+            float u = 20 * s;
+            int col = open >= 1 ? rust : ink;
+            int a = (int) (255 * alpha);
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(col);
+            paint.setAlpha(a);
+            box.set(x - u, y - u * 0.2f, x + u, y + u * 1.3f);
+            c.drawRoundRect(box, u * 0.3f, u * 0.3f, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(u * 0.28f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            c.save();
+            c.translate(0, -open * u * 0.35f);
+            c.rotate(-open * 35, x + u * 0.62f, y - u * 0.2f);
+            box.set(x - u * 0.62f, y - u * 1.15f, x + u * 0.62f, y + u * 0.1f);
+            c.drawArc(box, 180, 180, false, paint);
+            c.drawLine(x - u * 0.62f, y - u * 0.52f, x - u * 0.62f, y - u * 0.2f, paint);
+            c.drawLine(x + u * 0.62f, y - u * 0.52f, x + u * 0.62f, y - u * 0.2f, paint);
+            c.restore();
+            paint.setAlpha(255);
         }
 
         /** The lock screen layout the fingerprint ring and media frame were measured on. */
