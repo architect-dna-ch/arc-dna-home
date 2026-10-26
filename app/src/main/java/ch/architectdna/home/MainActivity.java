@@ -3433,25 +3433,27 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return row;
     }
 
-    /** {name, activity, icon}: the native apps built into ARC-DNA. */
+    /** {name, activity, line icon, launcher icon}: the native apps built into ARC-DNA, tiles like the APPS grid. */
     private View arcApps() {
-        LinearLayout row = new LinearLayout(this);
-        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_voidfreq}, {"Globus", GlobusActivity.class, R.drawable.ic_globus},
-            {"Nexus Breach", NexusActivity.class, R.drawable.ic_nexus}};
-        int cols = cols(), gap = dp(8);
-        for (int i = 0; i < cols; i++) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
-            lp.leftMargin = i == 0 ? 0 : gap;
-            if (i < own.length) {
-                Object[] a = own[i];
-                View t = tile((String) a[0], getDrawable((Integer) a[2]), 32);
-                t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
-                row.addView(t, lp);
-            } else {
-                row.addView(new View(this), lp);
+        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
+            {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
+            {"Nexus Breach", NexusActivity.class, R.drawable.ic_line_nexus, R.drawable.ic_nexus}};
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout row = null;
+        int cols = cols() >= 8 ? 8 : 4;
+        for (int i = 0; i < own.length; i++) {
+            if (i % cols == 0) {
+                row = new LinearLayout(this);
+                wrap.addView(row, margins(-1, -2, 0, i == 0 ? 0 : dp(8), 0, 0));
             }
+            Object[] a = own[i];
+            View t = tile((String) a[0], getDrawable((Integer) a[2]), 28);
+            t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[3])));
+            row.addView(t, weighted(i % cols != 0));
         }
-        return row;
+        for (int i = own.length % cols; i != 0 && i < cols; i++) row.addView(new View(this), weighted(true));
+        return wrap;
     }
 
     private View tile(String name, Drawable icon, int iconDp) {
