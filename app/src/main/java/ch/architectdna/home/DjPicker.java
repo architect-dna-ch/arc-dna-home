@@ -94,7 +94,10 @@ final class DjPicker extends FrameLayout {
             for (int i = 0; i < 5; i++) {
                 cards[i] = new RectF();
                 try {
-                    art[i] = getContext().getDrawable(djs.get(i).art);
+                    // The labels are paper-white: always the day colours (at night the F1 car is light grey).
+                    android.content.res.Configuration day = new android.content.res.Configuration(getResources().getConfiguration());
+                    day.uiMode = (day.uiMode & ~android.content.res.Configuration.UI_MODE_NIGHT_MASK) | android.content.res.Configuration.UI_MODE_NIGHT_NO;
+                    art[i] = getContext().createConfigurationContext(day).getDrawable(djs.get(i).art);
                 } catch (RuntimeException ignored) {
                 }
             }
@@ -253,7 +256,7 @@ final class DjPicker extends FrameLayout {
             p.setColor(0xFFF4F2EC);
             p.setAlpha(a);
             c.drawRoundRect(label, 3 * u, 3 * u, p);
-            float ls = label.height() * 0.42f;
+            float ls = label.height() * 0.34f;
             Drawable dr = art[i];
             if (dr != null) {
                 float aw = ls * 1.4f;
@@ -265,20 +268,21 @@ final class DjPicker extends FrameLayout {
             p.setTextSize(Math.max(dp(9), 8 * u));
             p.setColor(0xFF1A1A1A);
             p.setAlpha(a);
-            c.drawText(d.name, label.left + 4 * u, label.top + ls + 14 * u, p);
+            c.drawText(d.name, label.left + 4 * u, label.top + ls + 12 * u, p);
             p.setTextSize(Math.max(dp(8), 6.4f * u));
             p.setColor(d.colour);
             p.setAlpha(a);
-            c.drawText(d.kind, label.left + 4 * u, label.top + ls + 23 * u, p);
+            c.drawText(d.kind, label.left + 4 * u, label.top + ls + 20 * u, p);
             // Two lines of description.
             p.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-            p.setTextSize(Math.max(dp(9), 6.2f * u));
+            p.setTextSize(Math.max(dp(8.5f), 5.8f * u));
             p.setColor(0xFF5A5A58);
             p.setAlpha(a);
-            float y = label.top + ls + 32 * u;
+            float y = label.top + ls + 28 * u;
             for (String line : wrap(d.about, label.width() - 8 * u, 2)) {
+                if (y > label.bottom - 2 * u) break;          // never under the label's edge
                 c.drawText(line, label.left + 4 * u, y, p);
-                y += p.getTextSize() * 1.2f;
+                y += p.getTextSize() * 1.18f;
             }
             p.setAlpha(255);
         }
