@@ -6,8 +6,16 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.SystemClock;
+import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.WindowManager;
 
 import java.util.Random;
 
@@ -15,8 +23,12 @@ import java.util.Random;
  * Back from an app: the app as a sheet of paper whooshes up from the bottom, two fists crush it
  * into a ball, and it's thrown in an arc into a bin that pops up next to the buddy. Draws once
  * over the home screen, touches pass through, and it removes itself when done.
+ *
+ * Basketball: after the crush the ball waits in your hand at the bottom. Grab it and flick it at
+ * the bin: the flick speed throws it, gravity pulls it down and tilting the phone bends the flight
+ * (the gravity sensor sets which way "down" is). Leave it alone and it's thrown for you.
  */
-final class CrumpleView extends View {
+final class CrumpleView extends View implements SensorEventListener {
 
     private static final long WHOOSH = 260, CRUSH = 380, THROW = 520, DROP = 380;
 
@@ -48,8 +60,9 @@ final class CrumpleView extends View {
     private boolean miss, missed, smashed;
     private Runnable onMiss, onSmash;
 
-    void miss(Runnable angry, Runnable smash) {
-        miss = true;
+    /** The angry buddy and the smash; chance = this automatic throw misses on purpose. */
+    void miss(boolean chance, Runnable angry, Runnable smash) {
+        miss = chance;
         onMiss = angry;
         onSmash = smash;
     }
@@ -78,28 +91,207 @@ final class CrumpleView extends View {
         return k < 0.5f ? 2 * k * k : 1 - (float) Math.pow(-2 * k + 2, 2) / 2;
     }
 
+    /* ---------- hold & throw by hand ---------- */
+
+    private static final long HOLD_MAX = 2600, SETTLE = 260;
+    private static final int HOLD = 0, AUTO = 1, FLY = 2, IN = 3, OUT = 4;
+    private int mode = HOLD;
+    private long modeAt = -1, last;
+    private boolean grabbed;
+    private float bx, by, vx, vy, spin, flyT, sx0, sy0;
+    private final float[] grav = {0, 9.81f};          // screen-space gravity from the sensor (x right, y down)
+    private VelocityTracker vt;
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        SensorManager sm = (SensorManager) getContext().getSystemService(Context.SENSOR_SERVICE);
+        if (sm == null) return;
+        Sensor g = sm.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        if (g == null) g = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        if (g != null) sm.registerListener(this, g, SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        SensorManager sm = (SensorManager) getContext().getSystemService(Context.SENSOR_SERVICE);
+        if (sm != null) sm.unregisterListener(this);
+        if (vt != null) vt.recycle();
+        vt = null;
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent e) {
+        float ax = e.values[0], ay = e.values[1];
+        int rot = Surface.ROTATION_0;
+        WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
+        if (getDisplay() != null) rot = getDisplay().getRotation();
+        else if (wm != null) rot = wm.getDefaultDisplay().getRotation();
+        float gx, gy;
+        if (rot == Surface.ROTATION_90) {
+            gx = ay;
+            gy = ax;
+        } else if (rot == Surface.ROTATION_180) {
+            gx = ax;
+            gy = -ay;
+        } else if (rot == Surface.ROTATION_270) {
+            gx = -ay;
+            gy = -ax;
+        } else {
+            gx = -ax;
+            gy = ay;
+        }
+        grav[0] += (gx - grav[0]) * 0.3f;
+        grav[1] += (gy - grav[1]) * 0.3f;
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    private float holdX() {
+        return getWidth() / 2f;
+    }
+
+    private float holdY() {
+        return getHeight() * 0.8f;
+    }
+
+    private void setMode(int m, long now) {
+        mode = m;
+        modeAt = now;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+        int a = e.getActionMasked();
+        if (a == MotionEvent.ACTION_DOWN) {
+            // Only the ball in your hand takes touches; everything else falls through to the home screen.
+            if (mode != HOLD || start < 0 || SystemClock.uptimeMillis() - start < WHOOSH + CRUSH) return false;
+            if (Math.hypot(e.getX() - bx, e.getY() - by) > dp(70)) return false;
+            grabbed = true;
+            if (vt != null) vt.recycle();
+            vt = VelocityTracker.obtain();
+            vt.addMovement(e);
+            return true;
+        }
+        if (!grabbed) return false;
+        vt.addMovement(e);
+        if (a == MotionEvent.ACTION_MOVE) {
+            bx = e.getX();
+            by = e.getY();
+        } else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+            grabbed = false;
+            vt.computeCurrentVelocity(1000, dp(5000));
+            float fx = vt.getXVelocity(), fy = vt.getYVelocity();
+            long now = SystemClock.uptimeMillis();
+            if (a == MotionEvent.ACTION_UP && Math.hypot(fx, fy) > dp(350)) {
+                vx = fx * 0.7f;
+                vy = fy * 0.7f;
+                flyT = 0;
+                setMode(FLY, now);
+            } else {
+                modeAt = now - SETTLE;          // dropped: back in the hand, the auto throw clock restarts
+            }
+        }
+        invalidate();
+        return true;
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         long now = SystemClock.uptimeMillis();
-        if (start < 0) start = now;
+        if (start < 0) {
+            start = now;
+            last = now;
+        }
         long t = now - start;
+        float dt = Math.min(0.04f, (now - last) / 1000f);
+        last = now;
         float w = getWidth(), h = getHeight(), cx = w / 2, cy = h * 0.45f;
         float sheetW = w * 0.62f, sheetH = h * 0.42f, ball = dp(26);
+
+        if (t >= WHOOSH + CRUSH) {
+            if (!crushed) {
+                crushed = true;
+                if (onCrush != null) onCrush.run();
+            }
+            if (modeAt < 0) {
+                modeAt = now;
+                bx = cx;
+                by = cy;
+            }
+            long mt = now - modeAt;
+            if (mode == HOLD) {
+                drawBin(c, 1, 0);
+                if (!grabbed) {
+                    // Settles into your hand at the bottom, then bobs a little.
+                    float k = ease(Math.min(1, mt / (float) SETTLE));
+                    float tx = holdX(), ty = holdY() + (float) Math.sin(mt / 160.0) * dp(3);
+                    bx += (tx - bx) * Math.max(k, 0.25f);
+                    by += (ty - by) * Math.max(k, 0.25f);
+                }
+                drawBall(c, bx, by, ball * (grabbed ? 1.15f : 1), grabbed ? 0 : mt * 0.05f);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(ink);
+                p.setAlpha((int) (150 * Math.min(1, mt / 300f) * (grabbed ? 0.3f : 1)));
+                p.setTextAlign(Paint.Align.CENTER);
+                p.setTextSize(dp(11));
+                p.setLetterSpacing(0.2f);
+                p.setTypeface(android.graphics.Typeface.MONOSPACE);
+                c.drawText("↗ IN DEN KORB WERFEN", holdX(), holdY() + dp(42), p);
+                p.setAlpha(255);
+                if (!grabbed && mt > HOLD_MAX) {
+                    sx0 = bx;
+                    sy0 = by;
+                    setMode(AUTO, now);
+                }
+                postInvalidateOnAnimation();
+                return;
+            }
+            if (mode == FLY) {
+                stepFlight(dt, w, h, ball, now);
+                drawBin(c, 1, 0);
+                drawBall(c, bx, by, ball * Math.max(0.65f, 1 - flyT * 0.45f), spin);
+                postInvalidateOnAnimation();
+                return;
+            }
+            if (mode == IN) {
+                // Swish: the lid flips, the ball sinks in, the bin fades.
+                float k = mt / (float) DROP;
+                drawBin(c, mt > DROP ? Math.max(0, 1 - (mt - DROP) / 250f) : 1, (float) Math.sin(Math.min(1, k) * Math.PI));
+                if (k < 0.5f) drawBall(c, binX, binY - dp(30) + dp(30) * k * 2, ball * 0.65f, spin + k * 90);
+                if (!landed) {
+                    landed = true;
+                    if (onLand != null) onLand.run();
+                }
+                if (mt < DROP + 260) postInvalidateOnAnimation();
+                else if (done != null) post(done);
+                return;
+            }
+            if (mode == OUT) {
+                // A real miss: the ball is gone, the buddy fumes and smashes the bin at you.
+                drawMiss(c, THROW + BOUNCE + mt, w, h, cx, cy, ball);
+                return;
+            }
+            // AUTO: the old automatic throw, from the hand.
+            t = mt + WHOOSH + CRUSH;
+            cx = sx0;
+            cy = sy0;
+        }
 
         if (miss && t >= WHOOSH + CRUSH) {
             drawMiss(c, t - WHOOSH - CRUSH, w, h, cx, cy, ball);
             return;
         }
         // The bin pops up next to the buddy as soon as the crushing starts.
-        float binA = t < WHOOSH ? 0 : Math.min(1, (t - WHOOSH) / 200f);
+        float binA = t < WHOOSH ? 0 : mode == AUTO ? 1 : Math.min(1, (t - WHOOSH) / 200f);
         if (t > WHOOSH + CRUSH + THROW + DROP) binA = Math.max(0, 1 - (t - (WHOOSH + CRUSH + THROW + DROP)) / 250f);
         float lid = t > WHOOSH + CRUSH + THROW ? (float) Math.sin(Math.min(1, (t - WHOOSH - CRUSH - THROW) / (float) DROP) * Math.PI) : 0;
         drawBin(c, binA, lid);
 
-        if (!crushed && t >= WHOOSH) {
-            crushed = true;
-            if (onCrush != null) onCrush.run();
-        }
+
         if (!landed && t >= WHOOSH + CRUSH + THROW) {
             landed = true;
             if (onLand != null) onLand.run();
@@ -129,14 +321,60 @@ final class CrumpleView extends View {
         else if (done != null) post(done);
     }
 
+    /**
+     * Free flight: flick velocity, gravity from the sensor (tilt bends the arc), a little air drag,
+     * bounces off the screen sides and the bin's walls. In through the opening = basket.
+     */
+    private void stepFlight(float dt, float w, float h, float ball, long now) {
+        float g = dp(2600) / 9.81f;
+        float gy = Math.max(grav[1], 3.5f);          // flat on the table: still falls "down"
+        float steps = 4, sdt = dt / steps, bw = dp(34) * 1.0f, top = binY - dp(20);
+        for (int i = 0; i < steps; i++) {
+            float px = bx, py = by;
+            vx += grav[0] * g * sdt;
+            vy += gy * g * sdt;
+            vx *= 1 - 0.25f * sdt;
+            vy *= 1 - 0.25f * sdt;
+            bx += vx * sdt;
+            by += vy * sdt;
+            float r = ball / 2;
+            if (bx < r && vx < 0 || bx > w - r && vx > 0) {
+                vx = -vx * 0.6f;
+                bx = Math.max(r, Math.min(w - r, bx));
+            }
+            if (by < r && vy < 0) {
+                vy = -vy * 0.5f;
+                by = r;
+            }
+            // Through the opening, falling: basket (a little forgiving around the rim).
+            if (vy > 0 && py <= top && by >= top && Math.abs(bx - binX) < bw * 0.75f) {
+                setMode(IN, now);
+                return;
+            }
+            // The bin's walls bounce it away.
+            if (by > top && by < binY + dp(20) && Math.abs(bx - binX) < bw / 2 + r) {
+                vx = (bx < binX ? -1 : 1) * Math.max(dp(120), Math.abs(vx) * 0.5f);
+                bx = binX + (bx < binX ? -1 : 1) * (bw / 2 + r);
+            }
+        }
+        flyT += dt;
+        spin += (vx >= 0 ? 1 : -1) * 720 * dt;
+        if (by > h + ball || flyT > 4) setMode(OUT, now);
+    }
+
     /** The missed throw, the angry buddy and the bin in your face. t counts from the throw. */
     private void drawMiss(Canvas c, long t, float w, float h, float cx, float cy, float ball) {
         float floor = binY + dp(16), landX = binX + dp(58);
         long bounceEnd = THROW + BOUNCE, smashStart = bounceEnd + FUME, stuckStart = smashStart + SMASH,
             slideStart = stuckStart + STUCK, end = slideStart + SLIDE;
         // The bin sits next to the buddy until it's grabbed.
-        if (t < smashStart) drawBin(c, Math.min(1, t / 200f), 0);
-        if (t < THROW) {
+        if (t < smashStart) drawBin(c, mode == OUT ? 1 : Math.min(1, t / 200f), 0);
+        if (mode == OUT) {
+            if (!missed) {
+                missed = true;
+                if (onMiss != null) onMiss.run();
+            }
+        } else if (t < THROW) {
             float k = t / (float) THROW;
             float x = cx + (landX - cx) * k, y = cy + (floor - cy) * k - (float) Math.sin(k * Math.PI) * h * 0.24f;
             drawBall(c, x, y, ball * (1 - 0.35f * k), k * 720);

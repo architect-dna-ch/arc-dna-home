@@ -1362,10 +1362,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
             say(lines[random.nextInt(lines.length)], 1200);
         });
-        // About one throw in four misses, and the buddy takes it out on you.
-        if (random.nextInt(4) == 0) {
+        // About one automatic throw in four misses, and the buddy takes it out on you.
+        // A miss by hand gets the same treatment.
+        {
             String[] angry = {"Daneben?!", "Echt jetzt?", "Grrr.", "Na warte …"};
-            holder[0].miss(() -> {
+            holder[0].miss(random.nextInt(4) == 0, () -> {
                 voice.thud();
                 hop();
                 say(angry[random.nextInt(angry.length)], 900);
