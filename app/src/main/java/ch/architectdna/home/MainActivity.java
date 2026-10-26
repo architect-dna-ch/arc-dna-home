@@ -1402,7 +1402,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // About one automatic throw in four misses, and the buddy takes it out on you.
         // A miss by hand gets the same treatment.
         {
-            String[] angry = {"Daneben?!", "Echt jetzt?", "Grrr.", "Na warte …"};
+            String[] angry = {"Echt jetzt?!", "Echt jetzt?!", "Im Ernst?!", "Alter?!", "Daneben?! Echt jetzt?!", "Triff doch mal!", "Na warte …"};
             holder[0].miss(random.nextInt(4) == 0, () -> {
                 voice.thud();
                 hop();
