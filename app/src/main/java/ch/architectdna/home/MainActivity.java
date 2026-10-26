@@ -2853,12 +2853,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         exitGhosts();
         hideKeyboard();
         game = new FoxRunView(this, new int[]{ink, ink2, ink3, rust, card, line, isNight() ? 0xFF121211 : 0xFFFAFAF8},
-            voice, prefs, this::exitGame);
+            voice, prefs, this::exitGame, buddy() == 2);
         rootFrame.addView(game, new FrameLayout.LayoutParams(-1, -1));
         game.setAlpha(0f);
         game.animate().alpha(1f).setDuration(300).start();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        voice.say("Yip-yip!");
+        voice.say(buddy() == 2 ? "Hüpf!" : "Yip-yip!");
         game.resume();
         startGameNod();
         Toast.makeText(this, "Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück", Toast.LENGTH_SHORT).show();
