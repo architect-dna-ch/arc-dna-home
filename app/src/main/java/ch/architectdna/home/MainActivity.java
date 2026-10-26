@@ -2839,8 +2839,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         b.append("Wecker: ").append(prefs.getBoolean("alarmOn", false) ? "an" : "aus").append('\n');
         b.append("Kopf-Scroll: ").append(headMode()).append(", Update-Token gesetzt: ").append(!updater.token().isEmpty()).append('\n');
         b.append("Nachtmodus: ").append(isNight()).append(", Bildschirm ").append(getResources().getConfiguration().screenWidthDp)
-            .append("×").append(getResources().getConfiguration().screenHeightDp).append(" dp\n\n--- Log ---\n");
-        b.append(DiagLog.read());
+            .append("×").append(getResources().getConfiguration().screenHeightDp).append(" dp\n\n--- Log · neueste zuerst ---\n");
+        // Newest first and only the last ~300 lines, so a shortened paste still has what just happened.
+        String[] lines = DiagLog.read().split("\n");
+        for (int i = lines.length - 1, n = 0; i >= 0 && n < 300; i--, n++) b.append(lines[i]).append('\n');
         return b.toString();
     }
 
