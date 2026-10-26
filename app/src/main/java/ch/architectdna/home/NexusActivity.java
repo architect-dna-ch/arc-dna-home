@@ -190,7 +190,7 @@ public class NexusActivity extends Activity {
                     shopTimer -= dt;
                     if (shopTimer <= 0) closeShop();
                     stepParticles(dt);
-                    drawShop(c);
+                    drawShop(c, dt);
                     break;
                 case "dead":
                     stepParticles(dt);
@@ -591,6 +591,11 @@ public class NexusActivity extends Activity {
             Collections.shuffle(pool, rnd);
             shopItems = new ArrayList<>(pool.subList(0, 3));
             shopTimer = SHOP_TIME;
+            java.util.Arrays.fill(shopFlash, 0);
+            java.util.Arrays.fill(shopShake, 0);
+            java.util.Arrays.fill(shopBought, false);
+            shopPressed = -1;
+            shownCoins = coins;
             state = "shop";
         }
 
@@ -1459,51 +1464,103 @@ public class NexusActivity extends Activity {
             small(c, "✕", 30 * d, 16, INK2);
         }
 
-        void drawShop(Canvas c) {
+        // Shop feedback per card: flash after a buy, shake when too expensive, bought marker; coins roll down.
+        final float[] shopFlash = new float[3], shopShake = new float[3];
+        final boolean[] shopBought = new boolean[3];
+        int shopPressed = -1;
+        float shownCoins;
+
+        /** Largest text size up to max (dp) whose width fits. */
+        void fit(String t, float maxDp, float width) {
+            p.setTextSize(maxDp * d);
+            float w = p.measureText(t);
+            if (w > width) p.setTextSize(Math.max(8 * d, maxDp * d * width / w));
+        }
+
+        void drawShop(Canvas c, float dt) {
             readInsets();
             overlay(c, 0xD1121211);
+            shownCoins += (coins - shownCoins) * Math.min(1, dt * 10);
+            if (Math.abs(coins - shownCoins) < 0.5f) shownCoins = coins;
             small(c, "— SHOP", H * 0.12f, 12, INK3);
-            small(c, "⬡ " + coins + " MÜNZEN", H * 0.12f + 26 * d, 15, GOLD);
+            small(c, "⬡ " + Math.round(shownCoins) + " MÜNZEN", H * 0.12f + 26 * d, 15, GOLD);
             float bw = Math.min(W * 0.8f, 360 * d);
-            bar(c, CX - bw / 2, H * 0.12f + 40 * d, bw, 4 * d, shopTimer / SHOP_TIME, RUST);
-            p.setTextAlign(Paint.Align.LEFT);
+            boolean hurry = shopTimer < 5 && ((int) (shopTimer * 4) & 1) == 0;
+            bar(c, CX - bw / 2, H * 0.12f + 40 * d, bw, 4 * d, shopTimer / SHOP_TIME, hurry ? GOLD : RUST);
             for (int i = 0; i < shopItems.size(); i++) {
                 Shop s = shopItems.get(i);
-                boolean can = coins >= s.cost;
+                boolean bought = shopBought[i], can = !bought && coins >= s.cost;
+                shopFlash[i] = Math.max(0, shopFlash[i] - dt * 2.5f);
+                shopShake[i] = Math.max(0, shopShake[i] - dt * 3);
+                shopCard(i, rect);
+                float pad = Math.min(16 * d, rect.width() * 0.08f);
+                c.save();
+                c.translate((float) Math.sin(shopShake[i] * 40) * 10 * d * shopShake[i], 0);
+                float sc = (i == shopPressed && !bought ? 0.97f : 1) + shopFlash[i] * 0.04f;
+                c.scale(sc, sc, rect.centerX(), rect.centerY());
+                float cx0 = rect.left, cw = rect.width(), y = rect.top, ch = rect.height();
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(0xFF1C1C1A);
-                shopCard(i, rect);
-                float cx0 = rect.left, cw = rect.width(), y = rect.top, ch = rect.height();
                 c.drawRoundRect(rect, 8 * d, 8 * d, p);
+                if (shopFlash[i] > 0 || bought) {
+                    p.setColor(s.col);
+                    p.setAlpha((int) (bought ? 28 + 150 * shopFlash[i] : 180 * shopFlash[i]));
+                    c.drawRoundRect(rect, 8 * d, 8 * d, p);
+                    p.setAlpha(255);
+                }
                 p.setStyle(Paint.Style.STROKE);
-                p.setStrokeWidth(1.5f * d);
-                p.setColor(can ? s.col : LINE);
+                p.setStrokeWidth((i == shopPressed ? 2.5f : 1.5f) * d);
+                p.setColor(shopShake[i] > 0 ? RUST : can || bought ? s.col : LINE);
                 c.drawRoundRect(rect, 8 * d, 8 * d, p);
                 p.setStyle(Paint.Style.FILL);
                 p.setTextAlign(Paint.Align.LEFT);
-                p.setColor(can ? INK : INK3);
-                p.setTextSize(15 * d);
-                c.drawText(s.name, cx0 + 16 * d, y + 30 * d, p);
+                p.setColor(can || bought ? INK : INK3);
+                fit(s.name, 15, cw - 2 * pad);
+                c.drawText(s.name, cx0 + pad, y + ch * 0.3f, p);
                 p.setColor(INK3);
-                p.setTextSize(11 * d);
-                c.drawText(s.desc, cx0 + 16 * d, y + 52 * d, p);
-                p.setColor(can ? GOLD : INK3);
-                p.setTextSize(14 * d);
-                c.drawText("⬡ " + s.cost + (can ? "" : "  · FEHLEN " + (s.cost - coins)), cx0 + 16 * d, y + ch - 16 * d, p);
+                fit(s.desc, 11, cw - 2 * pad);
+                c.drawText(s.desc, cx0 + pad, y + ch * 0.3f + 22 * d, p);
+                String price = bought ? "✓ GEKAUFT" : "⬡ " + s.cost + (can ? "" : " · FEHLEN " + (s.cost - coins));
+                p.setColor(bought ? s.col : can ? GOLD : shopShake[i] > 0 ? RUST : INK3);
+                fit(price, 14, can ? cw * 0.55f : cw - 2 * pad);
+                c.drawText(price, cx0 + pad, y + ch - 16 * d, p);
                 if (can) {
                     p.setTextAlign(Paint.Align.RIGHT);
                     p.setColor(s.col);
-                    c.drawText("KAUFEN", cx0 + cw - 16 * d, y + ch - 16 * d, p);
+                    fit("KAUFEN", 14, cw * 0.35f);
+                    c.drawText("KAUFEN", cx0 + cw - pad, y + ch - 16 * d, p);
                 }
+                c.restore();
             }
-            if (shopItems.isEmpty()) small(c, "ALLES GEKAUFT", H * 0.5f, 13, INK2);
-            float wy = H - 28 * d - insB;
+            // Purchase sparks and texts on top of the cards.
+            p.setStyle(Paint.Style.FILL);
+            for (Particle q : particles) {
+                p.setColor(q.col);
+                p.setAlpha((int) (Color.alpha(q.col) * Math.max(0, q.life / q.max)));
+                c.drawCircle(q.x, q.y, Math.max(0, q.r * S * q.life / q.max), p);
+            }
+            p.setTextAlign(Paint.Align.CENTER);
+            for (FloatText t : texts) {
+                p.setColor(t.col);
+                p.setAlpha((int) (255 * Math.min(1, t.life / t.max * 4) * (t.life / t.max)));
+                p.setTextSize(t.size * S);
+                c.drawText(t.s, t.x, t.y, p);
+            }
+            p.setAlpha(255);
+            weiterRect(rect);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(shopPressed == 3 ? RUST : 0xFF1C1C1A);
+            c.drawRoundRect(rect, 8 * d, 8 * d, p);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(1.5f * d);
             p.setColor(RUST);
-            rect.set(CX - 90 * d, wy - 30 * d, CX + 90 * d, wy + 12 * d);
             c.drawRoundRect(rect, 8 * d, 8 * d, p);
-            small(c, "WEITER →  " + (int) Math.ceil(shopTimer) + " S", wy - 3 * d, 14, RUST);
+            small(c, "WEITER →  " + (int) Math.ceil(shopTimer) + " S", rect.centerY() + 5 * d, 14, shopPressed == 3 ? INK : RUST);
+        }
+
+        void weiterRect(RectF out) {
+            float wy = H - 28 * d - insB;
+            out.set(CX - 100 * d, wy - 34 * d, CX + 100 * d, wy + 12 * d);
         }
 
         void drawDead(Canvas c) {
@@ -1570,6 +1627,7 @@ public class NexusActivity extends Activity {
                 return true;
             }
             if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_POINTER_UP || a == MotionEvent.ACTION_CANCEL) {
+                if (shopPressed >= 0 && shopPressed < 3) shopPressed = -1;
                 if (a == MotionEvent.ACTION_CANCEL || e.getPointerId(i) == joyId) {
                     joyId = -1;
                     joyDX = joyDY = 0;
@@ -1592,21 +1650,45 @@ public class NexusActivity extends Activity {
             }
         }
 
-        void shopTap(float x, float y) {
+        int shopHit(float x, float y) {
             for (int i = 0; i < shopItems.size(); i++) {
                 shopCard(i, rect);
-                if (rect.contains(x, y)) {
-                    Shop s = shopItems.get(i);
-                    if (coins < s.cost) return;
-                    coins -= s.cost;
-                    s.apply.run();
-                    burst(CX, CY, 25, 140, 6, s.col);
-                    text(CX, CY - 50 * S, s.name + " AKTIV!", s.col, 1.8f, 18);
-                    shopItems.remove(i);
-                    return;
-                }
+                rect.inset(-6 * d, -6 * d);
+                if (rect.contains(x, y)) return i;
             }
-            if (y > H - 80 * d - insB) closeShop();
+            weiterRect(rect);
+            rect.inset(-12 * d, -12 * d);
+            return rect.contains(x, y) ? 3 : -1;
+        }
+
+        /** Instant on touch-down: buy (flash, sparks, haptic tick) or shake when coins are missing. */
+        void shopTap(float x, float y) {
+            int i = shopHit(x, y);
+            shopPressed = i;
+            if (i == 3) {
+                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                postDelayed(() -> {
+                    shopPressed = -1;
+                    if (state.equals("shop")) closeShop();
+                }, 90);
+                return;
+            }
+            if (i < 0 || shopBought[i]) return;
+            Shop s = shopItems.get(i);
+            shopCard(i, rect);
+            if (coins < s.cost) {
+                shopShake[i] = 1;
+                performHapticFeedback(Build.VERSION.SDK_INT >= 30 ? android.view.HapticFeedbackConstants.REJECT : android.view.HapticFeedbackConstants.LONG_PRESS);
+                return;
+            }
+            coins -= s.cost;
+            s.apply.run();
+            shopBought[i] = true;
+            shopFlash[i] = 1;
+            performHapticFeedback(Build.VERSION.SDK_INT >= 30 ? android.view.HapticFeedbackConstants.CONFIRM : android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+            burst(rect.centerX(), rect.centerY(), 30, 180, 6, s.col);
+            burst(rect.centerX(), rect.centerY(), 12, 90, 4, GOLD);
+            text(rect.centerX(), rect.top - 10 * d, s.name + " AKTIV!", s.col, 1.4f, 16);
         }
     }
 }
