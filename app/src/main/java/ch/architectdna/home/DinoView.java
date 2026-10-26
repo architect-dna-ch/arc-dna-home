@@ -66,6 +66,19 @@ final class DinoView extends View {
     private int fstate, level, eaten, cutAt, hurt;
     private float hp, maxHp, timeLimit, phaseAt, lastZap, nextEat, knock, knockY, lastFt;
     private boolean buddyEaten;
+
+    /* Five kinds of dino, each with its own look and trick in the fight. */
+    static final int REX = 0, STEGO = 1, RAPTOR = 2, TRIKE = 3, PTERO = 4;
+    private static final String[] TYPE_NAME = {"T-REX", "STEGOSAURUS", "RAPTOR", "TRICERATOPS", "PTERO-REX"};
+    private static final String[] TYPE_TIP = {
+        "🤖 T-Rex! Unter 40 % wird er wütend und schneller.",
+        "🤖 Stegosaurus! Panzerplatten: jeder Tritt zählt nur halb.",
+        "🤖 Raptor! Klein und blitzschnell – zielen!",
+        "🤖 Triceratops! Wenn er anrennt, blocken die Hörner.",
+        "🤖 Ptero-Rex! Er fliegt hoch und runter."};
+    private static final int[] TYPE_TINT = {0xFFFFFFFF, 0xFF8FD18A, 0xFFB79BFF, 0xFFFFD60A, 0xFF7FC4FF};
+    private final int type, skin;
+    private boolean charging;
     private final RectF dinoRect = new RectF();
     private final List<float[]> pops = new ArrayList<>();       // x, y, time, hit?
     private final float[] fold = new float[4];                  // 0 … dp(120): TL, TR, BR, BL
@@ -81,7 +94,7 @@ final class DinoView extends View {
     private void startFight() {
         fightAt = SystemClock.uptimeMillis();
         level = Math.max(1, Math.min(99, host.level()));
-        maxHp = hp = 12 + level * 1.6f;
+        maxHp = hp = (12 + level * 1.6f) * (type == RAPTOR ? 0.75f : 1);
         timeLimit = 20 + level * 0.2f;
         fstate = FIGHT;
         lastZap = 0;
@@ -102,9 +115,9 @@ final class DinoView extends View {
         float x = e.getX(), y = e.getY(), w = getWidth(), h = getHeight();
         if (fstate == FIGHT && a == android.view.MotionEvent.ACTION_DOWN) {
             float ft = (SystemClock.uptimeMillis() - fightAt) / 1000f;
-            boolean hit = dinoRect.contains(x, y);
+            boolean hit = dinoRect.contains(x, y) && !charging;     // the triceratops' horns block while it charges
             if (hit) {
-                hp = Math.max(0, hp - 1);
+                hp = Math.max(0, hp - (type == STEGO ? 0.5f : 1));     // stego plates: half damage
                 knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
                 knockY = dp(46);             // every kick knocks it down a bit, it springs back up
                 host.stomp();
@@ -155,10 +168,25 @@ final class DinoView extends View {
         if (fstate == FIGHT) {
             // The fight happens mid-screen: up where you can reach it; higher levels also hop up and down.
             float hop = h * 0.12f * Math.min(1, level / 50f) * (float) Math.sin(ft * (0.5f + level * 0.01f) * Math.PI * 2 + 1);
+            if (type == PTERO) hop += h * 0.16f * (float) Math.sin(ft * 1.4f) - h * 0.08f;   // flies up and down
             ground += hop + knockY;
             // The dino dodges more and faster the higher its level; above 30 it heals a little.
             float amp = w * 0.32f * Math.min(1, level / 40f), freq = 0.35f + level * 0.012f;
+            boolean rage = type == REX && hp / maxHp < 0.4f;
+            if (type == RAPTOR) {
+                amp = Math.max(amp, w * 0.2f);
+                freq *= 1.7f;
+            } else if (type == PTERO) {
+                amp = Math.max(amp, w * 0.18f);
+            } else if (type == STEGO) {
+                freq *= 0.8f;
+            }
+            if (rage) freq *= 1.5f;
             float fx = mid + amp * (float) Math.sin(ft * freq * Math.PI * 2) + knock;
+            // Triceratops: every 3.5 s it charges across the screen, horns first; taps bounce off.
+            float cp = ft % 3.5f;
+            charging = type == TRIKE && ft > 1.5f && cp < 0.7f;
+            if (charging) fx += (float) Math.sin(cp / 0.7f * Math.PI) * w * 0.3f * (((int) (ft / 3.5f)) % 2 == 0 ? 1 : -1);
             boolean right = Math.cos(ft * freq * Math.PI * 2) > 0 && amp > 0;
             if (level > 30) hp = Math.min(maxHp, hp + (level - 30) * 0.012f * dt);
             if (ft - lastZap > 1.3f && ft > 1) {
@@ -176,8 +204,10 @@ final class DinoView extends View {
             drawRobot(c, rx, ry, dp(1), ft - lastZap < 0.2f);
             if (ft - lastZap < 0.2f) zap(c, rx - dp(22), ry + dp(10), fx, ground - 55 * k);
             drawPops(c, ft);
-            hud(c, w, "DINO · LV " + level, hp / maxHp, Math.max(0, timeLimit - ft), rust);
-            if (ft < 2.2f) bubble(c, "🤖 Hau ihn! Ich helfe!", rx, ry - dp(30), false, false);
+            hud(c, w, TYPE_NAME[type] + " · LV " + level, hp / maxHp, Math.max(0, timeLimit - ft), rust);
+            if (ft < 3f) bubble(c, TYPE_TIP[type], rx, ry - dp(30), false, false);
+            else if (charging) bubble(c, "BLOCK!", fx, ground - 110 * k, true, false);
+            else if (rage && ft % 2 < 0.8f) bubble(c, "WUT!", fx, ground - 110 * k, true, false);
             if (hp <= 0) {
                 fstate = KO;
                 phaseAt = ft;
@@ -442,12 +472,21 @@ final class DinoView extends View {
         this.rust = rust;
         this.host = host;
         lines = SCRIPTS[rnd.nextInt(SCRIPTS.length)];
+        type = rnd.nextInt(5);
+        skin = mix(paper, TYPE_TINT[type], type == REX ? 0 : 0.45f);
         setClickable(false);
         setFocusable(false);
     }
 
     private float dp(float v) {
         return v * getResources().getDisplayMetrics().density;
+    }
+
+    private static int mix(int a, int b, float f) {
+        int r = (int) (((a >> 16) & 255) * (1 - f) + ((b >> 16) & 255) * f);
+        int g = (int) (((a >> 8) & 255) * (1 - f) + ((b >> 8) & 255) * f);
+        int bl = (int) ((a & 255) * (1 - f) + (b & 255) * f);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
     }
 
     private static float clamp(float v) {
@@ -731,18 +770,9 @@ final class DinoView extends View {
         float step = walking ? (float) Math.sin(t * 9) : 0;
         p.setStrokeCap(Paint.Cap.ROUND);
         p.setStrokeJoin(Paint.Join.ROUND);
-        // Back spikes (rust).
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(rust);
-        for (int i = 0; i < 7; i++) {
-            float sx = -22 + i * 11, sy = -56 + (i * i) * 0.45f;
-            path.reset();
-            path.moveTo((sx - 4) * k, sy * k + 3 * k);
-            path.lineTo(sx * k, (sy - 9) * k);
-            path.lineTo((sx + 4) * k, sy * k + 3 * k);
-            path.close();
-            c.drawPath(path, p);
-        }
+        if (type == RAPTOR) k *= 0.82f;     // the raptor is small
+        if (type == PTERO) wings(c, k, t);
+        backSpines(c, k);
         // Tail.
         path.reset();
         path.moveTo(26 * k, -46 * k);
@@ -755,7 +785,7 @@ final class DinoView extends View {
         // Body.
         r.set(-30 * k, -60 * k, 36 * k, -20 * k);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(paper);
+        p.setColor(skin);
         c.drawOval(r, p);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(3 * k);
@@ -787,16 +817,18 @@ final class DinoView extends View {
         }
         r.set(-66 * k, -94 * k, -30 * k, -74 * k);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(paper);
+        p.setColor(skin);
         c.drawRoundRect(r, 9 * k, 9 * k, p);
         p.setStyle(Paint.Style.STROKE);
         p.setColor(ink);
         c.drawRoundRect(r, 9 * k, 9 * k, p);
+        if (type == TRIKE) horns(c, k);
+        if (type == PTERO || type == RAPTOR) crest(c, k);
         c.save();
         c.rotate(-jaw * 32, -36 * k, -76 * k);
         r.set(-64 * k, -80 * k, -32 * k, -70 * k);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(paper);
+        p.setColor(skin);
         c.drawRoundRect(r, 5 * k, 5 * k, p);
         p.setStyle(Paint.Style.STROKE);
         p.setColor(ink);
@@ -863,6 +895,99 @@ final class DinoView extends View {
         c.restore();
     }
 
+    /** Big, bold back armour, outlined in ink so it reads: rex spikes, stego plates, small rows for the rest. */
+    private void backSpines(Canvas c, float k) {
+        p.setStrokeWidth(2.2f * k);
+        int n = type == STEGO ? 6 : type == REX ? 8 : 7;
+        for (int i = 0; i < n; i++) {
+            float f = i / (float) (n - 1);
+            float sx = -24 + f * 62, sy = -57 + (float) Math.pow(f, 2) * 24;    // along the back down to the tail
+            float bulge = 1 - Math.abs(f - 0.35f) * 1.1f;                   // tallest over the shoulders
+            path.reset();
+            if (type == STEGO) {
+                float hgt = 14 + 16 * bulge, wd = 7 + 4 * bulge;
+                path.moveTo((sx - wd) * k, (sy + 4) * k);
+                path.quadTo((sx - wd - 2) * k, (sy - hgt * 0.6f) * k, sx * k, (sy - hgt) * k);
+                path.quadTo((sx + wd + 2) * k, (sy - hgt * 0.6f) * k, (sx + wd) * k, (sy + 4) * k);
+            } else {
+                float hgt = (type == REX ? 12 + 10 * bulge : 7 + 5 * bulge), wd = type == REX ? 6 : 4;
+                path.moveTo((sx - wd) * k, (sy + 4) * k);
+                path.lineTo((sx - 2) * k, (sy - hgt) * k);      // leans back: sharper, meaner
+                path.lineTo((sx + wd) * k, (sy + 4) * k);
+            }
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(i % 2 == 0 || type != STEGO ? rust : 0xFFD9472F);
+            c.drawPath(path, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setColor(ink);
+            c.drawPath(path, p);
+        }
+    }
+
+    /** Triceratops: a frill behind the skull and three horns. */
+    private void horns(Canvas c, float k) {
+        p.setStrokeWidth(2.2f * k);
+        r.set(-40 * k, -108 * k, -18 * k, -76 * k);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        c.drawOval(r, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        c.drawOval(r, p);
+        float[][] hs = {{-58, -94, -66, -112}, {-46, -94, -52, -114}, {-66, -82, -78, -90}};
+        for (float[] hh : hs) {
+            path.reset();
+            path.moveTo((hh[0] - 3) * k, hh[1] * k);
+            path.lineTo(hh[2] * k, hh[3] * k);
+            path.lineTo((hh[0] + 3) * k, hh[1] * k);
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFFFF4D6);
+            c.drawPath(path, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setColor(ink);
+            c.drawPath(path, p);
+        }
+    }
+
+    /** Raptor feathers / ptero crest on the back of the head. */
+    private void crest(Canvas c, float k) {
+        p.setStrokeWidth(2.2f * k);
+        path.reset();
+        path.moveTo(-40 * k, -92 * k);
+        path.lineTo(type == PTERO ? -12 * k : -24 * k, (type == PTERO ? -104 : -100) * k);
+        path.lineTo(-32 * k, -84 * k);
+        path.close();
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        c.drawPath(path, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setColor(ink);
+        c.drawPath(path, p);
+    }
+
+    /** Ptero-Rex: two big flapping wings behind the body. */
+    private void wings(Canvas c, float k, float t) {
+        float flap = (float) Math.sin(t * 7) * 22;
+        p.setStrokeWidth(2.4f * k);
+        for (int s = 0; s < 2; s++) {
+            float tip = -110 - flap + s * 14;
+            path.reset();
+            path.moveTo(-10 * k, -54 * k);
+            path.lineTo((24 + s * 12) * k, tip * k);
+            path.quadTo((40 + s * 10) * k, (-80 - flap * 0.4f) * k, (34 + s * 6) * k, -52 * k);
+            path.quadTo(14 * k, -60 * k, -10 * k, -54 * k);
+            path.close();
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(s == 0 ? mix(skin, ink, 0.25f) : skin);
+            c.drawPath(path, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setColor(ink);
+            c.drawPath(path, p);
+        }
+    }
+
     /** Smoke from its back, in screen space: always rises, grows and fades (it used to fall when the dino tilted). */
     private void smoke(Canvas c, float x, float g, float k, float t) {
         p.setStyle(Paint.Style.FILL);
@@ -887,7 +1012,7 @@ final class DinoView extends View {
 
     private void fillStroke(Canvas c) {
         p.setStyle(Paint.Style.FILL);
-        p.setColor(paper);
+        p.setColor(skin);
         c.drawPath(path, p);
         p.setStyle(Paint.Style.STROKE);
         p.setColor(ink);
