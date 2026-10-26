@@ -949,7 +949,7 @@ final class DinoView extends View {
 
     /** Big, bold back armour, outlined in ink so it reads: rex spikes, stego plates, small rows for the rest. */
     private void backSpines(Canvas c, float k) {
-        p.setStrokeWidth(2.2f * k);
+        p.setStrokeWidth(2.6f * k);
         int n = type == STEGO ? 6 : type == REX ? 8 : 7;
         for (int i = 0; i < n; i++) {
             float f = i / (float) (n - 1);
@@ -957,12 +957,12 @@ final class DinoView extends View {
             float bulge = 1 - Math.abs(f - 0.35f) * 1.1f;                   // tallest over the shoulders
             path.reset();
             if (type == STEGO) {
-                float hgt = 14 + 16 * bulge, wd = 7 + 4 * bulge;
+                float hgt = 22 + 24 * bulge, wd = 9 + 5 * bulge;
                 path.moveTo((sx - wd) * k, (sy + 4) * k);
                 path.quadTo((sx - wd - 2) * k, (sy - hgt * 0.6f) * k, sx * k, (sy - hgt) * k);
                 path.quadTo((sx + wd + 2) * k, (sy - hgt * 0.6f) * k, (sx + wd) * k, (sy + 4) * k);
             } else {
-                float hgt = (type == REX ? 12 + 10 * bulge : 7 + 5 * bulge), wd = type == REX ? 6 : 4;
+                float hgt = (type == REX ? 22 + 18 * bulge : 14 + 10 * bulge), wd = type == REX ? 8 : 6;
                 path.moveTo((sx - wd) * k, (sy + 4) * k);
                 path.lineTo((sx - 2) * k, (sy - hgt) * k);      // leans back: sharper, meaner
                 path.lineTo((sx + wd) * k, (sy + 4) * k);

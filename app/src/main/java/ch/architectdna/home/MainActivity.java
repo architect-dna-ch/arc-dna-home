@@ -3628,10 +3628,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         dino = new DinoView(this, ink, paper, rust, new DinoView.Host() {
             @Override
             public float[] buddy() {
+                // From the parent + layout position: the buddy's own spin/hop (volume keys) must not move the dino's ground.
                 int[] a = new int[2], r = new int[2];
-                fox.getLocationInWindow(a);
+                ((View) fox.getParent()).getLocationInWindow(a);
                 rootFrame.getLocationInWindow(r);
-                return new float[]{a[0] - r[0] + fox.getWidth() / 2f, a[1] - r[1] + fox.getHeight()};
+                return new float[]{a[0] - r[0] + fox.getLeft() + fox.getWidth() / 2f, a[1] - r[1] + fox.getTop() + fox.getHeight()};
             }
 
             @Override

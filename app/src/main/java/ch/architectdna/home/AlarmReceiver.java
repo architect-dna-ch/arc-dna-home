@@ -25,6 +25,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         DiagLog.log("alarm receiver: " + action);
         if (Intent.ACTION_BOOT_COMPLETED.equals(action) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             AlarmScheduler.schedule(ctx);
+            if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) remindFullScreen(ctx);
             return;
         }
         if (!AlarmScheduler.ACTION_ALARM.equals(action)) return;
@@ -54,5 +55,30 @@ public class AlarmReceiver extends BroadcastReceiver {
         } catch (RuntimeException ignored) {
         }
         AlarmScheduler.schedule(ctx);      // tomorrow, same time
+    }
+
+    /**
+     * Android takes the full-screen access away again on each sideloaded update. If the bear alarm
+     * is on, a quiet notification leads straight to the switch: one tap instead of digging in settings.
+     */
+    private static void remindFullScreen(Context ctx) {
+        if (android.os.Build.VERSION.SDK_INT < 34) return;
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm == null || nm.canUseFullScreenIntent()) return;
+        if (!ctx.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean("alarmOn", false)) return;
+        DiagLog.log("full-screen access lost after update: reminder posted");
+        if (nm.getNotificationChannel("setup") == null) {
+            nm.createNotificationChannel(new NotificationChannel("setup", "Einrichtung", NotificationManager.IMPORTANCE_DEFAULT));
+        }
+        Intent open = new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+            android.net.Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pi = PendingIntent.getActivity(ctx, 7, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        nm.notify(43, new Notification.Builder(ctx, "setup")
+            .setSmallIcon(R.drawable.ic_cube)
+            .setContentTitle("Bär-Wecker: Vollbild wieder erlauben")
+            .setContentText("Android hat es beim Update zurückgesetzt. Antippen → Schalter an.")
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build());
     }
 }
