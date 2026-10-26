@@ -73,6 +73,12 @@ public class EnergyActivity extends Activity {
         pb.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
         panel.setBackground(pb);
         panel.setPadding(dp(20), dp(44), dp(20), dp(18));
+        // Below the status bar (and the camera cut-out), whatever its height.
+        panel.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top = insets.getSystemWindowInsetTop();
+            v.setPadding(dp(20), top + dp(14), dp(20), dp(18));
+            return insets;
+        });
         sv.addView(panel);
         root.addView(sv, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
@@ -403,8 +409,9 @@ public class EnergyActivity extends Activity {
         t.addView(i, new LinearLayout.LayoutParams(dp(54), dp(54)));
         TextView n = mono(9, ink2);
         n.setText(name.toUpperCase(Locale.GERMAN));
+        n.setGravity(Gravity.CENTER);
         n.setPadding(0, dp(6), 0, 0);
-        t.addView(n);
+        t.addView(n, new LinearLayout.LayoutParams(-1, -2));
         t.setOnClickListener(l);
         GridLayout.LayoutParams lp = new GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f));
         lp.width = 0;
