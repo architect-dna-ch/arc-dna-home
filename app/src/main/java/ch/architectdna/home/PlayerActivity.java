@@ -474,7 +474,8 @@ public class PlayerActivity extends Activity {
         }
 
         void set(Bitmap a, String l, int colour) {
-            if (a != art || !l.equals(label)) changedAt = SystemClock.uptimeMillis();
+            // Only a new title slides in (the cover comes as a fresh copy on every play / pause).
+            if (!l.equals(label)) changedAt = SystemClock.uptimeMillis();
             art = a;
             label = l;
             shell = colour == 0 ? 0xFF3A3A37 : colour;
