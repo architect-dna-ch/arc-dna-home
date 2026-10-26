@@ -112,6 +112,41 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         windows = (WindowManager) getSystemService(WINDOW_SERVICE);
         DiagLog.init(this);
         DiagLog.log("scroll service connected");
+        android.content.IntentFilter f = new android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF);
+        f.addAction(android.content.Intent.ACTION_USER_PRESENT);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screen, f, RECEIVER_NOT_EXPORTED);
+        else registerReceiver(screen, f);
+    }
+
+    /**
+     * Screen off / locked: the camera stops, no swipes on the lock screen or the shade. After
+     * unlocking, the app that was in front decides again.
+     */
+    private final android.content.BroadcastReceiver screen = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context c, android.content.Intent i) {
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+                if (!currentPkg.isEmpty()) lockedPkg = currentPkg;
+                main.removeCallbacks(settle);
+                currentPkg = "";
+                if (!mode.equals("off")) DiagLog.log("screen off: head scroll stopped");
+                apply("off");
+            } else if (!lockedPkg.isEmpty()) {
+                pendingPkg = lockedPkg;
+                lockedPkg = "";
+                main.removeCallbacks(settle);
+                main.postDelayed(settle, 500);
+            }
+        }
+    };
+    private String lockedPkg = "";
+    /** Until when the shade / a system panel counts as open (it doesn't always say when it closes). */
+    private long shadeUntil;
+
+    /** Lock screen showing, or the notification shade / a system panel on top: hands off. */
+    private boolean systemOnTop() {
+        android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
+        return SystemClock.uptimeMillis() < shadeUntil || (km != null && km.isKeyguardLocked());
     }
 
     @Override
@@ -122,15 +157,22 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             // Overlays, dialogs and keyboards report windows too, for a moment; only real apps
             // (with a launcher icon) that stay in front ~0.5 s may switch the mode.
+            if (pkg.equals("com.android.systemui")) {
+                // Notification shade, quick settings, lock screen: no swiping into those.
+                shadeUntil = SystemClock.uptimeMillis() + 6000;
+                setSpeed(0);
+            }
             if (ignored(pkg) || !launchable(pkg)) {
                 main.removeCallbacks(settle);
                 return;
             }
+            shadeUntil = 0;
             pendingPkg = pkg;
             main.removeCallbacks(settle);
             main.postDelayed(settle, 500);
         } else if (pkg.equals(currentPkg)) {
-            // A tap, long-press or typing in the app: rest for a moment.
+            // A tap, long-press or typing in the app: rest for a moment (and the shade is gone).
+            shadeUntil = 0;
             userTouched();
         }
     }
@@ -333,6 +375,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     /** One gentle swipe in the middle of the screen; slow enough not to fling. */
     private void swipe(float s, long ms) {
+        if (systemOnTop()) {
+            setSpeed(0);
+            return;
+        }
         DisplayMetrics dm = getResources().getDisplayMetrics();
         float h = dm.heightPixels, x = dm.widthPixels * 0.5f, y = h * 0.55f;
         float dist = h * (0.04f + 0.26f * Math.min(1f, Math.abs(s)));
@@ -555,6 +601,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     @Override
     public void onDestroy() {
         if (instance == this) instance = null;
+        try {
+            unregisterReceiver(screen);
+        } catch (RuntimeException ignored) {
+        }
         stopTracking();
         hidePill();
         if (head != null) head.close();
