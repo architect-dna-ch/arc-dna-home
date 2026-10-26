@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Whiteboard tile: the board on its stand, a rust scribble. -->
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M3,4h18v12h-18zM12,16v4M8,21l4,-1 4,1" />
+    <path android:strokeColor="@color/rust" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M6,12c2,-4 3,-4 4,-1s2,3 4,-2 3,-2 4,0" />
+</vector>

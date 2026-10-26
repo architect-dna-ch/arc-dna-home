@@ -126,6 +126,23 @@
             </intent-filter>
         </activity>
 
+        <!-- Whiteboard: boards with pseudo doctor titles ("Dr. Overloaded"). -->
+        <activity
+            android:name=".BoardActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_board"
+            android:label="Dr. Overloaded"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_board"
+            android:taskAffinity="ch.architectdna.home.board"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- NEXUS BREACH: the arena wave shooter, native. -->
         <activity
             android:name=".NexusActivity"

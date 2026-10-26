@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Whiteboard launcher icon in ARC-DNA style. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineJoin="round"
+        android:pathData="M20,24h56v36h-56z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M48,60v12M38,76l10,-4 10,4" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M28,50c6,-14 9,-14 12,-4s6,10 11,-6 9,-6 13,0" />
+</vector>
