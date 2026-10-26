@@ -67,6 +67,8 @@ public class GalleryActivity extends Activity {
     private TextView sheetTitle, sheetSub, count, allow;
     private Photo selected;
     private volatile boolean closed;
+    private FrameLayout root;
+    private Viewer viewer;
 
     private static final class Photo {
         Uri uri;
@@ -102,7 +104,7 @@ public class GalleryActivity extends Activity {
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
 
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         root.setFitsSystemWindows(true);
         root.setBackgroundColor(bg);
         LinearLayout col = new LinearLayout(this);
@@ -386,12 +388,332 @@ public class GalleryActivity extends Activity {
         });
     }
 
+    /** Opens the photo in our own full-screen viewer (no "open with" chooser). */
     private void open() {
         if (selected == null) return;
+        if (viewer == null) {
+            viewer = new Viewer();
+            root.addView(viewer, new FrameLayout.LayoutParams(-1, -1));
+        }
+        viewer.show(photos.indexOf(selected));
+    }
+
+    private void openElsewhere(Photo p) {
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(selected.uri, "image/*")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+            startActivity(Intent.createChooser(new Intent(Intent.ACTION_VIEW).setDataAndType(p.uri, "image/*")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Öffnen mit"));
         } catch (RuntimeException ignored) {
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (viewer != null && viewer.getVisibility() == View.VISIBLE) viewer.close();
+        else super.onBackPressed();
+    }
+
+    /** Full photo in screen resolution (EXIF rotation applied), off the main thread. */
+    private Bitmap full(Uri uri) {
+        try {
+            if (Build.VERSION.SDK_INT >= 28) {
+                int max = Math.max(getResources().getDisplayMetrics().widthPixels, getResources().getDisplayMetrics().heightPixels) * 2;
+                return android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(getContentResolver(), uri),
+                    (dec, info, src) -> {
+                        int w = info.getSize().getWidth(), h = info.getSize().getHeight(), sample = 1;
+                        while (Math.max(w, h) / (sample * 2) >= max) sample *= 2;
+                        dec.setTargetSampleSize(sample);
+                    });
+            }
+            //noinspection deprecation
+            return MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+        } catch (Exception | OutOfMemoryError e) {
+            return null;
+        }
+    }
+
+    /**
+     * The viewer: black, the photo fitted; pinch / double tap = zoom, drag = pan when zoomed,
+     * swipe sideways = previous / next, swipe down = close. Top bar: date, share, other app, close.
+     */
+    private final class Viewer extends FrameLayout {
+        private final PhotoView photo;
+        private final TextView title, sub;
+        private final LinearLayout bar;
+        private int index = -1;
+
+        Viewer() {
+            super(GalleryActivity.this);
+            setBackgroundColor(0xFF000000);
+            setClickable(true);
+            setVisibility(View.GONE);
+            photo = new PhotoView();
+            addView(photo, new FrameLayout.LayoutParams(-1, -1));
+            bar = new LinearLayout(GalleryActivity.this);
+            bar.setGravity(Gravity.CENTER_VERTICAL);
+            bar.setPadding(dp(18), dp(14), dp(10), dp(14));
+            GradientDrawable shade = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC000000, 0x00000000});
+            bar.setBackground(shade);
+            LinearLayout texts = new LinearLayout(GalleryActivity.this);
+            texts.setOrientation(LinearLayout.VERTICAL);
+            title = text(16, 0xFFFFFFFF, true);
+            title.setSingleLine(true);
+            texts.addView(title);
+            sub = mono(10, 0xFFB0B0AA);
+            sub.setPadding(0, dp(3), 0, 0);
+            texts.addView(sub);
+            bar.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
+            bar.addView(barButton("TEILEN", v -> {
+                Photo p = current();
+                if (p == null) return;
+                startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, p.uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Foto teilen"));
+            }));
+            bar.addView(barButton("↗", v -> {
+                Photo p = current();
+                if (p != null) openElsewhere(p);
+            }));
+            bar.addView(barButton("✕", v -> close()));
+            addView(bar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+            setFitsSystemWindows(true);
+        }
+
+        private TextView barButton(String label, View.OnClickListener l) {
+            TextView b = mono(12, 0xFFFFFFFF);
+            b.setText(label);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(dp(14), dp(10), dp(14), dp(10));
+            b.setOnClickListener(l);
+            return b;
+        }
+
+        Photo current() {
+            return index >= 0 && index < photos.size() ? photos.get(index) : null;
+        }
+
+        void show(int i) {
+            if (i < 0) return;
+            setVisibility(View.VISIBLE);
+            if (getAlpha() < 1f) {
+                setAlpha(0f);
+                animate().alpha(1f).setDuration(180).start();
+            }
+            go(i, 0);
+            bar.setAlpha(1f);
+        }
+
+        /** Shows photo i; dir = -1 / 1 slides in from that side, 0 = just fades. */
+        void go(int i, int dir) {
+            if (i < 0 || i >= photos.size()) {
+                photo.bounce(dir);
+                return;
+            }
+            index = i;
+            Photo p = photos.get(i);
+            selected = p;
+            title.setText(new SimpleDateFormat("EEEE, d. MMMM yyyy", Locale.GERMAN).format(new Date(p.time)));
+            sub.setText((new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(p.time))
+                + (p.bucket != null ? " · " + p.bucket : "") + " · " + (i + 1) + " / " + photos.size()).toUpperCase(Locale.GERMAN));
+            photo.set(p.thumb, dir);
+            io.execute(() -> {
+                Bitmap b = full(p.uri);
+                if (b != null) main.post(() -> {
+                    if (index == i && getVisibility() == View.VISIBLE) photo.upgrade(b);
+                });
+            });
+        }
+
+        void close() {
+            animate().alpha(0f).setDuration(180).withEndAction(() -> {
+                setVisibility(View.GONE);
+                setAlpha(1f);
+                photo.setTranslationY(0);
+                photo.set(null, 0);
+                Photo p = current();
+                if (p != null) {
+                    selected = p;
+                    globe.turnTo(p.lat, p.lon, Math.max(globe.zoom, 1.6f));
+                    showSheet();
+                }
+            }).start();
+        }
+
+        void toggleBar() {
+            bar.animate().alpha(bar.getAlpha() > 0.5f ? 0f : 1f).setDuration(160).start();
+        }
+    }
+
+    /** The zoomable photo inside the viewer. */
+    private final class PhotoView extends View {
+        private Bitmap bmp;
+        private final Matrix mx = new Matrix();
+        private final Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private float scale = 1f, fit = 1f, tx, ty, dragX, dragY, slide;
+        private boolean swiping, closing;
+        private final ScaleGestureDetector scaler;
+        private final android.view.GestureDetector gestures;
+
+        PhotoView() {
+            super(GalleryActivity.this);
+            scaler = new ScaleGestureDetector(GalleryActivity.this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override
+                public boolean onScale(ScaleGestureDetector d) {
+                    zoomAt(scale * d.getScaleFactor(), d.getFocusX(), d.getFocusY());
+                    return true;
+                }
+            });
+            gestures = new android.view.GestureDetector(GalleryActivity.this, new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onSingleTapConfirmed(MotionEvent e) {
+                    viewer.toggleBar();
+                    return true;
+                }
+
+                @Override
+                public boolean onDoubleTap(MotionEvent e) {
+                    animateZoom(scale > fit * 1.05f ? fit : fit * 2.5f, e.getX(), e.getY());
+                    return true;
+                }
+
+                @Override
+                public boolean onScroll(MotionEvent a, MotionEvent b, float dx, float dy) {
+                    if (scaler.isInProgress()) return true;
+                    if (scale > fit * 1.02f) {
+                        tx -= dx;
+                        ty -= dy;
+                        clampPan();
+                    } else {
+                        // At fit: sideways = next / previous, down = close.
+                        if (!swiping && !closing) {
+                            float ax = Math.abs(b.getX() - a.getX()), ay = Math.abs(b.getY() - a.getY());
+                            if (ax > dp(12) && ax > ay) swiping = true;
+                            else if (b.getY() - a.getY() > dp(12) && ay > ax) closing = true;
+                        }
+                        if (swiping) slide = b.getX() - a.getX();
+                        if (closing) {
+                            dragY = Math.max(0, b.getY() - a.getY());
+                            setTranslationY(dragY);
+                            viewer.setBackgroundColor(black(Math.max(0, 1 - dragY / (getHeight() * 0.6f))));
+                        }
+                    }
+                    invalidate();
+                    return true;
+                }
+            });
+        }
+
+        private int black(float a) {
+            return ((int) (255 * a) << 24);
+        }
+
+        void set(Bitmap b, int dir) {
+            bmp = b;
+            scale = fit = 0;
+            slide = dir * getWidth() * 0.35f;      // next comes in from the right
+            fitNow();
+            if (dir != 0) settleSlide();
+            invalidate();
+        }
+
+        /** The sharp version arrives: keep the same view (zoom and pan) on it. */
+        void upgrade(Bitmap b) {
+            if (bmp != null && bmp.getWidth() > 0) {
+                float k = bmp.getWidth() / (float) b.getWidth();
+                bmp = b;
+                scale *= k;
+                fit *= k;
+            } else {
+                bmp = b;
+                fitNow();
+            }
+            invalidate();
+        }
+
+        private void fitNow() {
+            if (bmp == null || getWidth() == 0) return;
+            fit = Math.min(getWidth() / (float) bmp.getWidth(), getHeight() / (float) bmp.getHeight());
+            scale = fit;
+            tx = (getWidth() - bmp.getWidth() * scale) / 2;
+            ty = (getHeight() - bmp.getHeight() * scale) / 2;
+        }
+
+        private void zoomAt(float s, float fx, float fy) {
+            s = Math.max(fit, Math.min(fit * 8, s));
+            tx = fx - (fx - tx) * s / scale;
+            ty = fy - (fy - ty) * s / scale;
+            scale = s;
+            clampPan();
+            invalidate();
+        }
+
+        private void animateZoom(float to, float fx, float fy) {
+            android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(scale, to);
+            a.setDuration(220);
+            a.setInterpolator(new android.view.animation.DecelerateInterpolator());
+            a.addUpdateListener(v -> zoomAt((float) v.getAnimatedValue(), fx, fy));
+            a.start();
+        }
+
+        private void clampPan() {
+            if (bmp == null) return;
+            float bw = bmp.getWidth() * scale, bh = bmp.getHeight() * scale;
+            tx = bw <= getWidth() ? (getWidth() - bw) / 2 : Math.max(getWidth() - bw, Math.min(0, tx));
+            ty = bh <= getHeight() ? (getHeight() - bh) / 2 : Math.max(getHeight() - bh, Math.min(0, ty));
+        }
+
+        private void settleSlide() {
+            android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(slide, 0);
+            a.setDuration(200);
+            a.setInterpolator(new android.view.animation.DecelerateInterpolator());
+            a.addUpdateListener(v -> {
+                slide = (float) v.getAnimatedValue();
+                invalidate();
+            });
+            a.start();
+        }
+
+        void bounce(int dir) {
+            slide = dir * dp(40);
+            settleSlide();
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int ow, int oh) {
+            fitNow();
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            if (bmp == null || bmp.isRecycled()) return;
+            if (fit == 0) fitNow();
+            mx.reset();
+            mx.postScale(scale, scale);
+            mx.postTranslate(tx + slide, ty);
+            c.drawBitmap(bmp, mx, pp);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            scaler.onTouchEvent(e);
+            gestures.onTouchEvent(e);
+            int a = e.getActionMasked();
+            if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                if (swiping) {
+                    swiping = false;
+                    if (Math.abs(slide) > getWidth() * 0.18f) viewer.go(viewer.index + (slide < 0 ? 1 : -1), slide < 0 ? 1 : -1);
+                    else settleSlide();
+                }
+                if (closing) {
+                    closing = false;
+                    if (dragY > getHeight() * 0.18f) {
+                        viewer.close();
+                    } else {
+                        animate().translationY(0).setDuration(180).start();
+                        viewer.setBackgroundColor(0xFF000000);
+                    }
+                    dragY = 0;
+                }
+            }
+            return true;
         }
     }
 
