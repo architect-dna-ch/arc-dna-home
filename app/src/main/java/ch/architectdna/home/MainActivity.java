@@ -2374,8 +2374,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** How far along your own calibrated nod the tilt is (0 = neutral, 1 = your full nod). */
     static float nodFraction(SharedPreferences p, float tilt) {
         float mid = p.getFloat("nodMid", 0f);
-        float up = Math.max(2.5f, p.getFloat("nodUp", mid + 8f) - mid);
-        float down = Math.max(2.5f, mid - p.getFloat("nodDown", mid - 8f));
+        // At least 5° each way, so a tiny calibrated nod doesn't make scrolling twitchy.
+        float up = Math.max(5f, p.getFloat("nodUp", mid + 8f) - mid);
+        float down = Math.max(5f, mid - p.getFloat("nodDown", mid - 8f));
         return tilt > 0 ? tilt / up : -tilt / down;
     }
 
@@ -2476,7 +2477,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             float up = calibN[0] > 0 ? calibAcc[0] / calibN[0] : 8f;
             float mid = calibN[1] > 0 ? calibAcc[1] / calibN[1] : 0f;
             float down = calibN[2] > 0 ? calibAcc[2] / calibN[2] : -8f;
-            if (calibN[0] < 5 || calibN[2] < 5 || up - mid < 1.5f || mid - down < 1.5f) {
+            // The neutral reading often drifts (you settle a bit up or down); what matters is that up and
+            // down are clearly apart. Then the neutral point goes back between them if it slipped outside.
+            if (up - down >= 4f && (mid > up - 2f || mid < down + 2f)) mid = (up + down) / 2f;
+            if (calibN[0] < 5 || calibN[2] < 5 || up - down < 4f) {
                 // Hardly any movement (or no face) between the dots: don't save a useless calibration.
                 DiagLog.log(String.format(Locale.ROOT, "nod calibration rejected: up %+.1f°, down %+.1f°", up - mid, down - mid));
                 calibText.setText("Kein Nicken erkannt – deutlicher nicken");
