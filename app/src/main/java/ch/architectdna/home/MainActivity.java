@@ -1344,6 +1344,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
             say(lines[random.nextInt(lines.length)], 1200);
         });
+        // About one throw in four misses, and the buddy takes it out on you.
+        if (random.nextInt(4) == 0) {
+            String[] angry = {"Daneben?!", "Echt jetzt?", "Grrr.", "Na warte …"};
+            holder[0].miss(() -> {
+                voice.thud();
+                hop();
+                say(angry[random.nextInt(angry.length)], 900);
+            }, () -> {
+                voice.thud();
+                if (cracks == null) {
+                    cracks = new CrackView(this, ink);
+                    rootFrame.addView(cracks, new FrameLayout.LayoutParams(-1, -1));
+                }
+                cracks.bringToFront();
+                cracks.crack(rootFrame.getWidth() / 2f, rootFrame.getHeight() * 0.5f);
+            });
+        }
         rootFrame.addView(holder[0], new FrameLayout.LayoutParams(-1, -1));
         leftIcon = null;
     }

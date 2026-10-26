@@ -39,6 +39,21 @@ final class CrumpleView extends View {
         onLand = land;
     }
 
+    /*
+     * Sometimes the throw misses: the ball bounces next to the bin, the buddy gets angry and slams
+     * the bin at you: it rushes at the screen, growing (like the bear), sticks to the glass for
+     * 2.5 s, then slides off.
+     */
+    private static final long BOUNCE = 520, FUME = 260, SMASH = 240, STUCK = 2500, SLIDE = 420;
+    private boolean miss, missed, smashed;
+    private Runnable onMiss, onSmash;
+
+    void miss(Runnable angry, Runnable smash) {
+        miss = true;
+        onMiss = angry;
+        onSmash = smash;
+    }
+
     CrumpleView(Context c, Drawable icon, float binX, float binY, int paper, int line, int ink, int rust, Runnable done) {
         super(c);
         this.icon = icon;
@@ -71,6 +86,10 @@ final class CrumpleView extends View {
         float w = getWidth(), h = getHeight(), cx = w / 2, cy = h * 0.45f;
         float sheetW = w * 0.62f, sheetH = h * 0.42f, ball = dp(26);
 
+        if (miss && t >= WHOOSH + CRUSH) {
+            drawMiss(c, t - WHOOSH - CRUSH, w, h, cx, cy, ball);
+            return;
+        }
         // The bin pops up next to the buddy as soon as the crushing starts.
         float binA = t < WHOOSH ? 0 : Math.min(1, (t - WHOOSH) / 200f);
         if (t > WHOOSH + CRUSH + THROW + DROP) binA = Math.max(0, 1 - (t - (WHOOSH + CRUSH + THROW + DROP)) / 250f);
@@ -107,6 +126,72 @@ final class CrumpleView extends View {
         }
 
         if (t < WHOOSH + CRUSH + THROW + DROP + 260) postInvalidateOnAnimation();
+        else if (done != null) post(done);
+    }
+
+    /** The missed throw, the angry buddy and the bin in your face. t counts from the throw. */
+    private void drawMiss(Canvas c, long t, float w, float h, float cx, float cy, float ball) {
+        float floor = binY + dp(16), landX = binX + dp(58);
+        long bounceEnd = THROW + BOUNCE, smashStart = bounceEnd + FUME, stuckStart = smashStart + SMASH,
+            slideStart = stuckStart + STUCK, end = slideStart + SLIDE;
+        // The bin sits next to the buddy until it's grabbed.
+        if (t < smashStart) drawBin(c, Math.min(1, t / 200f), 0);
+        if (t < THROW) {
+            float k = t / (float) THROW;
+            float x = cx + (landX - cx) * k, y = cy + (floor - cy) * k - (float) Math.sin(k * Math.PI) * h * 0.24f;
+            drawBall(c, x, y, ball * (1 - 0.35f * k), k * 720);
+        } else if (t < bounceEnd) {
+            // Two bounces beside the bin, rolling a little further.
+            float k = (t - THROW) / (float) BOUNCE;
+            float hop = (float) Math.abs(Math.sin(k * Math.PI * 2)) * dp(26) * (1 - k);
+            drawBall(c, landX + dp(26) * k, floor - hop, ball * 0.65f, 720 + k * 300);
+            if (!missed) {
+                missed = true;
+                if (onMiss != null) onMiss.run();
+            }
+        } else {
+            drawBall(c, landX + dp(26), floor, ball * 0.65f, 1020);
+        }
+        if (t >= smashStart && t < end) {
+            float big = w * 0.95f / dp(34), x, y, sx, sy, rot, a = 1;
+            if (t < stuckStart) {
+                // Rushing at you: accelerating, growing, a little spin.
+                float k = (t - smashStart) / (float) SMASH;
+                k = k * k;
+                x = binX + (cx - binX) * k;
+                y = binY + (h * 0.5f - binY) * k;
+                sx = sy = 1 + (big - 1) * k;
+                rot = -25 * (1 - k);
+            } else if (t < slideStart) {
+                // Stuck to the glass: squashed flat, a tiny shiver.
+                if (!smashed) {
+                    smashed = true;
+                    if (onSmash != null) onSmash.run();
+                }
+                float shiver = (t - stuckStart) < 300 ? (float) Math.sin((t - stuckStart) * 0.25) * dp(4) : 0;
+                x = cx + shiver;
+                y = h * 0.5f;
+                sx = big * 1.06f;
+                sy = big * 0.94f;
+                rot = 0;
+            } else {
+                // Peels off and slides down.
+                float k = (t - slideStart) / (float) SLIDE;
+                x = cx;
+                y = h * 0.5f + h * 0.9f * k * k;
+                sx = big * 1.06f;
+                sy = big * 0.94f;
+                rot = 8 * k;
+                a = 1 - k * 0.5f;
+            }
+            c.save();
+            c.translate(x - binX, y - binY);
+            c.rotate(rot, binX, binY);
+            c.scale(sx, sy, binX, binY);
+            drawBin(c, a, 0);
+            c.restore();
+        }
+        if (t < end) postInvalidateOnAnimation();
         else if (done != null) post(done);
     }
 
