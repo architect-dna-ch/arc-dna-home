@@ -175,11 +175,28 @@ public class HistoryActivity extends Activity {
         line = night ? 0xFF2C2C29 : 0xFFE0E0D8;
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
-        all = MusicStats.history(this);
+        all = dedupe(MusicStats.history(this));
         plays = all;
         for (String[] p : all) counts.merge(key(p), 1, Integer::sum);
         setContentView(build());
         refresh();
+    }
+
+    /** Older logs have a song twice: once without the artist, a moment later with it. Keep the one with the artist. */
+    private static List<String[]> dedupe(List<String[]> in) {
+        List<String[]> out = new ArrayList<>();
+        for (String[] p : in) {
+            if (!out.isEmpty()) {
+                String[] prev = out.get(out.size() - 1);
+                boolean close = Math.abs(parse(prev[0]) - parse(p[0])) < 90_000 && prev[1].equals(p[1]);
+                if (close && (prev[2].isEmpty() || p[2].isEmpty())) {
+                    if (prev[2].isEmpty()) out.set(out.size() - 1, p);
+                    continue;
+                }
+            }
+            out.add(p);
+        }
+        return out;
     }
 
     private static String key(String[] p) {
@@ -662,8 +679,39 @@ public class HistoryActivity extends Activity {
         private final Map<String[], Double> hours = new java.util.IdentityHashMap<>();
         private final java.util.Set<String[]> picked = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
+        private double yaw;
+        private boolean dragging;
+        private float lastX;
+
         PlayGlobe() {
             super(HistoryActivity.this);
+        }
+
+        double hourOf(String[] q) {
+            Double hour = hours.get(q);
+            if (hour == null) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(parse(q[0]));
+                hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60.0;
+                hours.put(q, hour);
+            }
+            return hour;
+        }
+
+        @Override
+        public boolean onTouchEvent(android.view.MotionEvent e) {
+            int a = e.getActionMasked();
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                dragging = true;
+                lastX = e.getX();
+                getParent().requestDisallowInterceptTouchEvent(true);
+            } else if (a == android.view.MotionEvent.ACTION_MOVE) {
+                yaw += (e.getX() - lastX) / (getWidth() * 0.3);
+                lastX = e.getX();
+            } else {
+                dragging = false;
+            }
+            return true;
         }
 
         @Override
@@ -671,7 +719,21 @@ public class HistoryActivity extends Activity {
             picked.clear();
             picked.addAll(plays);
             float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.44f;
-            double yaw = android.os.SystemClock.uptimeMillis() / 9000.0;
+            // A narrowed selection turns to the front (its average hour); otherwise a slow spin. Drag to turn by hand.
+            if (dragging) {
+                // the finger decides
+            } else if (plays.size() < all.size() && !plays.isEmpty()) {
+                double sx = 0, sy = 0;
+                for (String[] q : plays) {
+                    double a = hourOf(q) / 24 * Math.PI * 2;
+                    sx += Math.sin(a);
+                    sy += Math.cos(a);
+                }
+                double target = -Math.atan2(sx, sy), d = Math.atan2(Math.sin(target - yaw), Math.cos(target - yaw));
+                yaw += d * 0.08;
+            } else {
+                yaw += 0.003;
+            }
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(dp(1));
             p.setColor(line);
@@ -683,14 +745,7 @@ public class HistoryActivity extends Activity {
                 for (String[] q : all) {
                     boolean in = picked.contains(q);
                     if ((pass == 1) != in) continue;            // selection drawn on top
-                    Double hour = hours.get(q);
-                    if (hour == null) {
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTimeInMillis(parse(q[0]));
-                        hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60.0;
-                        hours.put(q, hour);
-                    }
-                    double lon = hour / 24 * Math.PI * 2 + yaw;
+                    double lon = hourOf(q) / 24 * Math.PI * 2 + yaw;
                     double lat = ((q[2].hashCode() & 0xFFFF) / 65535.0 - 0.5) * 2.4;
                     double x = Math.cos(lat) * Math.sin(lon), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon);
                     if (z < -0.2 && !in) continue;
