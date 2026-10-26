@@ -2344,7 +2344,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onTilt(float pitch) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
-        faceLostAt = 0;
         if (faceWatch) {
             if (edgeLight != null) edgeLight.face(true);
             return;                 // only watching whether you face the screen; no scrolling
@@ -2668,7 +2667,26 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onLost() {
         if (edgeLight != null) edgeLight.face(false);
         setHeadSpeed(0);
-        // The dino waits until you look away: no face for 3 s, at most one visit per 5 minutes.
+        noteAway();
+    }
+
+    /** Facing the screen? Head turned more than ~25° aside or tipped far up / down counts as looking away. */
+    private float facingPitch = Float.NaN;
+
+    @Override
+    public void onPose(float pitch, float yaw) {
+        lastFaceEvent = android.os.SystemClock.uptimeMillis();
+        if (Float.isNaN(facingPitch)) facingPitch = pitch;
+        boolean away = Math.abs(yaw) > 25 || Math.abs(pitch - facingPitch) > 22;
+        if (away) {
+            noteAway();
+        } else {
+            faceLostAt = 0;
+            facingPitch += (pitch - facingPitch) * 0.05f;      // follows how you hold the phone
+        }
+    }
+
+    private void noteAway() {
         long now = android.os.SystemClock.uptimeMillis();
         lastFaceEvent = now;
         if (faceLostAt == 0) faceLostAt = now;
@@ -3607,13 +3625,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
             @Override
             public void lockNow() {
-                if (!ScrollAssistService.lockScreen()) {
+                boolean ok = ScrollAssistService.lockScreen();
+                DiagLog.log("dino lock: " + (ok ? "locked" : "accessibility service not running"));
+                if (!ok) {
                     Toast.makeText(MainActivity.this, "Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen)", Toast.LENGTH_LONG).show();
                 }
                 DiagLog.log("dino black hole → lock");
             }
         });
         if (blackHole) dino.blackHole();
+        DiagLog.log(blackHole ? "dino black hole" : "dino comic visit");
         rootFrame.addView(dino, new FrameLayout.LayoutParams(-1, -1));
         DiagLog.log("dino visit");
     }

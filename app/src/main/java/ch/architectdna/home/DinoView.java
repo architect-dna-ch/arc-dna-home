@@ -211,8 +211,9 @@ final class DinoView extends View {
     /* ---------- black hole: walk in (1.5 s), mouth opens into a vortex, everything spirals in, lock at 7.5 s ---------- */
 
     private void drawVacuum(Canvas c, float t, float w, float h, float ground, float size, float k, float mid) {
-        if (t < 1.5f) {
-            float x = w + 80 * k - (w + 80 * k - mid) * ease(t / 1.5f);
+        // 0–1.4 s: stomps in from the right.
+        if (t < 1.4f) {
+            float x = w + 80 * k - (w + 80 * k - mid) * ease(t / 1.4f);
             if ((int) (t * 2.4f) != lastStep) {
                 lastStep = (int) (t * 2.4f);
                 host.stomp();
@@ -220,15 +221,22 @@ final class DinoView extends View {
             drawSide(c, x, ground, k, 0, t, true, true);
             return;
         }
-        float mx = mid - 54 * k, my = ground - 76 * k;      // its mouth
-        float pull = clamp((t - 1.8f) / 5.2f);
+        // 1.4–2.6 s: turns to you and comes up to the glass (like the bin), mouth opening wide.
+        float come = ease((t - 1.4f) / 1.2f);
+        float sc = 1 + 0.9f * come, groundC = ground + (h * 0.78f - ground) * come;
+        float mx = mid - 54 * k * sc, my = groundC - 76 * k * sc;      // its mouth on screen
+        float pull = clamp((t - 2.4f) / 4.5f);
         host.vacuum(pull * pull, mx, my);
-        if (once(6, t, 1.8f)) host.chomp();
+        if (once(6, t, 2.4f)) host.chomp();
+        c.save();
+        c.translate(0, groundC - ground);
+        c.scale(sc, sc, mid, ground);
         look = true;
-        drawSide(c, mid, ground, k, 1, t, false, true);
+        drawSide(c, mid, ground, k, Math.min(1, come * 1.4f), t, false, true);
         look = false;
+        c.restore();
         // The vortex in the mouth: a dark disc with spiral arms, growing.
-        float rr = (10 + 60 * pull) * k;
+        float rr = (8 + 60 * pull) * k * sc * 0.6f;
         p.setStyle(Paint.Style.FILL);
         p.setColor(0xFF000000);
         c.drawCircle(mx, my, rr, p);
@@ -245,12 +253,12 @@ final class DinoView extends View {
                 else path.lineTo(px, py);
             }
             p.setColor(arm % 2 == 0 ? rust : 0xFF8A4BFF);
-            p.setAlpha((int) (200 * (0.3f + pull)));
+            p.setAlpha((int) (200 * (0.3f + 0.7f * pull)));
             p.setStrokeWidth(dp(2.5f));
             c.drawPath(path, p);
         }
         p.setAlpha(255);
-        // Fade to black, then lock.
+        // 6.9–7.5 s: black, then the lock.
         if (t > 6.9f) {
             p.setStyle(Paint.Style.FILL);
             p.setColor(0xFF000000);

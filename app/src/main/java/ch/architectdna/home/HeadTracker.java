@@ -64,6 +64,10 @@ final class HeadTracker implements LifecycleOwner {
         /** Debug mode only: a small copy of the camera frame plus what was found in it. Main thread. */
         default void onDebug(Debug d) {
         }
+
+        /** NOD: the whole head pose (pitch up / down, yaw left / right in degrees). Main thread. */
+        default void onPose(float pitch, float yaw) {
+        }
     }
 
     /** What the tracker sees and computes, for the debug corner. Points are 0..1 of the frame. */
@@ -243,8 +247,9 @@ final class HeadTracker implements LifecycleOwner {
                     if (running) listener.onLost();
                 });
             } else {
-                float pitch = faces.get(0).getHeadEulerAngleX();
+                float pitch = faces.get(0).getHeadEulerAngleX(), yaw = faces.get(0).getHeadEulerAngleY();
                 main.post(() -> {
+                    if (running) listener.onPose(pitch, yaw);
                     if (running) listener.onTilt(pitch);
                 });
             }
