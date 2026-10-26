@@ -2335,6 +2335,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      */
     @Override
     public void onTilt(float pitch) {
+        lastFaceEvent = android.os.SystemClock.uptimeMillis();
+        faceLostAt = 0;
         if (edgeLight != null) edgeLight.face(true);
         if (calibStage >= 0) {
             if (calibCollect && calibStage < 3) {
@@ -2654,6 +2656,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onLost() {
         if (edgeLight != null) edgeLight.face(false);
         setHeadSpeed(0);
+        // The dino waits until you look away: no face for 3 s, at most one visit per 5 minutes.
+        long now = android.os.SystemClock.uptimeMillis();
+        lastFaceEvent = now;
+        if (faceLostAt == 0) faceLostAt = now;
+        if (now - faceLostAt > 3000 && now - lastDinoAt > DINO_EVERY && homeInFront && prefs.getBoolean("dino", true)) {
+            startDino();
+            if (dino != null) lastDinoAt = now;
+        }
     }
 
     @Override
@@ -3483,10 +3493,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private static final long DINO_EVERY = 5 * 60_000L;
     private DinoView dino;
+    private long faceLostAt, lastFaceEvent, lastDinoAt = -DINO_EVERY;
     private final Runnable dinoTick = new Runnable() {
         @Override
         public void run() {
-            if (homeInFront && prefs.getBoolean("dino", true)) startDino();
+            // With the camera on, the dino only comes when you look away (onLost); the timer is for camera off.
+            boolean cameraOn = android.os.SystemClock.uptimeMillis() - lastFaceEvent < 10_000;
+            if (homeInFront && prefs.getBoolean("dino", true) && !cameraOn) {
+                lastDinoAt = android.os.SystemClock.uptimeMillis();
+                startDino();
+            }
             handler.removeCallbacks(this);
             handler.postDelayed(this, DINO_EVERY);
         }
