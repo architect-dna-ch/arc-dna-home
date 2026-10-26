@@ -100,8 +100,95 @@ final class DinoView extends View {
         dinoRect.set(x - 72 * k * sc, g - 104 * k * sc, x + 86 * k * sc, g);
     }
 
+    /* ================= Weapons from the bone shop ================= */
+
+    private static final int FIST = 0, STONE = 1, FLAME = 2, SABER = 3, SPELL = 4;
+    private static final String[] W_NAME = {"FAUST", "STEINE", "FLAMMEN", "LASER", "SPRUCH"};
+    private static final String[] W_ICON = {"👊", "🪨", "🔥", "⚔️", "📜"};
+    /** Bones: once for a weapon, every time for the spell (it crumbles the dino at once). */
+    private static final int[] W_COST = {0, 15, 40, 70, 60};
+    private int weapon = FIST, bonesWon;
+    private final RectF[] slots = {new RectF(), new RectF(), new RectF(), new RectF(), new RectF()};
+    private float fuel, fingerX, fingerY, lastSlash = -9, crumbleAt = -1, shopMsgAt = -9;
+    private String shopMsg = "";
+    private boolean flaming;
+    private final List<float[]> stones = new ArrayList<>();     // from x, y, to x, y, thrown at
+    private final List<float[]> trail = new ArrayList<>();      // x, y, time
+    private final RectF crumbleRect = new RectF();
+
+    private android.content.SharedPreferences store() {
+        return getContext().getSharedPreferences("home", Context.MODE_PRIVATE);
+    }
+
+    private int bones() {
+        return store().getInt("dinoBones", 15);       // a few to start with: enough for the stones
+    }
+
+    private boolean owns(int w) {
+        return w == FIST || store().getBoolean("dinoWeapon" + w, false);
+    }
+
+    private void shopSay(String m, float ft) {
+        shopMsg = m;
+        shopMsgAt = ft;
+    }
+
+    /** A slot in the weapon bar was tapped: pick, buy, or cast the spell. */
+    private void pickWeapon(int i, float ft) {
+        int have = bones();
+        if (i == SPELL) {
+            if (crumbleAt >= 0) return;
+            if (have < W_COST[SPELL]) {
+                shopSay("Spruch kostet " + W_COST[SPELL] + " 🦴 – du hast " + have + ".", ft);
+                return;
+            }
+            store().edit().putInt("dinoBones", have - W_COST[SPELL]).apply();
+            crumbleAt = ft;
+            crumbleRect.set(dinoRect);
+            host.chomp();
+            return;
+        }
+        if (owns(i)) {
+            weapon = i;
+            store().edit().putInt("dinoWeaponSel", i).apply();
+            return;
+        }
+        if (have < W_COST[i]) {
+            shopSay(W_NAME[i] + ": noch " + (W_COST[i] - have) + " 🦴 sammeln.", ft);
+            return;
+        }
+        store().edit().putInt("dinoBones", have - W_COST[i]).putBoolean("dinoWeapon" + i, true).putInt("dinoWeaponSel", i).apply();
+        weapon = i;
+        shopSay("Gekauft: " + W_NAME[i] + "!", ft);
+        host.chomp();
+    }
+
+    /** A hit with dmg (tap = 1); false when it bounced off the triceratops' horns. */
+    private boolean damage(float dmg, float x, float y, float ft, boolean pop) {
+        if (charging) {
+            if (pop) pops.add(new float[]{x, y, ft, 0});
+            return false;
+        }
+        hp = Math.max(0, hp - dmg * (type == STEGO ? 0.5f : 1));     // stego plates: half damage
+        knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
+        knockY = Math.max(knockY, dp(46) * Math.min(1, dmg));
+        if (pop) {
+            pops.add(new float[]{x, y, ft, 1});
+            host.stomp();
+        }
+        return true;
+    }
+
     private void startFight() {
         fightAt = SystemClock.uptimeMillis();
+        int sel = store().getInt("dinoWeaponSel", FIST);
+        weapon = owns(sel) && sel != SPELL ? sel : FIST;
+        fuel = 4.5f;
+        flaming = false;
+        stones.clear();
+        trail.clear();
+        crumbleAt = -1;
+        bonesWon = 0;
         level = Math.max(1, Math.min(99, host.level()));
         maxHp = hp = (12 + level * 1.6f) * (type == RAPTOR ? 0.75f : 1);
         timeLimit = 20 + level * 0.2f;
@@ -122,16 +209,40 @@ final class DinoView extends View {
     private boolean fightTouch(android.view.MotionEvent e) {
         int a = e.getActionMasked();
         float x = e.getX(), y = e.getY(), w = getWidth(), h = getHeight();
-        if (fstate == FIGHT && a == android.view.MotionEvent.ACTION_DOWN) {
+        if (fstate == FIGHT) {
             float ft = (SystemClock.uptimeMillis() - fightAt) / 1000f;
-            boolean hit = dinoRect.contains(x, y) && !charging;     // the triceratops' horns block while it charges
-            if (hit) {
-                hp = Math.max(0, hp - (type == STEGO ? 0.5f : 1));     // stego plates: half damage
-                knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
-                knockY = dp(46);             // every kick knocks it down a bit, it springs back up
-                host.stomp();
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                for (int i = 0; i < slots.length; i++) {
+                    if (slots[i].contains(x, y)) {
+                        pickWeapon(i, ft);
+                        return true;
+                    }
+                }
             }
-            pops.add(new float[]{x, y, ft, hit ? 1 : 0});
+            if (crumbleAt >= 0) return true;
+            boolean down = a == android.view.MotionEvent.ACTION_DOWN, up = a == android.view.MotionEvent.ACTION_UP
+                || a == android.view.MotionEvent.ACTION_CANCEL;
+            if (weapon == FIST && down) {
+                // Every kick knocks it down a bit, it springs back up.
+                if (dinoRect.contains(x, y)) damage(1, x, y, ft, true);
+                else pops.add(new float[]{x, y, ft, 0});
+            } else if (weapon == STONE && down) {
+                stones.add(new float[]{w / 2f, h - dp(120), x, y, ft});
+            } else if (weapon == FLAME) {
+                flaming = !up;
+                fingerX = x;
+                fingerY = y;
+            } else if (weapon == SABER) {
+                if (down) trail.clear();
+                if (!up) {
+                    trail.add(new float[]{x, y, ft});
+                    // A swipe through the dino slashes (at most every 0.22 s).
+                    if (!down && dinoRect.contains(x, y) && ft - lastSlash > 0.22f && trail.size() > 2) {
+                        lastSlash = ft;
+                        damage(3, x, y, ft, true);
+                    }
+                }
+            }
             return true;
         }
         if (fstate == FLIGHT || fstate == UPLOAD) {
@@ -210,27 +321,44 @@ final class DinoView extends View {
                 hp = Math.max(0, hp - 0.35f);           // the robot helps a bit
             }
             hurt = hp / maxHp > 0.8f ? 0 : hp / maxHp > 0.6f ? 1 : hp / maxHp > 0.4f ? 2 : hp / maxHp > 0.2f ? 3 : 4;
-            c.save();
-            if (hurt >= 4) c.rotate(6 * (float) Math.sin(ft * 5), fx, ground);
-            drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, ft, amp > 0, !right);
-            c.restore();
-            if (hurt >= 4) smoke(c, fx, ground, k, ft);
-            markDino(fx, ground, k, 1);
+            float cd = crumbleAt < 0 ? -1 : ft - crumbleAt;
+            if (cd < 0.9f) {
+                c.save();
+                if (hurt >= 4) c.rotate(6 * (float) Math.sin(ft * 5), fx, ground);
+                if (cd >= 0) c.translate((rnd.nextFloat() - 0.5f) * dp(10) * cd, (rnd.nextFloat() - 0.5f) * dp(6) * cd);
+                drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, ft, amp > 0, !right);
+                c.restore();
+                if (cd >= 0) cracks(c, crumbleRect, cd / 0.9f);
+                else if (hurt >= 4) smoke(c, fx, ground, k, ft);
+            }
+            if (cd >= 0) {
+                crumble(c, crumbleRect, cd, k);
+                if (cd < 2.2f) bubble(c, "KRRRCHHHHHH!", crumbleRect.centerX(), crumbleRect.top - dp(10), true, true);
+                if (cd > 2.2f) hp = 0;
+            }
+            if (crumbleAt < 0) markDino(fx, ground, k, 1);
             float rx = Math.min(w - dp(40), fx + 100 * k), ry = ground - 150 * k + (float) Math.sin(ft * 3) * dp(4);
             drawRobot(c, rx, ry, dp(1), ft - lastZap < 0.2f);
             if (ft - lastZap < 0.2f) zap(c, rx - dp(22), ry + dp(10), fx, ground - 55 * k);
+            weaponsFx(c, w, h, ft, dt);
             drawPops(c, ft);
-            hud(c, w, TYPE_NAME[type] + " · LV " + level, hp / maxHp, Math.max(0, timeLimit - ft), rust);
+            weaponBar(c, w, h, ft);
+            hud(c, w, TYPE_NAME[type] + " · LV " + level + " · " + bones() + " 🦴", hp / maxHp, Math.max(0, timeLimit - ft), rust);
+            if (ft - shopMsgAt < 2f) bubble(c, shopMsg, w / 2, slots[0].top - dp(6), false, false);
             if (ft < 3f) bubble(c, TYPE_TIP[type], rx, ry - dp(30), false, false);
             else if (charging) bubble(c, "BLOCK!", fx, ground - 110 * k, true, false);
             else if (rage && ft % 2 < 0.8f) bubble(c, "WUT!", fx, ground - 110 * k, true, false);
             if (hp <= 0) {
                 fstate = KO;
                 phaseAt = ft;
+                flaming = false;
+                bonesWon = 6 + level / 2;
+                store().edit().putInt("dinoBones", bones() + bonesWon).apply();
                 host.levelUp();
                 host.chomp();
-            } else if (ft >= timeLimit) {
+            } else if (ft >= timeLimit && crumbleAt < 0) {     // a spell that's already crumbling still wins
                 fstate = FLIGHT;
+                flaming = false;
                 phaseAt = ft;
                 nextEat = ft + 0.8f;
                 cutAt = 4 + rnd.nextInt(5);
@@ -238,12 +366,16 @@ final class DinoView extends View {
         } else if (fstate == KO) {
             float d = ft - phaseAt, fall = ease(Math.min(1, d / 0.5f));
             hurt = 5;
-            c.save();
-            c.rotate(180 * fall, mid, ground - 47 * k * fall);
-            dead = fall > 0.5f;
-            drawSide(c, mid, ground, k, 0.4f, ft, false, true);
-            dead = false;
-            c.restore();
+            if (crumbleAt >= 0) {
+                crumble(c, crumbleRect, 2.2f + d, k);        // just the rubble left
+            } else {
+                c.save();
+                c.rotate(180 * fall, mid, ground - 47 * k * fall);
+                dead = fall > 0.5f;
+                drawSide(c, mid, ground, k, 0.4f, ft, false, true);
+                dead = false;
+                c.restore();
+            }
             // Stars circling.
             p.setStyle(Paint.Style.FILL);
             p.setColor(0xFFFFC400);
@@ -252,7 +384,7 @@ final class DinoView extends View {
                 c.drawCircle(mid + (float) Math.cos(a) * 30 * k, ground - 70 * k + (float) Math.sin(a) * 8 * k, 4 * k, p);
             }
             bubble(c, "K.O.!", mid, ground - 90 * k, true, true);
-            bubble(c, "🤖 Gewonnen! Dino jetzt Level " + Math.min(99, level + 1) + ".", w / 2, dp(150), false, false);
+            bubble(c, "🤖 Gewonnen! +" + bonesWon + " 🦴 · Dino jetzt Level " + Math.min(99, level + 1) + ".", w / 2, dp(150), false, false);
             if (d > 2.6f) {
                 fight(false);
                 endFight();
@@ -363,6 +495,159 @@ final class DinoView extends View {
         r.set(left, top + dp(2), left + (right - left) * clamp(frac), top + dp(12));
         p.setColor(colour);
         c.drawRoundRect(r, dp(5), dp(5), p);
+    }
+
+    /** Stones in flight, the flame stream, the laser trail. */
+    private void weaponsFx(Canvas c, float w, float h, float ft, float dt) {
+        float ox = w / 2f, oy = h - dp(120);
+        // Stones: an arc from the bottom to where you tapped; a hit if the dino is still there.
+        for (int i = stones.size() - 1; i >= 0; i--) {
+            float[] st = stones.get(i);
+            float f = (ft - st[4]) / 0.38f;
+            if (f >= 1) {
+                stones.remove(i);
+                if (crumbleAt < 0 && dinoRect.contains(st[2], st[3])) damage(2.5f, st[2], st[3], ft, true);
+                else pops.add(new float[]{st[2], st[3], ft, 0});
+                continue;
+            }
+            float sx = st[0] + (st[2] - st[0]) * f, sy = st[1] + (st[3] - st[1]) * f - (float) Math.sin(f * Math.PI) * dp(90);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF7A7570);
+            c.drawCircle(sx, sy, dp(8 - 3 * f), p);
+            p.setColor(0xFFA8A29C);
+            c.drawCircle(sx - dp(2), sy - dp(2), dp(3 - f), p);
+        }
+        // Flames: while the finger is down, a stream from the bottom to it; burns what it touches.
+        if (weapon == FLAME && flaming && crumbleAt < 0) {
+            if (fuel > 0) {
+                fuel = Math.max(0, fuel - dt);
+                p.setStyle(Paint.Style.FILL);
+                for (int i = 0; i < 26; i++) {
+                    float f = (i + rnd.nextFloat()) / 26f;
+                    float x = ox + (fingerX - ox) * f + (rnd.nextFloat() - 0.5f) * dp(18) * f;
+                    float y = oy + (fingerY - oy) * f + (rnd.nextFloat() - 0.5f) * dp(18) * f;
+                    p.setColor(f < 0.35f ? 0xFFFFF27A : f < 0.7f ? 0xFFFFA62B : 0xFFE5482C);
+                    p.setAlpha((int) (230 * (1 - f * 0.4f)));
+                    c.drawCircle(x, y, dp(5 + 13 * f), p);
+                }
+                p.setAlpha(255);
+                if (dinoRect.contains(fingerX, fingerY)) {
+                    if (damage(5.5f * dt, fingerX, fingerY, ft, false)) {
+                        knockY = Math.max(knockY, dp(8));
+                        if (rnd.nextFloat() < dt * 6) pops.add(new float[]{fingerX, fingerY - dp(20), ft, 1});
+                    }
+                }
+            } else if (ft - shopMsgAt > 2f) {
+                shopSay("Flammenwerfer leer – nächster Kampf wieder voll.", ft);
+            }
+        }
+        // Laser: a glowing trail of the last 0.2 s of your swipe.
+        for (int i = trail.size() - 1; i >= 0; i--) if (ft - trail.get(i)[2] > 0.2f) trail.remove(i);
+        if (trail.size() > 1) {
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            for (int pass = 0; pass < 2; pass++) {
+                p.setColor(pass == 0 ? 0x5533E0FF : 0xFFE9FDFF);
+                p.setStrokeWidth(dp(pass == 0 ? 14 : 4));
+                path.reset();
+                for (int i = 0; i < trail.size(); i++) {
+                    float[] q = trail.get(i);
+                    if (i == 0) path.moveTo(q[0], q[1]);
+                    else path.lineTo(q[0], q[1]);
+                }
+                c.drawPath(path, p);
+            }
+        }
+    }
+
+    /** The weapon bar along the bottom: owned ones to pick, the rest with their price in bones. */
+    private void weaponBar(Canvas c, float w, float h, float ft) {
+        float sw = Math.min((w - dp(32)) / 5f - dp(6), dp(82)), sh = dp(72);
+        float total = sw * 5 + dp(6) * 4, left = (w - total) / 2, top = h - dp(36) - sh;
+        int have = bones();
+        for (int i = 0; i < 5; i++) {
+            RectF s = slots[i];
+            s.set(left + i * (sw + dp(6)), top, left + i * (sw + dp(6)) + sw, top + sh);
+            boolean own = owns(i) && i != SPELL, sel = weapon == i && i != SPELL;
+            boolean afford = have >= W_COST[i];
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(sel ? 0xFFFFF4E8 : 0xF2FAFAF8);
+            c.drawRoundRect(s, dp(14), dp(14), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(sel ? 3 : 1.5f));
+            p.setColor(sel ? rust : 0xFF1A1A1A);
+            c.drawRoundRect(s, dp(14), dp(14), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(dp(24));
+            p.setAlpha(own || afford ? 255 : 110);
+            c.drawText(W_ICON[i], s.centerX(), s.top + dp(32), p);
+            p.setAlpha(255);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(10));
+            p.setLetterSpacing(0.04f);
+            String sub = own ? W_NAME[i] : W_COST[i] + " 🦴";
+            p.setColor(own ? 0xFF1A1A1A : afford ? rust : 0xFF9A9A98);
+            c.drawText(sub, s.centerX(), s.bottom - dp(14), p);
+            if (i == FLAME && own) {
+                // Fuel gauge.
+                float fw = s.width() - dp(20);
+                p.setColor(0xFFE0E0D8);
+                c.drawRect(s.left + dp(10), s.bottom - dp(8), s.left + dp(10) + fw, s.bottom - dp(5), p);
+                p.setColor(0xFFFFA62B);
+                c.drawRect(s.left + dp(10), s.bottom - dp(8), s.left + dp(10) + fw * fuel / 4.5f, s.bottom - dp(5), p);
+            }
+            p.setTextAlign(Paint.Align.LEFT);
+            p.setLetterSpacing(0);
+        }
+    }
+
+    /** Cracks spreading over the dino while the spell takes hold. */
+    private void cracks(Canvas c, RectF b, float f) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(dp(2.2f));
+        p.setColor(0xFF1A1A1A);
+        java.util.Random cr = new java.util.Random(7);
+        for (int i = 0; i < 9; i++) {
+            float x = b.left + b.width() * cr.nextFloat(), y = b.top + b.height() * cr.nextFloat();
+            path.reset();
+            path.moveTo(x, y);
+            for (int j = 0; j < 4; j++) {
+                x += (cr.nextFloat() - 0.5f) * dp(34) * f;
+                y += (cr.nextFloat() - 0.2f) * dp(26) * f;
+                path.lineTo(x, y);
+            }
+            c.drawPath(path, p);
+        }
+    }
+
+    /** The dino falls apart into chunks that tumble down and settle as a heap of rubble. */
+    private void crumble(Canvas c, RectF b, float d, float k) {
+        if (d < 0.9f) return;
+        float t = d - 0.9f;
+        java.util.Random cr = new java.util.Random(11);
+        p.setStyle(Paint.Style.FILL);
+        for (int i = 0; i < 46; i++) {
+            float x0 = b.left + b.width() * cr.nextFloat(), y0 = b.top + b.height() * (0.15f + 0.85f * cr.nextFloat());
+            float vx = (cr.nextFloat() - 0.5f) * dp(120), vy = -dp(60) * cr.nextFloat();
+            float size = dp(4 + 9 * cr.nextFloat()), spin = (cr.nextFloat() - 0.5f) * 720;
+            float x = x0 + vx * Math.min(t, 0.8f);
+            float y = Math.min(b.bottom - size * 0.5f, y0 + vy * t + dp(900) * t * t);     // gravity, lands on the ground
+            c.save();
+            c.rotate(spin * Math.min(t, 0.8f), x, y);
+            p.setColor(i % 4 == 0 ? rust : i % 3 == 0 ? ink : skin);
+            c.drawRect(x - size / 2, y - size / 2, x + size / 2, y + size / 2, p);
+            c.restore();
+        }
+        // Dust.
+        if (t < 1.2f) {
+            p.setColor(0xFF9A9A98);
+            for (int i = 0; i < 8; i++) {
+                p.setAlpha((int) (120 * (1 - t / 1.2f)));
+                c.drawCircle(b.left + b.width() * (i + 0.5f) / 8, b.bottom - dp(10) - t * dp(30), dp(10) + t * dp(24), p);
+            }
+            p.setAlpha(255);
+        }
     }
 
     private void drawPops(Canvas c, float ft) {
