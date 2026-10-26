@@ -1333,6 +1333,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         CrumpleView[] holder = new CrumpleView[1];
         holder[0] = new CrumpleView(this, leftIcon, binX, binY, paper, line, ink, rust,
             () -> rootFrame.removeView(holder[0]));
+        String[] lines = {"Weg damit!", "Tschüss!", "Treffer.", "Aufgeräumt.", "Und tschüss."};
+        holder[0].hooks(() -> voice.crumple(), () -> {
+            voice.thud();
+            hop();
+            say(lines[random.nextInt(lines.length)], 1200);
+        });
         rootFrame.addView(holder[0], new FrameLayout.LayoutParams(-1, -1));
         leftIcon = null;
     }

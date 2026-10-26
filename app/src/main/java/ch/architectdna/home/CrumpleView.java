@@ -29,7 +29,15 @@ final class CrumpleView extends View {
     private final Drawable icon;
     private final float binX, binY;
     private final Runnable done;
+    private Runnable onCrush, onLand;
+    private boolean crushed, landed;
     private long start = -1;
+
+    /** Sounds and the buddy's reaction hook in here. */
+    void hooks(Runnable crush, Runnable land) {
+        onCrush = crush;
+        onLand = land;
+    }
 
     CrumpleView(Context c, Drawable icon, float binX, float binY, int paper, int line, int ink, int rust, Runnable done) {
         super(c);
@@ -69,6 +77,14 @@ final class CrumpleView extends View {
         float lid = t > WHOOSH + CRUSH + THROW ? (float) Math.sin(Math.min(1, (t - WHOOSH - CRUSH - THROW) / (float) DROP) * Math.PI) : 0;
         drawBin(c, binA, lid);
 
+        if (!crushed && t >= WHOOSH) {
+            crushed = true;
+            if (onCrush != null) onCrush.run();
+        }
+        if (!landed && t >= WHOOSH + CRUSH + THROW) {
+            landed = true;
+            if (onLand != null) onLand.run();
+        }
         if (t < WHOOSH) {
             // 1. Whoosh: the sheet flies up from below the screen into the middle.
             float k = ease(t / (float) WHOOSH);
@@ -119,6 +135,19 @@ final class CrumpleView extends View {
         p.setStrokeWidth(dp(1));
         p.setColor(line);
         c.drawPath(path, p);
+        // Ruled lines and a centre fold, so it reads as paper (they fade as it's crushed).
+        c.save();
+        c.clipPath(path);
+        p.setColor(rust);
+        p.setAlpha((int) (90 * (1 - crush)));
+        c.drawLine(x - w / 2 + w * 0.12f, y - h / 2, x - w / 2 + w * 0.12f, y + h / 2, p);
+        p.setColor(line);
+        p.setAlpha((int) (200 * (1 - crush)));
+        for (float ly = y - h / 2 + h * 0.12f; ly < y + h / 2; ly += h * 0.08f) c.drawLine(x - w / 2, ly, x + w / 2, ly, p);
+        p.setColor(ink);
+        p.setAlpha((int) (40 * (1 - crush)));
+        c.drawLine(x, y - h / 2, x, y + h / 2, p);
+        c.restore();
         // Wrinkle lines.
         p.setColor(ink);
         p.setAlpha((int) (140 * crush));
@@ -137,23 +166,42 @@ final class CrumpleView extends View {
         }
     }
 
-    /** A fist from the side: rounded block with knuckles, pushing in. */
+    /**
+     * A fist seen from the side, knuckles towards the paper: a rounded palm, four knuckle bumps,
+     * the thumb folded over, and a rust sleeve leading off the screen edge.
+     */
     private void drawFist(Canvas c, float x, float y, int side, float k) {
-        float s = dp(30);
+        float s = dp(34);
+        c.save();
+        if (side > 0) c.scale(-1, 1, x, y);          // draw the left fist; mirror for the right
         p.setStyle(Paint.Style.FILL);
+        // Sleeve and forearm.
+        p.setColor(rust);
+        r.set(x - s * 4, y - s * 0.42f, x - s * 0.95f, y + s * 0.42f);
+        c.drawRoundRect(r, s * 0.12f, s * 0.12f, p);
         p.setColor(ink);
-        r.set(x - s / 2, y - s * 0.6f, x + s / 2, y + s * 0.6f);
-        c.drawRoundRect(r, s * 0.3f, s * 0.3f, p);
-        // The arm, off to the side.
-        r.set(side < 0 ? x - s * 3 : x + s * 0.4f, y - s * 0.32f, side < 0 ? x - s * 0.4f : x + s * 3, y + s * 0.32f);
+        r.set(x - s * 1.05f, y - s * 0.34f, x - s * 0.3f, y + s * 0.34f);
         c.drawRect(r, p);
-        p.setColor(paper);
-        p.setStrokeWidth(dp(1.5f));
-        p.setStyle(Paint.Style.STROKE);
-        for (int i = -1; i <= 1; i++) {
-            float kx = x - side * s * 0.35f;
-            c.drawLine(kx, y + i * s * 0.3f - s * 0.1f, kx, y + i * s * 0.3f + s * 0.1f, p);
+        // Palm.
+        r.set(x - s * 0.55f, y - s * 0.55f, x + s * 0.35f, y + s * 0.6f);
+        c.drawRoundRect(r, s * 0.28f, s * 0.28f, p);
+        // Four knuckles stacked along the front edge.
+        for (int i = 0; i < 4; i++) {
+            float ky = y - s * 0.42f + i * s * 0.29f;
+            c.drawCircle(x + s * 0.32f, ky, s * 0.17f, p);
         }
+        // Thumb folded across.
+        p.setColor(paper);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(dp(1.4f));
+        p.setStrokeCap(Paint.Cap.ROUND);
+        c.drawLine(x - s * 0.35f, y + s * 0.18f, x + s * 0.12f, y + s * 0.05f, p);
+        for (int i = 1; i < 4; i++) {
+            float ky = y - s * 0.42f + i * s * 0.29f - s * 0.145f;
+            c.drawLine(x + s * 0.18f, ky, x + s * 0.42f, ky, p);
+        }
+        c.restore();
+        p.setStyle(Paint.Style.FILL);
     }
 
     /** The crumpled ball, spinning. */

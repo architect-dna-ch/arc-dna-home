@@ -39,6 +39,38 @@ final class FoxVoice {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     /** Plays e.g. "Gekk-gekk-gekk!" or "Wa-pa-pa-pa!" on a background thread. */
+    /** Paper being crushed: a few hundred ms of crackle (short noise bursts). */
+    void crumple() {
+        play(() -> {
+            int n = (int) (0.38f * RATE);
+            short[] out = new short[n];
+            java.util.Random r = new java.util.Random();
+            double env = 0;
+            for (int i = 0; i < n; i++) {
+                if (r.nextInt(900) == 0) env = 0.5 + r.nextDouble() * 0.5;   // a new crinkle
+                env *= 0.9965;
+                double x = (r.nextDouble() * 2 - 1) * env * (1 - (double) i / n);
+                out[i] = (short) (x * 32767 * 0.35);
+            }
+            return out;
+        });
+    }
+
+    /** The ball landing in the bin: a soft low thud. */
+    void thud() {
+        play(() -> {
+            int n = (int) (0.18f * RATE);
+            short[] out = new short[n];
+            double ph = 0;
+            for (int i = 0; i < n; i++) {
+                double t = (double) i / RATE, f = 120 * Math.exp(-t * 18) + 55;
+                ph += 2 * Math.PI * f / RATE;
+                out[i] = (short) (Math.sin(ph) * Math.exp(-t * 22) * 32767 * 0.5);
+            }
+            return out;
+        });
+    }
+
     void say(String call) {
         play(() -> render(call));
     }
