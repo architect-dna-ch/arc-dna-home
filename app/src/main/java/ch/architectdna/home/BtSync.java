@@ -35,6 +35,13 @@ final class BtSync {
     private static Thread serverThread;
     private static volatile boolean busy;
     private static long lastTry;
+    /** One line for the diagnosis header: what the sync is doing / last did. */
+    static volatile String status = "noch nicht gestartet";
+
+    private static void log(String s) {
+        status = s;
+        DiagLog.log("bt sync: " + s);
+    }
 
     private BtSync() {
     }
@@ -53,12 +60,21 @@ final class BtSync {
         return System.currentTimeMillis() - p.getLong("at", 0) < 2 * 86_400_000L ? p.getString("name", null) : null;
     }
 
+    private static String why = "";
+
     private static BluetoothAdapter adapter(Context c) {
         if (Build.VERSION.SDK_INT >= 31
-            && c.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return null;
+            && c.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            why = "keine Bluetooth-Berechtigung";
+            return null;
+        }
         BluetoothManager m = c.getSystemService(BluetoothManager.class);
         BluetoothAdapter a = m == null ? null : m.getAdapter();
-        return a != null && a.isEnabled() ? a : null;
+        if (a == null || !a.isEnabled()) {
+            why = "Bluetooth aus";
+            return null;
+        }
+        return a;
     }
 
     /* ---------------- server: always on while the media listener runs ---------------- */
@@ -70,6 +86,7 @@ final class BtSync {
             while (!Thread.currentThread().isInterrupted()) {
                 BluetoothAdapter a = adapter(c);
                 if (a == null) {
+                    log("Empfang wartet: " + why);
                     if (!sleep(60_000)) return;
                     continue;
                 }
@@ -78,6 +95,7 @@ final class BtSync {
                     synchronized (BtSync.class) {
                         server = s;
                     }
+                    log("Empfang bereit (wartet auf Partner)");
                     while (true) {
                         BluetoothSocket sock = s.accept();
                         try {
@@ -87,13 +105,16 @@ final class BtSync {
                             String theirs = read(in);
                             write(out, snapshot(c));
                             store(c, theirs, sock.getRemoteDevice());
-                        } catch (IOException | SecurityException ignored) {
+                            log("Abgleich empfangen von " + safeName(sock.getRemoteDevice()) + " (" + theirs.length() / 1024 + " kB)");
+                        } catch (IOException | SecurityException e) {
+                            log("Empfang abgebrochen: " + e.getMessage());
                         } finally {
                             busy = false;
                             closeQuietly(sock);
                         }
                     }
                 } catch (IOException | SecurityException e) {
+                    log("Empfang gestoppt: " + e.getMessage() + " – neuer Versuch in 30 s");
                     if (!sleep(30_000)) return;    // adapter off or socket closed: try again later
                 }
             }
@@ -126,25 +147,41 @@ final class BtSync {
         new Thread(() -> {
             String got = null;
             BluetoothAdapter a = adapter(c);
+            if (a == null) log("Abgleich nicht möglich: " + why);
             if (a != null) {
                 try {
                     a.cancelDiscovery();
-                    List<BluetoothDevice> order = new ArrayList<>();
+                    // Every paired device that could run ARC-DNA: the last partner first, then phones and
+                    // computers/tablets, then the uncategorised ones; headphones, watches, keyboards … left out.
+                    List<BluetoothDevice> first = new ArrayList<>(), later = new ArrayList<>();
                     String last = peer(c).getString("addr", "");
+                    StringBuilder seen = new StringBuilder();
                     for (BluetoothDevice d : a.getBondedDevices()) {
                         int major = d.getBluetoothClass() == null ? 0 : d.getBluetoothClass().getMajorDeviceClass();
-                        boolean likely = major == android.bluetooth.BluetoothClass.Device.Major.PHONE
+                        seen.append(safeName(d)).append('(').append(Integer.toHexString(major)).append(") ");
+                        boolean phoneOrPc = major == android.bluetooth.BluetoothClass.Device.Major.PHONE
                             || major == android.bluetooth.BluetoothClass.Device.Major.COMPUTER;
-                        if (d.getAddress().equals(last)) order.add(0, d);
-                        else if (likely) order.add(d);
+                        boolean accessory = major == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO
+                            || major == android.bluetooth.BluetoothClass.Device.Major.WEARABLE
+                            || major == android.bluetooth.BluetoothClass.Device.Major.PERIPHERAL
+                            || major == android.bluetooth.BluetoothClass.Device.Major.HEALTH
+                            || major == android.bluetooth.BluetoothClass.Device.Major.TOY
+                            || major == android.bluetooth.BluetoothClass.Device.Major.IMAGING;
+                        if (d.getAddress().equals(last)) first.add(0, d);
+                        else if (phoneOrPc) first.add(d);
+                        else if (!accessory) later.add(d);
                     }
-                    for (BluetoothDevice d : order) {
+                    first.addAll(later);
+                    log("gekoppelt: " + seen.toString().trim() + " → probiere " + first.size());
+                    for (BluetoothDevice d : first) {
                         if (exchange(c, d)) {
-                            got = peer(c).getString("name", d.getName());
+                            got = peer(c).getString("name", safeName(d));
                             break;
                         }
                     }
-                } catch (SecurityException ignored) {
+                    if (got == null && !first.isEmpty()) log("kein Partner antwortet – läuft ARC-DNA auf dem anderen Gerät (Home geöffnet)?");
+                } catch (SecurityException e) {
+                    log("Abgleich verweigert: " + e.getMessage());
                 }
             }
             String result = got;
@@ -156,14 +193,17 @@ final class BtSync {
         BluetoothSocket sock = null;
         busy = true;
         try {
+            long t0 = System.currentTimeMillis();
             sock = d.createRfcommSocketToServiceRecord(ID);
             sock.connect();
             DataOutputStream out = new DataOutputStream(sock.getOutputStream());
             DataInputStream in = new DataInputStream(sock.getInputStream());
             write(out, snapshot(c));
             store(c, read(in), d);
+            log("abgeglichen mit " + safeName(d) + " in " + (System.currentTimeMillis() - t0) + " ms");
             return true;
         } catch (IOException | SecurityException e) {
+            log(safeName(d) + ": " + e.getMessage());
             return false;
         } finally {
             busy = false;
@@ -254,6 +294,15 @@ final class BtSync {
         byte[] b = new byte[n];
         in.readFully(b);
         return new String(b, StandardCharsets.UTF_8);
+    }
+
+    private static String safeName(BluetoothDevice d) {
+        try {
+            String n = d.getName();
+            return n != null ? n : d.getAddress();
+        } catch (SecurityException e) {
+            return "?";
+        }
     }
 
     private static boolean sleep(long ms) {

@@ -2959,6 +2959,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
             b.append("Vollbild-Benachrichtigungen: ").append(nm != null && nm.canUseFullScreenIntent()).append('\n');
         }
+        b.append("Bluetooth-Sync: ").append(BtSync.status).append(" · Partner: ").append(BtSync.peerName(this)).append('\n');
         b.append("Helligkeit schreiben: ").append(Settings.System.canWrite(this)).append('\n');
         b.append("Wecker: ").append(prefs.getBoolean("alarmOn", false) ? "an" : "aus").append('\n');
         b.append("Kopf-Scroll: ").append(headMode()).append(", Update-Token gesetzt: ").append(!updater.token().isEmpty()).append('\n');
@@ -4365,6 +4366,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         flipArmed = dstOldOffset != Integer.MIN_VALUE;
         if (flipArmed) handler.postDelayed(clockFlip, 12_500);
         ScrollAssistService.homeInFront(getPackageName());
+        BtSync.startServer(this);          // also without notification access: the partner must find us
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
         });
