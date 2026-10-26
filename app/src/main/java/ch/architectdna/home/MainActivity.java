@@ -968,7 +968,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 pop("Dino wieder auf Level 1");
                 return true;
             });
-        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Alle 2 Min" : "Aus",
+        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Jede 5. Rückkehr" : "Aus",
             v -> prefs.edit().putBoolean("dino", !prefs.getBoolean("dino", true)).apply(), v -> {
                 closeSettings();
                 handler.postDelayed(this::startDino, 450);
@@ -1407,7 +1407,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ---- Opening and coming back: slide up; back home the app is crushed and binned ---- */
 
     private Drawable leftIcon;
-    private long leftAt;
+    private long leftAt, pausedAt;
     private boolean crumplePending;
 
     /** Start an app sliding up from the bottom; remember it for the paper ball on the way back. */
@@ -3666,14 +3666,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private final Runnable dinoTick = new Runnable() {
         @Override
         public void run() {
-            // The comic visit while you're looking (camera on and a face seen) or with the camera off;
+            // The comic visit (every 5th return to the home) while you're looking;
             // looking away belongs to the black-hole dino.
             if (homeInFront && prefs.getBoolean("dino", true) && faceLostAt == 0) {
                 lastDinoAt = android.os.SystemClock.uptimeMillis();
                 startDino();
             }
-            handler.removeCallbacks(this);
-            handler.postDelayed(this, DINO_EVERY);
         }
     };
 
@@ -4001,7 +3999,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         hideNavBar();
         handler.removeCallbacks(dinoTick);
-        handler.postDelayed(dinoTick, DINO_EVERY);
+        // Every 5th real return to the home (not a dialog or a launch that bounced back): the dino comic.
+        if (System.currentTimeMillis() - pausedAt > 900 && prefs.getBoolean("dino", true)) {
+            int n = prefs.getInt("homeReturns", 0) + 1;
+            prefs.edit().putInt("homeReturns", n).apply();
+            if (n % 5 == 0) handler.postDelayed(dinoTick, 1800);
+        }
         handler.postDelayed(this::startFaceWatch, 1500);
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
@@ -4051,6 +4054,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onPause() {
         super.onPause();
+        pausedAt = System.currentTimeMillis();
         homeInFront = false;
         handler.removeCallbacks(dinoTick);
         endDino();
