@@ -601,7 +601,7 @@ final class DinoView extends View {
         float left = Math.max(dp(12), Math.min(getWidth() - dp(12) - bw, ax - bw / 2)), top = Math.max(dp(40), ay - bh - dp(10));
         r.set(left, top, left + bw, top + bh);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(loud ? 0xFFFFE680 : paper);
+        p.setColor(loud ? 0xFFFFE680 : 0xFFFAFAF8);      // always light with dark text, also at night
         path.reset();
         float tx = Math.max(left + dp(14), Math.min(left + bw - dp(14), ax));
         path.moveTo(tx - dp(7), top + bh - 1);

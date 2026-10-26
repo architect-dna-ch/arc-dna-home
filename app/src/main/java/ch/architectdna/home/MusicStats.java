@@ -82,6 +82,21 @@ final class MusicStats {
         }
     }
 
+    /** The newest history line was logged without the artist: fill it in. */
+    private static void fixLastArtist(Context c, String title, String artist) {
+        java.io.File f = historyFile(c);
+        try {
+            List<String> lines = new ArrayList<>(java.nio.file.Files.readAllLines(f.toPath(), java.nio.charset.StandardCharsets.UTF_8));
+            if (lines.isEmpty()) return;
+            String[] x = lines.get(lines.size() - 1).split("\t", -1);
+            if (x.length < 4 || !x[1].equals(clean(title)) || !x[2].isEmpty()) return;
+            x[2] = clean(artist);
+            lines.set(lines.size() - 1, String.join("\t", x));
+            java.nio.file.Files.write(f.toPath(), (String.join("\n", lines) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (java.io.IOException ignored) {
+        }
+    }
+
     private static String clean(String s) {
         return s == null ? "" : s.replace('\t', ' ').replace('\n', ' ');
     }
@@ -130,7 +145,27 @@ final class MusicStats {
         }
         e.putLong("msPlayStart", playing ? (since > 0 ? since : now) : 0);
         String key = (title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist);
-        if (playing && title != null && !key.equals(p.getString("lastTrack", ""))) {
+        // Players often send the title first and the artist a moment later: same song, not a new play.
+        String last = p.getString("lastTrack", "");
+        int cut = last.indexOf('\u0001');
+        String lastTitle = cut < 0 ? last : last.substring(0, cut), lastArtist = cut < 0 ? "" : last.substring(cut + 1);
+        boolean sameSong = title != null && title.equals(lastTitle) && now - p.getLong("lastTrackAt", 0) < 60_000
+            && (lastArtist.isEmpty() || artist == null || artist.isEmpty());
+        if (playing && sameSong && !key.equals(last)) {
+            if (lastArtist.isEmpty() && artist != null && !artist.isEmpty()) {
+                e.putString("lastTrack", key);
+                fixLastArtist(c, title, artist);
+                String d = day(now);
+                Map<String, Integer> top = artists(p, d);
+                top.put(artist, top.getOrDefault(artist, 0) + 1);
+                StringBuilder b = new StringBuilder();
+                for (Map.Entry<String, Integer> en : top.entrySet()) {
+                    b.append(en.getKey().replace('\n', ' ').replace('\t', ' ')).append('\t').append(en.getValue()).append('\n');
+                }
+                e.putString("musicArtists:" + d, b.toString());
+            }
+        } else if (playing && title != null && !key.equals(last)) {
+            e.putLong("lastTrackAt", now);
             String d = day(now);
             e.putString("lastTrack", key);
             e.putInt("musicTracks:" + d, p.getInt("musicTracks:" + d, 0) + 1);
