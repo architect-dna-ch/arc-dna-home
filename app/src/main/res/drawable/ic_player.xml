@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ARC Player launcher icon: a floppy disk with a rust play triangle on the label. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M22,20h46l8,8v46a2,2 0 0,1 -2,2h-52a2,2 0 0,1 -2,-2v-52a2,2 0 0,1 2,-2z" />
+    <path android:fillColor="#C4C4BE" android:pathData="M34,20h26v16h-26z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M50,23h6v10h-6z" />
+    <path android:fillColor="#FAFAF8" android:pathData="M28,44h40v28h-40z" />
+    <path android:fillColor="#B5271E" android:pathData="M43,50l11,8 -11,8z" />
+</vector>

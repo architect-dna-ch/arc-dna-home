@@ -181,6 +181,22 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Player: our own player screen for whatever plays (YouTube Music keeps playing underneath). -->
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_player"
+            android:label="ARC Player"
+            android:launchMode="singleTask"
+            android:roundIcon="@drawable/ic_player"
+            android:taskAffinity="ch.architectdna.home.player"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- Galerie: photos on a globe, one region per month. -->
         <activity
             android:name=".GalleryActivity"

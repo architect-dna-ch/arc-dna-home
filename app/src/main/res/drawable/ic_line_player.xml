@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- ARC Player tile: floppy disk outline, rust play triangle. -->
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M4,4h13l3,3v13h-16zM8,4v4h7v-4" />
+    <path android:fillColor="@color/rust" android:pathData="M10.5,12l4.5,3 -4.5,3z" />
+</vector>

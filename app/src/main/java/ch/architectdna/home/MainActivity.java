@@ -1371,7 +1371,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     && !RecorderActivity.class.getName().equals(ri.activityInfo.name)
                     && !GalleryActivity.class.getName().equals(ri.activityInfo.name)
                     && !CameraActivity.class.getName().equals(ri.activityInfo.name)
-                    && !DecibelActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !DecibelActivity.class.getName().equals(ri.activityInfo.name)
+                    && !PlayerActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -4486,7 +4487,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : RecorderActivity.class.getName().equals(activity) ? R.drawable.ic_line_recorder
             : GalleryActivity.class.getName().equals(activity) ? R.drawable.ic_line_gallery
             : CameraActivity.class.getName().equals(activity) ? R.drawable.ic_line_arccam
-            : DecibelActivity.class.getName().equals(activity) ? R.drawable.ic_line_decibel : 0;
+            : DecibelActivity.class.getName().equals(activity) ? R.drawable.ic_line_decibel
+            : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4499,7 +4501,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Rekorder", RecorderActivity.class, R.drawable.ic_line_recorder, R.drawable.ic_recorder},
             {"Galerie", GalleryActivity.class, R.drawable.ic_line_gallery, R.drawable.ic_gallery},
             {"ARC Kamera", CameraActivity.class, R.drawable.ic_line_arccam, R.drawable.ic_arccam},
-            {"Dezibel", DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel}};
+            {"Dezibel", DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel},
+            {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player}};
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
