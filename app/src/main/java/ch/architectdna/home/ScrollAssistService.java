@@ -318,7 +318,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             return;
         }
         if (edge != null) edge.face(true);
-        smooth = smooth * 0.65f + (pitch - base) * 0.35f;
+        smooth = smooth * 0.8f + (pitch - base) * 0.2f;      // calmer: the log showed up/down flip-flopping
         float d = smooth;
         pitchMin = Math.min(pitchMin, d);
         pitchMax = Math.max(pitchMax, d);
@@ -332,7 +332,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             setSpeed(0);
             return;
         }
-        if (speed == 0 && ++overN < 2) return;
+        if (speed == 0 && ++overN < 3) return;
         float s = MainActivity.nodSpeed(frac);
         setSpeed(d > 0 ? -s : s);   // looking up scrolls up
     }
