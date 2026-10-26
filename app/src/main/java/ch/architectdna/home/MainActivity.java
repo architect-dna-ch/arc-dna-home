@@ -950,7 +950,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
-        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 5 s" : "Aus",
+        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 2 s" : "Aus",
             v -> prefs.edit().putBoolean("dinoLock", !prefs.getBoolean("dinoLock", true)).apply(), v -> {
                 closeSettings();
                 handler.postDelayed(() -> startDino(true), 450);
@@ -2684,6 +2684,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         } else {
             if (faceLostAt != 0 && faceWatch) headLabel.setVisibility(View.GONE);
             faceLostAt = 0;
+            if (dino != null) dino.lookedBack();      // caught it in time: it runs and hides
             facingPitch += (pitch - facingPitch) * 0.05f;      // follows how you hold the phone
         }
     }
@@ -2696,12 +2697,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             DiagLog.log("looking away");
         }
         if (faceWatch && dino == null && homeInFront) {
-            long left = Math.max(0, 5 - (now - faceLostAt) / 1000);
+            long left = Math.max(0, 2 - (now - faceLostAt) / 1000);
             headLabel.setText("◉ WEGGESCHAUT · DINO IN " + left + "  ");
             headLabel.setVisibility(View.VISIBLE);
         }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
-        if (now - faceLostAt > 5000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
+        if (now - faceLostAt > 2000 && dino == null && homeInFront && prefs.getBoolean("dinoLock", true)) {
             if (faceWatch) headLabel.setVisibility(View.GONE);
             startDino(true);
             if (dino != null) lastDinoAt = now;

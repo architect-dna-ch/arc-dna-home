@@ -45,7 +45,35 @@ final class DinoView extends View {
         void lockNow();
     }
 
-    private boolean vacuum, locked, look;
+    private boolean vacuum, locked, look, dead;
+
+    /* Looked back in time: the dino runs off and hides behind a bush; tap the bush and it plays dead. */
+    private float scaredAt = -1, deadAt = -1, scaredFromX;
+    private final RectF bush = new RectF();
+
+    /** You looked at the screen again. In the first 2 s of the black hole that scares the dino off. */
+    void lookedBack() {
+        if (!vacuum || scaredAt >= 0 || locked || start < 0) return;
+        float t = (SystemClock.uptimeMillis() - start) / 1000f;
+        if (t > 2.0f) return;               // too late: the sucking has started
+        scaredAt = t;
+        float w = getWidth(), mid = w / 2, k = Math.min(dp(170), Math.min(w, getHeight()) * 0.42f) / 100f;
+        scaredFromX = t < 1.4f ? w + 80 * k - (w + 80 * k - mid) * ease(t / 1.4f) : mid;
+        host.vacuum(0, 0, 0);
+        host.stomp();
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent e) {
+        // Only the bush takes touches (and only while the dino hides there); the rest goes to the home.
+        if (scaredAt < 0 || deadAt >= 0 || bush.isEmpty()) return false;
+        if (e.getActionMasked() != android.view.MotionEvent.ACTION_DOWN) return true;
+        if (!bush.contains(e.getX(), e.getY())) return false;
+        deadAt = (SystemClock.uptimeMillis() - start) / 1000f;
+        host.chomp();
+        invalidate();
+        return true;
+    }
 
     /** The other scene: the dino swallows the whole home like a black hole (7.5 s) and the phone locks. */
     DinoView blackHole() {
@@ -211,6 +239,10 @@ final class DinoView extends View {
     /* ---------- black hole: walk in (1.5 s), mouth opens into a vortex, everything spirals in, lock at 7.5 s ---------- */
 
     private void drawVacuum(Canvas c, float t, float w, float h, float ground, float size, float k, float mid) {
+        if (scaredAt >= 0) {
+            drawScared(c, t, w, ground, k);
+            return;
+        }
         // 0–1.4 s: stomps in from the right.
         if (t < 1.4f) {
             float x = w + 80 * k - (w + 80 * k - mid) * ease(t / 1.4f);
@@ -273,6 +305,78 @@ final class DinoView extends View {
             return;
         }
         if (!locked) postInvalidateOnAnimation();
+    }
+
+    /** Runs to the bush (0.9 s), hides and peeks; tapped → plays dead; untouched for 12 s → sneaks away. */
+    private void drawScared(Canvas c, float t, float w, float ground, float k) {
+        float s = t - scaredAt, bx = w * 0.78f;
+        bush.set(bx - 72 * k, ground - 86 * k, bx + 72 * k, ground);
+        if (deadAt >= 0) {
+            float d = t - deadAt;
+            // Falls over onto its back in front of the bush, legs up, X eyes.
+            float fall = ease(Math.min(1, d / 0.5f));
+            drawBush(c, bx, ground, k, 0);
+            c.save();
+            c.rotate(180 * fall, bx - 20 * k, ground - 47 * k * fall);
+            dead = fall > 0.5f;
+            drawSide(c, bx - 20 * k, ground, k, fall * 0.5f, t, false, true);
+            dead = false;
+            c.restore();
+            if (d > 0.8f && d < 3.6f) bubble(c, "*totgestellt*", bx - 20 * k, ground - 70 * k, false, false);
+            float fade = Math.max(0, (d - 3.6f) / 0.6f);
+            if (fade >= 1) {
+                post(host::done);
+                return;
+            }
+            setAlpha(1 - fade);
+            postInvalidateOnAnimation();
+            return;
+        }
+        if (s < 0.9f) {
+            // Runs off to the right, fast, looking back at you.
+            float x = scaredFromX + (bx + 10 * k - scaredFromX) * ease(s / 0.9f);
+            if ((int) (s * 6) != lastStep) {
+                lastStep = (int) (s * 6);
+                host.stomp();
+            }
+            drawSide(c, x, ground, k, 0.3f, t * 1.8f, true, false);
+            drawBush(c, bx, ground, k, clamp(s / 0.4f));
+            if (s < 0.8f) bubble(c, "EEK!", x, ground - 110 * k, true, false);
+        } else if (s < 13) {
+            // Hidden behind the bush, peeking out every couple of seconds.
+            float peek = (float) Math.max(0, Math.sin((s - 0.9f) * 1.6f)) * 54 * k;
+            c.save();
+            c.translate(0, 46 * k - peek);
+            look = true;
+            drawSide(c, bx + 6 * k, ground, k, 0, t, false, true);
+            look = false;
+            c.restore();
+            drawBush(c, bx, ground, k, 1);
+            if (s > 1.4f && s < 4) bubble(c, "Bin nicht da.", bx, ground - 96 * k, false, false);
+        } else {
+            post(host::done);
+            return;
+        }
+        postInvalidateOnAnimation();
+    }
+
+    /** A round ARC-DNA bush: green puffs with an ink outline and a few rust berries. */
+    private void drawBush(Canvas c, float bx, float g, float k, float grow) {
+        if (grow <= 0) return;
+        float[][] puffs = {{-44, -30, 30}, {0, -50, 38}, {44, -30, 30}, {-22, -16, 26}, {24, -14, 26}};
+        for (int pass = 0; pass < 2; pass++) {
+            for (float[] f : puffs) {
+                float r0 = f[2] * k * grow;
+                p.setStyle(pass == 0 ? Paint.Style.STROKE : Paint.Style.FILL);
+                p.setStrokeWidth(3 * k);
+                p.setColor(pass == 0 ? ink : 0xFF5CC97B);
+                c.drawCircle(bx + f[0] * k, g + f[1] * k * grow, r0, p);
+            }
+        }
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        float[][] berries = {{-30, -40}, {12, -62}, {36, -26}, {-6, -24}};
+        for (float[] b : berries) c.drawCircle(bx + b[0] * k, g + b[1] * k * grow, 3.4f * k * grow, p);
     }
 
     /* ---------- dino, side view (facing left), feet centre at (x, g) ---------- */
@@ -377,6 +481,13 @@ final class DinoView extends View {
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(2.4f * k);
             c.drawLine(-58 * k, -96 * k, -38 * k, -94 * k, p);
+        } else if (dead) {
+            // X eyes.
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2.4f * k);
+            p.setColor(ink);
+            c.drawLine(-46 * k, -91 * k, -38 * k, -83 * k, p);
+            c.drawLine(-46 * k, -83 * k, -38 * k, -91 * k, p);
         } else {
             p.setColor(ink);
             c.drawCircle(-42 * k, -87 * k, 2.6f * k, p);
