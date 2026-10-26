@@ -588,14 +588,16 @@ final class DinoView extends View {
         }
         // 1.4–2.6 s: turns to you and comes up to the glass (like the bin), mouth opening wide.
         float come = ease((t - 1.4f) / 1.2f);
-        float sc = 1 + 0.9f * come, groundC = ground + (h * 0.78f - ground) * come;
-        float mx = mid - 54 * k * sc, my = groundC - 76 * k * sc;      // its mouth on screen
-        markDino(mid, groundC, k, sc);
+        float sc = 1 + 0.5f * come, groundC = ground + (h * 0.8f - ground) * come;
+        // It walks up so its mouth ends in the middle of the screen (it was off to the left).
+        float dx = mid + 54 * k * sc * come;
+        float mx = dx - 54 * k * sc, my = groundC - 76 * k * sc;      // its mouth on screen
+        markDino(dx, groundC, k, sc);
         float pull = clamp((t - 2.4f) / 4.5f);
         host.vacuum(pull * pull, mx, my);
         if (once(6, t, 2.4f)) host.chomp();
         c.save();
-        c.translate(0, groundC - ground);
+        c.translate(dx - mid, groundC - ground);
         c.scale(sc, sc, mid, ground);
         look = true;
         drawSide(c, mid, ground, k, Math.min(1, come * 1.4f), t, false, true);

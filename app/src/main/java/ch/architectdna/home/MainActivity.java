@@ -3675,11 +3675,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             @Override
             public void vacuum(float k, float x, float y) {
                 for (View v : new View[]{scroll, fox}) {
-                    int[] a = new int[2], r = new int[2];
-                    v.getLocationInWindow(a);
-                    rootFrame.getLocationInWindow(r);
-                    v.setPivotX(x - (a[0] - r[0]) + v.getTranslationX());
-                    v.setPivotY(y - (a[1] - r[1]) + v.getTranslationY());
+                    // Pivot from the plain layout position (not the on-screen one, which already
+                    // includes this spin and made the centre wobble every frame).
+                    float lx = 0, ly = 0;
+                    for (View q = v; q != null && q != rootFrame; q = q.getParent() instanceof View ? (View) q.getParent() : null) {
+                        lx += q.getLeft();
+                        ly += q.getTop();
+                    }
+                    v.setPivotX(x - lx);
+                    v.setPivotY(y - ly);
                     v.setScaleX(Math.max(0.01f, 1 - k));
                     v.setScaleY(Math.max(0.01f, 1 - k));
                     v.setRotation(540 * k);
