@@ -125,6 +125,8 @@ final class Updater {
                 });
             } catch (Exception e) {
                 DiagLog.log("update check failed: " + e.getMessage());
+                // Not again on every unlock: try once an hour until it works.
+                prefs.edit().putLong("updateChecked", System.currentTimeMillis() - CHECK_EVERY_MS + 3_600_000L).apply();
                 main.post(() -> {
                     ui.onUpdateState("Update-Prüfung fehlgeschlagen · tippen = im Browser laden", false);
                     if (manual) {

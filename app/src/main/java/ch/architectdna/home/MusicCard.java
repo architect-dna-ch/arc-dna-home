@@ -1406,6 +1406,7 @@ final class MusicCard {
         private final RectF rect = new RectF();
         private long lastSignal, lastRestart;
         private boolean wasPlaying;
+        private long lastPlayingAt;
         private int failedRestarts;
         private boolean running;
 
@@ -1442,8 +1443,11 @@ final class MusicCard {
         private void keepVisualizerAlive(boolean playing, boolean noSignal) {
             long now = System.currentTimeMillis();
             if (!noSignal) failedRestarts = 0;
-            boolean resumed = playing && !wasPlaying;
+            // Short sound effects (the dino's chomps, the buddy) flip isMusicActive for a moment:
+            // only a pause of over 3 s followed by playback counts as "music resumed".
+            boolean resumed = playing && !wasPlaying && now - lastPlayingAt > 3000;
             wasPlaying = playing;
+            if (playing) lastPlayingAt = now;
             long wait = failedRestarts >= 3 ? 15000 : 3000;
             if (!hasAudioPermission()) return;
             if (resumed || (playing && noSignal && now - lastRestart > wait)) {
