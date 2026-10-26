@@ -424,12 +424,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Panel.setWatcher(new F1Panel.Watcher() {
             @Override
             public void onCar(float x, float y, long passMs) {
-                if (fox != null && fox.isShown()) fox.watch(x, y);
+                if (fox != null && fox.isShown() && buddy() != 3) fox.watch(x, y);
             }
 
             @Override
             public void onCarGone(long passMs) {
-                if (fox == null || !fox.isShown() || passMs >= 650) return;
+                if (fox == null || !fox.isShown()) return;
+                // The racer has no eyes to spin: it revs on its rope, and some lap it breaks free.
+                if (buddy() == 3) {
+                    if (!raceFree && !burning && (passMs < 650 || random.nextInt(2) == 0)) burnout();
+                    return;
+                }
+                if (passMs >= 650) return;
                 fox.dizzy(1500);
                 if (random.nextInt(3) == 0) {
                     String[] l = {"Wo ist er hin?!", "Zu schnell …", "Mir ist schwindlig."};
@@ -3216,6 +3222,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void setF1(boolean on) {
         boolean changed = on != f1;
+        if (!on) {
+            raceFree = false;           // next time it has to break free again
+            burnouts = 0;
+        }
         f1 = on;
         prefs.edit().putBoolean("f1", on).apply();
         f1Box.setVisibility(View.GONE);
@@ -3235,7 +3245,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ---------- The racer's burnout: gas on, held back as if on a rope, tyre smoke; now and then it breaks free ---------- */
 
     private int burnouts;
-    private boolean burning;
+    /** The racer broke free: the race over the whole home is on until the board closes. */
+    private boolean burning, raceFree;
     private Smoke smoke;
 
     private void burnout() {
@@ -3281,6 +3292,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** The rope snaps: flame from the exhaust, off it goes, and the race begins. */
     private void breakFree() {
         burnouts = 0;
+        raceFree = true;
         say("Box, box … LOS!", 1400);
         voice.say("Nyeeoow!");
         smoke.flame(fox);
@@ -3375,7 +3387,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** With the F1 board open and the racer as buddy: the race track over the whole home. */
     private void race(boolean on) {
-        boolean want = on && buddy() == 3 && rootFrame != null;
+        boolean want = on && buddy() == 3 && raceFree && rootFrame != null;
         if (want) {
             if (raceOverlay == null) {
                 raceOverlay = new RaceOverlay(this);
