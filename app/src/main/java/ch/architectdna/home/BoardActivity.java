@@ -164,12 +164,20 @@ public class BoardActivity extends Activity {
             });
             dot.setTag(c);
             colourDots.add(dot);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(30), dp(30));
-            lp.setMargins(dp(4), 0, dp(4), 0);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(36), dp(36));
+            lp.setMargins(dp(2), 0, dp(2), 0);
             bar.addView(dot, lp);
         }
         bar.addView(divider());
         float[] widths = {2, 4, 9, 18};
+        // Narrow screen: colours on top, tools below, both inside the pill (nothing runs off the edge).
+        LinearLayout tools = bar;
+        if (getResources().getConfiguration().screenWidthDp < 600) {
+            tools = new LinearLayout(this);
+            tools.setGravity(Gravity.CENTER);
+            bar.removeViewAt(bar.getChildCount() - 1);      // the divider
+        }
+        LinearLayout row2 = tools;
         for (float w : widths) {
             TextView t = chipView(w == 2 ? "·" : w == 4 ? "•" : w == 9 ? "●" : "⬤");
             t.setTag(w);
@@ -178,15 +186,15 @@ public class BoardActivity extends Activity {
                 paintTools();
             });
             widthChips.add(t);
-            bar.addView(t);
+            row2.addView(t);
         }
-        bar.addView(divider());
+        if (row2 == bar) bar.addView(divider());
         eraserChip = chipView("RADIERER");
         eraserChip.setOnClickListener(v -> {
             eraser = !eraser;
             paintTools();
         });
-        bar.addView(eraserChip);
+        row2.addView(eraserChip);
         TextView undo = chipView("↶");
         undo.setOnClickListener(v -> {
             if (strokes.isEmpty()) return;
@@ -194,7 +202,7 @@ public class BoardActivity extends Activity {
             board.rebuild();
             save();
         });
-        bar.addView(undo);
+        row2.addView(undo);
         TextView again = chipView("↷");
         again.setOnClickListener(v -> {
             if (redo.isEmpty()) return;
@@ -202,8 +210,8 @@ public class BoardActivity extends Activity {
             board.rebuild();
             save();
         });
-        bar.addView(again);
-        TextView clear = chipView("LEEREN");
+        row2.addView(again);
+        TextView clear = chipView(row2 == bar ? "LEEREN" : "✕");
         clear.setOnClickListener(v -> Toast.makeText(this, "Lange drücken = Board leeren", Toast.LENGTH_SHORT).show());
         clear.setOnLongClickListener(v -> {
             redo.clear();
@@ -215,8 +223,20 @@ public class BoardActivity extends Activity {
             Toast.makeText(this, "Geleert · ↷ holt alles zurück", Toast.LENGTH_SHORT).show();
             return true;
         });
-        bar.addView(clear);
-        hs.addView(bar);
+        row2.addView(clear);
+        if (row2 != bar) {
+            LinearLayout both = new LinearLayout(this);
+            both.setOrientation(LinearLayout.VERTICAL);
+            both.setGravity(Gravity.CENTER_HORIZONTAL);
+            both.setPadding(dp(10), dp(8), dp(10), dp(8));
+            both.setBackground(bar.getBackground());
+            bar.setBackground(null);
+            bar.setPadding(0, 0, 0, dp(6));
+            bar.setGravity(Gravity.CENTER);
+            both.addView(bar);
+            both.addView(row2);
+            hs.addView(both);
+        } else hs.addView(bar);
         LinearLayout bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.CENTER_HORIZONTAL);
         bottom.setPadding(dp(10), 0, dp(10), dp(14));
@@ -464,14 +484,22 @@ public class BoardActivity extends Activity {
     private void paintTools() {
         for (View d : colourDots) {
             int c = (Integer) d.getTag();
-            GradientDrawable g = new GradientDrawable();
-            g.setShape(GradientDrawable.OVAL);
-            g.setColor(c);
             boolean on = !eraser && c == colour;
-            g.setStroke(dp(on ? 3 : 1), on ? (c == ink ? rust : ink) : line);
-            d.setBackground(g);
-            d.setScaleX(on ? 1.15f : 1f);
-            d.setScaleY(on ? 1.15f : 1f);
+            // Selected: an outer ring with a gap, drawn inside the dot's own bounds so nothing is cut off.
+            GradientDrawable fill = new GradientDrawable();
+            fill.setShape(GradientDrawable.OVAL);
+            fill.setColor(c);
+            fill.setStroke(dp(1), line);
+            GradientDrawable ring = new GradientDrawable();
+            ring.setShape(GradientDrawable.OVAL);
+            ring.setColor(0);
+            ring.setStroke(dp(on ? 2.5f : 0), c == ink ? rust : ink);
+            android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{ring, fill});
+            int in = on ? dp(5) : dp(3);
+            ld.setLayerInset(1, in, in, in, in);
+            ld.setLayerInset(0, dp(1), dp(1), dp(1), dp(1));
+            d.setBackground(ld);
         }
         for (View v : widthChips) styleChip((TextView) v, (Float) v.getTag() == width);
         styleChip(eraserChip, eraser);
@@ -499,8 +527,9 @@ public class BoardActivity extends Activity {
         TextView t = mono(12, ink);
         t.setText(s);
         t.setGravity(Gravity.CENTER);
-        t.setMinWidth(dp(40));
-        t.setPadding(dp(12), dp(8), dp(12), dp(8));
+        boolean narrow = getResources().getConfiguration().screenWidthDp < 600;
+        t.setMinWidth(dp(narrow ? 34 : 40));
+        t.setPadding(dp(narrow ? 8 : 12), dp(8), dp(narrow ? 8 : 12), dp(8));
         styleChip(t, false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
         lp.setMargins(dp(3), 0, dp(3), 0);

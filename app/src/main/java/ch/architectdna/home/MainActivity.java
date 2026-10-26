@@ -664,7 +664,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(14), dp(12), dp(14), dp(10));
-        box.setBackground(box(card, line, 16));
+        box.setBackground(tinted(LIGHT_RED));     // Suche in light red, like the other sections' colours
 
         TextView k = monoText(10, ink3);
         k.setLetterSpacing(0.16f);
@@ -706,10 +706,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         row.addView(webQuery, new LinearLayout.LayoutParams(0, dp(50), 1f));
 
-        TextView go = text(18, 0xFF000000 | (~ink & 0xFFFFFF), true);
+        TextView go = text(18, 0xFFFFFFFF, true);
         go.setText("→");
         go.setGravity(Gravity.CENTER);
-        go.setBackground(box(ink, ink, 16));
+        go.setBackground(box(LIGHT_RED, LIGHT_RED, 16));
         go.setContentDescription("Suchen");
         go.setOnClickListener(v -> webSearch());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(50), dp(50));
@@ -3774,7 +3774,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /* Vibrant section colours (like the DROP red): strong yellow, green, light purple, see-through. */
-    static final int YELLOW = 0xFFFFD60A, GREEN = 0xFF2BD96B, PURPLE = 0xFFA77BFF;
+    static final int YELLOW = 0xFFFFD60A, GREEN = 0xFF2BD96B, PURPLE = 0xFFA77BFF, LIGHT_RED = 0xFFF2564A;
     private int tileTint;
 
     /** A tile tinted in the section's colour: a light see-through fill and a clear edge. */
