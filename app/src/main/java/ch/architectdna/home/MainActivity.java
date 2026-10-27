@@ -1732,7 +1732,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             headSpeed = 0;          // the finger takes over at once; head scrolling rests for 4 s
             handler.removeCallbacks(headScroller);
         }
-        boolean gestures = !libraryOpen && settingsSheet == null && calibStage < 0 && game == null;
+        // No home gestures while the dino is on screen: flame-thrower and sabre strokes ran in circles and turned the screen.
+        boolean gestures = !libraryOpen && settingsSheet == null && calibStage < 0 && game == null && dino == null;
         if (action == MotionEvent.ACTION_DOWN) {
             strokeMulti = false;
             circling = false;
