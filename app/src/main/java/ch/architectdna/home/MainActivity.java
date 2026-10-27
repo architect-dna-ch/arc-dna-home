@@ -4951,7 +4951,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy
             : VpnActivity.class.getName().equals(activity) ? R.drawable.ic_line_vpn
             : RouteActivity.class.getName().equals(activity) ? R.drawable.ic_line_routes
-            : WeckerActivity.class.getName().equals(activity) ? R.drawable.ic_line_alarm : 0;
+            : WeckerActivity.class.getName().equals(activity) ? R.drawable.ic_line_alarm
+            : CalmActivity.class.getName().equals(activity) ? R.drawable.ic_line_calm
+            : PixelActivity.class.getName().equals(activity) ? R.drawable.ic_line_pixel : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4973,7 +4975,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Routen", RouteActivity.class, R.drawable.ic_line_routes, R.drawable.ic_routes},
             {"Bär-Wecker", WeckerActivity.class, R.drawable.ic_line_alarm, R.drawable.ic_alarm},
             {"Pfeifen", TuneActivity.class, R.drawable.ic_music, R.drawable.ic_music},
-            {"Pixel-Art", PixelActivity.class, R.drawable.ic_cube, R.drawable.ic_cube},
+            {"Pixel-Art", PixelActivity.class, R.drawable.ic_line_pixel, R.drawable.ic_line_pixel},
+            {"Gelassen", CalmActivity.class, R.drawable.ic_line_calm, R.drawable.ic_line_calm},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);
@@ -5444,7 +5447,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 + "phone;GalleryActivity;EnergyActivity"},
         {"Entspannen", "🌿", "garden,clock", "0",
             "com.google.android.apps.youtube.music;PlayerActivity;GalleryActivity;FreqActivity;com.google.android.youtube;"
-                + "com.instagram.android;com.spotify.music;com.netflix.mediaclient"},
+                + "com.instagram.android;com.spotify.music;CalmActivity"},
         {"Zuhause", "🏠", "clock,garden", "0",
             "phone;sms;calendar|com.google.android.calendar;EnergyActivity;WeckerActivity;GalleryActivity;"
                 + "com.google.android.apps.youtube.music;com.android.chrome"},
@@ -5572,7 +5575,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 String name = c.equals("BoardActivity") ? "Dr. Overloaded" : c.equals("RecorderActivity") ? "Rekorder"
                     : c.equals("WeckerActivity") ? "Bär-Wecker" : c.equals("RouteActivity") ? "Routen" : c.equals("CameraActivity") ? "ARC Kamera"
                     : c.equals("GlobusActivity") ? "Globus" : c.equals("GalleryActivity") ? "Galerie" : c.equals("EnergyActivity") ? "Energie"
-                    : c.equals("PlayerActivity") ? "ARC Player" : c.equals("FreqActivity") ? "VOID FREQ" : c;
+                    : c.equals("PlayerActivity") ? "ARC Player" : c.equals("FreqActivity") ? "VOID FREQ"
+                    : c.equals("CalmActivity") ? "Gelassen" : c;
                 return new Object[]{name, ownIcon(k.getName(), getDrawable(R.drawable.ic_cube)), new Intent(this, k)};
             } catch (ClassNotFoundException e) {
                 return null;

@@ -295,6 +295,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Gelassen: perspective, breathing and gratitude. -->
+        <activity
+            android:name=".CalmActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Pixel art in the wallpaper grid (the wallpaper shows through). -->
         <activity
             android:name=".PixelActivity"

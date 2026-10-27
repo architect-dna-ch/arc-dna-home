@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Pixel-Art tile: a 3 × 3 grid, some squares filled (one in rust). -->
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.5" android:fillColor="#00000000" android:pathData="M4,4h16v16h-16z" />
+    <path android:strokeColor="@color/ink" android:strokeWidth="1" android:pathData="M9.33,4v16M14.67,4v16M4,9.33h16M4,14.67h16" />
+    <path android:fillColor="@color/ink" android:pathData="M4,4h5.33v5.33h-5.33zM14.67,9.33h5.33v5.33h-5.33z" />
+    <path android:fillColor="@color/rust" android:pathData="M9.33,14.67h5.33v5.33h-5.33z" />
+</vector>
