@@ -85,6 +85,8 @@ final class RaceOverlay extends View {
         phase = INTRO;
         phaseAt = 0;
         lightsOutAt = 0;
+        variant = (variant + 1) % TRACKS.length;       // a different circuit each race
+        build(getWidth(), getHeight());
         zoomAt = -1;
         passes = 0;
         sparks.clear();
@@ -119,34 +121,112 @@ final class RaceOverlay extends View {
     @Override
     public android.view.WindowInsets onApplyWindowInsets(android.view.WindowInsets in) {
         int t = in.getSystemWindowInsetTop();
-        if (t != topInset) {
+        float cx = -1, cy = -1, cr = 0;
+        if (android.os.Build.VERSION.SDK_INT >= 28 && in.getDisplayCutout() != null) {
+            for (android.graphics.Rect b : in.getDisplayCutout().getBoundingRects()) {
+                if (b.top <= dp(4) && b.width() < getResources().getDisplayMetrics().widthPixels / 3) {
+                    cx = b.exactCenterX();
+                    cy = b.exactCenterY();
+                    cr = Math.max(b.width(), b.height()) / 2f;
+                }
+            }
+        }
+        if (t != topInset || cx != camX || cy != camY) {
             topInset = t;
+            camX = cx;
+            camY = cy;
+            camR = cr;
             if (getWidth() > 0) onSizeChanged(getWidth(), getHeight(), 0, 0);
         }
         return super.onApplyWindowInsets(in);
     }
 
+    /** The front camera (punch hole) in view coordinates, or -1 without one (then: top centre, in the bezel). */
+    private float camX = -1, camY = -1, camR;
+    private float pillY;
+    /** Which circuit: changes every race. */
+    private int variant;
+    private static final String[] TRACKS = {"ARC RING", "MONACO", "SPA", "MONZA"};
+
     @Override
     protected void onSizeChanged(int w, int h, int ow, int oh) {
-        // The circuit: round the edges of the screen with a chicane on the left and a hairpin at the bottom.
-        // The top straight stays below the status bar (cars vanished under the icons).
-        float m = dp(26), r = dp(70), top = Math.max(m, topInset + dp(20));
+        build(w, h);
+    }
+
+    /*
+     * The circuits: round the edges of the screen, clockwise, each with its own right side, bottom and
+     * left side; the top straight always makes a loop round the front camera (an Ω with the lens in
+     * the middle). The top straight stays below the status bar (cars vanished under the icons).
+     */
+    private void build(float w, float h) {
+        if (w <= 0 || h <= 0) return;
+        float m = dp(26), r = dp(Math.min(70, Math.min(w, h) / 10 / getResources().getDisplayMetrics().density + 30));
+        float top = Math.max(m, topInset + dp(20));
+        float cx = camX >= 0 ? camX : w / 2, cy = camX >= 0 ? camY : dp(14);
+        float R = Math.max(dp(26), camR + dp(18));
+        pillY = top + dp(26);
         track.reset();
-        track.moveTo(w * 0.5f, top);
+        float start = m + r + (cx - dp(70) - m - r) * 0.35f;
+        track.moveTo(start, top);
+        // The Ω round the camera: in at 160°, over the top, out at 20°.
+        double a1 = Math.toRadians(160), a2 = Math.toRadians(20);
+        float inX = cx + R * (float) Math.cos(a1), inY = cy + R * (float) Math.sin(a1);
+        float outX = cx + R * (float) Math.cos(a2), outY = cy + R * (float) Math.sin(a2);
+        float k = dp(30);
+        track.lineTo(cx - dp(70), top);
+        track.cubicTo(cx - dp(30), top, inX + 0.34f * k, inY + 0.94f * k, inX, inY);
+        track.arcTo(new RectF(cx - R, cy - R, cx + R, cy + R), 160, 220, false);
+        track.cubicTo(outX - 0.34f * k, outY + 0.94f * k, cx + dp(30), top, cx + dp(70), top);
         track.lineTo(w - m - r, top);
         track.quadTo(w - m, top, w - m, top + r);
-        track.lineTo(w - m, h * 0.55f);
-        track.cubicTo(w - m, h * 0.62f, w * 0.62f, h * 0.6f, w * 0.6f, h * 0.68f);      // swings inwards
-        track.cubicTo(w * 0.58f, h * 0.76f, w - m, h * 0.74f, w - m, h * 0.82f);
+        // Right side.
+        switch (variant) {
+            case 0:
+                track.lineTo(w - m, h * 0.55f);
+                track.cubicTo(w - m, h * 0.62f, w * 0.62f, h * 0.6f, w * 0.6f, h * 0.68f);      // swings inwards
+                track.cubicTo(w * 0.58f, h * 0.76f, w - m, h * 0.74f, w - m, h * 0.82f);
+                break;
+            case 2:                                                                             // esses
+                track.lineTo(w - m, h * 0.3f);
+                track.cubicTo(w - m, h * 0.38f, w * 0.72f, h * 0.36f, w * 0.72f, h * 0.45f);
+                track.cubicTo(w * 0.72f, h * 0.54f, w - m, h * 0.52f, w - m, h * 0.6f);
+                track.cubicTo(w - m, h * 0.68f, w * 0.78f, h * 0.66f, w * 0.78f, h * 0.73f);
+                track.cubicTo(w * 0.78f, h * 0.8f, w - m, h * 0.78f, w - m, h * 0.85f);
+                break;
+            default:
+                break;
+        }
         track.lineTo(w - m, h - m - r);
         track.quadTo(w - m, h - m, w - m - r, h - m);
+        // Bottom.
+        if (variant == 1) {                                                                    // the hairpin up into the middle
+            track.lineTo(w * 0.66f, h - m);
+            track.cubicTo(w * 0.56f, h - m, w * 0.62f, h * 0.5f, w * 0.5f, h * 0.5f);
+            track.cubicTo(w * 0.38f, h * 0.5f, w * 0.44f, h - m, w * 0.34f, h - m);
+        } else if (variant == 3) {                                                             // chicane
+            track.lineTo(w * 0.6f, h - m);
+            track.cubicTo(w * 0.55f, h - m, w * 0.55f, h - m - dp(36), w * 0.5f, h - m - dp(36));
+            track.cubicTo(w * 0.45f, h - m - dp(36), w * 0.45f, h - m, w * 0.4f, h - m);
+        }
         track.lineTo(m + r, h - m);
         track.quadTo(m, h - m, m, h - m - r);
-        track.lineTo(m, h * 0.6f);
-        track.cubicTo(m, h * 0.5f, w * 0.3f, h * 0.48f, w * 0.3f, h * 0.4f);              // the chicane
-        track.cubicTo(w * 0.3f, h * 0.32f, m, h * 0.3f, m, h * 0.22f);
+        // Left side.
+        if (variant == 0) {
+            track.lineTo(m, h * 0.6f);
+            track.cubicTo(m, h * 0.5f, w * 0.3f, h * 0.48f, w * 0.3f, h * 0.4f);              // the chicane
+            track.cubicTo(w * 0.3f, h * 0.32f, m, h * 0.3f, m, h * 0.22f);
+        } else if (variant == 3) {                                                             // a long sweep inwards
+            track.lineTo(m, h * 0.72f);
+            track.cubicTo(m, h * 0.6f, w * 0.38f, h * 0.62f, w * 0.38f, h * 0.48f);
+            track.cubicTo(w * 0.38f, h * 0.34f, m, h * 0.36f, m, h * 0.26f);
+        } else if (variant == 1) {
+            track.lineTo(m, h * 0.5f);
+            track.cubicTo(m, h * 0.42f, w * 0.16f, h * 0.4f, w * 0.16f, h * 0.33f);
+            track.cubicTo(w * 0.16f, h * 0.26f, m, h * 0.26f, m, h * 0.2f);
+        }
         track.lineTo(m, top + r);
         track.quadTo(m, top, m + r, top);
+        track.lineTo(start, top);
         track.close();
         measure = new PathMeasure(track, true);
         length = measure.getLength();
@@ -395,20 +475,25 @@ final class RaceOverlay extends View {
 
         if (phase == INTRO) intro(c, w, h, me, inPhase, roll);
 
-        // Race board, top centre.
-        p.setTextSize(dp(11));
-        Car lead = cars.get(0);
-        for (Car k : cars) if (k.s > lead.s) lead = k;
-        String board = phase == INTRO ? "ARC GP · " + LAPS + " RUNDEN"
-            : phase == FINISH ? "🏁 ARC GEWINNT"
-            : "P1 " + TAG[lead.livery] + " · RUNDE " + Math.min(LAPS, myLap + 1) + "/" + LAPS + " · ARC P" + myPlace;
+        // The pill under the camera (like the head-scroll notice): his speed, place and lap.
+        String board = phase == INTRO ? "ARC GP · " + TRACKS[variant] + " · " + LAPS + " RUNDEN"
+            : phase == FINISH ? "🏁 ARC GEWINNT · " + TRACKS[variant]
+            : (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · RUNDE " + Math.min(LAPS, myLap + 1) + "/" + LAPS;
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextSize(dp(13));
         float tw = p.measureText(board);
-        float by = Math.max(dp(60), topInset + dp(34));
-        RectF r = new RectF(w / 2 - tw / 2 - dp(10), by, w / 2 + tw / 2 + dp(10), by + dp(22));
-        p.setColor(0xCC111110);
-        c.drawRoundRect(r, dp(6), dp(6), p);
-        p.setColor(phase == FINISH || myPlace == 1 ? 0xFFD9472F : LIVERY[lead.livery][0] == 0xFFF4F2EC ? 0xFFB5271E : LIVERY[lead.livery][0]);
-        c.drawText(board, w / 2 - tw / 2, by + dp(16), p);
+        float pcx = camX >= 0 ? camX : w / 2;
+        RectF r = new RectF(pcx - tw / 2 - dp(16), pillY, pcx + tw / 2 + dp(16), pillY + dp(34));
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xF0121211);
+        c.drawRoundRect(r, dp(17), dp(17), p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(dp(2));
+        p.setColor(phase == FINISH || myPlace == 1 && phase == RACE ? 0xFF2BBF6A : 0xFFE0552F);
+        c.drawRoundRect(r, dp(17), dp(17), p);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFFFFFFFF);
+        c.drawText(board, pcx - tw / 2, pillY + dp(22), p);
 
         if (phase == FINISH) {
             long t = now - phaseAt;
@@ -453,7 +538,7 @@ final class RaceOverlay extends View {
             p.setAlpha(255);
         }
         if (t > HELLO) {
-            float s = dp(9), gap = dp(26), x0 = w / 2 - 2 * gap, y = Math.max(dp(100), topInset + dp(74));
+            float s = dp(9), gap = dp(26), x0 = w / 2 - 2 * gap, y = pillY + dp(62);
             p.setStyle(Paint.Style.FILL);
             p.setColor(0xDD111110);
             c.drawRoundRect(x0 - dp(16), y - dp(14), x0 + 4 * gap + dp(16), y + dp(14), dp(8), dp(8), p);
