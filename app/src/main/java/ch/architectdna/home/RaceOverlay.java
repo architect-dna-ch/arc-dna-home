@@ -55,7 +55,7 @@ final class RaceOverlay extends View {
 
     private static final class Car {
         int livery;
-        float s, speed, target, wide, wideTarget, lane;
+        float s, speed, target, wide, wideTarget, lane, turn;
         float x, y, angle;
         long nextChange;
     }
@@ -404,17 +404,24 @@ final class RaceOverlay extends View {
         int placeBefore = myPlace;
         for (Car k : cars) {
             if (racing) {
+                // Real racing: everyone about the same pace (small swings), braking for corners, and the
+                // pack stays together (no one lapped). He works his way up one place at a time: P5 at the
+                // start, the lead only on the last lap.
                 if (now > k.nextChange) {
-                    k.target = dp(260) + rnd.nextFloat() * dp(260);
-                    k.nextChange = now + 700 + rnd.nextInt(1800);
+                    k.target = dp(360) + rnd.nextFloat() * dp(70);
+                    k.nextChange = now + 1200 + rnd.nextInt(2000);
                 }
-                float want = k.target;
+                float want = k.target * (1 - Math.min(0.4f, Math.abs(k.turn) / 110f));
+                float lead = -9;
+                for (Car o : cars) lead = Math.max(lead, o.s);
+                float behind = (lead - k.s) * length;
+                if (behind > dp(260)) want += Math.min(dp(90), (behind - dp(260)) * 0.25f);      // catch the pack up
                 if (k == me) {
-                    // He has to win: more push the later it gets while he isn't in front, flat out in the chase cam.
-                    if (me.s < maxOther) want += dp(myLap >= 3 ? 150 : myLap >= 1 ? 90 : 40);
-                    if (zooming) want = Math.max(want, dp(540));
-                } else if (myLap >= LAPS - 1 && me.s < k.s) {
-                    want *= 0.82f;        // the last lap: the others fade a little
+                    float progress = Math.max(0, me.s) / LAPS;
+                    int aim = progress > 0.82f ? 1 : Math.max(2, 5 - (int) (progress * 4.2f));
+                    if (myPlace > aim) want += dp(progress > 0.82f ? 70 : 38);                    // push to the next place
+                    else if (myPlace < aim) want -= dp(30);                                         // not too early
+                    if (zooming && myPlace > aim) want += dp(30);
                 }
                 k.speed += (want - k.speed) * Math.min(1, dt * 1.6f);
             } else if (phase == FINISH) {
@@ -432,6 +439,7 @@ final class RaceOverlay extends View {
             float turn = (float) Math.toDegrees(Math.atan2(t2[1], t2[0])) - ang;
             while (turn > 180) turn -= 360;
             while (turn < -180) turn += 360;
+            k.turn = turn;
             k.wideTarget = -Math.signum(turn) * Math.min(dp(11), Math.abs(turn) * k.speed / dp(400) * dp(0.4f));
             k.wide += (k.wideTarget - k.wide) * Math.min(1, dt * 4);
             // Someone just ahead: pull out to the side and pass (no more cars on top of each other).
