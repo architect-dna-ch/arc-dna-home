@@ -469,13 +469,36 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         // Priorities: search, apps and music always open; everything else folds away.
         foldable("Suche", "search", true, searchRow(), dp(20));
+        // Tablet: the dashboard from the sketch; Apps, ARC-DNA and Zuletzt move into its folder dock.
+        if (Dashboard.wanted(this)) {
+            dashboard = new Dashboard(this, new int[]{ink, ink2, ink3, rust, card, line}, new Dashboard.Host() {
+                @Override
+                public void folder(int which) {
+                    openFolder(which);
+                }
+
+                @Override
+                public Drawable[] folderIcons(int which) {
+                    if (which == 0) return new Drawable[]{getDrawable(R.drawable.ic_phone), getDrawable(R.drawable.ic_sms),
+                        getDrawable(R.drawable.ic_mail), getDrawable(R.drawable.ic_calendar)};
+                    if (which == 1) return new Drawable[]{getDrawable(R.drawable.ic_line_player), getDrawable(R.drawable.ic_line_gallery),
+                        getDrawable(R.drawable.ic_line_energy), getDrawable(R.drawable.ic_line_routes)};
+                    Drawable[] d = new Drawable[Math.min(4, lastRecent.size())];
+                    for (int i = 0; i < d.length; i++) d[i] = lastRecent.get(i).icon;
+                    return d;
+                }
+            });
+            content.addView(dashboard.build(), margins(-1, -2, 0, dp(18), 0, 0));
+        }
 
         appTilesBox = new FrameLayout(this);
         appTilesBox.addView(appTiles());
         foldable("Apps", "apps", true, appTilesBox, dp(22));
+        intoFolder(0);
 
         // ARC-DNA's own native apps, folded away until opened.
         foldable("ARC-DNA Apps", "arcApps", false, arcApps(), dp(22));
+        intoFolder(1);
 
         // Zuletzt: always on, one row.
         recentHome = new LinearLayout(this);
@@ -483,6 +506,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Keep the row's last height while the apps load (theme switch, restart), so nothing jumps.
         recentHome.setMinimumHeight(prefs.getInt("recentH", 0));
         foldable("Zuletzt", "recentRow", true, recentHome, dp(22));   // new key: the old "recent" fold was closed by default
+        intoFolder(2);
 
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
             @Override
@@ -951,6 +975,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
             say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
         }, null);
+        if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
+            settingsRow(home, "Tablet-Dashboard", () -> prefs.getBoolean("dashboard", true) ? "AN · Wetter, Uhr, Garten, Ordner" : "AUS · Listen", v -> {
+                prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
+                recreate();
+            }, null);
+        }
         settingsRow(home, "Ruhig: nur Werkzeuge", () -> calm() ? "AN · selten Überraschungen" : "AUS · volles Programm", v -> {
             prefs.edit().putBoolean("calm", !calm()).apply();
             if (calm()) {
@@ -1580,6 +1610,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 boolean same = keys(recent).equals(keys(lastRecent)) && recentCarousel != null;
                 lastRecent = recent;
                 prefs.edit().putString("recentOrder", android.text.TextUtils.join(",", keys(recent))).apply();
+                if (dashboard != null) dashboard.refreshFolders();
                 if (same) return;               // nothing changed: leave the row alone
                 if (!updateRecentCarousel(recent)) renderRecentCarousel(recent);
                 renderRecents(recentLib, recent, 2 * cols());
@@ -4526,6 +4557,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        if (dashboard != null) dashboard.resume();
         xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
         if (crumplePending) {
@@ -4597,6 +4629,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onPause() {
         super.onPause();
+        if (dashboard != null) dashboard.pause();
+        if (folderClose != null && folderPanel != null) folderClose.run();      // an app was started from a folder
         pausedAt = System.currentTimeMillis();
         handler.removeCallbacks(clockFlip);
         flipArmed = false;
@@ -5247,5 +5281,88 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             DiagLog.log("xiaomi gestures: " + e.getMessage());
         }
     }
+
+
+    /* ================= Tablet dashboard: folders ================= */
+
+    private Dashboard dashboard;
+    private final View[] folderHead = new View[3], folderBlock = new View[3];
+    private FrameLayout folderPanel;
+
+    /** With the dashboard: the section just added hides; its content opens from the dock. */
+    private void intoFolder(int which) {
+        if (dashboard == null) return;
+        int n = content.getChildCount();
+        folderHead[which] = content.getChildAt(n - 2);
+        folderBlock[which] = content.getChildAt(n - 1);
+        folderHead[which].setVisibility(View.GONE);
+        folderBlock[which].setVisibility(View.GONE);
+    }
+
+    /** The folder full of apps, as a card over the home; the section itself is borrowed and given back. */
+    private void openFolder(int which) {
+        View block = folderBlock[which];
+        if (block == null || folderPanel != null) return;
+        int index = content.indexOfChild(block);
+        content.removeView(block);
+        block.setVisibility(View.VISIBLE);
+        block.setAlpha(1f);
+        block.setTranslationY(0);
+        FrameLayout scrim = new FrameLayout(this);
+        scrim.setBackgroundColor(0x99000000);
+        scrim.setClickable(true);
+        LinearLayout cardV = new LinearLayout(this);
+        cardV.setOrientation(LinearLayout.VERTICAL);
+        cardV.setPadding(dp(24), dp(20), dp(24), dp(24));
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(panel);
+        g.setStroke(dp(1), line);
+        g.setCornerRadius(dp(28));
+        cardV.setBackground(g);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView t = text(26, ink, true);
+        t.setText(new String[]{"Apps", "ARC-DNA", "Zuletzt"}[which]);
+        head.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView x = text(20, ink, true);
+        x.setText("✕");
+        x.setPadding(dp(12), dp(4), dp(4), dp(4));
+        head.addView(x);
+        cardV.addView(head);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(block, new FrameLayout.LayoutParams(-1, -2));
+        cardV.addView(sv, margins(-1, -2, 0, dp(16), 0, 0));
+        FrameLayout.LayoutParams cl = new FrameLayout.LayoutParams(Math.min(rootFrame.getWidth() - dp(48), dp(900)), -2, Gravity.CENTER);
+        scrim.addView(cardV, cl);
+        Runnable close = () -> {
+            FrameLayout p = folderPanel;
+            folderPanel = null;
+            if (p == null) return;
+            p.animate().alpha(0f).setDuration(160).withEndAction(() -> {
+                sv.removeView(block);
+                block.setVisibility(View.GONE);
+                content.addView(block, Math.min(index, content.getChildCount()));
+                rootFrame.removeView(p);
+            }).start();
+        };
+        x.setOnClickListener(v -> close.run());
+        scrim.setOnClickListener(v -> close.run());
+        cardV.setClickable(true);
+        // Starting an app from the folder closes it too.
+        block.post(() -> {
+            if (which == 2 && !lastRecent.isEmpty()) renderRecentCarousel(lastRecent);
+        });
+        folderPanel = scrim;
+        rootFrame.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        scrim.setAlpha(0f);
+        cardV.setScaleX(0.9f);
+        cardV.setScaleY(0.9f);
+        scrim.animate().alpha(1f).setDuration(180).start();
+        cardV.animate().scaleX(1f).scaleY(1f).setDuration(240)
+            .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f)).start();
+        folderClose = close;
+    }
+
+    private Runnable folderClose;
 
 }
