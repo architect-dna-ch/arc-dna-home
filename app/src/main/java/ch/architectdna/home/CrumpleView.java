@@ -391,8 +391,9 @@ final class CrumpleView extends View implements SensorEventListener {
             drawBall(c, landX + dp(26), floor, ball * 0.65f, 1020);
         }
         if (t >= smashStart && t < end) {
-            // As wide as the screen allows, but the whole bin (lid included, ~52 dp tall) keeps a margin top and bottom.
-            float big = 0.9f * Math.min(w * 0.95f / dp(34), (h - dp(96)) / dp(56)), x, y, sx, sy, rot, a = 1;
+            // As big as the screen allows: the lid (38 dp wide, stretched 6 % when stuck) keeps 16 dp to each edge,
+            // the whole bin (~52 dp tall) a margin top and bottom. The lid used to stick out at the sides.
+            float big = Math.min((w - dp(32)) / (dp(38) * 1.06f), (h - dp(96)) / dp(56)), x, y, sx, sy, rot, a = 1;
             if (t < stuckStart) {
                 // Rushing at you: accelerating, growing, a little spin.
                 float k = (t - smashStart) / (float) SMASH;
