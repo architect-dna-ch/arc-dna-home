@@ -74,6 +74,7 @@ public class GalleryActivity extends Activity {
         Uri uri;
         long time;
         String bucket;
+        int w, h;            // real size, rotation applied (0 = unknown)
         double lat, lon;
         float sx, sy, depth;
         volatile Bitmap thumb;
@@ -265,7 +266,8 @@ public class GalleryActivity extends Activity {
         io.execute(() -> {
             List<Photo> found = new ArrayList<>();
             String[] cols = {MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED,
-                MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT,
+                MediaStore.Images.Media.ORIENTATION};
             try (Cursor c = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cols, null, null,
                 MediaStore.Images.Media.DATE_ADDED + " DESC")) {
                 while (c != null && c.moveToNext() && found.size() < MAX) {
@@ -274,6 +276,9 @@ public class GalleryActivity extends Activity {
                     long taken = c.isNull(1) ? 0 : c.getLong(1);
                     p.time = taken > 0 ? taken : c.getLong(2) * 1000;
                     p.bucket = c.getString(3);
+                    int ow = c.isNull(4) ? 0 : c.getInt(4), oh = c.isNull(5) ? 0 : c.getInt(5), rot = c.isNull(6) ? 0 : c.getInt(6);
+                    p.w = rot % 180 == 0 ? ow : oh;
+                    p.h = rot % 180 == 0 ? oh : ow;
                     found.add(p);
                 }
             } catch (RuntimeException e) {
@@ -543,7 +548,7 @@ public class GalleryActivity extends Activity {
             title.setText(new SimpleDateFormat("EEEE, d. MMMM yyyy", Locale.GERMAN).format(new Date(p.time)));
             sub.setText((new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(p.time))
                 + (p.bucket != null ? " · " + p.bucket : "") + " · " + (i + 1) + " / " + photos.size()).toUpperCase(Locale.GERMAN));
-            photo.set(p.thumb, dir);
+            photo.set(p.thumb, p.w, p.h, dir);
             io.execute(() -> {
                 Bitmap b = full(p.uri);
                 if (b != null) main.post(() -> {
@@ -557,7 +562,7 @@ public class GalleryActivity extends Activity {
                 setVisibility(View.GONE);
                 setAlpha(1f);
                 photo.setTranslationY(0);
-                photo.set(null, 0);
+                photo.set(null, 0, 0, 0);
                 Photo p = current();
                 if (p != null) {
                     selected = p;
@@ -578,6 +583,13 @@ public class GalleryActivity extends Activity {
         private final Matrix mx = new Matrix();
         private final Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
         private float scale = 1f, fit = 1f, tx, ty, dragX, dragY, slide;
+        /*
+         * The photo's real shape: the square grid thumbnail is shown cropped into exactly the frame
+         * the sharp version will fill, so nothing jumps when it arrives (it used to jump up / resize).
+         */
+        private float cw, ch;
+        private final android.graphics.Rect src = new android.graphics.Rect();
+        private final android.graphics.RectF dst = new android.graphics.RectF();
         private boolean swiping, closing;
         private final ScaleGestureDetector scaler;
         private final android.view.GestureDetector gestures;
@@ -635,8 +647,10 @@ public class GalleryActivity extends Activity {
             return ((int) (255 * a) << 24);
         }
 
-        void set(Bitmap b, int dir) {
+        void set(Bitmap b, int w, int h, int dir) {
             bmp = b;
+            cw = w > 0 && h > 0 ? w : b != null ? b.getWidth() : 0;
+            ch = w > 0 && h > 0 ? h : b != null ? b.getHeight() : 0;
             scale = fit = 0;
             slide = dir * getWidth() * 0.35f;      // next comes in from the right
             fitNow();
@@ -646,24 +660,25 @@ public class GalleryActivity extends Activity {
 
         /** The sharp version arrives: keep the same view (zoom and pan) on it. */
         void upgrade(Bitmap b) {
-            if (bmp != null && bmp.getWidth() > 0) {
-                float k = bmp.getWidth() / (float) b.getWidth();
-                bmp = b;
-                scale *= k;
-                fit *= k;
-            } else {
-                bmp = b;
+            bmp = b;
+            float aspect = cw > 0 && ch > 0 ? cw / ch : 0, real = b.getWidth() / (float) b.getHeight();
+            if (aspect == 0 || Math.abs(aspect - real) > 0.02f) {
+                // The stored size was wrong or missing: take the real one, keep the zoom relative to fit.
+                float rel = fit > 0 ? scale / fit : 1;
+                cw = b.getWidth();
+                ch = b.getHeight();
                 fitNow();
+                if (rel > 1.02f) zoomAt(fit * rel, getWidth() / 2f, getHeight() / 2f);
             }
             invalidate();
         }
 
         private void fitNow() {
-            if (bmp == null || getWidth() == 0) return;
-            fit = Math.min(getWidth() / (float) bmp.getWidth(), getHeight() / (float) bmp.getHeight());
+            if (bmp == null || getWidth() == 0 || cw <= 0) return;
+            fit = Math.min(getWidth() / cw, getHeight() / ch);
             scale = fit;
-            tx = (getWidth() - bmp.getWidth() * scale) / 2;
-            ty = (getHeight() - bmp.getHeight() * scale) / 2;
+            tx = (getWidth() - cw * scale) / 2;
+            ty = (getHeight() - ch * scale) / 2;
         }
 
         private void zoomAt(float s, float fx, float fy) {
@@ -685,7 +700,7 @@ public class GalleryActivity extends Activity {
 
         private void clampPan() {
             if (bmp == null) return;
-            float bw = bmp.getWidth() * scale, bh = bmp.getHeight() * scale;
+            float bw = cw * scale, bh = ch * scale;
             tx = bw <= getWidth() ? (getWidth() - bw) / 2 : Math.max(getWidth() - bw, Math.min(0, tx));
             ty = bh <= getHeight() ? (getHeight() - bh) / 2 : Math.max(getHeight() - bh, Math.min(0, ty));
         }
@@ -715,10 +730,18 @@ public class GalleryActivity extends Activity {
         protected void onDraw(Canvas c) {
             if (bmp == null || bmp.isRecycled()) return;
             if (fit == 0) fitNow();
-            mx.reset();
-            mx.postScale(scale, scale);
-            mx.postTranslate(tx + slide, ty);
-            c.drawBitmap(bmp, mx, pp);
+            // Centre-crop the bitmap to the photo's shape (the thumbnail is square), drawn into its frame.
+            int bw = bmp.getWidth(), bh = bmp.getHeight();
+            float want = cw / ch;
+            if (bw / (float) bh > want) {
+                int sw = Math.round(bh * want);
+                src.set((bw - sw) / 2, 0, (bw - sw) / 2 + sw, bh);
+            } else {
+                int sh = Math.round(bw / want);
+                src.set(0, (bh - sh) / 2, bw, (bh - sh) / 2 + sh);
+            }
+            dst.set(tx + slide, ty, tx + slide + cw * scale, ty + ch * scale);
+            c.drawBitmap(bmp, src, dst, pp);
         }
 
         @Override
