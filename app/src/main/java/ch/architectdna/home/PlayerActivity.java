@@ -288,7 +288,14 @@ public class PlayerActivity extends Activity {
                 String name = String.valueOf(ca.getName()).toUpperCase(Locale.GERMAN);
                 TextView c = chip(like ? "♥ " + name : name, like ? rust : ink2);
                 c.setOnClickListener(v -> {
-                    if (controller != null) controller.getTransportControls().sendCustomAction(ca, null);
+                    if (controller == null) return;
+                    controller.getTransportControls().sendCustomAction(ca, null);
+                    if (like) {
+                        // The app answers a moment later: show the new state right away (dimmed until it does).
+                        boolean wasLiked = name.contains("UNDO") || name.contains("ENTFERNEN") || name.contains("UNLIKE");
+                        c.setText(wasLiked ? "♡ LIKE" : "♥ UNDO LIKE");
+                        c.setAlpha(0.6f);       // rebuilt as soon as the app's new button name arrives
+                    }
                 });
                 actions.addView(c);
             }

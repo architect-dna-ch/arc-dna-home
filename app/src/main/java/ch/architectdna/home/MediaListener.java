@@ -132,7 +132,6 @@ public class MediaListener extends NotificationListenerService {
             artist = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
         }
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
-        if (playing != null && title != null) watchFavGesture(playing, title, artist);
     }
 
     /* ---- ★ from the earbud volume: up, down, up, down within ~2 s ---- */
@@ -167,31 +166,9 @@ public class MediaListener extends NotificationListenerService {
         }
     };
 
-    /* ---- ★ from the earbuds: "next" and straight back to the same song within ~7 s ---- */
+    // (The "next, then straight back" ★ gesture is gone: it liked songs you only skipped back to.)
 
-    private String trackNow = "", trackBefore = "";
-    private long changedAt, changedBeforeAt;
     private FoxVoice voice;
-
-    private void watchFavGesture(MediaController c, String title, String artist) {
-        // Title only: artist sometimes blinks empty for a moment while the player skips.
-        String key = title.trim().toLowerCase(java.util.Locale.ROOT);
-        if (key.isEmpty() || key.equals(trackNow)) return;
-        long now = System.currentTimeMillis();
-        // A → B → A, B lasting under ~7 s: "next, then back" from the earbuds. Longer than that is
-        // usually just skipping and changing your mind, which shouldn't set a ★.
-        boolean back = key.equals(trackBefore) && now - changedAt < 7_000 && now - changedBeforeAt < 20_000;
-        if (changedAt > 0) DiagLog.log("fav gesture: track change, back=" + back + ", B lasted " + (now - changedAt) / 1000 + " s");
-        if (back) {
-            favourite(c, title, artist, "next-back");
-            trackBefore = "";
-        } else {
-            trackBefore = trackNow;
-        }
-        trackNow = key;
-        changedBeforeAt = changedAt;
-        changedAt = now;
-    }
 
     private void favourite(MediaController c, String title, String artist, String how) {
         boolean liked = MusicStats.favourite(this, title, artist);
@@ -200,6 +177,8 @@ public class MediaListener extends NotificationListenerService {
         if (st != null && liked) {
             for (PlaybackState.CustomAction a : st.getCustomActions()) {
                 String n = (a.getAction() + " " + a.getName()).toLowerCase(java.util.Locale.ROOT);
+                // Never "Undo like" (already liked): that took the like away again.
+                if (n.contains("undo") || n.contains("remove") || n.contains("unlike") || n.contains("entfernen")) continue;
                 if (n.contains("like") && !n.contains("dislike") || n.contains("thumb_up") || n.contains("thumbs up")
                     || n.contains("heart") || n.contains("favorit") || n.contains("mag ich")) {
                     try {
