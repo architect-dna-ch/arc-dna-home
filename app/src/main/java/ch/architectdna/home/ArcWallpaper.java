@@ -284,8 +284,9 @@ public class ArcWallpaper extends WallpaperService {
             stepCube();
             drawCube(c, width / 2f, height * 0.52f, cubeScale, ink, rust);
 
-            // Rave / beat rings.
+            // Rave / beat rings (none in the professional look).
             beat *= 0.9f;
+            if (getSharedPreferences("home", MODE_PRIVATE).getBoolean("pro", false)) rings.clear();
             for (int i = rings.size() - 1; i >= 0; i--) {
                 float[] r = rings.get(i);
                 r[2] += (r[5] > 0 ? 26 : 14) * s;
@@ -967,6 +968,7 @@ public class ArcWallpaper extends WallpaperService {
         }
 
         private void rainbowRing(Canvas c, float x, float y, float r, float stroke, float rotate, float alpha) {
+            if (getSharedPreferences("home", MODE_PRIVATE).getBoolean("pro", false)) return;      // professional: no rainbows
             int a = (int) (alpha * 255) << 24;
             int[] hues = {0xFF0000, 0xFF9900, 0xFFEE00, 0x33DD55, 0x22AAFF, 0x8844FF, 0xFF33AA, 0xFF0000};
             for (int i = 0; i < hues.length; i++) hues[i] |= a;

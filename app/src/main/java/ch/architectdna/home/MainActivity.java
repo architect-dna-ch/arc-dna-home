@@ -1004,6 +1004,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 recreate();
             }, null);
         }
+        settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
+            prefs.edit().putBoolean("pro", !pro()).apply();
+            if (pro()) {
+                if (f1) setF1(false);
+                if (dino != null) endDino();
+            }
+            recreate();
+        }, null);
         settingsRow(home, "Ruhig: nur Werkzeuge", () -> calm() ? "AN · selten Überraschungen" : "AUS · volles Programm", v -> {
             prefs.edit().putBoolean("calm", !calm()).apply();
             if (calm()) {
@@ -1513,7 +1521,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Back home after using an app: whoosh, crush, throw it in the bin next to the buddy. */
     /** "Ruhig": no dino visits, bin throws or races; now and then (1 in 8) a surprise anyway. */
     private boolean calm() {
-        return prefs.getBoolean("calm", false);
+        return prefs.getBoolean("calm", false) || pro();
+    }
+
+    /** "Professionell": neat and quiet – no buddy, no rainbows or glows, plain tiles, no surprises. */
+    private boolean pro() {
+        return prefs.getBoolean("pro", false);
+    }
+
+    private void applyPro() {
+        boolean on = pro();
+        int vis = on ? View.GONE : View.VISIBLE;
+        if (fox != null) fox.setVisibility(vis);
+        if (gameButton != null) gameButton.setVisibility(vis);
+        if (seismo != null) seismo.setVisibility(vis);
+        if (on && bubble != null) bubble.setVisibility(View.GONE);
+        if (on && edgeLight != null) edgeLight.watch(false);
     }
 
     private boolean calmSkip() {
@@ -2461,7 +2484,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             lp.setMargins(0, top + dp(60), dp(12), 0);
             rootFrame.addView(headDebug, lp);
         }
-        edgeLight.watch(true);
+        if (!pro()) edgeLight.watch(true);
         showHeadState(0);
         headLabel.setVisibility(View.VISIBLE);
         if (willCalib) startGazeCalibration();
@@ -4160,6 +4183,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void say(String s, long ms) {
+        if (pro()) return;            // professional: the buddy keeps quiet
         bubble.setText(s);
         bubble.setVisibility(View.VISIBLE);
         bubble.setAlpha(1f);
@@ -4608,6 +4632,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        applyPro();
         if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
@@ -5051,7 +5076,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         t.setPadding(dp(12), dp(12), dp(12), dp(10));     // the label stays clear of the slanted sides
         allTiles.put(t, Boolean.TRUE);
         // App cards are rounded hexagons, not rounded rectangles.
-        if (tileTint != 0) tint(t, tileTint);
+        if (tileTint != 0 && !pro()) tint(t, tileTint);
         else t.setBackground(new HexTile(card, line, dp(1), dp(14)));
 
         ImageView iv = new ImageView(this);

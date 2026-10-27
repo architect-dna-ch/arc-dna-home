@@ -896,6 +896,8 @@ final class MusicCard {
         private float shown;
 
         void run(boolean on) {
+            // "Professionell": no rainbow border.
+            on = on && !activity.getSharedPreferences("home", Activity.MODE_PRIVATE).getBoolean("pro", false);
             if (on == running) return;
             running = on;
             invalidateSelf();
