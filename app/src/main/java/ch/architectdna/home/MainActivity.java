@@ -4387,6 +4387,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
         if (crumplePending) {
             crumplePending = false;
@@ -5087,4 +5088,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             canvas.drawText(label, w - dp(16) - textPaint.measureText(label), dp(11), textPaint);
         }
     }
+
+    /**
+     * Xiaomi switches to the three buttons when another app is home ("can't use full screen gestures
+     * with third party launchers"). Its own switch force_fsg_nav_bar lets the gestures work anyway;
+     * writing it needs WRITE_SECURE_SETTINGS, which only adb can grant (once, it survives updates).
+     */
+    private void xiaomiGestures() {
+        String maker = Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
+        if (!maker.contains("xiaomi") && !maker.contains("redmi") && !maker.contains("poco")) return;
+        if (checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != PackageManager.PERMISSION_GRANTED) return;
+        try {
+            if (Settings.Global.getInt(getContentResolver(), "force_fsg_nav_bar", 0) != 1) {
+                Settings.Global.putInt(getContentResolver(), "force_fsg_nav_bar", 1);
+                DiagLog.log("xiaomi: full-screen gestures forced on");
+                pop("Gesten an – die Wischleiste ist zurück.");
+            }
+        } catch (RuntimeException e) {
+            DiagLog.log("xiaomi gestures: " + e.getMessage());
+        }
+    }
+
 }

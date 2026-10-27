@@ -7,6 +7,10 @@
     <!-- Brightness lever: granted by the user under "Modify system settings". -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
+    <!-- Xiaomi only: full-screen gestures with ARC-DNA as home (force_fsg_nav_bar). Never asked for;
+         only granted by hand once: adb shell pm grant ch.architectdna.home android.permission.WRITE_SECURE_SETTINGS -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- In-app updates from the GitHub releases. -->
     <uses-permission android:name="android.permission.INTERNET" />
