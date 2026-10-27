@@ -173,6 +173,19 @@ public class PlayerActivity extends Activity {
         queue.setOrientation(LinearLayout.VERTICAL);
         col.addView(queue);
 
+        // Tablet across: the medium big on the left, title, controls and queue on the right.
+        android.content.res.Configuration cfg = getResources().getConfiguration();
+        if (cfg.screenWidthDp > cfg.screenHeightDp && cfg.screenWidthDp >= 720) {
+            col.removeView(disk);
+            root.removeView(sv);
+            LinearLayout across = new LinearLayout(this);
+            FrameLayout left = new FrameLayout(this);
+            left.setPadding(dp(28), dp(28), dp(12), dp(28));
+            left.addView(disk, new FrameLayout.LayoutParams(-1, -1));
+            across.addView(left, new LinearLayout.LayoutParams(0, -1, 1f));
+            across.addView(sv, new LinearLayout.LayoutParams(0, -1, 1.15f));
+            root.addView(across, new FrameLayout.LayoutParams(-1, -1));
+        }
         setContentView(root);
         barIcons();
     }
@@ -659,15 +672,23 @@ public class PlayerActivity extends Activity {
             android.graphics.RectF st = new android.graphics.RectF(x + w * 0.06f, top + h * 0.08f, x + w * 0.94f, top + h * 0.62f);
             p.setColor(0xFFF4F2EC);
             c.drawRoundRect(st, dp(6), dp(6), p);
-            float cs = st.height() - dp(12);
+            // Above the reel window only (the cover used to run under the left reel).
+            float cs = top + h * 0.40f - st.top - dp(12);
             cover(c, new android.graphics.RectF(st.left + dp(6), st.top + dp(6), st.left + dp(6) + cs, st.top + dp(6) + cs), false);
             p.setColor(0xFF1A1A1A);
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(12));
-            String l = label.length() > 22 ? label.substring(0, 21) + "…" : label;
-            c.drawText(l.toUpperCase(Locale.GERMAN), st.left + cs + dp(14), st.top + dp(22), p);
+            String l = label.toUpperCase(Locale.GERMAN);
+            float room = st.right - dp(10) - (st.left + cs + dp(14));
+            if (p.measureText(l) > room) {
+                while (l.length() > 3 && p.measureText(l + "…") > room) l = l.substring(0, l.length() - 1);
+                l = l + "…";
+            }
+            c.drawText(l, st.left + cs + dp(14), st.top + dp(22), p);
             p.setColor(0x33B5271E);
-            for (int i = 1; i <= 3; i++) c.drawRect(st.left + cs + dp(14), st.top + dp(22) + i * dp(12), st.right - dp(10), st.top + dp(23) + i * dp(12), p);
+            for (int i = 1; i <= 3 && st.top + dp(23) + i * dp(12) < top + h * 0.40f - dp(4); i++) {
+                c.drawRect(st.left + cs + dp(14), st.top + dp(22) + i * dp(12), st.right - dp(10), st.top + dp(23) + i * dp(12), p);
+            }
             // Window with the two reels.
             android.graphics.RectF win = new android.graphics.RectF(x + w * 0.22f, top + h * 0.40f, x + w * 0.78f, top + h * 0.6f);
             long dur = duration();
@@ -783,8 +804,14 @@ public class PlayerActivity extends Activity {
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(11));
             p.setTextAlign(Paint.Align.CENTER);
-            String l = label.length() > 24 ? label.substring(0, 23) + "…" : label;
-            c.drawText("A1 · " + l.toUpperCase(Locale.GERMAN), left + w / 2, sy + dp(16), p);
+            // Fitted to the strip (it ran out over the edges).
+            String l = "A1 · " + label.toUpperCase(Locale.GERMAN);
+            float room = w * 0.64f - dp(14);
+            if (p.measureText(l) > room) {
+                while (l.length() > 6 && p.measureText(l + "…") > room) l = l.substring(0, l.length() - 1);
+                l = l + "…";
+            }
+            c.drawText(l, left + w / 2, sy + dp(16), p);
             p.setTextAlign(Paint.Align.LEFT);
         }
 
@@ -898,6 +925,7 @@ public class PlayerActivity extends Activity {
 
     private static String time(long ms) {
         long s = ms / 1000;
+        if (s >= 3600) return String.format(Locale.ROOT, "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60);     // not 183:36
         return String.format(Locale.ROOT, "%d:%02d", s / 60, s % 60);
     }
 
