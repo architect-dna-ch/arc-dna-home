@@ -680,8 +680,8 @@ public class HistoryActivity extends Activity {
         private final java.util.Set<String[]> picked = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
         private double yaw;
-        private boolean dragging;
-        private float lastX;
+        private boolean dragging, expanded, moved;
+        private float lastX, downX, downY;
 
         PlayGlobe() {
             super(HistoryActivity.this);
@@ -703,15 +703,34 @@ public class HistoryActivity extends Activity {
             int a = e.getActionMasked();
             if (a == android.view.MotionEvent.ACTION_DOWN) {
                 dragging = true;
-                lastX = e.getX();
+                moved = false;
+                lastX = downX = e.getX();
+                downY = e.getY();
                 getParent().requestDisallowInterceptTouchEvent(true);
             } else if (a == android.view.MotionEvent.ACTION_MOVE) {
+                if (Math.hypot(e.getX() - downX, e.getY() - downY) > dp(8)) moved = true;
                 yaw += (e.getX() - lastX) / (getWidth() * 0.3);
                 lastX = e.getX();
             } else {
                 dragging = false;
+                if (a == android.view.MotionEvent.ACTION_UP && !moved) toggleSize();
             }
             return true;
+        }
+
+        /** Tap: the globe grows to almost the screen width (with the hours around it), tap again: back. */
+        private void toggleSize() {
+            expanded = !expanded;
+            int from = getHeight(), to = expanded ? (int) Math.min(getWidth() * 0.95f, getResources().getDisplayMetrics().heightPixels * 0.55f) : dp(150);
+            android.animation.ValueAnimator va = android.animation.ValueAnimator.ofInt(from, to);
+            va.setDuration(320);
+            va.setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f));
+            va.addUpdateListener(an -> {
+                getLayoutParams().height = (int) an.getAnimatedValue();
+                requestLayout();
+            });
+            va.start();
+            performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
         }
 
         @Override
@@ -763,6 +782,21 @@ public class HistoryActivity extends Activity {
                 }
             }
             p.setAlpha(255);
+            // Big: the hours on the equator, so an empty side reads as the hours you don't listen (night).
+            if (getHeight() > dp(220)) {
+                p.setTextAlign(Paint.Align.CENTER);
+                p.setTypeface(android.graphics.Typeface.MONOSPACE);
+                p.setTextSize(dp(10));
+                for (int hr = 0; hr < 24; hr += 3) {
+                    double lon = hr / 24.0 * Math.PI * 2 + yaw;
+                    double z = Math.cos(lon);
+                    if (z < 0.05) continue;
+                    p.setColor(ink3);
+                    p.setAlpha((int) (255 * z));
+                    c.drawText(hr + "h", cx + (float) Math.sin(lon) * r * 1.02f, cy + r * 0.3f * (float) z + dp(14), p);
+                }
+                p.setAlpha(255);
+            }
             postInvalidateOnAnimation();
         }
     }
