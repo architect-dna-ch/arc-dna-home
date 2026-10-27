@@ -234,6 +234,9 @@ public class ArcWallpaper extends WallpaperService {
             handler.postDelayed(frame, busy ? 33 : 500);
         }
 
+        private java.util.Map<Long, Integer> pixels = new java.util.HashMap<>();
+        private long pixelsChecked, pixelsMod = -1;
+
         private void draw(Canvas c, boolean lock) {
             boolean dark = night();
             int bg = dark ? 0xFF121211 : 0xFFFAFAF8;
@@ -261,6 +264,18 @@ public class ArcWallpaper extends WallpaperService {
             paint.setColor(0x0E000000 | ink);
             for (float x = -2 * s; x < width; x += cell) lensLine(c, x, 0, x, height, false);
             for (float y = 40 * s; y < height; y += cell) lensLine(c, 0, y, width, y, false);
+            // Your pixel art in the grid's squares (PixelActivity), the grid still showing through.
+            long nowMs = SystemClock.uptimeMillis();
+            if (nowMs - pixelsChecked > 1000) {
+                pixelsChecked = nowMs;
+                long mod = PixelArt.file(ArcWallpaper.this).lastModified();
+                if (mod != pixelsMod) {
+                    pixelsMod = mod;
+                    pixels = PixelArt.load(ArcWallpaper.this);
+                }
+            }
+            PixelArt.draw(c, pixels, s, paint, dark ? 150 : 140);
+            paint.setStyle(Paint.Style.STROKE);
 
             // The cube, as on the website wallpaper, but real 3D: two fingers on the home screen turn it.
             // The orb's rim and specks first, then the cube: its edges and letters stay on top (the blue
