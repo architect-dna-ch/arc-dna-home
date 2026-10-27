@@ -305,6 +305,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             root.addView(paper, new FrameLayout.LayoutParams(-1, -1));
         }
 
+        // Pixel art (Pixel-Art app): ARC-DNA Live paints it itself; over a still wallpaper the home does.
+        pixelLayer = new PixelLayer();
+        root.addView(pixelLayer, new FrameLayout.LayoutParams(-1, -1));
+
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
@@ -4604,6 +4608,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
         xiaomiGestures();
@@ -5589,6 +5594,45 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return new Object[]{pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai), launch};
         } catch (PackageManager.NameNotFoundException e) {
             return null;
+        }
+    }
+
+
+    /* ================= Pixel art on the home (still wallpaper) ================= */
+
+    private PixelLayer pixelLayer;
+
+    /** The pixel squares in the wallpaper grid's geometry (screen coordinates), half see-through. */
+    private final class PixelLayer extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int[] at = new int[2];
+        private java.util.Map<Long, Integer> cells = new HashMap<>();
+        private long mod = -1;
+
+        PixelLayer() {
+            super(MainActivity.this);
+        }
+
+        /** Re-read when the file changed (back from the editor). */
+        void refresh() {
+            long m = PixelArt.file(MainActivity.this).lastModified();
+            if (m != mod) {
+                mod = m;
+                cells = PixelArt.load(MainActivity.this);
+                invalidate();
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            if (cells.isEmpty() || liveWallpaperActive()) return;
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+            getLocationOnScreen(at);
+            c.save();
+            c.translate(-at[0], -at[1]);
+            PixelArt.draw(c, cells, PixelArt.scale(dm.widthPixels, dm.heightPixels), p, isNight() ? 150 : 140);
+            c.restore();
         }
     }
 
