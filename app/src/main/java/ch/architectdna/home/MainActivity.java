@@ -468,6 +468,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         paintAlarm();
 
         // Priorities: search, apps and music always open; everything else folds away.
+        content.addView(modeBar(), margins(-1, -2, 0, dp(16), 0, 0));
+        widgetStrip = new LinearLayout(this);
+        widgetStrip.setOrientation(LinearLayout.VERTICAL);
+        content.addView(widgetStrip, margins(-1, -2, 0, dp(4), 0, 0));
         foldable("Suche", "search", true, searchRow(), dp(20));
         // Tablet: the dashboard from the sketch; Apps, ARC-DNA and Zuletzt move into its folder dock.
         if (Dashboard.wanted(this)) {
@@ -488,13 +492,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     return d;
                 }
             });
-            content.addView(dashboard.build(), margins(-1, -2, 0, dp(18), 0, 0));
+            dashboardView = dashboard.build();
+            content.addView(dashboardView, margins(-1, -2, 0, dp(18), 0, 0));
         }
 
         appTilesBox = new FrameLayout(this);
         appTilesBox.addView(appTiles());
         foldable("Apps", "apps", true, appTilesBox, dp(22));
         intoFolder(0);
+        renderWidgets();
 
         // ARC-DNA's own native apps, folded away until opened.
         arcBox = new FrameLayout(this);
@@ -789,6 +795,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Claude", R.drawable.ic_claude, appOr("com.anthropic.claude",
                 new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai")))},
         };
+        Object[][] byMode = modeApps();
+        if (byMode != null) items = byMode;
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -801,7 +809,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             Intent intent = (Intent) items[i][2];
             tileTint = YELLOW;
-            View tile = tile((String) items[i][0], getDrawable((Integer) items[i][1]), 28);
+            Object ic = items[i][1];
+            View tile = tile((String) items[i][0], ic instanceof Integer ? getDrawable((Integer) ic) : (Drawable) ic, 28);
             tileTint = 0;
             tile.setOnClickListener(v -> open(intent));
             // Telefon: long-press = the system phone app (favourites, voicemail, settings).
@@ -3902,7 +3911,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private View musicView;
 
     private void frost(View v, float hidden) {
-        if (v == musicView) hidden = 0;
+        if (v == musicView || v == dashboardView || v == widgetStrip) hidden = 0;     // widgets stay sharp
         Float last = foldState.get(v);
         if (last != null && Math.abs(last - hidden) < 0.02f && (hidden > 0 || last == 0)) return;
         foldState.put(v, hidden);
@@ -4586,6 +4595,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onResume();
         homeInFront = true;
         if (dashboard != null) dashboard.resume();
+        if (phoneWidgets != null) phoneWidgets.resume();
         xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
         if (crumplePending) {
@@ -4658,6 +4668,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         if (dashboard != null) dashboard.pause();
+        if (phoneWidgets != null) phoneWidgets.pause();
         if (folderClose != null && folderPanel != null) folderClose.run();      // an app was started from a folder
         pausedAt = System.currentTimeMillis();
         handler.removeCallbacks(clockFlip);
@@ -5318,6 +5329,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ================= Tablet dashboard: folders ================= */
 
     private Dashboard dashboard;
+    private View dashboardView;
     private final View[] folderHead = new View[3], folderBlock = new View[3];
     private FrameLayout folderPanel;
 
@@ -5396,5 +5408,154 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private Runnable folderClose;
+
+
+    /* ================= Modes: presets of apps and widgets ================= */
+
+    /*
+     * One tap at the top switches what the home is for: the APPS row shows that mode's apps (the
+     * ones installed), widgets appear above it, and surprises follow the mode (calm for school and
+     * work). "Standard" is the home as before.
+     */
+    private static final String[][] MODES = {
+        // name, emoji, widgets, calm, apps (package or own activity, first installed wins per slot)
+        {"Standard", "◎", "", "0", ""},
+        {"Schule", "📚", "clock,weather", "1",
+            "calendar|com.google.android.calendar|com.android.calendar;BoardActivity;RecorderActivity;com.anthropic.claude;"
+                + "com.google.android.apps.bard|com.google.android.apps.gemini;com.google.android.keep|com.miui.notes;"
+                + "com.google.android.apps.docs;WeckerActivity"},
+        {"Arbeit", "💼", "clock,live", "1",
+            "ch.protonmail.android|com.google.android.gm;calendar|com.google.android.calendar;com.anthropic.claude;"
+                + "com.microsoft.teams;com.google.android.apps.docs;com.github.android;BoardActivity;phone"},
+        {"Draussen", "🧭", "weather,live", "0",
+            "maps|com.google.android.apps.maps;ch.sbb.mobile.android.b2c;RouteActivity;CameraActivity;GlobusActivity;"
+                + "phone;GalleryActivity;EnergyActivity"},
+        {"Entspannen", "🌿", "garden,clock", "0",
+            "com.google.android.apps.youtube.music;PlayerActivity;GalleryActivity;FreqActivity;com.google.android.youtube;"
+                + "com.instagram.android;com.spotify.music;com.netflix.mediaclient"},
+        {"Zuhause", "🏠", "clock,garden", "0",
+            "phone;sms;calendar|com.google.android.calendar;EnergyActivity;WeckerActivity;GalleryActivity;"
+                + "com.google.android.apps.youtube.music;com.android.chrome"},
+        {"Social", "💬", "clock,weather", "0",
+            "com.whatsapp;com.instagram.android;org.telegram.messenger;sms;phone;com.zhiliaoapp.musically;"
+                + "com.linkedin.android;CameraActivity"}};
+
+    private LinearLayout widgetStrip;
+    private Dashboard phoneWidgets;
+
+    private int mode() {
+        return Math.max(0, Math.min(MODES.length - 1, prefs.getInt("mode", 0)));
+    }
+
+    private View modeBar() {
+        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout row = new LinearLayout(this);
+        hs.addView(row);
+        for (int i = 0; i < MODES.length; i++) {
+            int m = i;
+            TextView c = monoText(12, i == mode() ? (isNight() ? 0xFF121211 : 0xFFFFFFFF) : ink2);
+            c.setText(MODES[i][1] + "  " + MODES[i][0].toUpperCase(Locale.GERMAN));
+            c.setLetterSpacing(0.08f);
+            c.setPadding(dp(14), dp(9), dp(14), dp(9));
+            GradientDrawable g = new GradientDrawable();
+            g.setCornerRadius(dp(20));
+            g.setColor(i == mode() ? rust : card);
+            g.setStroke(dp(1), i == mode() ? rust : line);
+            c.setBackground(g);
+            c.setOnClickListener(v -> setMode(m));
+            row.addView(c, margins(-2, -2, i == 0 ? 0 : dp(8), 0, 0, 0));
+        }
+        modeBarView = hs;
+        return hs;
+    }
+
+    private View modeBarView;
+
+    private void setMode(int m) {
+        prefs.edit().putInt("mode", m).putBoolean("calm", "1".equals(MODES[m][3])).apply();
+        // Repaint the bar, the apps and the widgets.
+        int at = content.indexOfChild(modeBarView);
+        if (at >= 0) {
+            content.removeView(modeBarView);
+            content.addView(modeBar(), at, margins(-1, -2, 0, dp(16), 0, 0));
+        }
+        appTilesBox.removeAllViews();
+        appTilesBox.addView(appTiles());
+        renderWidgets();
+        if (m > 0) say(MODES[m][1] + " " + MODES[m][0] + "-Modus.", 1200);
+        if (calm()) {
+            if (f1) setF1(false);
+            if (dino != null) endDino();
+        }
+    }
+
+    /** The mode's widgets, full width, stacked (the tablet dashboard has its own). */
+    private void renderWidgets() {
+        if (widgetStrip == null) return;
+        widgetStrip.removeAllViews();
+        String w = MODES[mode()][2];
+        if (w.isEmpty() || dashboard != null) return;
+        if (phoneWidgets == null) phoneWidgets = new Dashboard(this, new int[]{ink, ink2, ink3, rust, card, line}, null);
+        for (String kind : w.split(",")) {
+            int h = kind.equals("clock") ? 210 : kind.equals("garden") ? 150 : 190;
+            widgetStrip.addView(phoneWidgets.widget(kind), margins(-1, dp(h), 0, dp(10), 0, 0));
+        }
+    }
+
+    /** The APPS row for the current mode: {label, icon, intent} of what's installed, or null for the standard row. */
+    private Object[][] modeApps() {
+        int m = mode();
+        if (m == 0) return null;
+        PackageManager pm = getPackageManager();
+        List<Object[]> out = new ArrayList<>();
+        for (String slot : MODES[m][4].split(";")) {
+            for (String c : slot.split("\\|")) {
+                Object[] it = resolveModeApp(pm, c);
+                if (it != null) {
+                    out.add(it);
+                    break;
+                }
+            }
+            if (out.size() >= 8) break;
+        }
+        return out.isEmpty() ? null : out.toArray(new Object[0][]);
+    }
+
+    private Object[] resolveModeApp(PackageManager pm, String c) {
+        switch (c) {
+            case "phone":
+                return new Object[]{"Telefon", R.drawable.ic_phone, new Intent(this, DialerActivity.class)};
+            case "sms":
+                return new Object[]{"SMS", R.drawable.ic_sms, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)};
+            case "calendar":
+                return new Object[]{"Kalender", R.drawable.ic_calendar, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)};
+            case "maps":
+                return new Object[]{"Karten", R.drawable.ic_map, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS)};
+            default:
+                break;
+        }
+        if (!c.contains(".")) {
+            // One of ARC-DNA's own apps.
+            try {
+                Class<?> k = Class.forName(getPackageName() + "." + c);
+                String name = c.equals("BoardActivity") ? "Dr. Overloaded" : c.equals("RecorderActivity") ? "Rekorder"
+                    : c.equals("WeckerActivity") ? "Bär-Wecker" : c.equals("RouteActivity") ? "Routen" : c.equals("CameraActivity") ? "ARC Kamera"
+                    : c.equals("GlobusActivity") ? "Globus" : c.equals("GalleryActivity") ? "Galerie" : c.equals("EnergyActivity") ? "Energie"
+                    : c.equals("PlayerActivity") ? "ARC Player" : c.equals("FreqActivity") ? "VOID FREQ" : c;
+                return new Object[]{name, ownIcon(k.getName(), getDrawable(R.drawable.ic_cube)), new Intent(this, k)};
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        }
+        Intent launch = pm.getLaunchIntentForPackage(c);
+        if (launch == null) return null;
+        try {
+            android.content.pm.ApplicationInfo ai = pm.getApplicationInfo(c, 0);
+            return new Object[]{pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai), launch};
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
 
 }

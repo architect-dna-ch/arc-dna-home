@@ -80,6 +80,35 @@ final class Dashboard {
         return p;
     }
 
+    private boolean located;
+
+    /** One widget on its own (the phone's modes): clock, weather, live or garden. */
+    View widget(String kind) {
+        View v;
+        switch (kind) {
+            case "clock":
+                v = new Clock();
+                break;
+            case "weather":
+                weather = new Weather();
+                v = weather;
+                break;
+            case "live":
+                live = new Live();
+                v = live;
+                break;
+            default:
+                v = new Garden();
+                break;
+        }
+        v.setBackground(box());
+        if (!located) {
+            located = true;
+            locate();
+        }
+        return v;
+    }
+
     View build() {
         LinearLayout col = new LinearLayout(ctx);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -123,6 +152,7 @@ final class Dashboard {
             dock.addView(f, lp(0, dp(120), 1f, i == 0 ? 0 : dp(6), 0, i == names.length - 1 ? 0 : dp(6), 0));
         }
         col.addView(dock, lp(-1, -2, 0, 0, dp(12), 0, 0));
+        located = true;
         locate();
         return col;
     }
@@ -261,7 +291,8 @@ final class Dashboard {
                 for (int i = 0; s != null && i < s.length(); i++) {
                     JSONObject o = s.getJSONObject(i);
                     JSONObject co = o.optJSONObject("coordinate");
-                    if (o.optString("id").isEmpty() || co == null) continue;
+                    // Real stops only: addresses come back too (with an id), but without a transport icon.
+                    if (o.optString("id").isEmpty() || co == null || o.isNull("icon") || o.optString("icon").isEmpty()) continue;
                     float[] r = new float[2];
                     Location.distanceBetween(lat, lon, co.optDouble("x"), co.optDouble("y"), r);
                     st = o.optString("name");
