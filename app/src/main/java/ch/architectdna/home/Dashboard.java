@@ -138,6 +138,10 @@ final class Dashboard {
         col.addView(top);
         Garden garden = new Garden();
         garden.setBackground(box());
+        leftCol = left;
+        topRow = top;
+        clockV = clock;
+        gardenV = garden;
         col.addView(garden, lp(-1, dp(170), 0, 0, dp(12), 0, 0));
         // The dock: main app folders.
         LinearLayout dock = new LinearLayout(ctx);
@@ -155,6 +159,35 @@ final class Dashboard {
         located = true;
         locate();
         return col;
+    }
+
+    private View leftCol, topRow, clockV, gardenV;
+
+    /** Only these cards (the mode's widgets: clock, weather, live, garden); empty = all of them. */
+    void showOnly(String kinds) {
+        if (topRow == null) return;
+        boolean all = kinds == null || kinds.isEmpty();
+        boolean w = all || kinds.contains("weather"), l = all || kinds.contains("live"),
+            c = all || kinds.contains("clock"), g = all || kinds.contains("garden");
+        weather.setVisibility(w ? View.VISIBLE : View.GONE);
+        live.setVisibility(l ? View.VISIBLE : View.GONE);
+        ((LinearLayout.LayoutParams) weather.getLayoutParams()).bottomMargin = w && l ? dp(12) : 0;
+        leftCol.setVisibility(w || l ? View.VISIBLE : View.GONE);
+        ((LinearLayout.LayoutParams) leftCol.getLayoutParams()).rightMargin = c ? dp(12) : 0;
+        clockV.setVisibility(c ? View.VISIBLE : View.GONE);
+        int rows = (w ? 1 : 0) + (l ? 1 : 0);
+        clockV.getLayoutParams().height = rows == 2 ? dp(432) : dp(300);
+        if (rows == 1) {
+            weather.getLayoutParams().height = dp(300);
+            live.getLayoutParams().height = dp(300);
+        } else {
+            weather.getLayoutParams().height = dp(210);
+            live.getLayoutParams().height = dp(210);
+        }
+        topRow.setVisibility(w || l || c ? View.VISIBLE : View.GONE);
+        gardenV.setVisibility(g ? View.VISIBLE : View.GONE);
+        ((View) topRow.getParent()).requestLayout();
+        refreshFolders();
     }
 
     /* ---------------- folders ---------------- */

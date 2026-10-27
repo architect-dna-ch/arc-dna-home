@@ -483,8 +483,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
                 @Override
                 public Drawable[] folderIcons(int which) {
-                    if (which == 0) return new Drawable[]{getDrawable(R.drawable.ic_phone), getDrawable(R.drawable.ic_sms),
-                        getDrawable(R.drawable.ic_mail), getDrawable(R.drawable.ic_calendar)};
+                    if (which == 0) {
+                        Object[][] m = modeApps();
+                        if (m != null) {
+                            Drawable[] d = new Drawable[Math.min(4, m.length)];
+                            for (int i = 0; i < d.length; i++) d[i] = m[i][1] instanceof Integer ? getDrawable((Integer) m[i][1]) : (Drawable) m[i][1];
+                            return d;
+                        }
+                        return new Drawable[]{getDrawable(R.drawable.ic_phone), getDrawable(R.drawable.ic_sms),
+                            getDrawable(R.drawable.ic_mail), getDrawable(R.drawable.ic_calendar)};
+                    }
                     if (which == 1) return new Drawable[]{getDrawable(R.drawable.ic_line_player), getDrawable(R.drawable.ic_line_gallery),
                         getDrawable(R.drawable.ic_line_energy), getDrawable(R.drawable.ic_line_routes)};
                     Drawable[] d = new Drawable[Math.min(4, lastRecent.size())];
@@ -5497,7 +5505,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (widgetStrip == null) return;
         widgetStrip.removeAllViews();
         String w = MODES[mode()][2];
-        if (w.isEmpty() || dashboard != null) return;
+        if (dashboard != null) {
+            // Tablet: the mode picks the dashboard's cards, and its apps sit right on the page.
+            dashboard.showOnly(w);
+            boolean show = mode() > 0;
+            if (folderHead[0] != null && content.indexOfChild(folderBlock[0]) >= 0) {
+                folderHead[0].setVisibility(show ? View.VISIBLE : View.GONE);
+                folderBlock[0].setVisibility(show ? View.VISIBLE : View.GONE);
+                if (show && content.indexOfChild(folderHead[0]) != content.indexOfChild(dashboardView) - 2) {
+                    // The mode's apps go right above the dashboard's cards.
+                    content.removeView(folderHead[0]);
+                    content.removeView(folderBlock[0]);
+                    int at = content.indexOfChild(dashboardView);
+                    content.addView(folderHead[0], at);
+                    content.addView(folderBlock[0], at + 1);
+                }
+            }
+            return;
+        }
+        if (w.isEmpty()) return;
         if (phoneWidgets == null) phoneWidgets = new Dashboard(this, new int[]{ink, ink2, ink3, rust, card, line}, null);
         for (String kind : w.split(",")) {
             int h = kind.equals("clock") ? 210 : kind.equals("garden") ? 150 : 190;
