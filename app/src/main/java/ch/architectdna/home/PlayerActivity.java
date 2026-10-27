@@ -564,19 +564,20 @@ public class PlayerActivity extends Activity {
 
         @Override
         protected void onDraw(Canvas c) {
-            float w = getWidth(), top = dp(12), bh = dp(8);
+            // The bar is inset by the knob's halo, so the knob is whole at 0:00 and at the end.
+            float pad = dp(13), w = getWidth(), l = pad, r = w - pad, top = dp(12), bh = dp(8);
             long dur = duration(), pos = dragAt >= 0 ? dragAt : position();
-            float f = dur > 0 ? Math.min(1, pos / (float) dur) : 0, head = w * f;
+            float f = dur > 0 ? Math.min(1, pos / (float) dur) : 0, head = l + (r - l) * f;
             p.setShader(null);
             p.setStyle(Paint.Style.FILL);
             p.setColor(line);
-            c.drawRoundRect(0, top, w, top + bh, bh / 2, bh / 2, p);
+            c.drawRoundRect(l, top, r, top + bh, bh / 2, bh / 2, p);
             p.setColor(rust);
-            c.drawRoundRect(0, top, Math.max(bh, head), top + bh, bh / 2, bh / 2, p);
-            float k = (SystemClock.uptimeMillis() % 3600) / 3600f, band = dp(70), sx = -band + (w + 2 * band) * k;
+            c.drawRoundRect(l, top, Math.max(l + bh, head), top + bh, bh / 2, bh / 2, p);
+            float k = (SystemClock.uptimeMillis() % 3600) / 3600f, band = dp(70), sx = l - band + (r - l + 2 * band) * k;
             p.setShader(new LinearGradient(sx - band, 0, sx + band, 0,
                 new int[]{0x00BFE3FF, 0x88EAF6FF, 0xCCFFFFFF, 0x88BFE3FF, 0x00BFE3FF}, null, Shader.TileMode.CLAMP));
-            c.drawRoundRect(0, top, w, top + bh, bh / 2, bh / 2, p);
+            c.drawRoundRect(l, top, r, top + bh, bh / 2, bh / 2, p);
             p.setShader(null);
             p.setColor(0x553C8CFF);
             c.drawCircle(head, top + bh / 2, dp(12), p);
@@ -585,9 +586,9 @@ public class PlayerActivity extends Activity {
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(11));
             p.setColor(ink3);
-            c.drawText(time(pos), 0, top + bh + dp(22), p);
+            c.drawText(time(pos), l, top + bh + dp(24), p);
             String d = dur > 0 ? time(dur) : "–:––";
-            c.drawText(d, w - p.measureText(d), top + bh + dp(22), p);
+            c.drawText(d, r - p.measureText(d), top + bh + dp(24), p);
         }
 
         @Override
@@ -595,7 +596,8 @@ public class PlayerActivity extends Activity {
             long dur = duration();
             if (dur <= 0 || controller == null) return false;
             getParent().requestDisallowInterceptTouchEvent(true);
-            long at = (long) (Math.max(0, Math.min(1, e.getX() / getWidth())) * dur);
+            float pad = dp(13);
+            long at = (long) (Math.max(0, Math.min(1, (e.getX() - pad) / (getWidth() - 2 * pad))) * dur);
             int a = e.getActionMasked();
             if (a == MotionEvent.ACTION_DOWN || a == MotionEvent.ACTION_MOVE) dragAt = at;
             if (a == MotionEvent.ACTION_UP) {
