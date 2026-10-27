@@ -40,8 +40,12 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
           cp app/build/outputs/bundle/release/app-release.aab ARC-DNA-Home.aab
 
+      # The release below is what the app installs from; this copy is extra, so a full artifact
+      # quota must not stop the release.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
+          retention-days: 2
           name: ARC-DNA-Home
           path: |
             ARC-DNA-Home.apk
