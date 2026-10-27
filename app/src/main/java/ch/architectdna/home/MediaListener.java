@@ -38,6 +38,21 @@ public class MediaListener extends NotificationListenerService {
         }
     };
 
+    /** The notice's progress bar moves on every 5 s while something plays. */
+    private final Runnable progress = new Runnable() {
+        @Override
+        public void run() {
+            for (MediaController c : watched) {
+                PlaybackState s = c.getPlaybackState();
+                if (s != null && s.getState() == PlaybackState.STATE_PLAYING) {
+                    ArcMediaNotice.show(MediaListener.this, c);      // only the notice, not the stats
+                    main.postDelayed(this, 5_000);
+                    return;
+                }
+            }
+        }
+    };
+
     /** While something plays, book the time every minute. */
     private final Runnable tick = new Runnable() {
         @Override
@@ -100,6 +115,8 @@ public class MediaListener extends NotificationListenerService {
         for (MediaController c : watched) c.unregisterCallback(callback);
         watched.clear();
         main.removeCallbacks(tick);
+        main.removeCallbacks(progress);
+        ArcMediaNotice.cancel(this);
         BtSync.stopServer();
         report();
     }
@@ -132,6 +149,20 @@ public class MediaListener extends NotificationListenerService {
             artist = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
         }
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
+        // The ARC Player notice: the playing session, else a paused one; none = gone.
+        MediaController shown = playing;
+        if (shown == null) {
+            for (MediaController c : watched) {
+                PlaybackState s = c.getPlaybackState();
+                if (s != null && s.getState() == PlaybackState.STATE_PAUSED && c.getMetadata() != null) {
+                    shown = c;
+                    break;
+                }
+            }
+        }
+        ArcMediaNotice.show(this, shown);
+        main.removeCallbacks(progress);
+        if (playing != null) main.postDelayed(progress, 5_000);
     }
 
     /* ---- ★ from the earbud volume: up, down, up, down within ~2 s ---- */

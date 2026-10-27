@@ -350,6 +350,11 @@
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
             android:turnScreenOn="true" />
 
+        <!-- The ARC Player notification's buttons (only our own PendingIntents reach it). -->
+        <receiver
+            android:name=".ArcMediaNotice$Receiver"
+            android:exported="false" />
+
         <!-- Not exported: only the system (boot, update) and our own alarm may reach it, no other app. -->
         <receiver
             android:name=".AlarmReceiver"
