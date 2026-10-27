@@ -497,7 +497,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         intoFolder(0);
 
         // ARC-DNA's own native apps, folded away until opened.
-        foldable("ARC-DNA Apps", "arcApps", false, arcApps(), dp(22));
+        arcBox = new FrameLayout(this);
+        arcBox.addView(arcApps());
+        foldable("ARC-DNA Apps", "arcApps", false, arcBox, dp(22));
         intoFolder(1);
 
         // Zuletzt: always on, one row.
@@ -3601,6 +3603,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return (int) (getResources().getDisplayMetrics().heightPixels * 0.42f);
     }
 
+    /** Into or out of split screen: rows and clock for the new width. */
+    @Override
+    public void onMultiWindowModeChanged(boolean multi, Configuration config) {
+        super.onMultiWindowModeChanged(multi, config);
+        reflow();
+    }
+
     /** Rotation no longer recreates the screen (circle gesture, game); only sizes follow. */
     @Override
     public void onConfigurationChanged(Configuration config) {
@@ -3617,6 +3626,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void reflow() {
         appTilesBox.removeAllViews();
         appTilesBox.addView(appTiles());
+        // The ARC-DNA apps too: built for another width (full screen ↔ split screen) rows went missing.
+        if (arcBox != null) {
+            arcBox.removeAllViews();
+            arcBox.addView(arcApps());
+        }
         renderLibrary();
         if (!lastRecent.isEmpty()) {
             renderRecentCarousel(lastRecent);
@@ -3867,6 +3881,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         float textW = probe.measureText(clock.getText().toString());
         if (textW > widthRoom && textW > 0) targetPx *= widthRoom / textW;
         targetPx = Math.max(basePx, Math.min(CLOCK_MAX_SP * sp, targetPx));
+        // Split screen: half the room, so a smaller clock leaves space for the apps.
+        if (Build.VERSION.SDK_INT >= 24 && isInMultiWindowMode()) targetPx = Math.min(targetPx, Math.max(basePx, 72 * sp));
         if (Math.abs(targetPx - curPx) > dp(2)) clock.setTextSize(TypedValue.COMPLEX_UNIT_PX, targetPx);
     }
 
@@ -4906,6 +4922,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** {name, activity, line icon, launcher icon}: the native apps built into ARC-DNA, tiles like the APPS grid. */
+    private FrameLayout arcBox;
+
     private View arcApps() {
         Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
