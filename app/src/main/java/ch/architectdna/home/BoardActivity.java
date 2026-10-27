@@ -69,6 +69,8 @@ public class BoardActivity extends Activity {
         int colour;
         float width;
         boolean eraser;
+        /** A picture instead of a line: file in board_img/, pts = x, y, width, height on the board. */
+        String image;
         float[] pts = new float[64];     // x, y, pressure …
         int n;
 
@@ -139,6 +141,7 @@ public class BoardActivity extends Activity {
         heading.addView(title);
         top.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
         top.addView(chip("BOARDS", v -> showBoards()));
+        top.addView(chip("+ BILD", v -> pickImage()));
         top.addView(chip("+ NEU", v -> newBoard()));
         top.addView(chip("TEILEN", v -> share()));
         ui.addView(top);
@@ -198,6 +201,7 @@ public class BoardActivity extends Activity {
         TextView undo = chipView("↶");
         undo.setOnClickListener(v -> {
             if (strokes.isEmpty()) return;
+            if (placing == strokes.get(strokes.size() - 1)) finishPlacing();
             redo.add(strokes.remove(strokes.size() - 1));
             board.rebuild();
             save();
@@ -261,6 +265,7 @@ public class BoardActivity extends Activity {
         if (boardId == null || !boardFile(boardId).exists() && listBoards().length() == 0) newBoard();
         else open(boardId);
         paintTools();
+        takeShared(getIntent());
     }
 
     @Override
@@ -349,6 +354,7 @@ public class BoardActivity extends Activity {
                 s.pts = new float[Math.max(3, n)];
                 for (int k = 0; k < n; k++) s.pts[k] = in.readFloat();
                 s.n = n;
+                if (s.width < 0) s.image = in.readUTF();          // width -1 marks a picture
                 strokes.add(s);
             }
         } catch (IOException ignored) {
@@ -369,6 +375,7 @@ public class BoardActivity extends Activity {
                 out.writeBoolean(s.eraser);
                 out.writeInt(s.n);
                 for (int k = 0; k < s.n; k++) out.writeFloat(s.pts[k]);
+                if (s.image != null) out.writeUTF(s.image);
             }
         } catch (IOException ignored) {
         }
@@ -618,6 +625,15 @@ public class BoardActivity extends Activity {
 
         /** Short segments so pressure can change the width along the line. */
         void drawStroke(Canvas c, Stroke s) {
+            if (s.image != null) {
+                Bitmap b = picture(s.image);
+                if (b != null && s.n >= 4) {
+                    p.setXfermode(null);
+                    p.setFilterBitmap(true);
+                    c.drawBitmap(b, null, new android.graphics.RectF(s.pts[0], s.pts[1], s.pts[0] + s.pts[2], s.pts[1] + s.pts[3]), p);
+                }
+                return;
+            }
             p.setStyle(Paint.Style.STROKE);
             if (s.eraser) {
                 p.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
@@ -642,6 +658,13 @@ public class BoardActivity extends Activity {
             float l = Float.MAX_VALUE, t = Float.MAX_VALUE, r = -Float.MAX_VALUE, b = -Float.MAX_VALUE;
             for (Stroke s : strokes) {
                 if (s.eraser) continue;
+                if (s.image != null && s.n >= 4) {
+                    l = Math.min(l, s.pts[0]);
+                    t = Math.min(t, s.pts[1]);
+                    r = Math.max(r, s.pts[0] + s.pts[2]);
+                    b = Math.max(b, s.pts[1] + s.pts[3]);
+                    continue;
+                }
                 for (int k = 0; k + 1 < s.n; k += 3) {
                     l = Math.min(l, s.pts[k]);
                     r = Math.max(r, s.pts[k]);
@@ -665,6 +688,18 @@ public class BoardActivity extends Activity {
                 for (float y = oy; y < getHeight(); y += cell) c.drawCircle(x, y, dp(1.2f), p);
             }
             if (cache != null) c.drawBitmap(cache, 0, 0, null);
+            if (placing != null && placing.n >= 4) {
+                // The picture being placed: dashed frame round it.
+                c.save();
+                c.concat(view);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(dp(2) / zoom);
+                p.setColor(rust);
+                p.setPathEffect(new android.graphics.DashPathEffect(new float[]{dp(8) / zoom, dp(6) / zoom}, 0));
+                c.drawRect(placing.pts[0], placing.pts[1], placing.pts[0] + placing.pts[2], placing.pts[1] + placing.pts[3], p);
+                p.setPathEffect(null);
+                c.restore();
+            }
             if (current != null) {
                 c.save();
                 c.concat(view);
@@ -681,9 +716,61 @@ public class BoardActivity extends Activity {
             }
         }
 
+        private float placeX, placeY, placeDist;
+        private boolean placeMoved;
+
+        /** While a picture is being placed: drag = move, two fingers = size, a tap beside it = done. */
+        private boolean placeTouch(MotionEvent e) {
+            int a = e.getActionMasked();
+            Stroke s = placing;
+            if (e.getPointerCount() >= 2) {
+                float dist = (float) Math.hypot(e.getX(0) - e.getX(1), e.getY(0) - e.getY(1));
+                if (a == MotionEvent.ACTION_POINTER_DOWN || placeDist <= 0) placeDist = dist;
+                else if (a == MotionEvent.ACTION_MOVE) {
+                    float f = Math.max(0.2f, Math.min(5f, dist / placeDist));
+                    float cx = s.pts[0] + s.pts[2] / 2, cy = s.pts[1] + s.pts[3] / 2;
+                    float nw = Math.max(dp(40) / zoom, s.pts[2] * f), nh = nw * s.pts[3] / s.pts[2];
+                    s.pts[0] = cx - nw / 2;
+                    s.pts[1] = cy - nh / 2;
+                    s.pts[2] = nw;
+                    s.pts[3] = nh;
+                    placeDist = dist;
+                    placeMoved = true;
+                    rebuild();
+                }
+                return true;
+            }
+            if (a == MotionEvent.ACTION_DOWN) {
+                placeX = e.getX();
+                placeY = e.getY();
+                placeDist = 0;
+                placeMoved = false;
+            } else if (a == MotionEvent.ACTION_MOVE) {
+                float dx = (e.getX() - placeX) / zoom, dy = (e.getY() - placeY) / zoom;
+                if (Math.abs(dx) + Math.abs(dy) > 0) {
+                    if (Math.hypot(e.getX() - placeX, e.getY() - placeY) > dp(4)) placeMoved = true;
+                    if (placeMoved) {
+                        s.pts[0] += dx;
+                        s.pts[1] += dy;
+                        placeX = e.getX();
+                        placeY = e.getY();
+                        rebuild();
+                    }
+                }
+            } else if (a == MotionEvent.ACTION_UP && !placeMoved) {
+                tmp[0] = e.getX();
+                tmp[1] = e.getY();
+                inverse.mapPoints(tmp);
+                boolean inside = tmp[0] >= s.pts[0] && tmp[0] <= s.pts[0] + s.pts[2] && tmp[1] >= s.pts[1] && tmp[1] <= s.pts[1] + s.pts[3];
+                if (!inside) finishPlacing();
+            }
+            return true;
+        }
+
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             int a = e.getActionMasked();
+            if (placing != null) return placeTouch(e);
             if (e.getPointerCount() >= 2) {
                 // Two fingers: move and zoom; a line just started is dropped.
                 if (current != null && !panning) {
@@ -765,4 +852,143 @@ public class BoardActivity extends Activity {
             current.add(tmp[0], tmp[1], pr);
         }
     }
+
+    /* ---------- pictures ---------- */
+
+    private static final int PICK = 41;
+    /** The picture just inserted: it can be moved and sized until a tap beside it. */
+    private Stroke placing;
+    private TextView placeHint;
+    private final java.util.Map<String, Bitmap> pictures = new java.util.HashMap<>();
+
+    private void pickImage() {
+        Intent i = Build.VERSION.SDK_INT >= 33 ? new Intent(android.provider.MediaStore.ACTION_PICK_IMAGES)
+            : new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(i, PICK);
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "Keine Bilder-Auswahl gefunden", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == PICK && res == RESULT_OK && data != null && data.getData() != null) insertImage(data.getData());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        takeShared(intent);
+    }
+
+    /** A picture shared to the whiteboard (Teilen → Dr. Overloaded). */
+    private void takeShared(Intent i) {
+        if (i == null || !Intent.ACTION_SEND.equals(i.getAction())) return;
+        Uri u = i.getParcelableExtra(Intent.EXTRA_STREAM);
+        i.setAction(Intent.ACTION_MAIN);          // only once (not again after a rotation)
+        if (u != null) board.post(() -> insertImage(u));
+    }
+
+    private File pictureDir() {
+        File d = new File(getFilesDir(), "board_img");
+        //noinspection ResultOfMethodCallIgnored
+        d.mkdirs();
+        return d;
+    }
+
+    private Bitmap picture(String name) {
+        Bitmap b = pictures.get(name);
+        if (b == null) {
+            b = android.graphics.BitmapFactory.decodeFile(new File(pictureDir(), name).getPath());
+            if (b != null) pictures.put(name, b);
+        }
+        return b;
+    }
+
+    /** Copies the picture into the app (at most 2048 px), puts it in the middle of the view, ready to place. */
+    private void insertImage(Uri uri) {
+        if (boardId == null) return;
+        if (placing != null) finishPlacing();
+        new Thread(() -> {
+            Bitmap b = null;
+            try {
+                if (Build.VERSION.SDK_INT >= 28) {
+                    b = android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(getContentResolver(), uri),
+                        (dec, info, src) -> {
+                            int w = info.getSize().getWidth(), h = info.getSize().getHeight(), sample = 1;
+                            while (Math.max(w, h) / sample > 2048) sample *= 2;
+                            dec.setTargetSampleSize(sample);
+                            dec.setAllocator(android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE);
+                        });
+                } else {
+                    //noinspection deprecation
+                    b = android.provider.MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                }
+            } catch (Exception | OutOfMemoryError ignored) {
+            }
+            if (b == null) {
+                runOnUiThread(() -> Toast.makeText(this, "Bild ließ sich nicht öffnen", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            String name = Long.toString(System.currentTimeMillis(), 36) + ".png";
+            try (FileOutputStream out = new FileOutputStream(new File(pictureDir(), name))) {
+                b.compress(Bitmap.CompressFormat.PNG, 100, out);
+            } catch (IOException e) {
+                runOnUiThread(() -> Toast.makeText(this, "Bild ließ sich nicht speichern", Toast.LENGTH_SHORT).show());
+                return;
+            }
+            Bitmap pic = b;
+            runOnUiThread(() -> {
+                pictures.put(name, pic);
+                Stroke s = new Stroke();
+                s.image = name;
+                s.width = -1;
+                // 60 % of the visible width, in the middle of what you see.
+                float vw = board.getWidth() / board.zoom, vh = board.getHeight() / board.zoom;
+                float w = vw * 0.6f, h = w * pic.getHeight() / pic.getWidth();
+                if (h > vh * 0.6f) {
+                    h = vh * 0.6f;
+                    w = h * pic.getWidth() / pic.getHeight();
+                }
+                float cx = (board.getWidth() / 2f - board.tx) / board.zoom, cy = (board.getHeight() / 2f - board.ty) / board.zoom;
+                s.pts = new float[]{cx - w / 2, cy - h / 2, w, h};
+                s.n = 4;
+                strokes.add(s);
+                redo.clear();
+                placing = s;
+                board.rebuild();
+                showPlaceHint();
+                save();
+            });
+        }, "arc-board-img").start();
+    }
+
+    private void showPlaceHint() {
+        if (placeHint == null) {
+            placeHint = mono(11, 0xFFFFFFFF);
+            placeHint.setText("BILD: ZIEHEN · 2 FINGER = GRÖSSE · DANEBEN TIPPEN = FERTIG");
+            placeHint.setPadding(dp(14), dp(8), dp(14), dp(8));
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(0xE6121211);
+            g.setStroke(dp(1.5f), rust);
+            g.setCornerRadius(dp(18));
+            placeHint.setBackground(g);
+            placeHint.setOnClickListener(v -> finishPlacing());
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+            lp.topMargin = dp(84);
+            ((FrameLayout) board.getParent()).addView(placeHint, lp);
+        }
+        placeHint.setVisibility(View.VISIBLE);
+    }
+
+    private void finishPlacing() {
+        placing = null;
+        if (placeHint != null) placeHint.setVisibility(View.GONE);
+        board.rebuild();
+        save();
+    }
+
 }
