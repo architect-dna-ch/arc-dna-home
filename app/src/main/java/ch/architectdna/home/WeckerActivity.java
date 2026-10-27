@@ -139,7 +139,9 @@ public class WeckerActivity extends Activity {
         }
         col.addView(chips);
 
-        setContentView(sv);
+        rootView = new FrameLayout(this);
+        rootView.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(rootView);
         paint();
     }
 
@@ -205,52 +207,250 @@ public class WeckerActivity extends Activity {
         return "IN " + min / 1440 + " TAGEN";
     }
 
+    private FrameLayout rootView;
+
     private void pickDaily() {
         int m = prefs.getInt("alarmMinutes", 7 * 60);
-        android.app.TimePickerDialog d = new android.app.TimePickerDialog(this, (tp, h, min) -> {
-            prefs.edit().putInt("alarmMinutes", h * 60 + min).putBoolean("alarmOn", true).apply();
-            AlarmScheduler.schedule(this);
-            paint();
-        }, m / 60, m % 60, true);
-        d.setButton(android.content.DialogInterface.BUTTON_NEUTRAL, "Test", (di, w) -> startActivity(new Intent(this, BearAlarmActivity.class)));
-        d.show();
+        sheet(null, true, m / 60, m % 60);
     }
 
-    /** Text, then day, then time. */
     private void addDeadline(String preset) {
-        EditText e = new EditText(this);
-        e.setHint("Was? z. B. Vorbereitung erster Tag Homeoffice");
-        if (preset != null) e.setText(preset);
-        e.setSelectAllOnFocus(preset != null);
-        FrameLayout wrap = new FrameLayout(this);
-        wrap.setPadding(dp(20), dp(8), dp(20), 0);
-        wrap.addView(e);
-        new AlertDialog.Builder(this)
-            .setTitle("Neuer Termin")
-            .setView(wrap)
-            .setPositiveButton("Tag wählen", (di, w) -> {
-                String what = e.getText().toString().trim();
-                if (what.isEmpty()) what = "Termin";
-                String label = what;
+        sheet(preset == null ? "" : preset, false, 13, 10);
+    }
+
+    /*
+     * The sheet instead of Android's grey pickers: the text, a row of days (Heute, Morgen, the
+     * weekdays ahead), and a drawn clock dial – tap the hours or the minutes above it, drag round
+     * the dial. All in ARC colours, light or dark.
+     */
+    private void sheet(String text, boolean daily, int hour, int minute) {
+        FrameLayout scrim = new FrameLayout(this);
+        scrim.setBackgroundColor(0x88000000);
+        scrim.setClickable(true);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(26));
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(card);
+        g.setCornerRadii(new float[]{dp(28), dp(28), dp(28), dp(28), 0, 0, 0, 0});
+        panel.setBackground(g);
+        panel.setClickable(true);
+        TextView title = mono(11, ink3);
+        title.setText(daily ? "— TÄGLICHER WECKER" : "— NEUER TERMIN");
+        title.setLetterSpacing(0.24f);
+        panel.addView(title);
+        EditText e = null;
+        if (!daily) {
+            e = new EditText(this);
+            e.setText(text);
+            e.setHint("Was? z. B. Vorbereitung erster Tag Homeoffice");
+            e.setTextColor(ink);
+            e.setHintTextColor(ink3);
+            e.setTextSize(20);
+            e.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            e.setBackground(box(bg, line, 14));
+            e.setPadding(dp(14), dp(12), dp(14), dp(12));
+            e.setSingleLine(true);
+            panel.addView(e, margins(-1, -2, dp(12)));
+        }
+        // Days.
+        final Calendar day = Calendar.getInstance();
+        final TextView[] dayChips = new TextView[14];
+        if (!daily) {
+            android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+            hs.setHorizontalScrollBarEnabled(false);
+            LinearLayout row = new LinearLayout(this);
+            hs.addView(row);
+            SimpleDateFormat df = new SimpleDateFormat("EEE d.", Locale.GERMAN);
+            for (int k = 0; k < dayChips.length; k++) {
                 Calendar c = Calendar.getInstance();
-                new android.app.DatePickerDialog(this, (dp, y, mo, da) -> {
-                    c.set(y, mo, da);
-                    new android.app.TimePickerDialog(this, (tp, h, mi) -> {
-                        c.set(Calendar.HOUR_OF_DAY, h);
-                        c.set(Calendar.MINUTE, mi);
-                        c.set(Calendar.SECOND, 0);
-                        c.set(Calendar.MILLISECOND, 0);
-                        if (c.getTimeInMillis() <= System.currentTimeMillis()) {
-                            android.widget.Toast.makeText(this, "Das ist schon vorbei.", android.widget.Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        AlarmScheduler.addDeadline(this, c.getTimeInMillis(), label);
-                        paint();
-                    }, 13, 10, true).show();
-                }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
-            })
-            .setNegativeButton("Abbrechen", null)
-            .show();
+                c.add(Calendar.DAY_OF_YEAR, k);
+                String lbl = k == 0 ? "HEUTE" : k == 1 ? "MORGEN" : df.format(c.getTime()).toUpperCase(Locale.GERMAN);
+                TextView chip = mono(12, ink2);
+                chip.setText(lbl);
+                chip.setPadding(dp(14), dp(9), dp(14), dp(9));
+                int idx = k;
+                chip.setOnClickListener(v -> {
+                    day.setTimeInMillis(System.currentTimeMillis());
+                    day.add(Calendar.DAY_OF_YEAR, idx);
+                    for (int q = 0; q < dayChips.length; q++) paintChip(dayChips[q], q == idx);
+                });
+                dayChips[k] = chip;
+                paintChip(chip, k == 0);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+                lp.rightMargin = dp(8);
+                row.addView(chip, lp);
+            }
+            panel.addView(hs, margins(-1, -2, dp(14)));
+        }
+        // The dial.
+        Dial dial = new Dial(hour, minute);
+        panel.addView(dial, margins(-1, dp(330), dp(10)));
+        // Buttons.
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.END);
+        TextView cancel = chip("ABBRECHEN", ink2);
+        TextView ok = chip(daily ? "WECKER STELLEN 🐻" : "TERMIN SETZEN 🐻", rust);
+        buttons.addView(cancel);
+        LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(-2, -2);
+        ol.leftMargin = dp(10);
+        buttons.addView(ok, ol);
+        panel.addView(buttons, margins(-1, -2, dp(14)));
+        FrameLayout.LayoutParams pl = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        scrim.addView(panel, pl);
+        rootView.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        panel.setTranslationY(dp(500));
+        panel.animate().translationY(0).setDuration(260).setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+        Runnable close = () -> panel.animate().translationY(panel.getHeight()).setDuration(200)
+            .withEndAction(() -> rootView.removeView(scrim)).start();
+        cancel.setOnClickListener(v -> close.run());
+        scrim.setOnClickListener(v -> close.run());
+        EditText field = e;
+        ok.setOnClickListener(v -> {
+            if (daily) {
+                prefs.edit().putInt("alarmMinutes", dial.hour * 60 + dial.minute).putBoolean("alarmOn", true).apply();
+                AlarmScheduler.schedule(this);
+            } else {
+                String what = field.getText().toString().trim();
+                if (what.isEmpty()) what = "Termin";
+                day.set(Calendar.HOUR_OF_DAY, dial.hour);
+                day.set(Calendar.MINUTE, dial.minute);
+                day.set(Calendar.SECOND, 0);
+                day.set(Calendar.MILLISECOND, 0);
+                if (day.getTimeInMillis() <= System.currentTimeMillis()) {
+                    title.setText("— DAS IST SCHON VORBEI · ANDERE ZEIT");
+                    title.setTextColor(rust);
+                    return;
+                }
+                AlarmScheduler.addDeadline(this, day.getTimeInMillis(), what);
+            }
+            paint();
+            close.run();
+        });
+    }
+
+    private void paintChip(TextView t, boolean on) {
+        t.setTextColor(on ? 0xFFFFFFFF : ink2);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(18));
+        g.setColor(on ? rust : card);
+        g.setStroke(dp(1.5f), on ? rust : line);
+        t.setBackground(g);
+    }
+
+    /** HH:MM big on top (tap one to set it), a clock dial below to drag round: 24 hours, or 60 minutes. */
+    private final class Dial extends android.view.View {
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        int hour, minute;
+        private boolean minutes;
+        private final android.graphics.RectF hRect = new android.graphics.RectF(), mRect = new android.graphics.RectF();
+
+        Dial(int h, int m) {
+            super(WeckerActivity.this);
+            hour = h;
+            minute = m;
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float w = getWidth(), h = getHeight();
+            // Time on top.
+            p.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            p.setTextSize(dp(56));
+            p.setLetterSpacing(-0.04f);
+            String hh = String.format(Locale.ROOT, "%02d", hour), mm = String.format(Locale.ROOT, "%02d", minute);
+            float hw = p.measureText(hh), cw = p.measureText(":"), mw = p.measureText(mm);
+            float x = (w - hw - cw - mw) / 2, base = dp(60);
+            p.setColor(minutes ? ink3 : rust);
+            c.drawText(hh, x, base, p);
+            hRect.set(x - dp(8), 0, x + hw + dp(8), base + dp(10));
+            p.setColor(ink3);
+            c.drawText(":", x + hw, base, p);
+            p.setColor(minutes ? rust : ink3);
+            c.drawText(mm, x + hw + cw, base, p);
+            mRect.set(x + hw + cw - dp(8), 0, x + hw + cw + mw + dp(8), base + dp(10));
+            p.setLetterSpacing(0);
+            // Dial.
+            float cx = w / 2, cy = base + dp(24) + (h - base - dp(24)) / 2, r = Math.min(w / 2, (h - base - dp(24)) / 2) - dp(6);
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(bg);
+            c.drawCircle(cx, cy, r, p);
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1.5f));
+            p.setColor(line);
+            c.drawCircle(cx, cy, r, p);
+            int steps = minutes ? 60 : 24;
+            float value = minutes ? minute : hour;
+            p.setTextAlign(android.graphics.Paint.Align.CENTER);
+            for (int k = 0; k < steps; k++) {
+                double a = Math.PI * 2 * k / steps - Math.PI / 2;
+                boolean major = minutes ? k % 5 == 0 : true;
+                if (minutes && !major) {
+                    p.setStyle(android.graphics.Paint.Style.STROKE);
+                    p.setStrokeWidth(dp(1));
+                    p.setColor(ink3);
+                    c.drawLine(cx + (float) Math.cos(a) * r * 0.86f, cy + (float) Math.sin(a) * r * 0.86f,
+                        cx + (float) Math.cos(a) * r * 0.92f, cy + (float) Math.sin(a) * r * 0.92f, p);
+                    continue;
+                }
+                p.setStyle(android.graphics.Paint.Style.FILL);
+                p.setTypeface(Typeface.MONOSPACE);
+                p.setTextSize(dp(minutes ? 13 : 12));
+                boolean sel = k == (int) value;
+                float rr = r * 0.8f;
+                if (sel) {
+                    p.setColor(rust);
+                    c.drawCircle(cx + (float) Math.cos(a) * rr, cy + (float) Math.sin(a) * rr, dp(16), p);
+                }
+                p.setColor(sel ? 0xFFFFFFFF : k % 6 == 0 || minutes ? ink : ink2);
+                c.drawText(String.format(Locale.ROOT, "%02d", k), cx + (float) Math.cos(a) * rr, cy + (float) Math.sin(a) * rr + dp(4.5f), p);
+            }
+            // Hand.
+            double a = Math.PI * 2 * value / steps - Math.PI / 2;
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeWidth(dp(2.5f));
+            p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+            p.setColor(rust);
+            c.drawLine(cx, cy, cx + (float) Math.cos(a) * r * 0.62f, cy + (float) Math.sin(a) * r * 0.62f, p);
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            c.drawCircle(cx, cy, dp(5), p);
+            p.setTextAlign(android.graphics.Paint.Align.LEFT);
+            p.setTextSize(dp(10));
+            p.setTypeface(Typeface.MONOSPACE);
+            p.setColor(ink3);
+            String hint = minutes ? "MINUTEN · RUNDHERUM ZIEHEN" : "STUNDEN · RUNDHERUM ZIEHEN · DANN MINUTEN";
+            p.setTextAlign(android.graphics.Paint.Align.CENTER);
+            c.drawText(hint, cx, h - dp(2), p);
+            p.setTextAlign(android.graphics.Paint.Align.LEFT);
+        }
+
+        @Override
+        public boolean onTouchEvent(android.view.MotionEvent e) {
+            float x = e.getX(), y = e.getY();
+            int a = e.getActionMasked();
+            if (a == android.view.MotionEvent.ACTION_DOWN && (hRect.contains(x, y) || mRect.contains(x, y))) {
+                minutes = mRect.contains(x, y);
+                invalidate();
+                return true;
+            }
+            getParent().requestDisallowInterceptTouchEvent(true);
+            float base = dp(60), w = getWidth(), h = getHeight();
+            float cx = w / 2, cy = base + dp(24) + (h - base - dp(24)) / 2;
+            double ang = Math.atan2(y - cy, x - cx) + Math.PI / 2;
+            if (ang < 0) ang += Math.PI * 2;
+            int steps = minutes ? 60 : 24;
+            int v = (int) Math.round(ang / (Math.PI * 2) * steps) % steps;
+            if (minutes) {
+                if (v != minute) performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                minute = v;
+            } else {
+                if (v != hour) performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                hour = v;
+                if (a == android.view.MotionEvent.ACTION_UP) minutes = true;       // hours set: on to the minutes
+            }
+            invalidate();
+            return true;
+        }
     }
 
     /* ---------- small helpers ---------- */
