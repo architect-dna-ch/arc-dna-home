@@ -3661,6 +3661,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 i++;
                 continue;
             }
+            // Rows frosted one by one while the block was tall (screen turned, lock screen) stay
+            // blurred otherwise once it folds as one piece again: clear them.
+            if (isLabel && block instanceof LinearLayout && block != musicView) {
+                ViewGroup g = (ViewGroup) block;
+                for (int k = 0; k < g.getChildCount(); k++) {
+                    Float was = foldState.get(g.getChildAt(k));
+                    if (was != null && was > 0) frost(g.getChildAt(k), 0);
+                }
+            }
             float hidden = block.getHeight() == 0 ? 0
                 : Math.max(0f, Math.min(1f, (block.getBottom() - limit) / (float) block.getHeight()));
             if (block == musicView) hidden = 0;       // its title stays sharp with it
