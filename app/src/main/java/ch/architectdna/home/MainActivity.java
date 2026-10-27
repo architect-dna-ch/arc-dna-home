@@ -1546,8 +1546,25 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }
             }
             handler.post(() -> {
+                // After a restart (theme change …) first the row as it was, without a fade; then only
+                // what really changed moves (see updateRecentCarousel).
+                if (recentHome.getChildCount() == 0 || recentCarousel == null) {
+                    List<AppEntry> cached = new ArrayList<>();
+                    for (String pkg : prefs.getString("recentOrder", "").split(",")) {
+                        AppEntry a = byPackage.get(pkg);
+                        if (a != null) cached.add(a);
+                    }
+                    if (!cached.isEmpty()) {
+                        renderRecentCarousel(cached);
+                        recentHome.animate().cancel();
+                        recentHome.setAlpha(1f);
+                    }
+                }
+                boolean same = keys(recent).equals(keys(lastRecent)) && recentCarousel != null;
                 lastRecent = recent;
-                renderRecentCarousel(recent);
+                prefs.edit().putString("recentOrder", android.text.TextUtils.join(",", keys(recent))).apply();
+                if (same) return;               // nothing changed: leave the row alone
+                if (!updateRecentCarousel(recent)) renderRecentCarousel(recent);
                 renderRecents(recentLib, recent, 2 * cols());
             });
         }).start();
@@ -1582,6 +1599,99 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private android.widget.HorizontalScrollView recentCarousel;
     private int carouselWidth, carouselCols;
     private LinearLayout recentDots;
+
+    private static List<String> keys(List<AppEntry> l) {
+        List<String> k = new ArrayList<>();
+        for (AppEntry a : l) k.add(a.component.getPackageName());
+        return k;
+    }
+
+    /** Which app each Zuletzt tile shows (for the move animation). */
+    private final Map<View, String> recentTilePkg = new java.util.WeakHashMap<>();
+
+    /**
+     * Only what changed: tiles that stay slide to their new place with a card flip (like an UNO
+     * reverse), a new app pops in with a yellow flash. False = the row has to be built anew.
+     */
+    private boolean updateRecentCarousel(List<AppEntry> recent) {
+        if (recentCarousel == null || recentCarousel.getChildCount() == 0) return false;
+        LinearLayout strip = (LinearLayout) recentCarousel.getChildAt(0);
+        int n = Math.min(prefs.getInt("recentCount", 8), recent.size());
+        if (strip.getChildCount() != n || n == 0) return false;            // other page count: dots change too
+        Map<String, View> old = new HashMap<>();
+        Map<String, Integer> oldLeft = new HashMap<>();
+        for (int i = 0; i < strip.getChildCount(); i++) {
+            View v = strip.getChildAt(i);
+            String pkg = recentTilePkg.get(v);
+            if (pkg == null) return false;
+            old.put(pkg, v);
+            oldLeft.put(pkg, v.getLeft());
+        }
+        int width = content.getWidth() > 0 ? content.getWidth() - content.getPaddingLeft() - content.getPaddingRight()
+            : getResources().getDisplayMetrics().widthPixels - dp(44);
+        int gap = dp(8), tileW = (width - (cols() - 1) * gap) / cols();
+        strip.removeAllViews();
+        List<View> fresh = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            AppEntry app = recent.get(i);
+            String pkg = app.component.getPackageName();
+            View tile = old.get(pkg);
+            if (tile == null) {
+                tileTint = GREEN;
+                tile = tile(app.label, app.icon, 32);
+                tileTint = 0;
+                tile.setOnClickListener(v -> launch(app));
+                recentTilePkg.put(tile, pkg);
+                fresh.add(tile);
+            }
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileW, -2);
+            lp.leftMargin = i == 0 ? 0 : gap;
+            strip.addView(tile, lp);
+        }
+        recentCarousel.scrollTo(0, 0);
+        strip.post(() -> {
+            int order = 0;
+            for (int i = 0; i < strip.getChildCount(); i++) {
+                View v = strip.getChildAt(i);
+                String pkg = recentTilePkg.get(v);
+                if (fresh.contains(v)) {
+                    // The new one: pops up with a yellow flash.
+                    v.setScaleX(0.4f);
+                    v.setScaleY(0.4f);
+                    v.setAlpha(0f);
+                    v.animate().scaleX(1f).scaleY(1f).alpha(1f).setStartDelay(160).setDuration(420)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(2.2f)).start();
+                    GradientDrawable glow = new GradientDrawable();
+                    glow.setColor(0x00000000);
+                    glow.setStroke(dp(3), 0xFFE8B931);
+                    glow.setCornerRadius(dp(22));
+                    v.setForeground(glow);
+                    android.animation.ValueAnimator fade = android.animation.ValueAnimator.ofInt(255, 0);
+                    fade.setStartDelay(500);
+                    fade.setDuration(1100);
+                    fade.addUpdateListener(an -> glow.setAlpha((int) an.getAnimatedValue()));
+                    fade.addListener(new android.animation.AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(android.animation.Animator a) {
+                            v.setForeground(null);
+                        }
+                    });
+                    fade.start();
+                    continue;
+                }
+                Integer was = oldLeft.get(pkg);
+                if (was == null || was == v.getLeft()) continue;
+                // Moved: slides over from its old place and flips once on the way.
+                v.setTranslationX(was - v.getLeft());
+                v.setCameraDistance(dp(1200));
+                v.setRotationY(0);
+                v.animate().translationX(0).rotationY(360).setStartDelay(order++ * 60L).setDuration(560)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                    .withEndAction(() -> v.setRotationY(0)).start();
+            }
+        });
+        return true;
+    }
 
     private void renderRecentCarousel(List<AppEntry> recent) {
         boolean first = recentHome.getChildCount() == 0;
@@ -1620,6 +1730,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             View tile = tile(app.label, app.icon, 32);
             tileTint = 0;
             tile.setOnClickListener(v -> launch(app));
+            recentTilePkg.put(tile, app.component.getPackageName());
             strip.addView(tile, lp);
         }
         // Focus landing on a tile (e.g. when coming back home) made the carousel jump to it: never let

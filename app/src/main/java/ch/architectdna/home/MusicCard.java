@@ -202,6 +202,25 @@ final class MusicCard {
         playButton = control(R.drawable.ic_play, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
         controls.addView(playButton, weight());
         controls.addView(control(R.drawable.ic_next, KeyEvent.KEYCODE_MEDIA_NEXT), weight());
+        // The app's own Like (YouTube Music's thumb, Spotify's heart …), when it offers one.
+        likeButton = new TextView(activity);
+        likeButton.setTextSize(22);
+        likeButton.setGravity(Gravity.CENTER);
+        likeButton.setVisibility(View.GONE);
+        likeButton.setOnClickListener(v -> {
+            PlaybackState.CustomAction a = likeAction();
+            if (a == null || controller == null) return;
+            controller.getTransportControls().sendCustomAction(a, null);
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+            paintLike(!likedNow(a), true);            // at once; the app's answer follows
+            if (!likedNow(a)) {
+                v.setScaleX(0.6f);
+                v.setScaleY(0.6f);
+                v.animate().scaleX(1f).scaleY(1f).setDuration(320)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(3f)).start();
+            }
+        });
+        controls.addView(likeButton, weight());
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, dp(44));
         clp.topMargin = dp(6);
         root.addView(controls, clp);
@@ -854,6 +873,11 @@ final class MusicCard {
             if (eraButton != null) eraButton.set(t != null ? t : "", appName(controller.getPackageName()));
         }
         playButton.setImageResource(isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
+        PlaybackState.CustomAction like = likeAction();
+        if (likeButton != null) {
+            likeButton.setVisibility(like == null ? View.GONE : View.VISIBLE);
+            if (like != null) paintLike(likedNow(like), false);
+        }
         frame.run(isPlaying());
         if (gauge != null) gauge.playing(isPlaying());
     }
@@ -1726,6 +1750,34 @@ final class MusicCard {
             p.setTypeface(Typeface.DEFAULT_BOLD);
             c.drawText("↗", w - 9 * u, 12.5f * u, p);
         }
+    }
+
+
+    private TextView likeButton;
+
+    /** The like / thumbs-up action of the playing app, or null. */
+    private PlaybackState.CustomAction likeAction() {
+        PlaybackState st = controller == null ? null : controller.getPlaybackState();
+        if (st == null) return null;
+        for (PlaybackState.CustomAction a : st.getCustomActions()) {
+            String n = (a.getAction() + " " + a.getName()).toLowerCase(Locale.ROOT);
+            if (n.contains("dislike") || n.contains("thumbs_down") || n.contains("thumb_down")) continue;
+            if (n.contains("like") || n.contains("thumb") || n.contains("heart") || n.contains("favorit") || n.contains("gefällt")) return a;
+        }
+        return null;
+    }
+
+    /** "Undo like" / "remove" = it's liked already. */
+    private static boolean likedNow(PlaybackState.CustomAction a) {
+        String n = (a.getAction() + " " + a.getName()).toLowerCase(Locale.ROOT);
+        return n.contains("undo") || n.contains("remove") || n.contains("unlike") || n.contains("entfernen") || n.contains("rückgängig");
+    }
+
+    private void paintLike(boolean liked, boolean pending) {
+        likeButton.setText(liked ? "♥" : "♡");
+        likeButton.setTextColor(liked ? rust : ink2);
+        likeButton.setAlpha(pending ? 0.7f : 1f);
+        likeButton.setContentDescription(liked ? "Like entfernen" : "Like");
     }
 
 }
