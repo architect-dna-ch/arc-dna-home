@@ -386,7 +386,8 @@ public class BearAlarmActivity extends Activity {
             paint.setLetterSpacing(0.12f);
             paint.setTextSize(dp(12));
             paint.setColor(0xFF9A9A98);
-            c.drawText("DER BÄR KOMMT AUS DER HÖHLE …", dp(24), dp(56) + dp(110), paint);
+            String label = getIntent().getStringExtra("label");
+            c.drawText(label != null && !label.isEmpty() ? "🐻 " + label.toUpperCase(Locale.GERMAN) : "DER BÄR KOMMT AUS DER HÖHLE …", dp(24), dp(56) + dp(110), paint);
 
             // Snooze (tap) and wake up (hold 1 s, fills up).
             float pad = dp(24), bh = dp(60), bottom = h - dp(48);

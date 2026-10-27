@@ -692,7 +692,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView hint = monoText(10, ink3);
         hint.setText("HALTEN = AN/AUS");
         box.addView(hint);
-        box.setOnClickListener(v -> pickAlarm());
+        box.setOnClickListener(v -> openApp(new Intent(this, WeckerActivity.class), getDrawable(R.drawable.ic_line_alarm)));
         box.setOnLongClickListener(v -> {
             setAlarmOn(!prefs.getBoolean("alarmOn", false));
             return true;
@@ -1422,7 +1422,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     && !PlayerActivity.class.getName().equals(ri.activityInfo.name)
                     && !EnergyActivity.class.getName().equals(ri.activityInfo.name)
                     && !VpnActivity.class.getName().equals(ri.activityInfo.name)
-                    && !RouteActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !RouteActivity.class.getName().equals(ri.activityInfo.name)
+                    && !WeckerActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -2477,7 +2478,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean on = prefs.getBoolean("alarmOn", false);
         int m = prefs.getInt("alarmMinutes", 7 * 60);
         String t = String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60);
-        alarmRow.setText(on ? "WECKER · BÄR AUS DER HÖHLE" : "WECKER AUS · TIPPEN ZUM STELLEN");
+        AlarmScheduler.Deadline next = AlarmScheduler.nextDeadline(this);
+        String nd = next == null ? "" : "\n🐻 " + new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(new java.util.Date(next.at)).toUpperCase(Locale.GERMAN)
+            + " · " + next.label.toUpperCase(Locale.GERMAN);
+        alarmRow.setText((on ? "WECKER · BÄR AUS DER HÖHLE" : "WECKER AUS · TIPPEN = BÄR-WECKER") + nd);
         alarmRow.setTextColor(on ? rust : ink3);
         if (alarmTime != null) {
             alarmTime.setText(t);
@@ -4925,7 +4929,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player
             : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy
             : VpnActivity.class.getName().equals(activity) ? R.drawable.ic_line_vpn
-            : RouteActivity.class.getName().equals(activity) ? R.drawable.ic_line_routes : 0;
+            : RouteActivity.class.getName().equals(activity) ? R.drawable.ic_line_routes
+            : WeckerActivity.class.getName().equals(activity) ? R.drawable.ic_line_alarm : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4945,6 +4950,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy},
             {"VPN", VpnActivity.class, R.drawable.ic_line_vpn, R.drawable.ic_vpn},
             {"Routen", RouteActivity.class, R.drawable.ic_line_routes, R.drawable.ic_routes},
+            {"Bär-Wecker", WeckerActivity.class, R.drawable.ic_line_alarm, R.drawable.ic_alarm},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);

@@ -25,6 +25,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         DiagLog.log("alarm receiver: " + action);
         if (Intent.ACTION_BOOT_COMPLETED.equals(action) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             AlarmScheduler.schedule(ctx);
+            AlarmScheduler.armDeadlines(ctx);
             if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) remindFullScreen(ctx);
             return;
         }
@@ -36,14 +37,17 @@ public class AlarmReceiver extends BroadcastReceiver {
             ch.setSound(null, null);       // the activity plays the growl itself
             nm.createNotificationChannel(ch);
         }
+        long deadline = intent.getLongExtra("deadline", -1);
+        String label = intent.getStringExtra("label");
         Intent full = new Intent(ctx, BearAlarmActivity.class)
+            .putExtra("label", label)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         PendingIntent pi = PendingIntent.getActivity(ctx, 3, full,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_cube)
-            .setContentTitle("Der Bär kommt …")
-            .setContentText("Aufwachen! Antippen, um den Wecker zu öffnen.")
+            .setContentTitle(deadline >= 0 ? "Der Bär erinnert dich" : "Der Bär kommt …")
+            .setContentText(deadline >= 0 && label != null ? label : "Aufwachen! Antippen, um den Wecker zu öffnen.")
             .setCategory(Notification.CATEGORY_ALARM)
             .setFullScreenIntent(pi, true)
             .setContentIntent(pi)
@@ -54,7 +58,8 @@ public class AlarmReceiver extends BroadcastReceiver {
             ctx.startActivity(full);       // works when allowed; the full-screen intent covers the rest
         } catch (RuntimeException ignored) {
         }
-        AlarmScheduler.schedule(ctx);      // tomorrow, same time
+        if (deadline >= 0) AlarmScheduler.removeDeadline(ctx, deadline);     // one-time: done
+        else AlarmScheduler.schedule(ctx);      // tomorrow, same time
     }
 
     /**

@@ -295,6 +295,21 @@
             </intent-filter>
         </activity>
 
+        <!-- Bär-Wecker: the daily bear alarm and one-time deadlines. -->
+        <activity
+            android:name=".WeckerActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_alarm"
+            android:label="Bär-Wecker"
+            android:roundIcon="@drawable/ic_alarm"
+            android:taskAffinity="ch.architectdna.home.wecker"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- NEXUS BREACH: the arena wave shooter, native. -->
         <activity
             android:name=".NexusActivity"

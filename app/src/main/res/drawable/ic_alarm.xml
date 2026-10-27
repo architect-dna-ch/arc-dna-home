@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bär-Wecker launcher icon: an alarm clock with bear ears, rust hands. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M22,22a9,9 0 1,0 13,1l-6,6z" />
+    <path android:fillColor="#1A1A1A" android:pathData="M74,22a9,9 0 1,1 -13,1l6,6z" />
+    <path android:strokeColor="#1A1A1A" android:strokeWidth="6" android:fillColor="#00000000" android:pathData="M48,82a28,28 0 1,0 0,-56a28,28 0 1,0 0,56z" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="5" android:strokeLineCap="round" android:pathData="M48,55V40M48,55l11,7" />
+</vector>

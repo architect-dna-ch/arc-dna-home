@@ -71,4 +71,93 @@ final class AlarmScheduler {
         Intent i = new Intent(c, AlarmReceiver.class).setAction(ACTION_ALARM);
         return PendingIntent.getBroadcast(c, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
+
+    /* ---------------- one-time deadlines ("Mi 13:10 · Vorbereitung erster Tag Homeoffice") ---------------- */
+
+    static final class Deadline {
+        long id, at;
+        String label;
+    }
+
+    static java.util.List<Deadline> deadlines(Context c) {
+        java.util.List<Deadline> out = new java.util.ArrayList<>();
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(prefs(c).getString("deadlines", "[]"));
+            for (int i = 0; i < a.length(); i++) {
+                org.json.JSONObject o = a.getJSONObject(i);
+                Deadline d = new Deadline();
+                d.id = o.getLong("id");
+                d.at = o.getLong("at");
+                d.label = o.optString("label");
+                out.add(d);
+            }
+        } catch (Exception ignored) {
+        }
+        out.sort((x, y) -> Long.compare(x.at, y.at));
+        return out;
+    }
+
+    private static void store(Context c, java.util.List<Deadline> list) {
+        org.json.JSONArray a = new org.json.JSONArray();
+        try {
+            for (Deadline d : list) a.put(new org.json.JSONObject().put("id", d.id).put("at", d.at).put("label", d.label));
+        } catch (Exception ignored) {
+        }
+        prefs(c).edit().putString("deadlines", a.toString()).apply();
+    }
+
+    static void addDeadline(Context c, long at, String label) {
+        java.util.List<Deadline> list = deadlines(c);
+        Deadline d = new Deadline();
+        d.id = System.currentTimeMillis();
+        d.at = at;
+        d.label = label;
+        list.add(d);
+        store(c, list);
+        armDeadline(c, d);
+    }
+
+    static void removeDeadline(Context c, long id) {
+        java.util.List<Deadline> list = deadlines(c);
+        list.removeIf(d -> d.id == id);
+        store(c, list);
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am != null) am.cancel(deadlinePending(c, id, ""));
+    }
+
+    /** All future deadlines armed again (after a reboot or an update); past ones are dropped. */
+    static void armDeadlines(Context c) {
+        java.util.List<Deadline> list = deadlines(c), keep = new java.util.ArrayList<>();
+        for (Deadline d : list) {
+            if (d.at > System.currentTimeMillis() - 60_000) {
+                keep.add(d);
+                armDeadline(c, d);
+            }
+        }
+        if (keep.size() != list.size()) store(c, keep);
+    }
+
+    private static void armDeadline(Context c, Deadline d) {
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am == null || d.at <= System.currentTimeMillis()) return;
+        PendingIntent show = PendingIntent.getActivity(c, 11, new Intent(c, WeckerActivity.class),
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        try {
+            am.setAlarmClock(new AlarmManager.AlarmClockInfo(d.at, show), deadlinePending(c, d.id, d.label));
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, d.at, deadlinePending(c, d.id, d.label));
+        }
+        DiagLog.log("deadline set in " + (d.at - System.currentTimeMillis()) / 60000 + " min: " + d.label);
+    }
+
+    private static PendingIntent deadlinePending(Context c, long id, String label) {
+        Intent i = new Intent(c, AlarmReceiver.class).setAction(ACTION_ALARM).putExtra("deadline", id).putExtra("label", label);
+        return PendingIntent.getBroadcast(c, 1000 + (int) (id % 1_000_000), i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** The next deadline still ahead, or null. */
+    static Deadline nextDeadline(Context c) {
+        for (Deadline d : deadlines(c)) if (d.at > System.currentTimeMillis()) return d;
+        return null;
+    }
 }
