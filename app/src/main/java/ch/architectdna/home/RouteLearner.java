@@ -49,7 +49,7 @@ final class RouteLearner {
         double fromLat, fromLon, toLat, toLon;
         int count;
         int[] hours = new int[24];
-        boolean pinned;
+        boolean pinned, searched;
 
         String key() {
             return from + "→" + to;
@@ -180,10 +180,11 @@ final class RouteLearner {
             } catch (NumberFormatException ignored) {
             }
             r.pinned |= f[3].equals("1");
+            r.searched = true;
         }
         for (String s : p.getString("hidden", "").split("\n")) m.remove(s);
         List<Route> out = new ArrayList<>(m.values());
-        out.removeIf(r -> r.count < 2 && !r.pinned);
+        out.removeIf(r -> r.count < 2 && !r.pinned && !r.searched);      // a learned trip counts from the 2nd time
         out.sort((a, b) -> a.pinned != b.pinned ? (a.pinned ? -1 : 1) : b.count - a.count);
         return out;
     }

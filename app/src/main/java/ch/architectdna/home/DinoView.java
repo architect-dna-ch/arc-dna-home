@@ -181,6 +181,7 @@ final class DinoView extends View {
 
     private void startFight() {
         fightAt = SystemClock.uptimeMillis();
+        bringToFront();          // the weapon bar over everything (the bunny button covered FAUST)
         int sel = store().getInt("dinoWeaponSel", FIST);
         weapon = owns(sel) && sel != SPELL ? sel : FIST;
         fuel = 4.5f;

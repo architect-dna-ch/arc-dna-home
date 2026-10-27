@@ -225,6 +225,7 @@ public class RouteActivity extends Activity {
                     stations.clear();
                     stations.addAll(got);
                     if (fromE.getText().length() == 0 && !got.isEmpty()) fromE.setText(got.get(0).name);
+                    if (selected == null) map.fitStations();
                     map.invalidate();
                 });
             } catch (Exception e) {
@@ -488,6 +489,31 @@ public class RouteActivity extends Activity {
         void centre(double la, double lo) {
             lat0 = la;
             lon0 = lo;
+            invalidate();
+        }
+
+        /** Zoom so you and the stops around you fill the map (they sat in a clump). */
+        void fitStations() {
+            if (stations.isEmpty() || getWidth() == 0) return;
+            double minLa = 90, maxLa = -90, minLo = 180, maxLo = -180;
+            for (Stop s : stations) {
+                minLa = Math.min(minLa, s.lat);
+                maxLa = Math.max(maxLa, s.lat);
+                minLo = Math.min(minLo, s.lon);
+                maxLo = Math.max(maxLo, s.lon);
+            }
+            if (!Double.isNaN(meLat)) {
+                minLa = Math.min(minLa, meLat);
+                maxLa = Math.max(maxLa, meLat);
+                minLo = Math.min(minLo, meLon);
+                maxLo = Math.max(maxLo, meLon);
+            }
+            lat0 = (minLa + maxLa) / 2;
+            lon0 = (minLo + maxLo) / 2;
+            double k = Math.cos(Math.toRadians(lat0));
+            float sx = (float) ((getWidth() - dp(140)) / Math.max(0.001, (maxLo - minLo) * k));
+            float sy = (float) ((getHeight() - dp(80)) / Math.max(0.001, maxLa - minLa));
+            scale = Math.max(dp(150), Math.min(dp(60_000), Math.min(sx, sy)));
             invalidate();
         }
 
