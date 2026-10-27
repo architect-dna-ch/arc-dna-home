@@ -1465,6 +1465,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ---- Opening and coming back: slide up; back home the app is crushed and binned ---- */
 
     private Drawable leftIcon;
+    private Intent leftIntent;
     private long leftAt, pausedAt;
     private boolean crumplePending;
 
@@ -1479,6 +1480,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 : android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold);
             startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), o.toBundle());
             leftIcon = icon == null ? null : icon.getConstantState() != null ? icon.getConstantState().newDrawable().mutate() : icon;
+            leftIntent = intent;
             leftAt = System.currentTimeMillis();
             crumplePending = true;
         } catch (ActivityNotFoundException | SecurityException e) {
@@ -1535,6 +1537,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 cracks.crack(rootFrame.getWidth() / 2f, rootFrame.getHeight() * 0.5f);
             });
         }
+        Intent again = leftIntent;
+        Drawable againIcon = leftIcon;
+        if (again != null) holder[0].reopen(() -> {
+            say("Doch nicht? Bitte schön.", 1200);
+            openApp(again, againIcon);
+        });
         rootFrame.addView(holder[0], new FrameLayout.LayoutParams(-1, -1));
         leftIcon = null;
     }

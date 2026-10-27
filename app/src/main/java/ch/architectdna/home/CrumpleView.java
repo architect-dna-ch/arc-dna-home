@@ -45,6 +45,15 @@ final class CrumpleView extends View implements SensorEventListener {
     private boolean crushed, landed;
     private long start = -1;
 
+    /** Tap the bin (or the ball, without throwing): the app comes back – changed your mind. */
+    private Runnable onReopen;
+    private boolean binTap;
+    private float downX, downY;
+
+    void reopen(Runnable r) {
+        onReopen = r;
+    }
+
     /** Sounds and the buddy's reaction hook in here. */
     void hooks(Runnable crush, Runnable land) {
         onCrush = crush;
@@ -166,7 +175,26 @@ final class CrumpleView extends View implements SensorEventListener {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         int a = e.getActionMasked();
+        if (binTap) {
+            if (a == MotionEvent.ACTION_UP) {
+                binTap = false;
+                if (Math.hypot(e.getX() - downX, e.getY() - downY) < dp(24) && onReopen != null) {
+                    onReopen.run();
+                    if (done != null) done.run();
+                }
+            } else if (a == MotionEvent.ACTION_CANCEL) {
+                binTap = false;
+            }
+            return true;
+        }
         if (a == MotionEvent.ACTION_DOWN) {
+            downX = e.getX();
+            downY = e.getY();
+            // The bin takes a tap: reopen the app.
+            if (onReopen != null && Math.hypot(e.getX() - binX, e.getY() - binY) < dp(48)) {
+                binTap = true;
+                return true;
+            }
             // Only the ball in your hand takes touches; everything else falls through to the home screen.
             if (mode != HOLD || start < 0 || SystemClock.uptimeMillis() - start < WHOOSH + CRUSH) return false;
             if (Math.hypot(e.getX() - bx, e.getY() - by) > dp(70)) return false;
@@ -186,6 +214,13 @@ final class CrumpleView extends View implements SensorEventListener {
             vt.computeCurrentVelocity(1000, dp(5000));
             float fx = vt.getXVelocity(), fy = vt.getYVelocity();
             long now = SystemClock.uptimeMillis();
+            if (a == MotionEvent.ACTION_UP && onReopen != null && Math.hypot(fx, fy) < dp(200)
+                && Math.hypot(e.getX() - downX, e.getY() - downY) < dp(16)) {
+                // A tap on the ball: unfold it, the app comes back.
+                onReopen.run();
+                if (done != null) done.run();
+                return true;
+            }
             if (a == MotionEvent.ACTION_UP && Math.hypot(fx, fy) > dp(350)) {
                 vx = fx * 0.7f;
                 vy = fy * 0.7f;
