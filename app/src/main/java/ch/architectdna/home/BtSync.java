@@ -150,7 +150,12 @@ final class BtSync {
             if (a == null) log("Abgleich nicht möglich: " + why);
             if (a != null) {
                 try {
-                    a.cancelDiscovery();
+                    // Only a speed-up (a running scan slows connecting); needs BLUETOOTH_SCAN since Android 12,
+                    // which ARC-DNA doesn't hold: it threw and stopped every sync before it started.
+                    try {
+                        if (a.isDiscovering()) a.cancelDiscovery();
+                    } catch (SecurityException ignored) {
+                    }
                     // Every paired device that could run ARC-DNA: the last partner first, then phones and
                     // computers/tablets, then the uncategorised ones; headphones, watches, keyboards … left out.
                     List<BluetoothDevice> first = new ArrayList<>(), later = new ArrayList<>();
