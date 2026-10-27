@@ -1934,7 +1934,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             strokeOnCard = !strokeOnSlider && music != null && music.isOnCard(ev.getRawX(), ev.getRawY());
             cardFlipped = false;
             // The Zuletzt carousel scrolls sideways itself: no dark / light swipe from there.
-            strokeOnCarousel = recentCarousel != null && onView(recentCarousel, ev.getRawX(), ev.getRawY());
+            // The mode chips scroll sideways themselves too: no dark / light swipe (and no ghosts) from there.
+            strokeOnCarousel = recentCarousel != null && onView(recentCarousel, ev.getRawX(), ev.getRawY())
+                || modeBarView != null && onView(modeBarView, ev.getRawX(), ev.getRawY());
             strokeOnLever = lever != null && lever.isShown() && onView(lever, ev.getRawX(), ev.getRawY());
         } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
             strokeMulti = true;
