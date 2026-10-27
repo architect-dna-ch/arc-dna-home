@@ -72,7 +72,12 @@ final class ArcMediaNotice {
         if (!title.equals(artFor) || era != artEra || art == null) {
             Bitmap cover = m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
             if (cover == null) cover = m.getBitmap(MediaMetadata.METADATA_KEY_ART);
+            if (cover == null) cover = m.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
+            if (cover == null) cover = loadUri(c, m);
             art = eraArt(cover, era, 256);
+            StringBuilder names = new StringBuilder();
+            for (PlaybackState.CustomAction ca : st.getCustomActions()) names.append(ca.getAction()).append('=').append(ca.getName()).append(' ');
+            DiagLog.log("arc player notice: cover=" + (cover != null) + " rating=" + mc.getRatingType() + " actions: " + names);
             artFor = title;
             artEra = era;
         }
@@ -107,6 +112,12 @@ final class ArcMediaNotice {
             .addAction(action(c, "prev", "⏮"))
             .addAction(action(c, "toggle", playing ? "⏸  PAUSE" : "▶  PLAY"))
             .addAction(action(c, "next", "⏭"));
+        // No like button from the app: a thumbs rating does the same where the app takes one.
+        if (!canLike && (mc.getRatingType() == android.media.Rating.RATING_THUMB_UP_DOWN || mc.getRatingType() == android.media.Rating.RATING_HEART)) {
+            android.media.Rating r = m.getRating(MediaMetadata.METADATA_KEY_USER_RATING);
+            canLike = true;
+            liked = r != null && r.isRated() && (r.getRatingStyle() == android.media.Rating.RATING_HEART ? r.hasHeart() : r.isThumbUp());
+        }
         if (canLike) b.addAction(action(c, "like", liked ? "♥" : "♡"));
         if (dur > 0) b.setProgress(1000, (int) (pos * 1000 / dur), false);
         try {
@@ -141,6 +152,27 @@ final class ArcMediaNotice {
     static boolean likedNow(PlaybackState.CustomAction a) {
         String n = (a.getAction() + " " + a.getName()).toLowerCase(Locale.ROOT);
         return n.contains("undo") || n.contains("remove") || n.contains("unlike") || n.contains("entfernen") || n.contains("rückgängig");
+    }
+
+    /** Covers given only as a link (content:// or https://), loaded small; null if that fails. */
+    private static Bitmap loadUri(Context c, MediaMetadata m) {
+        String u = m.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI);
+        if (u == null) u = m.getString(MediaMetadata.METADATA_KEY_ART_URI);
+        if (u == null) u = m.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI);
+        if (u == null) return null;
+        try {
+            if (u.startsWith("http")) {
+                if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) return null;    // never on the main thread
+                try (java.io.InputStream in = new java.net.URL(u).openStream()) {
+                    return android.graphics.BitmapFactory.decodeStream(in);
+                }
+            }
+            try (java.io.InputStream in = c.getContentResolver().openInputStream(android.net.Uri.parse(u))) {
+                return android.graphics.BitmapFactory.decodeStream(in);
+            }
+        } catch (Exception | OutOfMemoryError e) {
+            return null;
+        }
     }
 
     /** The cover dressed as the era's medium. */
@@ -251,16 +283,21 @@ final class ArcMediaNotice {
                     if (st != null && st.getState() == PlaybackState.STATE_PLAYING) t.pause();
                     else t.play();
                     break;
-                case "like":
+                case "like": {
+                    boolean sent = false;
                     if (st != null) {
                         for (PlaybackState.CustomAction ca : st.getCustomActions()) {
                             if (isLike(ca)) {
                                 t.sendCustomAction(ca, null);
+                                sent = true;
                                 break;
                             }
                         }
                     }
+                    if (!sent && mc.getRatingType() == android.media.Rating.RATING_THUMB_UP_DOWN) t.setRating(android.media.Rating.newThumbRating(true));
+                    else if (!sent && mc.getRatingType() == android.media.Rating.RATING_HEART) t.setRating(android.media.Rating.newHeartRating(true));
                     break;
+                }
                 default:
                     break;
             }
