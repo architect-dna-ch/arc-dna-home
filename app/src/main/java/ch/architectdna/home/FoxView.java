@@ -85,7 +85,7 @@ final class FoxView extends ImageView {
     protected void onDraw(Canvas c) {
         super.onDraw(c);
         float s = getWidth() / 96f;
-        if (s <= 0) return;
+        if (s <= 0 || EYE_R <= 0) return;         // no eye (the racer)
         float ex = EYE_X * s, ey = EYE_Y * s;
 
         // Dizzy: the pupil whirls round the eye with a spiral inside, then settles.

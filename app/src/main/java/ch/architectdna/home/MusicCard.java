@@ -125,7 +125,11 @@ final class MusicCard {
         title = label(15, ink, true);
         title.setOnClickListener(v -> {
             if (controller == null || controller.getMetadata() == null) host.pickDj();
-            else openPlayer();
+            else openArc();             // the ARC Player first; long press = the music app itself
+        });
+        title.setOnLongClickListener(v -> {
+            openPlayer();
+            return true;
         });
         artist = label(13, ink2, false);
         source = label(10, ink3, true);
@@ -141,11 +145,7 @@ final class MusicCard {
         eraButton = new EraButton();
         eraButton.setOnClickListener(v -> {
             v.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
-            try {
-                activity.startActivity(new android.content.Intent(activity, PlayerActivity.class));      // the ARC Player
-            } catch (RuntimeException e) {
-                openPlayer();
-            }
+            openArc();
         });
         LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(dp(54), dp(54));
         el.leftMargin = dp(10);
@@ -308,7 +308,7 @@ final class MusicCard {
 
         // Only the cover opens the playing app; the rest of the card belongs to the slider: a touch
         // anywhere in the band around it (device line above, card edge below) moves the volume.
-        art.setOnClickListener(v -> openPlayer());
+        art.setOnClickListener(v -> openArc());
         art.setContentDescription("Player-App öffnen");
         root.setOnTouchListener((v, e) -> {
             // Only a band around the slider itself counts as sliding, not the rest of the card.
@@ -1778,6 +1778,16 @@ final class MusicCard {
         likeButton.setTextColor(liked ? rust : ink2);
         likeButton.setAlpha(pending ? 0.7f : 1f);
         likeButton.setContentDescription(liked ? "Like entfernen" : "Like");
+    }
+
+
+    /** The ARC Player (falls back to the music app). */
+    private void openArc() {
+        try {
+            activity.startActivity(new android.content.Intent(activity, PlayerActivity.class));
+        } catch (RuntimeException e) {
+            openPlayer();
+        }
     }
 
 }
