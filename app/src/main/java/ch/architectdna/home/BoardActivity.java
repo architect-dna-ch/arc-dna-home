@@ -141,6 +141,12 @@ public class BoardActivity extends Activity {
         heading.addView(title);
         top.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
         top.addView(chip("BOARDS", v -> showBoards()));
+        cloudChip = chip(cloudLabel(), v -> {
+            prefs.edit().putBoolean("clouds", !prefs.getBoolean("clouds", true)).apply();
+            cloudChip.setText(cloudLabel());
+            board.invalidate();
+        });
+        top.addView(cloudChip);
         top.addView(chip("+ BILD", v -> pickImage()));
         top.addView(chip("+ NEU", v -> newBoard()));
         top.addView(chip("TEILEN", v -> share()));
@@ -459,6 +465,7 @@ public class BoardActivity extends Activity {
         lc.scale(scale, scale);
         lc.translate(pad - b[0], pad - b[1]);
         board.drawStrokes(lc);
+        if (prefs.getBoolean("clouds", true)) board.drawClouds(lc, 1f);
         Bitmap bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
         c.drawColor(bg);
@@ -654,6 +661,116 @@ public class BoardActivity extends Activity {
             p.setXfermode(null);
         }
 
+        /*
+         * Clouds: what you wrote close together is one exercise; each gets a hand-drawn cloud round
+         * it and a little handwritten "Aufgabe n" (Android's casual font). All on the phone,
+         * recomputed only when the strokes change.
+         */
+        private int cloudsFor = -1;
+        private final List<float[]> clusters = new ArrayList<>();
+
+        private void cluster() {
+            int sig = strokes.size() * 31 + (strokes.isEmpty() ? 0 : System.identityHashCode(strokes.get(strokes.size() - 1)));
+            if (sig == cloudsFor) return;
+            cloudsFor = sig;
+            clusters.clear();
+            float gap = dp(56);
+            List<float[]> boxes = new ArrayList<>();          // l, t, r, b, count
+            for (Stroke st : strokes) {
+                if (st.eraser || st.n < 3) continue;
+                float l, t, r, b;
+                if (st.image != null) {
+                    l = st.pts[0];
+                    t = st.pts[1];
+                    r = l + st.pts[2];
+                    b = t + st.pts[3];
+                } else {
+                    l = t = Float.MAX_VALUE;
+                    r = b = -Float.MAX_VALUE;
+                    for (int k = 0; k + 1 < st.n; k += 3) {
+                        l = Math.min(l, st.pts[k]);
+                        r = Math.max(r, st.pts[k]);
+                        t = Math.min(t, st.pts[k + 1]);
+                        b = Math.max(b, st.pts[k + 1]);
+                    }
+                }
+                boxes.add(new float[]{l, t, r, b, 1});
+            }
+            // Merge boxes that come within the gap of each other until nothing changes.
+            boolean merged = true;
+            while (merged && boxes.size() > 1) {
+                merged = false;
+                for (int i = 0; i < boxes.size() && !merged; i++) {
+                    for (int j = i + 1; j < boxes.size(); j++) {
+                        float[] a = boxes.get(i), b = boxes.get(j);
+                        if (a[0] - gap < b[2] && b[0] - gap < a[2] && a[1] - gap < b[3] && b[1] - gap < a[3]) {
+                            a[0] = Math.min(a[0], b[0]);
+                            a[1] = Math.min(a[1], b[1]);
+                            a[2] = Math.max(a[2], b[2]);
+                            a[3] = Math.max(a[3], b[3]);
+                            a[4] += b[4];
+                            boxes.remove(j);
+                            merged = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            for (float[] b : boxes) if (b[4] >= 3) clusters.add(b);       // a lone dot isn't an exercise
+            // Reading order: top to bottom, then left to right.
+            clusters.sort((a, b) -> Math.abs(a[1] - b[1]) > dp(80) ? Float.compare(a[1], b[1]) : Float.compare(a[0], b[0]));
+        }
+
+        void drawClouds(Canvas c, float z) {
+            cluster();
+            Path cloud = new Path();
+            android.graphics.Typeface hand = android.graphics.Typeface.create("casual", android.graphics.Typeface.NORMAL);
+            int[] tints = {0xFF3C8DFF, 0xFFA77BFF, 0xFF2BBF6A, 0xFFF29A1F, rust};
+            for (int i = 0; i < clusters.size(); i++) {
+                float[] b = clusters.get(i);
+                float pad = dp(22), l = b[0] - pad, t = b[1] - pad, r = b[2] + pad, bt = b[3] + pad;
+                Random rnd = new Random((long) (b[0] * 7 + b[1] * 13));      // the same wobble every frame
+                // Puffs along the rectangle's outline, each bulging outwards.
+                float bump = dp(26);
+                List<float[]> pts = new ArrayList<>();
+                int nx = Math.max(2, (int) ((r - l) / bump)), ny = Math.max(2, (int) ((bt - t) / bump));
+                for (int k = 0; k < nx; k++) pts.add(new float[]{l + (r - l) * k / nx, t});
+                for (int k = 0; k < ny; k++) pts.add(new float[]{r, t + (bt - t) * k / ny});
+                for (int k = 0; k < nx; k++) pts.add(new float[]{r - (r - l) * k / nx, bt});
+                for (int k = 0; k < ny; k++) pts.add(new float[]{l, bt - (bt - t) * k / ny});
+                float cx = (l + r) / 2, cy = (t + bt) / 2;
+                cloud.reset();
+                cloud.moveTo(pts.get(0)[0], pts.get(0)[1]);
+                for (int k = 0; k < pts.size(); k++) {
+                    float[] p0 = pts.get(k), p1 = pts.get((k + 1) % pts.size());
+                    float mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+                    float dx = mx - cx, dy = my - cy, len = (float) Math.hypot(dx, dy);
+                    float out = bump * (0.55f + 0.35f * rnd.nextFloat());
+                    cloud.quadTo(mx + dx / len * out, my + dy / len * out, p1[0], p1[1]);
+                }
+                cloud.close();
+                int col = tints[i % tints.length];
+                p.setXfermode(null);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor((col & 0x00FFFFFF) | 0x10000000);
+                c.drawPath(cloud, p);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(dp(2.2f) / Math.max(0.5f, z));
+                p.setColor((col & 0x00FFFFFF) | 0xB0000000);
+                c.drawPath(cloud, p);
+                // The handwritten tag, a little tilted, on the cloud's top left.
+                p.setStyle(Paint.Style.FILL);
+                p.setTypeface(hand);
+                p.setTextSize(dp(17));
+                p.setColor((col & 0x00FFFFFF) | 0xE6000000);
+                c.save();
+                c.rotate(-5, l, t - bump * 0.9f);
+                c.drawText("Aufgabe " + (i + 1), l + dp(4), t - bump * 0.9f, p);
+                c.restore();
+                p.setTypeface(null);
+            }
+        }
+
         float[] bounds() {
             float l = Float.MAX_VALUE, t = Float.MAX_VALUE, r = -Float.MAX_VALUE, b = -Float.MAX_VALUE;
             for (Stroke s : strokes) {
@@ -688,6 +805,12 @@ public class BoardActivity extends Activity {
                 for (float y = oy; y < getHeight(); y += cell) c.drawCircle(x, y, dp(1.2f), p);
             }
             if (cache != null) c.drawBitmap(cache, 0, 0, null);
+            if (current == null && prefs.getBoolean("clouds", true)) {
+                c.save();
+                c.concat(view);
+                drawClouds(c, zoom);
+                c.restore();
+            }
             if (placing != null && placing.n >= 4) {
                 // The picture being placed: dashed frame round it.
                 c.save();
@@ -989,6 +1112,13 @@ public class BoardActivity extends Activity {
         if (placeHint != null) placeHint.setVisibility(View.GONE);
         board.rebuild();
         save();
+    }
+
+
+    private TextView cloudChip;
+
+    private String cloudLabel() {
+        return prefs.getBoolean("clouds", true) ? "☁ WOLKEN" : "☁ AUS";
     }
 
 }
