@@ -44,7 +44,7 @@ import java.util.Locale;
 public class EnergyActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final int bg = 0xFF141413, card = 0xFF1E1E1C, line = 0xFF2E2E2B, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0,
+    private int bg = 0xFF141413, card = 0xFF1E1E1C, line = 0xFF2E2E2B, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0,
         ink3 = 0xFF6F6E69, rust = 0xFFD9472F, green = 0xFF2BD96B, amber = 0xFFE8B931;
     private FrameLayout root;
     private LinearLayout panel;
@@ -59,6 +59,7 @@ public class EnergyActivity extends Activity {
     @Override
     protected void onCreate(Bundle s) {
         super.onCreate(s);
+        themeColours();
         overridePendingTransition(0, 0);
         getWindow().setBackgroundDrawable(new ColorDrawable(0));
         root = new FrameLayout(this);
@@ -199,6 +200,7 @@ public class EnergyActivity extends Activity {
         panel.addView(drains);
 
         setContentView(root);
+        barIcons();
         panel.setTranslationY(-dp(500));
         panel.animate().translationY(0).setDuration(320).setInterpolator(new android.view.animation.DecelerateInterpolator(2f)).start();
         findTorch();
@@ -635,4 +637,30 @@ public class EnergyActivity extends Activity {
         g.setCornerRadius(dp(radiusDp));
         return g;
     }
+    /** Day or night like the system (they were always dark). */
+    private void themeColours() {
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!night) {
+            bg = 0xFFFAFAF8;
+            card = 0xFFFFFFFF;
+            line = 0xFFE0E0D8;
+            ink = 0xFF1A1A1A;
+            ink2 = 0xFF5A5A58;
+            ink3 = 0xFF9A9A98;
+            rust = 0xFFB5271E;
+            green = 0xFF1A9A4C;
+            amber = 0xFFB8860B;
+        }
+    }
+
+    /** Dark bar icons on the light day background (after setContentView). */
+    private void barIcons() {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        boolean light = bg != 0xFF0E0E0D && bg != 0xFF141413;
+        int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);
+    }
+
 }

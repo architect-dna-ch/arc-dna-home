@@ -47,7 +47,7 @@ public class RouteActivity extends Activity {
     private static final int REQ_LOC = 1;
     private static final int[] ROUTE_COL = {0xFFD9472F, 0xFFE8B931, 0xFF3C8CFF, 0xFF2BD96B, 0xFFA77BFF};
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final int bg = 0xFF0E0E0D, card = 0xFF1A1A18, line = 0xFF2C2C2A, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0,
+    private int bg = 0xFF0E0E0D, card = 0xFF1A1A18, line = 0xFF2C2C2A, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0,
         ink3 = 0xFF6F6E69, rust = 0xFFD9472F, green = 0xFF2BD96B;
 
     /** A stop on a journey (with its timetable times, seconds), or a station on the map. */
@@ -78,6 +78,7 @@ public class RouteActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        themeColours();
         if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.app_slide_up, R.anim.home_hold);
         else overridePendingTransition(R.anim.app_slide_up, R.anim.home_hold);
         getWindow().setStatusBarColor(bg);
@@ -111,7 +112,7 @@ public class RouteActivity extends Activity {
         col.addView(head);
 
         map = new MapView();
-        map.setBackground(box(0xFF121211, line, 18));
+        map.setBackground(box(bg == 0xFFFAFAF8 ? 0xFFF3F2EE : 0xFF121211, line, 18));
         map.setClipToOutline(true);
         LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(-1, dp(340));
         ml.topMargin = dp(14);
@@ -165,6 +166,7 @@ public class RouteActivity extends Activity {
         col.addView(list);
 
         setContentView(root);
+        barIcons();
         if (!RouteLearner.allowed(this)) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOC);
         }
@@ -553,7 +555,7 @@ public class RouteActivity extends Activity {
             double step = scale > dp(20_000) ? 0.002 : scale > dp(3000) ? 0.01 : 0.1;
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(1);
-            p.setColor(0xFF1C1C1A);
+            p.setColor(bg == 0xFFFAFAF8 ? 0xFFE6E5DF : 0xFF1C1C1A);
             double la1 = lat0 + h / 2 / scale, la2 = lat0 - h / 2 / scale;
             double lo1 = lon0 - w / 2 / scale / Math.cos(Math.toRadians(lat0)), lo2 = lon0 + w / 2 / scale / Math.cos(Math.toRadians(lat0));
             for (double la = Math.floor(la2 / step) * step; la <= la1; la += step) c.drawLine(0, y(la), w, y(la), p);
@@ -757,4 +759,29 @@ public class RouteActivity extends Activity {
         g.setCornerRadius(dp(radiusDp));
         return g;
     }
+    /** Day or night like the system (they were always dark). */
+    private void themeColours() {
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!night) {
+            bg = 0xFFFAFAF8;
+            card = 0xFFFFFFFF;
+            line = 0xFFE0E0D8;
+            ink = 0xFF1A1A1A;
+            ink2 = 0xFF5A5A58;
+            ink3 = 0xFF9A9A98;
+            rust = 0xFFB5271E;
+            green = 0xFF1A9A4C;
+        }
+    }
+
+    /** Dark bar icons on the light day background (after setContentView). */
+    private void barIcons() {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        boolean light = bg != 0xFF0E0E0D && bg != 0xFF141413;
+        int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);
+    }
+
 }

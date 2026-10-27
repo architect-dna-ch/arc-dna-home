@@ -51,7 +51,7 @@ public class PlayerActivity extends Activity {
     private MediaSessionManager sessions;
     private MediaController controller;
     private ComponentName listenerName;
-    private int bg = 0xFF0E0E0D, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0, ink3 = 0xFF6F6E69, line = 0xFF2C2C2A, rust = 0xFFD9472F;
+    private int bg = 0xFF0E0E0D, card = 0xFF1A1A18, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0, ink3 = 0xFF6F6E69, line = 0xFF2C2C2A, rust = 0xFFD9472F;
     private FrameLayout root;
     private Disk disk;
     private Seek seek;
@@ -62,6 +62,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        themeColours();
         if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.app_slide_up, R.anim.home_hold);
         else overridePendingTransition(R.anim.app_slide_up, R.anim.home_hold);
         getWindow().setStatusBarColor(bg);
@@ -174,6 +175,7 @@ public class PlayerActivity extends Activity {
         col.addView(queue);
 
         setContentView(root);
+        barIcons();
     }
 
     @Override
@@ -316,7 +318,7 @@ public class PlayerActivity extends Activity {
         LinearLayout r = new LinearLayout(this);
         r.setOrientation(LinearLayout.VERTICAL);
         r.setPadding(dp(14), dp(10), dp(14), dp(10));
-        r.setBackground(box(0xFF1A1A18, line, 12));
+        r.setBackground(box(card, line, 12));
         TextView t = text(15, ink, true);
         t.setSingleLine(true);
         t.setEllipsize(TextUtils.TruncateAt.END);
@@ -912,7 +914,7 @@ public class PlayerActivity extends Activity {
         c.setText(s);
         c.setGravity(Gravity.CENTER);
         c.setPadding(dp(14), dp(9), dp(14), dp(9));
-        c.setBackground(box(0xFF161615, colour, 20));
+        c.setBackground(box(card, colour, 20));
         return c;
     }
 
@@ -922,7 +924,7 @@ public class PlayerActivity extends Activity {
         t.setGravity(Gravity.CENTER);
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
-        g.setColor(filled ? rust : 0xFF1A1A18);
+        g.setColor(filled ? rust : card);
         g.setStroke(dp(1.5f), filled ? rust : line);
         t.setBackground(g);
         return t;
@@ -935,4 +937,28 @@ public class PlayerActivity extends Activity {
         g.setCornerRadius(dp(radiusDp));
         return g;
     }
+    /** Day or night like the system (they were always dark). */
+    private void themeColours() {
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!night) {
+            bg = 0xFFFAFAF8;
+            card = 0xFFFFFFFF;
+            line = 0xFFE0E0D8;
+            ink = 0xFF1A1A1A;
+            ink2 = 0xFF5A5A58;
+            ink3 = 0xFF9A9A98;
+            rust = 0xFFB5271E;
+        }
+    }
+
+    /** Dark bar icons on the light day background (after setContentView). */
+    private void barIcons() {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        boolean light = bg != 0xFF0E0E0D && bg != 0xFF141413;
+        int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);
+    }
+
 }
