@@ -150,9 +150,30 @@ public class ArcWallpaper extends WallpaperService {
             }
         }
 
+        /**
+         * Dark like the home. The wallpaper service's own configuration can lag behind (it stayed light
+         * on the lock screen while the home was dark): also ask the system's configuration, the dark
+         * theme setting and battery saver (which turns the dark theme on).
+         */
+        private boolean nightCache;
+        private long nightAt;
+
         private boolean night() {
-            return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-                == Configuration.UI_MODE_NIGHT_YES;
+            long now = SystemClock.uptimeMillis();
+            if (now - nightAt < 1000) return nightCache;       // asked many times per frame
+            nightAt = now;
+            nightCache = nightNow();
+            return nightCache;
+        }
+
+        private boolean nightNow() {
+            int mask = Configuration.UI_MODE_NIGHT_MASK, yes = Configuration.UI_MODE_NIGHT_YES;
+            if ((getResources().getConfiguration().uiMode & mask) == yes) return true;
+            if ((android.content.res.Resources.getSystem().getConfiguration().uiMode & mask) == yes) return true;
+            android.app.UiModeManager um = getSystemService(android.app.UiModeManager.class);
+            if (um != null && um.getNightMode() == android.app.UiModeManager.MODE_NIGHT_YES) return true;
+            android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
+            return pm != null && pm.isPowerSaveMode();
         }
 
         /**
