@@ -951,6 +951,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
             say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
         }, null);
+        settingsRow(home, "Ruhig: nur Werkzeuge", () -> calm() ? "AN · selten Überraschungen" : "AUS · volles Programm", v -> {
+            prefs.edit().putBoolean("calm", !calm()).apply();
+            if (calm()) {
+                if (f1) setF1(false);
+                if (dino != null) endDino();
+            }
+        }, null);
         settingsRow(home, "Zuletzt-Karussell", () -> prefs.getInt("recentCount", 8) + " Apps", v -> {
             int[] steps = {4, 8, 12, 16, 24};
             int now = prefs.getInt("recentCount", 8), next = steps[0];
@@ -1448,7 +1455,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** Back home after using an app: whoosh, crush, throw it in the bin next to the buddy. */
+    /** "Ruhig": no dino visits, bin throws or races; now and then (1 in 8) a surprise anyway. */
+    private boolean calm() {
+        return prefs.getBoolean("calm", false);
+    }
+
+    private boolean calmSkip() {
+        return calm() && random.nextInt(8) != 0;
+    }
+
     private void playCrumple() {
+        if (calmSkip()) return;
         if (rootFrame == null || rootFrame.getWidth() == 0) return;
         float binX, binY;
         if (fox != null && fox.isShown() && fox.getAlpha() > 0.5f) {
@@ -3531,7 +3548,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** With the F1 board open and the racer as buddy: the race track over the whole home. */
     private void race(boolean on) {
-        boolean want = on && buddy() == 3 && raceFree && rootFrame != null;
+        boolean want = on && buddy() == 3 && raceFree && rootFrame != null && !calm();
         if (want) {
             if (raceOverlay == null) {
                 raceOverlay = new RaceOverlay(this);
@@ -4191,6 +4208,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** blackHole: the dino swallows the home and the phone locks (looking away); else the comic visit. */
     private void startDino(boolean blackHole) {
+        if (!blackHole && calmSkip()) return;
         // During the race the full visit is too much: he comes small and gets run over on the track.
         if (!blackHole && raceOverlay != null && raceOverlay.getVisibility() == View.VISIBLE) {
             raceOverlay.miniDino();
