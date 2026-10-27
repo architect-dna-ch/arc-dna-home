@@ -237,6 +237,18 @@ final class RaceOverlay extends View {
         return t * t * (3 - 2 * t);
     }
 
+    /** Something big above the race (the dino fight, the black hole, the crumple …): no chase cam then. */
+    private boolean covered() {
+        if (!(getParent() instanceof android.view.ViewGroup)) return false;
+        android.view.ViewGroup g = (android.view.ViewGroup) getParent();
+        for (int i = g.indexOfChild(this) + 1; i < g.getChildCount(); i++) {
+            View v = g.getChildAt(i);
+            if (v.getVisibility() == VISIBLE && v.getAlpha() > 0.05f
+                && v.getWidth() > g.getWidth() / 2 && v.getHeight() > g.getHeight() / 3) return true;
+        }
+        return false;
+    }
+
     private Car buddy() {
         return cars.get(0);
     }
@@ -273,7 +285,9 @@ final class RaceOverlay extends View {
         int myLap = (int) Math.floor(Math.max(0, me.s));
 
         // Chase cam: when he's closing in on someone, now and then.
-        if (racing && zoomAt < 0 && now > nextZoom && myPlace > 1) {
+        boolean busy = covered();
+        if (busy && zoomAt >= 0 && now - zoomAt < ZOOM - 450) zoomAt = now - (ZOOM - 450);      // something else on top: fade out
+        if (racing && !busy && zoomAt < 0 && now > nextZoom && myPlace > 1) {
             float gap = Float.MAX_VALUE;
             for (Car o : cars) if (o != me) gap = Math.min(gap, ((o.s - me.s) % 1 + 1) % 1 * length);
             if (gap < dp(140)) {
