@@ -240,6 +240,10 @@ final class Dashboard {
         @Override
         protected void onDraw(Canvas c) {
             Drawable[] icons = host.folderIcons(which);
+            // Own copies: sizing the shared icons here shrank them on the app tiles too.
+            for (int i = 0; i < icons.length; i++) {
+                if (icons[i] != null && icons[i].getConstantState() != null) icons[i] = icons[i].getConstantState().newDrawable().mutate();
+            }
             float w = getWidth(), cell = w / 2f, pad = dp(8);
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
             p.setColor((rust & 0x00FFFFFF) | 0x14000000);
