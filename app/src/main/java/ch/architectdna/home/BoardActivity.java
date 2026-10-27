@@ -20,6 +20,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.os.SystemClock;
 import android.view.WindowInsets;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -349,7 +350,17 @@ public class BoardActivity extends Activity {
         boardId = id;
         strokes.clear();
         redo.clear();
-        try (DataInputStream in = new DataInputStream(new java.io.BufferedInputStream(new FileInputStream(boardFile(id))))) {
+        strokes.addAll(readStrokes(boardFile(id)));
+        putBoard(id, titleOf(id));
+        title.setText(titleOf(id));
+        board.reset();
+        board.rebuild();
+    }
+
+    /** A board's strokes from its file (empty if missing or broken). */
+    private static List<Stroke> readStrokes(File file) {
+        List<Stroke> strokes = new ArrayList<>();
+        try (DataInputStream in = new DataInputStream(new java.io.BufferedInputStream(new FileInputStream(file)))) {
             int count = in.readInt();
             for (int i = 0; i < count; i++) {
                 Stroke s = new Stroke();
@@ -365,10 +376,7 @@ public class BoardActivity extends Activity {
             }
         } catch (IOException ignored) {
         }
-        putBoard(id, titleOf(id));
-        title.setText(titleOf(id));
-        board.reset();
-        board.rebuild();
+        return strokes;
     }
 
     private void save() {
@@ -410,23 +418,288 @@ public class BoardActivity extends Activity {
             .show();
     }
 
+    /*
+     * The boards overview, full screen: two thirds a grid of your boards with a small preview of
+     * each (tap = open, hold = delete), one third a sheet of doodles to get you going – flowers that
+     * sway, a sun, and maths that's almost right (2 + 2 = 3).
+     */
+    private FrameLayout overview;
+
     private void showBoards() {
         save();
-        JSONArray a = listBoards();
-        String[] names = new String[a.length()];
-        String[] ids = new String[a.length()];
-        java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("d.M. HH:mm", java.util.Locale.GERMAN);
-        for (int i = 0; i < a.length(); i++) {
-            JSONObject o = a.optJSONObject(i);
-            ids[i] = o.optString("id");
-            names[i] = o.optString("title") + "  ·  " + f.format(new java.util.Date(o.optLong("at")));
+        if (overview != null) return;
+        FrameLayout root = (FrameLayout) board.getParent();
+        boolean wide = root.getWidth() > root.getHeight();
+        overview = new FrameLayout(this);
+        overview.setBackgroundColor(bg);
+        overview.setClickable(true);
+        LinearLayout split = new LinearLayout(this);
+        split.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        int top = 0, bottom = 0;
+        if (Build.VERSION.SDK_INT >= 30 && root.getRootWindowInsets() != null) {
+            android.graphics.Insets in = root.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            top = in.top;
+            bottom = in.bottom;
         }
-        new AlertDialog.Builder(this)
-            .setTitle("Boards")
-            .setItems(names, (d, w) -> open(ids[w]))
-            .setPositiveButton("+ Neu", (d, w) -> newBoard())
-            .setNegativeButton("Löschen…", (d, w) -> deleteBoard())
-            .show();
+        split.setPadding(0, top, 0, bottom);
+        overview.addView(split, new FrameLayout.LayoutParams(-1, -1));
+
+        // The boards.
+        LinearLayout left = new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.setPadding(dp(24), dp(16), dp(16), dp(16));
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout titles = new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        TextView small = mono(10, ink3);
+        small.setText("— WHITEBOARD");
+        small.setLetterSpacing(0.24f);
+        titles.addView(small);
+        TextView big = new TextView(this);
+        big.setText("Deine Boards");
+        big.setTextColor(ink);
+        big.setTextSize(30);
+        big.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+        big.setLetterSpacing(-0.04f);
+        titles.addView(big);
+        head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(chip("+ NEU", v -> {
+            closeOverview();
+            newBoard();
+        }));
+        TextView x = chip("✕", v -> closeOverview());
+        head.addView(x);
+        left.addView(head);
+
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        android.widget.GridLayout grid = new android.widget.GridLayout(this);
+        int cols = wide ? 3 : 2;
+        grid.setColumnCount(cols);
+        sv.addView(grid);
+        LinearLayout.LayoutParams svl = new LinearLayout.LayoutParams(-1, 0, 1f);
+        svl.topMargin = dp(14);
+        left.addView(sv, svl);
+        split.addView(left, wide ? new LinearLayout.LayoutParams(0, -1, 2f) : new LinearLayout.LayoutParams(-1, 0, 2f));
+
+        // The doodles.
+        Doodles doodles = new Doodles();
+        GradientDrawable dbg = new GradientDrawable();
+        dbg.setColor(card);
+        dbg.setStroke(dp(1), line);
+        dbg.setCornerRadius(dp(24));
+        doodles.setBackground(dbg);
+        LinearLayout.LayoutParams dl = wide ? new LinearLayout.LayoutParams(0, -1, 1f) : new LinearLayout.LayoutParams(-1, 0, 1f);
+        dl.setMargins(dp(8), dp(16), dp(16), dp(16));
+        split.addView(doodles, dl);
+
+        root.addView(overview, new FrameLayout.LayoutParams(-1, -1));
+        overview.setAlpha(0f);
+        overview.setTranslationY(dp(30));
+        overview.animate().alpha(1f).translationY(0).setDuration(240).start();
+
+        JSONArray a = listBoards();
+        java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("d. MMM · HH:mm", java.util.Locale.GERMAN);
+        overview.post(() -> {
+            int cellW = (sv.getWidth() - dp(12) * (cols - 1)) / cols, cellH = cellW * 2 / 3;
+            for (int k = 0; k < a.length(); k++) {
+                JSONObject o = a.optJSONObject(k);
+                if (o == null) continue;
+                String id = o.optString("id");
+                LinearLayout cardV = new LinearLayout(this);
+                cardV.setOrientation(LinearLayout.VERTICAL);
+                GradientDrawable cb = new GradientDrawable();
+                cb.setColor(card);
+                cb.setStroke(dp(id.equals(boardId) ? 2 : 1), id.equals(boardId) ? rust : line);
+                cb.setCornerRadius(dp(16));
+                cardV.setBackground(cb);
+                cardV.setClipToOutline(true);
+                android.widget.ImageView thumb = new android.widget.ImageView(this);
+                thumb.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                cardV.addView(thumb, new LinearLayout.LayoutParams(-1, cellH));
+                TextView name = new TextView(this);
+                name.setText(o.optString("title"));
+                name.setTextColor(ink);
+                name.setTextSize(16);
+                name.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+                name.setPadding(dp(12), dp(8), dp(12), 0);
+                name.setSingleLine(true);
+                name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                cardV.addView(name);
+                TextView when = mono(10, ink3);
+                when.setText(f.format(new java.util.Date(o.optLong("at"))).toUpperCase(java.util.Locale.GERMAN));
+                when.setPadding(dp(12), dp(2), dp(12), dp(10));
+                cardV.addView(when);
+                cardV.setOnClickListener(v -> {
+                    closeOverview();
+                    open(id);
+                });
+                cardV.setOnLongClickListener(v -> {
+                    closeOverview();
+                    open(id);
+                    deleteBoard();
+                    return true;
+                });
+                android.widget.GridLayout.LayoutParams gl = new android.widget.GridLayout.LayoutParams();
+                gl.width = cellW;
+                gl.setMargins(0, 0, (k % cols) < cols - 1 ? dp(12) : 0, dp(12));
+                grid.addView(cardV, gl);
+                // Little pop-in, one after the other.
+                cardV.setAlpha(0f);
+                cardV.setScaleX(0.92f);
+                cardV.setScaleY(0.92f);
+                cardV.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(40L * k).setDuration(220).start();
+                int w = Math.max(1, cellW), h = Math.max(1, cellH);
+                thumb.post(() -> thumb.setImageBitmap(preview(id, w, h)));
+            }
+        });
+    }
+
+    /** A board drawn small, fitted into w × h on the board colour. */
+    private Bitmap preview(String id, int w, int h) {
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(out);
+        c.drawColor(bg);
+        List<Stroke> list = id.equals(boardId) ? new ArrayList<>(strokes) : readStrokes(boardFile(id));
+        float l = Float.MAX_VALUE, t = Float.MAX_VALUE, r = -Float.MAX_VALUE, b = -Float.MAX_VALUE;
+        for (Stroke st : list) {
+            if (st.eraser) continue;
+            if (st.image != null && st.n >= 4) {
+                l = Math.min(l, st.pts[0]);
+                t = Math.min(t, st.pts[1]);
+                r = Math.max(r, st.pts[0] + st.pts[2]);
+                b = Math.max(b, st.pts[1] + st.pts[3]);
+                continue;
+            }
+            for (int k = 0; k + 1 < st.n; k += 3) {
+                l = Math.min(l, st.pts[k]);
+                r = Math.max(r, st.pts[k]);
+                t = Math.min(t, st.pts[k + 1]);
+                b = Math.max(b, st.pts[k + 1]);
+            }
+        }
+        if (l > r) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(ink3);
+            p.setTextSize(dp(13));
+            p.setTypeface(android.graphics.Typeface.create("casual", android.graphics.Typeface.NORMAL));
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText("noch leer …", w / 2f, h / 2f, p);
+            return out;
+        }
+        float pad = dp(14), sc = Math.min((w - 2 * pad) / Math.max(1, r - l), (h - 2 * pad) / Math.max(1, b - t));
+        Bitmap layer = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas lc = new Canvas(layer);
+        lc.translate((w - (r - l) * sc) / 2, (h - (b - t) * sc) / 2);
+        lc.scale(sc, sc);
+        lc.translate(-l, -t);
+        for (Stroke st : list) board.drawStroke(lc, st);
+        c.drawBitmap(layer, 0, 0, null);
+        return out;
+    }
+
+    private void closeOverview() {
+        FrameLayout o = overview;
+        overview = null;
+        if (o == null) return;
+        o.animate().alpha(0f).translationY(dp(30)).setDuration(200)
+            .withEndAction(() -> ((FrameLayout) o.getParent()).removeView(o)).start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (overview != null) closeOverview();
+        else super.onBackPressed();
+    }
+
+    /** The inspiration sheet: hand-drawn flowers that sway, a sun, a spiral and nearly-right maths. */
+    private final class Doodles extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final String[] maths = {"2 + 2 = 3 ?!", "e^iπ + 1 = 0", "∫ Kaffee dt = Code", "π ≈ 3", "1 + 1 = 10 (binär)",
+            "a² + b² = c²", "∞ / 0 = 🤯", "x = Hausaufgaben"};
+
+        Doodles() {
+            super(BoardActivity.this);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight(), t = SystemClock.uptimeMillis() / 1000f, u = Math.min(w, h) / 100f;
+            android.graphics.Typeface hand = android.graphics.Typeface.create("casual", android.graphics.Typeface.NORMAL);
+            p.setTypeface(hand);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(ink3);
+            p.setTextSize(dp(11));
+            c.drawText("INSPIRATION", dp(18), dp(28), p);
+            // The maths, tilted a little each, down the sheet.
+            p.setTextSize(Math.max(dp(15), u * 6));
+            for (int i = 0; i < maths.length; i++) {
+                float y = h * (0.12f + i * 0.105f);
+                if (y > h * 0.62f) break;
+                c.save();
+                c.rotate(i % 2 == 0 ? -4 : 3, dp(18), y);
+                p.setColor(colours[1 + i % (colours.length - 1)]);
+                c.drawText(maths[i], dp(18) + (i % 3) * dp(10), y, p);
+                c.restore();
+            }
+            // A sun top right.
+            float sx = w - dp(46), sy = dp(56);
+            p.setColor(0xFFFFC400);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(2.5f));
+            c.drawCircle(sx, sy, dp(16), p);
+            for (int k = 0; k < 10; k++) {
+                double a = k * Math.PI / 5 + t * 0.3;
+                c.drawLine(sx + (float) Math.cos(a) * dp(22), sy + (float) Math.sin(a) * dp(22),
+                    sx + (float) Math.cos(a) * dp(30), sy + (float) Math.sin(a) * dp(30), p);
+            }
+            // Flowers along the bottom, swaying.
+            int n = Math.max(3, (int) (w / dp(70)));
+            for (int i = 0; i < n; i++) {
+                float fx = w * (i + 0.5f) / n, ground = h - dp(18), stem = h * (0.18f + 0.06f * ((i * 7) % 3));
+                float sway = (float) Math.sin(t * 1.3 + i) * dp(8);
+                p.setColor(0xFF2BBF6A);
+                p.setStrokeWidth(dp(2.2f));
+                path.reset();
+                path.moveTo(fx, ground);
+                path.quadTo(fx + sway * 0.3f, ground - stem / 2, fx + sway, ground - stem);
+                c.drawPath(path, p);
+                // A leaf.
+                path.reset();
+                path.moveTo(fx + sway * 0.15f, ground - stem * 0.35f);
+                path.quadTo(fx + dp(16), ground - stem * 0.45f, fx + dp(14) + sway * 0.2f, ground - stem * 0.6f);
+                c.drawPath(path, p);
+                // Petals.
+                float hx = fx + sway, hy = ground - stem;
+                int col = colours[1 + (i * 3) % (colours.length - 1)];
+                p.setStyle(Paint.Style.STROKE);
+                p.setColor(col);
+                for (int k = 0; k < 6; k++) {
+                    double a = k * Math.PI / 3 + t * 0.4 * (i % 2 == 0 ? 1 : -1);
+                    c.drawCircle(hx + (float) Math.cos(a) * dp(9), hy + (float) Math.sin(a) * dp(9), dp(6), p);
+                }
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0xFFFFC400);
+                c.drawCircle(hx, hy, dp(4.5f), p);
+                p.setStyle(Paint.Style.STROKE);
+            }
+            // A spiral in the middle right.
+            p.setColor(colours[5]);
+            p.setStrokeWidth(dp(2));
+            path.reset();
+            float cx = w * 0.72f, cy = h * 0.66f;
+            for (int k = 0; k < 120; k++) {
+                double a = k * 0.18 + t * 0.6, rr = k * dp(0.28f);
+                float px = cx + (float) (Math.cos(a) * rr), py = cy + (float) (Math.sin(a) * rr);
+                if (k == 0) path.moveTo(px, py);
+                else path.lineTo(px, py);
+            }
+            c.drawPath(path, p);
+            postInvalidateDelayed(33);
+        }
     }
 
     private void deleteBoard() {
