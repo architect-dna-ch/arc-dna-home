@@ -114,6 +114,8 @@ public class BoardActivity extends Activity {
 
         LinearLayout ui = new LinearLayout(this);
         ui.setOrientation(LinearLayout.VERTICAL);
+        mischief = new Mischief();
+        root.addView(mischief, new FrameLayout.LayoutParams(-1, -1));
         root.addView(ui, new FrameLayout.LayoutParams(-1, -1));
 
         // Top: label, the board's doctor title (tap = rename), boards, share.
@@ -148,6 +150,17 @@ public class BoardActivity extends Activity {
             board.invalidate();
         });
         top.addView(cloudChip);
+        buddyChip = chip(buddyLabel(), v -> {
+            if (mischief.foxHere()) {
+                mischief.callPolice();             // the fox is about: the robo police comes
+                return;
+            }
+            prefs.edit().putBoolean("buddy", !prefs.getBoolean("buddy", false)).apply();
+            buddyChip.setText(buddyLabel());
+            mischief.planNext();
+            if (prefs.getBoolean("buddy", false)) Toast.makeText(this, "Fuchs darf Chaos machen. Viel Glück.", Toast.LENGTH_SHORT).show();
+        });
+        top.addView(buddyChip);
         top.addView(chip("+ BILD", v -> pickImage()));
         top.addView(chip("+ NEU", v -> newBoard()));
         top.addView(chip("TEILEN", v -> share()));
@@ -1392,6 +1405,230 @@ public class BoardActivity extends Activity {
 
     private String cloudLabel() {
         return prefs.getBoolean("clouds", true) ? "☁ WOLKEN" : "☁ AUS";
+    }
+
+
+    /* ---------- the fox (only when you allow mess) ---------- */
+
+    private Mischief mischief;
+    private TextView buddyChip;
+
+    private String buddyLabel() {
+        if (mischief != null && mischief.foxHere()) return "🚓 ROBO-POLIZEI";
+        return prefs.getBoolean("buddy", false) ? "🦊 CHAOS AN" : "🦊 AUS";
+    }
+
+    /*
+     * Every half minute or so the fox trots in, goes to something you wrote, rubs it out with its
+     * tail and laughs. ↶ won't help – but ↷ (redo) brings it back, and so does the police: tap
+     * 🚓 ROBO-POLIZEI and the robot rolls in with blue lights, rubs the fox out with its eraser
+     * beam and hands back what was stolen. Touches go through to the board.
+     */
+    private final class Mischief extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Random rnd = new Random();
+        private android.graphics.drawable.Drawable foxArt;
+        private static final int GONE_ = 0, IN = 1, ERASE = 2, LAUGH = 3, OUT = 4, POLICE = 5;
+        private int state = GONE_;
+        private long stateAt, nextAt;
+        private float fx, fy, tx, ty, sx, sy;
+        private Stroke victim;
+        private final List<Stroke> stolen = new ArrayList<>();
+        private float robotX;
+
+        Mischief() {
+            super(BoardActivity.this);
+            setClickable(false);
+            foxArt = getDrawable(R.drawable.fox);
+            planNext();
+        }
+
+        boolean foxHere() {
+            return state != GONE_ && state != POLICE;
+        }
+
+        void planNext() {
+            nextAt = SystemClock.uptimeMillis() + 20_000 + rnd.nextInt(25_000);
+            invalidate();
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            return false;
+        }
+
+        private void set(int s) {
+            state = s;
+            stateAt = SystemClock.uptimeMillis();
+            if (buddyChip != null) buddyChip.setText(buddyLabel());
+        }
+
+        void callPolice() {
+            if (!foxHere()) return;
+            set(POLICE);
+            robotX = getWidth() + dp(80);
+        }
+
+        /** Picks a recent line on screen and heads for it. */
+        private boolean start() {
+            List<Stroke> onScreen = new ArrayList<>();
+            for (int i = strokes.size() - 1; i >= 0 && onScreen.size() < 12; i--) {
+                Stroke st = strokes.get(i);
+                if (st.eraser || st.image != null || st.n < 3 || st == placing) continue;
+                float[] pt = {st.pts[0], st.pts[1]};
+                board.view.mapPoints(pt);
+                if (pt[0] > dp(40) && pt[0] < getWidth() - dp(40) && pt[1] > dp(120) && pt[1] < getHeight() - dp(120)) onScreen.add(st);
+            }
+            if (onScreen.isEmpty()) return false;
+            victim = onScreen.get(rnd.nextInt(onScreen.size()));
+            float[] pt = {victim.pts[0], victim.pts[1]};
+            board.view.mapPoints(pt);
+            tx = pt[0];
+            ty = pt[1];
+            boolean fromLeft = rnd.nextBoolean();
+            sx = fx = fromLeft ? -dp(90) : getWidth() + dp(90);
+            sy = fy = ty + (rnd.nextFloat() - 0.5f) * dp(120);
+            set(IN);
+            return true;
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            long now = SystemClock.uptimeMillis();
+            boolean allowed = prefs.getBoolean("buddy", false);
+            if (state == GONE_) {
+                if (allowed && now > nextAt && overview == null && placing == null && !start()) planNext();
+                if (state == GONE_) {
+                    postInvalidateDelayed(1000);
+                    return;
+                }
+            }
+            if (!allowed && state != POLICE && state != OUT) set(OUT);
+            float t = (now - stateAt) / 1000f;
+            switch (state) {
+                case IN: {
+                    float k = Math.min(1, t / 1.6f);
+                    k = k * k * (3 - 2 * k);
+                    fx = sx + (tx - dp(30) - sx) * k;
+                    fy = sy + (ty - dp(20) - sy) * k;
+                    if (k >= 1) set(ERASE);
+                    break;
+                }
+                case ERASE:
+                    // Tail wags over the line, then it's gone (kept for the police / redo).
+                    fx = tx - dp(30) + (float) Math.sin(t * 18) * dp(10);
+                    if (t > 1.2f) {
+                        if (strokes.remove(victim)) {
+                            stolen.add(victim);
+                            redo.add(victim);
+                            board.rebuild();
+                            save();
+                        }
+                        set(LAUGH);
+                    }
+                    break;
+                case LAUGH:
+                    fy = ty - dp(20) - Math.abs((float) Math.sin(t * 9)) * dp(10);
+                    if (t > 2.4f) {
+                        sx = fx;
+                        sy = fy;
+                        set(OUT);
+                    }
+                    break;
+                case OUT: {
+                    float k = Math.min(1, t / 1.4f);
+                    fx = sx + ((sx < getWidth() / 2f ? -dp(120) : getWidth() + dp(120)) - sx) * k * k;
+                    if (k >= 1) {
+                        state = GONE_;
+                        if (buddyChip != null) buddyChip.setText(buddyLabel());
+                        planNext();
+                    }
+                    break;
+                }
+                case POLICE: {
+                    // The robot rolls in, flashing; then its eraser beam rubs the fox out.
+                    float target = fx + dp(110);
+                    robotX += (target - robotX) * Math.min(1, 0.08f);
+                    boolean beam = t > 1.4f && t < 3.0f;
+                    drawRobot(c, robotX, fy, now, beam);
+                    if (t > 3.0f) {
+                        // Evidence returned.
+                        for (Stroke st : stolen) {
+                            redo.remove(st);
+                            strokes.add(st);
+                        }
+                        if (!stolen.isEmpty()) {
+                            board.rebuild();
+                            save();
+                        }
+                        stolen.clear();
+                    }
+                    if (t > 4.2f) {
+                        state = GONE_;
+                        if (buddyChip != null) buddyChip.setText(buddyLabel());
+                        nextAt = now + 120_000;          // two minutes of peace
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+            // The fox (rubbed out from the top by the beam).
+            float fw = dp(96), fh = dp(64);
+            float erased = state == POLICE ? Math.max(0, Math.min(1, (t - 1.4f) / 1.5f)) : 0;
+            if (erased < 1) {
+                c.save();
+                c.clipRect(fx - fw / 2, fy - fh / 2 + fh * erased, fx + fw / 2, fy + fh / 2);
+                boolean left = state == OUT ? sx < getWidth() / 2f : tx < fx;
+                if (left) c.scale(-1, 1, fx, fy);
+                foxArt.setBounds((int) (fx - fw / 2), (int) (fy - fh / 2), (int) (fx + fw / 2), (int) (fy + fh / 2));
+                foxArt.draw(c);
+                c.restore();
+            }
+            if (state == LAUGH) bubble(c, "HAHAHA! 😂", fx, fy - fh / 2 - dp(8));
+            if (state == ERASE) bubble(c, "Was ist das denn?", fx, fy - fh / 2 - dp(8));
+            if (state == POLICE && t > 3.0f) bubble(c, "Festgenommen. Beweis zurück. 🤖", robotX, fy - dp(54));
+            postInvalidateOnAnimation();
+        }
+
+        private void drawRobot(Canvas c, float x, float y, long now, boolean beam) {
+            boolean blue = (now / 180) % 2 == 0;
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(blue ? 0xFF3C8DFF : 0xFFE8231A);
+            c.drawCircle(x, y - dp(40), dp(6), p);
+            p.setColor(blue ? 0x553C8DFF : 0x55E8231A);
+            c.drawCircle(x, y - dp(40), dp(16), p);
+            p.setColor(0xFF1A1A1A);
+            c.drawRoundRect(x - dp(22), y - dp(32), x + dp(22), y + dp(6), dp(8), dp(8), p);
+            p.setColor(0xFF2BD9FF);
+            c.drawCircle(x - dp(9), y - dp(14), dp(4), p);
+            c.drawCircle(x + dp(9), y - dp(14), dp(4), p);
+            p.setColor(0xFF1A1A1A);
+            c.drawRect(x - dp(14), y + dp(6), x + dp(14), y + dp(16), p);
+            c.drawCircle(x - dp(12), y + dp(20), dp(6), p);
+            c.drawCircle(x + dp(12), y + dp(20), dp(6), p);
+            if (beam) {
+                p.setColor(0xAAF4F2EC);
+                p.setStrokeWidth(dp(10));
+                p.setStyle(Paint.Style.STROKE);
+                c.drawLine(x - dp(24), y - dp(10), fx + dp(20), fy, p);
+                p.setStyle(Paint.Style.FILL);
+            }
+        }
+
+        private void bubble(Canvas c, String text, float x, float y) {
+            p.setTypeface(android.graphics.Typeface.create("casual", android.graphics.Typeface.BOLD));
+            p.setTextSize(dp(15));
+            float w = p.measureText(text) + dp(20);
+            x = Math.max(w / 2 + dp(6), Math.min(getWidth() - w / 2 - dp(6), x));
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xF2FFFFFF);
+            c.drawRoundRect(x - w / 2, y - dp(30), x + w / 2, y, dp(12), dp(12), p);
+            p.setColor(0xFF1A1A1A);
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText(text, x, y - dp(10), p);
+            p.setTextAlign(Paint.Align.LEFT);
+        }
     }
 
 }
