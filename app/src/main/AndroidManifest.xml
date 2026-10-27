@@ -295,6 +295,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Pfeif- & Klavier-Lehrer (from the ARC-DNA apps). -->
+        <activity
+            android:name=".TuneActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Bär-Wecker: the daily bear alarm and one-time deadlines. -->
         <activity
             android:name=".WeckerActivity"

@@ -4962,6 +4962,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"VPN", VpnActivity.class, R.drawable.ic_line_vpn, R.drawable.ic_vpn},
             {"Routen", RouteActivity.class, R.drawable.ic_line_routes, R.drawable.ic_routes},
             {"Bär-Wecker", WeckerActivity.class, R.drawable.ic_line_alarm, R.drawable.ic_alarm},
+            {"Pfeifen", TuneActivity.class, R.drawable.ic_music, R.drawable.ic_music},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);
