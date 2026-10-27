@@ -522,8 +522,7 @@ public class PlayerActivity extends Activity {
         private float spin, arm, lastT;
 
         int era() {
-            int pinned = getSharedPreferences("player", MODE_PRIVATE).getInt("era", -1);
-            return pinned >= 0 ? pinned : Math.abs(label.hashCode()) % 5;
+            return eraFor(PlayerActivity.this, label);
         }
 
         void nextEra() {
@@ -1018,6 +1017,13 @@ public class PlayerActivity extends Activity {
                 rowH = Math.max(rowH, ch);
             }
         }
+    }
+
+
+    /** The era of a song (the one picked in the player, else one per title): also the home card's button. */
+    static int eraFor(android.content.Context c, String title) {
+        int pinned = c.getSharedPreferences("player", MODE_PRIVATE).getInt("era", -1);
+        return pinned >= 0 ? pinned : Math.abs(String.valueOf(title).hashCode()) % 5;
     }
 
 }

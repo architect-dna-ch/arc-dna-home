@@ -135,7 +135,17 @@ final class MusicCard {
         text.addView(title);
         text.addView(artist);
         text.addView(source);
+        source.setVisibility(View.GONE);           // replaced by the era button
         top.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
+        // Opens the music app: as big as the cover, its icon from the song's era (jukebox … floppy).
+        eraButton = new EraButton();
+        eraButton.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
+            openPlayer();
+        });
+        LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(dp(54), dp(54));
+        el.leftMargin = dp(10);
+        top.addView(eraButton, el);
         root.addView(top);
 
         spectrum = new Spectrum();
@@ -817,6 +827,7 @@ final class MusicCard {
             title.setText(audio.isMusicActive() ? "Musik läuft" : "Nichts läuft");
             artist.setText("🎧 Titel antippen = DJ wählen · ▶ = letzte Musik");
             source.setText("");
+            if (eraButton != null) eraButton.set(null, null);
             art.setImageResource(R.drawable.ic_music);
             art.setScaleType(ImageView.ScaleType.CENTER);
         } else {
@@ -836,6 +847,7 @@ final class MusicCard {
                 art.setImageResource(R.drawable.ic_music);
             }
             source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN) + " ↗");
+            if (eraButton != null) eraButton.set(t != null ? t : "", appName(controller.getPackageName()));
         }
         playButton.setImageResource(isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
         frame.run(isPlaying());
@@ -1609,4 +1621,107 @@ final class MusicCard {
     private int dp(float v) {
         return Math.round(v * activity.getResources().getDisplayMetrics().density);
     }
+
+    private EraButton eraButton;
+
+    /** The music app's button in the song's era: jukebox, vinyl, cassette, CD or floppy, with a small ↗. */
+    private final class EraButton extends View {
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF r = new android.graphics.RectF();
+        private String song;
+
+        EraButton() {
+            super(activity);
+            setBackground(box(card, line, 12));
+            setVisibility(GONE);
+        }
+
+        void set(String title, String app) {
+            song = title;
+            setVisibility(title == null ? GONE : VISIBLE);
+            setContentDescription(app == null ? null : app + " öffnen");
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            if (song == null) return;
+            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, u = Math.min(w, h) / 54f;
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            switch (PlayerActivity.eraFor(activity, song)) {
+                case 0: {        // jukebox: arched top, grille, glowing window
+                    r.set(cx - 15 * u, cy - 19 * u, cx + 15 * u, cy + 19 * u);
+                    p.setColor(0xFFB5271E);
+                    c.drawRoundRect(r, 15 * u, 15 * u, p);
+                    r.set(cx - 11 * u, cy - 15 * u, cx + 11 * u, cy - 2 * u);
+                    p.setColor(0xFFE8B931);
+                    c.drawRoundRect(r, 11 * u, 11 * u, p);
+                    p.setColor(0xFF2A1A12);
+                    for (int i = 0; i < 4; i++) c.drawRect(cx - 10 * u, cy + (2 + i * 4) * u, cx + 10 * u, cy + (3.5f + i * 4) * u, p);
+                    break;
+                }
+                case 1: {        // vinyl
+                    p.setColor(0xFF111110);
+                    c.drawCircle(cx, cy, 20 * u, p);
+                    p.setStyle(android.graphics.Paint.Style.STROKE);
+                    p.setStrokeWidth(0.8f * u);
+                    p.setColor(0xFF3A3A38);
+                    for (int i = 0; i < 3; i++) c.drawCircle(cx, cy, (11 + i * 3) * u, p);
+                    p.setStyle(android.graphics.Paint.Style.FILL);
+                    p.setColor(0xFFD9472F);
+                    c.drawCircle(cx, cy, 7 * u, p);
+                    p.setColor(0xFFF4F2EC);
+                    c.drawCircle(cx, cy, 1.5f * u, p);
+                    break;
+                }
+                case 2: {        // cassette
+                    r.set(cx - 21 * u, cy - 13 * u, cx + 21 * u, cy + 13 * u);
+                    p.setColor(0xFF2A2A28);
+                    c.drawRoundRect(r, 3 * u, 3 * u, p);
+                    r.set(cx - 17 * u, cy - 10 * u, cx + 17 * u, cy + 1 * u);
+                    p.setColor(0xFFE8B931);
+                    c.drawRect(r, p);
+                    p.setColor(0xFF111110);
+                    c.drawCircle(cx - 9 * u, cy - 4.5f * u, 4 * u, p);
+                    c.drawCircle(cx + 9 * u, cy - 4.5f * u, 4 * u, p);
+                    p.setColor(0xFF6F6E69);
+                    c.drawRect(cx - 9 * u, cy + 5 * u, cx + 9 * u, cy + 10 * u, p);
+                    break;
+                }
+                case 3: {        // CD: silver with a rainbow sheen
+                    p.setShader(new android.graphics.SweepGradient(cx, cy,
+                        new int[]{0xFFD8D8D2, 0xFF9AD0FF, 0xFFFFB3E6, 0xFFFFF0A0, 0xFFB8F0C0, 0xFFD8D8D2}, null));
+                    c.drawCircle(cx, cy, 20 * u, p);
+                    p.setShader(null);
+                    p.setColor(0xFFF4F2EC);
+                    c.drawCircle(cx, cy, 6 * u, p);
+                    p.setColor(0xFF9A9A98);
+                    c.drawCircle(cx, cy, 2.5f * u, p);
+                    break;
+                }
+                default: {       // floppy
+                    r.set(cx - 18 * u, cy - 18 * u, cx + 18 * u, cy + 18 * u);
+                    p.setColor(0xFF00305F);
+                    c.drawRoundRect(r, 2 * u, 2 * u, p);
+                    p.setColor(0xFFC4C4BE);
+                    c.drawRect(cx - 9 * u, cy - 18 * u, cx + 9 * u, cy - 7 * u, p);
+                    p.setColor(0xFF2A2A28);
+                    c.drawRect(cx + 2 * u, cy - 16 * u, cx + 6 * u, cy - 9 * u, p);
+                    p.setColor(0xFFF4F2EC);
+                    c.drawRect(cx - 13 * u, cy - 2 * u, cx + 13 * u, cy + 15 * u, p);
+                    break;
+                }
+            }
+            // ↗ in the corner: it opens the app.
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(card);
+            c.drawCircle(w - 9 * u, 9 * u, 7 * u, p);
+            p.setColor(ink2);
+            p.setTextSize(10 * u);
+            p.setTextAlign(android.graphics.Paint.Align.CENTER);
+            p.setTypeface(Typeface.DEFAULT_BOLD);
+            c.drawText("↗", w - 9 * u, 12.5f * u, p);
+        }
+    }
+
 }
