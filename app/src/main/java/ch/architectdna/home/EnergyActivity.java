@@ -78,8 +78,9 @@ public class EnergyActivity extends Activity {
         panel.setPadding(dp(20), dp(44), dp(20), dp(18));
         // Below the status bar (and the camera cut-out), whatever its height.
         panel.setOnApplyWindowInsetsListener((v, insets) -> {
-            int top = insets.getSystemWindowInsetTop();
-            v.setPadding(dp(20), top + dp(14), dp(20), dp(18));
+            int top = insets.getSystemWindowInsetTop(), bottom = insets.getSystemWindowInsetBottom();
+            // And above the navigation bar: the last rows of the list were cut off behind it.
+            v.setPadding(dp(20), top + dp(14), dp(20), bottom + dp(18));
             return insets;
         });
         sv.addView(panel);
