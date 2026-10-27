@@ -113,7 +113,11 @@ public class EnergyActivity extends Activity {
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, -2);
         gl.topMargin = dp(14);
         panel.addView(grid, gl);
-        saverState = tile(grid, "🔋", "Sparen", v -> open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)));
+        saverState = tile(grid, "🔋", "Sparen", v -> toggleSaver());
+        ((View) saverState.getParent()).setOnLongClickListener(v -> {
+            open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));
+            return true;
+        });
         tile(grid, "📶", "WLAN", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_WIFI : null, Settings.ACTION_WIFI_SETTINGS));
         tile(grid, "🌐", "Internet", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_INTERNET_CONNECTIVITY : null, Settings.ACTION_WIRELESS_SETTINGS));
         tile(grid, "ᛒ", "Bluetooth", v -> open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)));
@@ -440,6 +444,31 @@ public class EnergyActivity extends Activity {
     }
 
     /** Do-not-disturb straight from the tile (Android asks once for the access). */
+    /**
+     * Battery saver right here: switching it needs WRITE_SECURE_SETTINGS (granted once by adb, like
+     * the Xiaomi gestures); without it the system's Battery Saver page opens. Long press: that page.
+     */
+    private void toggleSaver() {
+        PowerManager pm = getSystemService(PowerManager.class);
+        if (pm == null || checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));
+            return;
+        }
+        boolean on = pm.isPowerSaveMode();
+        try {
+            Settings.Global.putInt(getContentResolver(), "low_power", on ? 0 : 1);
+            DiagLog.log("energy: battery saver " + (on ? "off" : "on"));
+        } catch (RuntimeException e) {
+            open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));
+            return;
+        }
+        getWindow().getDecorView().postDelayed(() -> {
+            if (pm.isPowerSaveMode() == on) open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));      // the system ignored it
+            paintNow();
+        }, 600);
+        paintNow();
+    }
+
     private void toggleZen() {
         android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
         if (nm == null) return;
