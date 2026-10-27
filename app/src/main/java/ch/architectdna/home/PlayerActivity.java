@@ -31,11 +31,11 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,7 +56,9 @@ public class PlayerActivity extends Activity {
     private Disk disk;
     private Seek seek;
     private TextView title, artist, source, playBtn, status;
-    private LinearLayout actions, queue;
+    private LinearLayout queue;
+    private Flow actions;
+    private String actionKey = "";
     private DjPicker dj;
 
     @Override
@@ -153,13 +155,10 @@ public class PlayerActivity extends Activity {
         controls.addView(next, new LinearLayout.LayoutParams(dp(58), dp(58)));
         col.addView(controls);
 
-        HorizontalScrollView hs = new HorizontalScrollView(this);
-        hs.setHorizontalScrollBarEnabled(false);
-        actions = new LinearLayout(this);
-        hs.addView(actions);
+        actions = new Flow(this, dp(8));
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, -2);
         al.topMargin = dp(18);
-        col.addView(hs, al);
+        col.addView(actions, al);
 
         status = text(14, ink3, false);
         status.setPadding(0, dp(16), 0, 0);
@@ -274,16 +273,24 @@ public class PlayerActivity extends Activity {
         PlaybackState s = controller == null ? null : controller.getPlaybackState();
         paintPlay();
         // The app's own extra buttons: like, shuffle, repeat … whatever it offers.
-        actions.removeAllViews();
-        if (s != null) {
-            for (PlaybackState.CustomAction ca : s.getCustomActions()) {
-                TextView c = chip(String.valueOf(ca.getName()).toUpperCase(Locale.GERMAN), ink2);
+        // Wrapped onto lines (no sideways scroll that hid "Like"), like first and in rust;
+        // rebuilt only when the buttons change.
+        List<PlaybackState.CustomAction> cas = new ArrayList<>();
+        if (s != null) cas.addAll(s.getCustomActions());
+        cas.sort((a, b) -> Boolean.compare(isLike(b), isLike(a)));
+        StringBuilder key = new StringBuilder();
+        for (PlaybackState.CustomAction ca : cas) key.append(ca.getAction()).append('|').append(ca.getName()).append('\n');
+        if (!key.toString().equals(actionKey)) {
+            actionKey = key.toString();
+            actions.removeAllViews();
+            for (PlaybackState.CustomAction ca : cas) {
+                boolean like = isLike(ca);
+                String name = String.valueOf(ca.getName()).toUpperCase(Locale.GERMAN);
+                TextView c = chip(like ? "♥ " + name : name, like ? rust : ink2);
                 c.setOnClickListener(v -> {
                     if (controller != null) controller.getTransportControls().sendCustomAction(ca, null);
                 });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-                lp.rightMargin = dp(8);
-                actions.addView(c, lp);
+                actions.addView(c);
             }
         }
         // The queue: tap = play from there.
@@ -959,6 +966,58 @@ public class PlayerActivity extends Activity {
         int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
             | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
         getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);
+    }
+
+
+    /** A thumbs up / like / favourite button (by name or action id). */
+    private static boolean isLike(PlaybackState.CustomAction ca) {
+        String n = (ca.getName() + " " + ca.getAction()).toLowerCase(Locale.ROOT);
+        return (n.contains("like") || n.contains("thumbs_up") || n.contains("thumb") || n.contains("gefällt") || n.contains("fav")
+            || n.contains("heart")) && !n.contains("dislike") && !n.contains("down") && !n.contains("nicht");
+    }
+
+    /** Lays children left to right and wraps onto new lines. */
+    static final class Flow extends android.view.ViewGroup {
+        private final int gap;
+
+        Flow(android.content.Context c, int gap) {
+            super(c);
+            this.gap = gap;
+        }
+
+        @Override
+        protected void onMeasure(int ws, int hs) {
+            int w = MeasureSpec.getSize(ws), x = 0, y = 0, rowH = 0;
+            for (int i = 0; i < getChildCount(); i++) {
+                View v = getChildAt(i);
+                v.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+                if (x > 0 && x + v.getMeasuredWidth() > w) {
+                    x = 0;
+                    y += rowH + gap;
+                    rowH = 0;
+                }
+                x += v.getMeasuredWidth() + gap;
+                rowH = Math.max(rowH, v.getMeasuredHeight());
+            }
+            setMeasuredDimension(w, y + rowH);
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            int w = r - l, x = 0, y = 0, rowH = 0;
+            for (int i = 0; i < getChildCount(); i++) {
+                View v = getChildAt(i);
+                int cw = v.getMeasuredWidth(), ch = v.getMeasuredHeight();
+                if (x > 0 && x + cw > w) {
+                    x = 0;
+                    y += rowH + gap;
+                    rowH = 0;
+                }
+                v.layout(x, y, x + cw, y + ch);
+                x += cw + gap;
+                rowH = Math.max(rowH, ch);
+            }
+        }
     }
 
 }
