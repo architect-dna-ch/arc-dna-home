@@ -3535,6 +3535,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (want) {
             if (raceOverlay == null) {
                 raceOverlay = new RaceOverlay(this);
+                raceOverlay.onFinished = () -> {
+                    if (f1) setF1(false);          // one race, then the hyper-seconds board closes too
+                };
                 rootFrame.addView(raceOverlay, new FrameLayout.LayoutParams(-1, -1));
             }
             raceOverlay.bringToFront();

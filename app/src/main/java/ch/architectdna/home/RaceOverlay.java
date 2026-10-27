@@ -51,6 +51,8 @@ final class RaceOverlay extends View {
     private int phase = INTRO;
     private long phaseAt, zoomAt = -1, nextZoom, lightsOutAt;
     private int passes, zooms;
+    /** The race is over (after the victory lap): the home closes the F1 board. */
+    Runnable onFinished;
     private float zoomAngle;
 
     private static final class Car {
@@ -485,7 +487,11 @@ final class RaceOverlay extends View {
                 sparks.add(new float[]{w / 2, h * 0.3f, (rnd.nextFloat() - 0.5f) * dp(500), -rnd.nextFloat() * dp(400), -rnd.nextFloat() * 0.6f});
             }
         }
-        if (phase == FINISH && now - phaseAt > 6000) grid();
+        // One race, then it's over: the home closes the F1 board (and with it this track).
+        if (phase == FINISH && now - phaseAt > 6000 && running) {
+            running = false;
+            if (onFinished != null) post(onFinished);
+        }
 
         // The rolling-in: from the middle of the screen to his grid slot, bigger, then settles.
         float roll = phase == INTRO ? ease(inPhase / (float) ROLL_IN) : 1;
