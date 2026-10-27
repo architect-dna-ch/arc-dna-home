@@ -860,8 +860,14 @@ public class PlayerActivity extends Activity {
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(5 * u);
             p.setColor(0xFF1A1A1A);
-            String t = label.length() > 28 ? label.substring(0, 27) + "…" : label;
-            c.drawText(t.toUpperCase(Locale.GERMAN), lab.left + 3 * u, lab.bottom - 4 * u, p);
+            // Fitted inside the label (long titles ran out over the disk's edge).
+            String t = label.toUpperCase(Locale.GERMAN);
+            float room = lab.width() - 6 * u;
+            if (p.measureText(t) > room) {
+                while (t.length() > 3 && p.measureText(t + "…") > room) t = t.substring(0, t.length() - 1);
+                t = t + "…";
+            }
+            c.drawText(t, lab.left + 3 * u, lab.bottom - 4 * u, p);
             c.restore();
         }
     }
