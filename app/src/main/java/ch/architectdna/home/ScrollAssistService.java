@@ -634,7 +634,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         t.setLetterSpacing(0.06f);
         t.setPadding(dp(20), dp(14), dp(20), dp(14));
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setColor(0xF0121211);
+        bg.setColor(0x99121211);      // see-through: what's underneath stays readable
         bg.setStroke(dp(2), colour);
         bg.setCornerRadius(dp(28));
         t.setBackground(bg);
@@ -646,6 +646,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         lp.y = dp(64);
+        lp.alpha = 0.8f;            // ≤ 0.8: touches always go through to the app underneath
         try {
             windows.addView(t, lp);
         } catch (RuntimeException e) {
@@ -655,7 +656,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         t.setAlpha(0f);
         t.setScaleX(0.85f);
         t.setScaleY(0.85f);
-        t.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start();
+        t.animate().alpha(0.9f).scaleX(1f).scaleY(1f).setDuration(180).start();
         main.postDelayed(() -> {
             if (note != t) return;
             t.animate().alpha(0f).setDuration(250).withEndAction(() -> {
@@ -665,7 +666,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 }
                 if (note == t) note = null;
             }).start();
-        }, 2000);
+        }, 1500);
     }
 
     /** Centre the ring window on the camera hole (from the display cutout; top centre as a fallback). */
