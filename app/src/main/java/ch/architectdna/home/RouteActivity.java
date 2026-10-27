@@ -58,6 +58,7 @@ public class RouteActivity extends Activity {
     }
 
     static final class Conn {
+        String fromName = "", toName = "";
         long dep, arr;
         String platform = "", product = "", duration = "";
         int delay, transfers;
@@ -242,6 +243,9 @@ public class RouteActivity extends Activity {
     }
 
     private static Stop stop(JSONObject s) {
+        // Only real stops (they have a timetable id); the nearby search also returns addresses and places.
+        String id = s.optString("id", "");
+        if (id.isEmpty() || "null".equals(id)) return null;
         JSONObject co = s.optJSONObject("coordinate");
         if (co == null || co.isNull("x")) return null;
         Stop st = new Stop();
@@ -263,6 +267,9 @@ public class RouteActivity extends Activity {
                 JSONObject f = o.optJSONObject("from"), t = o.optJSONObject("to");
                 if (f == null || t == null) continue;
                 c.dep = f.optLong("departureTimestamp");
+                JSONObject fs = f.optJSONObject("station"), ts = t.optJSONObject("station");
+                if (fs != null) c.fromName = fs.optString("name", "");
+                if (ts != null) c.toName = ts.optString("name", "");
                 c.arr = t.optLong("arrivalTimestamp");
                 c.platform = f.optString("platform", "");
                 if ("null".equals(c.platform)) c.platform = "";
@@ -276,6 +283,14 @@ public class RouteActivity extends Activity {
                 for (int s = 0; secs != null && s < secs.length(); s++) {
                     JSONObject j = secs.getJSONObject(s).optJSONObject("journey");
                     if (j == null) continue;      // a walk
+                    if (c.legs.isEmpty()) {
+                        // "B 19", "T 9", "IR 15": the line as it's signed, from the first ride.
+                        String cat = j.optString("category", ""), num = j.optString("number", "");
+                        if ("null".equals(cat)) cat = "";
+                        if ("null".equals(num)) num = "";
+                        String sign = (cat + " " + num).trim();
+                        if (!sign.isEmpty()) c.product = sign;
+                    }
                     JSONArray pass = j.optJSONArray("passList");
                     List<Stop> leg = new ArrayList<>();
                     for (int k = 0; pass != null && k < pass.length(); k++) {
@@ -308,7 +323,6 @@ public class RouteActivity extends Activity {
         wait.setText("SUCHE …");
         wait.setPadding(0, dp(12), 0, 0);
         results.addView(wait);
-        RouteLearner.searched(this, f, t, pin);
         new Thread(() -> {
             List<Conn> c = connections(f, t, 5);
             main.post(() -> {
@@ -320,12 +334,15 @@ public class RouteActivity extends Activity {
                     results.addView(none);
                     return;
                 }
-                String key = f + "→" + t;
+                // Under the timetable's own names (not what was typed, not a street address).
+                String from = c.get(0).fromName.isEmpty() ? f : c.get(0).fromName, to = c.get(0).toName.isEmpty() ? t : c.get(0).toName;
+                RouteLearner.searched(this, from, to, pin);
+                String key = from + "→" + to;
                 conns.put(key, c);
                 selected = key;
                 RouteLearner.Route r = new RouteLearner.Route();
-                r.from = f;
-                r.to = t;
+                r.from = from;
+                r.to = to;
                 r.count = 1;
                 results.addView(routeCard(r, true));
                 map.fit(c.get(0));
@@ -448,6 +465,7 @@ public class RouteActivity extends Activity {
     private final class MapView extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path path = new Path();
+        private final List<android.graphics.RectF> taken = new ArrayList<>();
         private double lat0 = 46.9488, lon0 = 7.4391;
         private float scale;        // px per degree of latitude
         private float lastX, lastY;
@@ -523,15 +541,21 @@ public class RouteActivity extends Activity {
             // Stations around.
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(9));
+            taken.clear();
             for (Stop s : stations) {
                 float sx = x(s.lon), sy = y(s.lat);
                 if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
                 p.setStyle(Paint.Style.FILL);
                 p.setColor(ink3);
                 c.drawCircle(sx, sy, dp(3), p);
-                if (scale > dp(6000)) {
-                    p.setColor(ink3);
-                    c.drawText(s.name.toUpperCase(Locale.GERMAN), sx + dp(6), sy + dp(3), p);
+                // A name only where it fits (the nearest stations first); zoom in for the rest.
+                String t = s.name.replaceFirst("^Bern, ", "").toUpperCase(Locale.GERMAN);
+                android.graphics.RectF box = new android.graphics.RectF(sx + dp(5), sy - dp(8), sx + dp(8) + p.measureText(t), sy + dp(5));
+                boolean free = true;
+                for (android.graphics.RectF o : taken) if (android.graphics.RectF.intersects(o, box)) free = false;
+                if (free) {
+                    taken.add(box);
+                    c.drawText(t, sx + dp(6), sy + dp(3), p);
                 }
             }
 
