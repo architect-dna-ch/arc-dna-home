@@ -50,7 +50,7 @@ final class RaceOverlay extends View {
     private static final long ROLL_IN = 1400, HELLO = 2600, LIGHT = 450, ZOOM = 3400;
     private int phase = INTRO;
     private long phaseAt, zoomAt = -1, nextZoom, lightsOutAt;
-    private int passes;
+    private int passes, zooms;
     private float zoomAngle;
 
     private static final class Car {
@@ -186,6 +186,7 @@ final class RaceOverlay extends View {
         build(getWidth(), getHeight());
         zoomAt = -1;
         passes = 0;
+        zooms = 0;
         sparks.clear();
     }
 
@@ -340,8 +341,10 @@ final class RaceOverlay extends View {
         android.view.ViewGroup g = (android.view.ViewGroup) getParent();
         for (int i = g.indexOfChild(this) + 1; i < g.getChildCount(); i++) {
             View v = g.getChildAt(i);
-            if (v.getVisibility() == VISIBLE && v.getAlpha() > 0.05f
-                && v.getWidth() > g.getWidth() / 2 && v.getHeight() > g.getHeight() / 3) return true;
+            // Only the real scenes: full-screen helpers (edge light, ghosts …) sit on top all the time
+            // and blocked the chase cam completely.
+            boolean scene = v instanceof DinoView || v instanceof CrumpleView || v instanceof UnlockView || v instanceof FoxRunView;
+            if (scene && v.getVisibility() == VISIBLE && v.getAlpha() > 0.05f) return true;
         }
         return false;
     }
@@ -374,7 +377,7 @@ final class RaceOverlay extends View {
             phase = RACE;
             phaseAt = now;
             lightsOutAt = 0;
-            nextZoom = now + 6000 + rnd.nextInt(5000);
+            nextZoom = now + 4000 + rnd.nextInt(3000);
             inPhase = 0;
         }
         boolean racing = running && phase == RACE;
@@ -387,14 +390,16 @@ final class RaceOverlay extends View {
         if (racing && !busy && zoomAt < 0 && now > nextZoom && myPlace > 1) {
             float gap = Float.MAX_VALUE;
             for (Car o : cars) if (o != me) gap = Math.min(gap, ((o.s - me.s) % 1 + 1) % 1 * length);
-            if (gap < dp(140)) {
+            // Close behind someone; from lap 3 on without a chase cam yet, any time he isn't leading.
+            if (gap < dp(200) || zooms == 0 && myLap >= 2) {
+                zooms++;
                 zoomAt = now;
                 zoomAngle = me.angle;
             }
         }
         if (zoomAt >= 0 && now - zoomAt > ZOOM) {
             zoomAt = -1;
-            nextZoom = now + 14000 + rnd.nextInt(12000);
+            nextZoom = now + 10000 + rnd.nextInt(6000);
         }
         boolean zooming = zoomAt >= 0;
 
