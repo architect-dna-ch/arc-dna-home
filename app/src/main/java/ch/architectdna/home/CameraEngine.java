@@ -104,6 +104,33 @@ final class CameraEngine implements LifecycleOwner {
         return view;
     }
 
+    private volatile Integer iso;
+    private volatile Long exposureNs;
+    private volatile Float aperture, focal, focus;
+
+    /** The live numbers as short lines for the info bubbles (empty until the first frame). */
+    List<String> meta() {
+        List<String> out = new ArrayList<>();
+        if (iso != null) out.add("ISO " + iso);
+        if (exposureNs != null && exposureNs > 0) {
+            double sec = exposureNs / 1e9;
+            out.add(sec >= 0.5 ? String.format(java.util.Locale.ROOT, "%.1f s", sec) : "1/" + Math.round(1 / sec) + " s");
+        }
+        if (aperture != null) out.add(String.format(java.util.Locale.ROOT, "f/%.1f", aperture));
+        if (focal != null) out.add(String.format(java.util.Locale.ROOT, "%.1f mm", focal));
+        if (focus != null) out.add(focus <= 0.01f ? "FOKUS ∞" : String.format(java.util.Locale.ROOT, "FOKUS %.1f m", 1 / focus));
+        return out;
+    }
+
+    /** The current preview picture (for the 2× look), or null. */
+    android.graphics.Bitmap snapshot() {
+        try {
+            return view.getBitmap();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     /** rotation: Surface.ROTATION_* of the display. */
     void start(boolean front, int rotation) {
         try {
@@ -123,7 +150,22 @@ final class CameraEngine implements LifecycleOwner {
             if (!running) return;
             try {
                 provider = future.get();
-                Preview preview = new Preview.Builder().setTargetRotation(rotation).build();
+                Preview.Builder pb = new Preview.Builder().setTargetRotation(rotation);
+                // The camera's own numbers per frame (ISO, shutter, aperture, focal length, focus).
+                new androidx.camera.camera2.interop.Camera2Interop.Extender<>(pb).setSessionCaptureCallback(
+                    new android.hardware.camera2.CameraCaptureSession.CaptureCallback() {
+                        @Override
+                        public void onCaptureCompleted(android.hardware.camera2.CameraCaptureSession session,
+                                                       android.hardware.camera2.CaptureRequest request,
+                                                       android.hardware.camera2.TotalCaptureResult r) {
+                            iso = r.get(android.hardware.camera2.CaptureResult.SENSOR_SENSITIVITY);
+                            exposureNs = r.get(android.hardware.camera2.CaptureResult.SENSOR_EXPOSURE_TIME);
+                            aperture = r.get(android.hardware.camera2.CaptureResult.LENS_APERTURE);
+                            focal = r.get(android.hardware.camera2.CaptureResult.LENS_FOCAL_LENGTH);
+                            focus = r.get(android.hardware.camera2.CaptureResult.LENS_FOCUS_DISTANCE);
+                        }
+                    });
+                Preview preview = pb.build();
                 preview.setSurfaceProvider(view.getSurfaceProvider());
                 capture = new ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)

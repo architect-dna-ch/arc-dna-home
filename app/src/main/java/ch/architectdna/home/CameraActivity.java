@@ -530,10 +530,76 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
                 c.drawLine(cx - half - dp(14), cy, cx - half - dp(4), cy, p);
                 c.drawLine(cx + half + dp(4), cy, cx + half + dp(14), cy, p);
             }
+            drawZoomLook(c);
+            drawMeta(c);
             // The character with its tip, above the controls.
             String say = now - shotAt < 1600 ? "Hab's! Liegt schon auf dem Globus." : hint;
             if (!say.isEmpty()) speak(c, w, h, VOICE[character] + say);
             if (animate || now - shotAt < 1600 || !upright || Math.abs(tiltSmooth) > 0.2f) postInvalidateOnAnimation();
+            else postInvalidateDelayed(200);       // the 2× look and the numbers stay live
+        }
+
+        private Bitmap look;
+        private long lookAt;
+
+        /** Top right: the middle of the picture at 2×, so you see how the zoom would frame it. */
+        private void drawZoomLook(Canvas c) {
+            long now = SystemClock.uptimeMillis();
+            if (now - lookAt > 180) {
+                lookAt = now;
+                Bitmap b = engine.snapshot();
+                if (b != null) look = b;
+            }
+            if (look == null || look.isRecycled() || content.width() <= 0) return;
+            float iw = content.width() * 0.34f, ih = iw * content.height() / content.width();
+            float r = content.right - dp(12), t = content.top + dp(12);
+            RectF dst = new RectF(r - iw, t, r, t + ih);
+            int bw = look.getWidth(), bh = look.getHeight();
+            android.graphics.Rect src = new android.graphics.Rect(bw / 4, bh / 4, bw * 3 / 4, bh * 3 / 4);
+            c.save();
+            path.reset();
+            path.addRoundRect(dst, dp(12), dp(12), Path.Direction.CW);
+            c.clipPath(path);
+            c.drawBitmap(look, src, dst, null);
+            c.restore();
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(2));
+            p.setColor(0xE6FFFFFF);
+            c.drawRoundRect(dst, dp(12), dp(12), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xCC111110);
+            c.drawRoundRect(dst.left + dp(8), dst.top + dp(8), dst.left + dp(40), dst.top + dp(28), dp(10), dp(10), p);
+            p.setColor(0xFFFFFFFF);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(11));
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText("2×", dst.left + dp(24), dst.top + dp(22), p);
+            p.setTextAlign(Paint.Align.LEFT);
+            // Where the 2× frame sits in the big picture.
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1));
+            p.setColor(0x80FFFFFF);
+            p.setPathEffect(new android.graphics.DashPathEffect(new float[]{dp(6), dp(5)}, 0));
+            c.drawRect(content.left + content.width() / 4, content.top + content.height() / 4,
+                content.right - content.width() / 4, content.bottom - content.height() / 4, p);
+            p.setPathEffect(null);
+        }
+
+        /** Left: the camera's own numbers, one bubble each, stacked. */
+        private void drawMeta(Canvas c) {
+            List<String> lines = engine.meta();
+            float x = content.left + dp(12), y = content.top + dp(14);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(11));
+            for (String s : lines) {
+                float tw = p.measureText(s) + dp(20);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0xB3111110);
+                c.drawRoundRect(x, y, x + tw, y + dp(26), dp(13), dp(13), p);
+                p.setColor(0xFFFFFFFF);
+                c.drawText(s, x + dp(10), y + dp(17.5f), p);
+                y += dp(32);
+            }
         }
 
         private void speak(Canvas c, float w, float h, String text) {
@@ -541,13 +607,17 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             float x = dp(16), y = bottom - size;
             Drawable d = art[character];
             float bob = (float) Math.sin(SystemClock.uptimeMillis() / 300.0) * dp(2);
+            float artW = size;
             if (d != null) {
-                d.setBounds((int) x, (int) (y + bob), (int) (x + size), (int) (bottom + bob));
+                // Keep the drawing's own shape (96 × 64): it was squeezed into a square.
+                float ar = d.getIntrinsicHeight() > 0 ? d.getIntrinsicWidth() / (float) d.getIntrinsicHeight() : 1f;
+                artW = size * ar;
+                d.setBounds((int) x, (int) (y + bob), (int) (x + artW), (int) (bottom + bob));
                 d.draw(c);
             }
             p.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
             p.setTextSize(dp(14));
-            float bx = x + size + dp(10), maxW = Math.min(w - bx - dp(16), dp(420));
+            float bx = x + artW + dp(10), maxW = Math.min(w - bx - dp(16), dp(420));
             List<String> rows = wrap(text, maxW - dp(24));
             float lh = p.getTextSize() * 1.3f, bh = rows.size() * lh + dp(16), bw = 0;
             for (String r : rows) bw = Math.max(bw, p.measureText(r));
