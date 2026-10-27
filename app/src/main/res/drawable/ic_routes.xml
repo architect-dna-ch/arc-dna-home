@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Routen launcher icon: two stations joined by a rust line, a train on it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <path android:fillColor="#FAFAF8" android:pathData="M0,0h96v96h-96z" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M24,70c10,-2 12,-16 22,-20s20,-6 26,-24" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#1A1A1A" android:strokeWidth="3"
+        android:pathData="M17,70a7,7 0 1,0 14,0a7,7 0 1,0 -14,0M65,26a7,7 0 1,0 14,0a7,7 0 1,0 -14,0" />
+    <path android:fillColor="#1A1A1A" android:pathData="M40,44h14v10h-14z" />
+</vector>

@@ -1382,7 +1382,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     && !DecibelActivity.class.getName().equals(ri.activityInfo.name)
                     && !PlayerActivity.class.getName().equals(ri.activityInfo.name)
                     && !EnergyActivity.class.getName().equals(ri.activityInfo.name)
-                    && !VpnActivity.class.getName().equals(ri.activityInfo.name)) continue;
+                    && !VpnActivity.class.getName().equals(ri.activityInfo.name)
+                    && !RouteActivity.class.getName().equals(ri.activityInfo.name)) continue;
                 list.add(new AppEntry(
                     ri.loadLabel(pm).toString(),
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
@@ -4398,6 +4399,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (flipArmed) handler.postDelayed(clockFlip, 12_500);
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.startServer(this);          // also without notification access: the partner must find us
+        RouteLearner.note(this);           // at a station? (Routen learns your usual routes)
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();
         });
@@ -4715,7 +4717,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             : DecibelActivity.class.getName().equals(activity) ? R.drawable.ic_line_decibel
             : PlayerActivity.class.getName().equals(activity) ? R.drawable.ic_line_player
             : EnergyActivity.class.getName().equals(activity) ? R.drawable.ic_line_energy
-            : VpnActivity.class.getName().equals(activity) ? R.drawable.ic_line_vpn : 0;
+            : VpnActivity.class.getName().equals(activity) ? R.drawable.ic_line_vpn
+            : RouteActivity.class.getName().equals(activity) ? R.drawable.ic_line_routes : 0;
         return id == 0 ? fallback : getDrawable(id);
     }
 
@@ -4732,6 +4735,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player},
             {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy},
             {"VPN", VpnActivity.class, R.drawable.ic_line_vpn, R.drawable.ic_vpn},
+            {"Routen", RouteActivity.class, R.drawable.ic_line_routes, R.drawable.ic_routes},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);
