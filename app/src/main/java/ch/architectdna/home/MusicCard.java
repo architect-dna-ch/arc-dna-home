@@ -137,11 +137,15 @@ final class MusicCard {
         text.addView(source);
         source.setVisibility(View.GONE);           // replaced by the era button
         top.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
-        // Opens the music app: as big as the cover, its icon from the song's era (jukebox … floppy).
+        // Opens the ARC Player: as big as the cover, its icon from the song's era (jukebox … floppy).
         eraButton = new EraButton();
         eraButton.setOnClickListener(v -> {
             v.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
-            openPlayer();
+            try {
+                activity.startActivity(new android.content.Intent(activity, PlayerActivity.class));      // the ARC Player
+            } catch (RuntimeException e) {
+                openPlayer();
+            }
         });
         LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(dp(54), dp(54));
         el.leftMargin = dp(10);
@@ -1639,7 +1643,7 @@ final class MusicCard {
         void set(String title, String app) {
             song = title;
             setVisibility(title == null ? GONE : VISIBLE);
-            setContentDescription(app == null ? null : app + " öffnen");
+            setContentDescription(app == null ? null : "ARC Player öffnen");
             invalidate();
         }
 
