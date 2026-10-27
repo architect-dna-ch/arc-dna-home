@@ -73,7 +73,104 @@ final class RaceOverlay extends View {
     }
 
     /** Everyone back on the grid; the buddy starts last so he has to work for it. */
+    /*
+     * The dino during a race: no big visit on top of it all, he comes as a small dino, walks onto the
+     * track ahead of the buddy and gets run over: CRASH, he spins off the screen.
+     */
+    private float dinoS = -1, dinoSide, dinoX, dinoY, dinoVX, dinoVY, dinoSpin;
+    private long dinoAt, dinoHit;
+
+    /** From the home instead of the dino visit while the race is on. */
+    void miniDino() {
+        if (dinoS >= 0 || phase != RACE) return;
+        dinoS = buddy().s + 0.22f;
+        dinoSide = rnd.nextBoolean() ? 1 : -1;
+        dinoAt = SystemClock.uptimeMillis();
+        dinoHit = 0;
+        dinoSpin = 0;
+    }
+
+    private void updateDino(long now, float dt) {
+        if (dinoS < 0) return;
+        if (dinoHit == 0) {
+            float at = ((dinoS % 1) + 1) % 1 * length;
+            measure.getPosTan(at, pos, tan);
+            float walk = Math.min(1, (now - dinoAt) / 1200f);
+            float side = dinoSide * dp(70) * (1 - walk) + dinoSide * dp(4) * walk;
+            if (now - dinoAt > 15000) side = dinoSide * dp(4) + dinoSide * dp(90) * Math.min(1, (now - dinoAt - 15000) / 1200f);      // gives up, walks off
+            dinoX = pos[0] - tan[1] * side;
+            dinoY = pos[1] + tan[0] * side;
+            Car me = buddy();
+            if (walk >= 1 && Math.hypot(me.x - dinoX, me.y - dinoY) < dp(26)) {
+                dinoHit = now;
+                float sp = Math.max(dp(300), me.speed);
+                dinoVX = tan[0] * sp * 0.8f + (rnd.nextFloat() - 0.5f) * dp(200);
+                dinoVY = tan[1] * sp * 0.8f - dp(260);
+                me.speed *= 0.6f;
+                for (int i = 0; i < 26; i++) {
+                    sparks.add(new float[]{dinoX, dinoY, (rnd.nextFloat() - 0.5f) * dp(320), (rnd.nextFloat() - 0.5f) * dp(320), 0});
+                }
+            }
+            if (now - dinoAt > 16500) dinoS = -1;
+        } else {
+            dinoX += dinoVX * dt;
+            dinoY += dinoVY * dt;
+            dinoVY += dp(700) * dt;
+            dinoSpin += 720 * dt;
+            if (now - dinoHit > 1800) dinoS = -1;
+        }
+    }
+
+    /** The small dino: green body, rust back plates, little legs walking; dizzy stars once hit. */
+    private void drawMiniDino(Canvas c, long now) {
+        if (dinoS < 0) return;
+        float k = dp(1) * 0.9f;
+        c.save();
+        c.translate(dinoX, dinoY);
+        c.rotate(dinoSpin);
+        if (dinoX > getWidth() / 2f) c.scale(-1, 1);
+        p.setStyle(Paint.Style.FILL);
+        float step = dinoHit == 0 ? (float) Math.sin(now / 90.0) * 3 * k : 0;
+        p.setColor(0xFFF2F0EA);
+        c.drawRect(-6 * k + step, 4 * k, -3 * k + step, 14 * k, p);
+        c.drawRect(4 * k - step, 4 * k, 7 * k - step, 14 * k, p);
+        p.setColor(0xFFD9472F);
+        car.reset();
+        for (int i = 0; i < 4; i++) {
+            float x0 = -12 * k + i * 6 * k;
+            car.moveTo(x0, -4 * k);
+            car.lineTo(x0 + 3 * k, -13 * k);
+            car.lineTo(x0 + 6 * k, -4 * k);
+        }
+        c.drawPath(car, p);
+        p.setColor(0xFF5A7A55);
+        c.drawOval(-14 * k, -7 * k, 12 * k, 7 * k, p);
+        car.reset();
+        car.moveTo(-12 * k, 0);
+        car.lineTo(-26 * k, 4 * k);
+        car.lineTo(-12 * k, 4 * k);
+        car.close();
+        c.drawPath(car, p);
+        c.drawRoundRect(8 * k, -16 * k, 20 * k, -8 * k, 4 * k, 4 * k, p);
+        c.drawRect(9 * k, -10 * k, 13 * k, 0, p);
+        p.setColor(0xFFF2F0EA);
+        c.drawCircle(16 * k, -13 * k, 2 * k, p);
+        c.restore();
+        if (dinoHit != 0) {
+            float t = (now - dinoHit) / 1800f;
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD_ITALIC));
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(dp(26));
+            p.setColor(0xFFE8B931);
+            p.setAlpha((int) (255 * Math.max(0, 1 - t)));
+            c.drawText("CRASH!", buddy().x, buddy().y - dp(34), p);
+            p.setAlpha(255);
+            p.setTextAlign(Paint.Align.LEFT);
+        }
+    }
+
     private void grid() {
+        dinoS = -1;
         for (Car k : cars) {
             int slot = k.livery == 0 ? 4 : k.livery - 1;
             k.s = -slot * 0.045f;
@@ -365,6 +462,7 @@ final class RaceOverlay extends View {
         myPlace = place(me);
         if (zooming && myPlace < placeBefore) passes = 1400;          // "ÜBERHOLT!" flash (ms)
         if (passes > 0) passes -= (int) (dt * 1000);
+        updateDino(now, dt);
         if (racing && Math.floor(me.s) >= LAPS) {
             phase = FINISH;
             phaseAt = now;
@@ -471,6 +569,7 @@ final class RaceOverlay extends View {
         p.setAlpha((int) (60 + (phase == INTRO ? 80 * pulse : 30)));
         c.drawCircle(me.x, me.y, dp(phase == INTRO ? 30 + 6 * pulse : 24), p);
         p.setAlpha(255);
+        drawMiniDino(c, now);
         for (Car k : cars) if (k != me) drawCar(c, k, 1f);
         drawCar(c, me, phase == INTRO ? 1.25f + 0.5f * (1 - roll) : 1.2f);
         c.restore();

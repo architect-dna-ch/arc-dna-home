@@ -4077,6 +4077,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** blackHole: the dino swallows the home and the phone locks (looking away); else the comic visit. */
     private void startDino(boolean blackHole) {
+        // During the race the full visit is too much: he comes small and gets run over on the track.
+        if (!blackHole && raceOverlay != null && raceOverlay.getVisibility() == View.VISIBLE) {
+            raceOverlay.miniDino();
+            DiagLog.log("dino on the race track");
+            return;
+        }
         if (dino != null || rootFrame == null || rootFrame.getWidth() == 0 || game != null || settingsSheet != null
             || calibStage >= 0 || fox == null || (!blackHole && !fox.isShown())) {
             DiagLog.log("dino skipped: dino=" + (dino != null) + " game=" + (game != null) + " settings=" + (settingsSheet != null)
