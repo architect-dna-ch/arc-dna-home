@@ -141,6 +141,7 @@ public class WeckerActivity extends Activity {
 
         rootView = new FrameLayout(this);
         rootView.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        MoodActivity.statusScrim(rootView, bg);
         setContentView(rootView);
         paint();
     }

@@ -120,11 +120,16 @@ public class MoodActivity extends Activity {
         }
         col.addView(faces, margins(-1, -2, dp(4)));
         note = new EditText(this);
-        note.setHint("Ein Wort dazu? (optional – vor dem Tippen aufs Gesicht)");
+        note.setHint("Ein Wort dazu? (vorher oder gleich danach)");
         note.setTextColor(ink);
         note.setHintTextColor(ink3);
         note.setTextSize(15);
         note.setSingleLine(true);
+        note.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        note.setOnEditorActionListener((v, id, ev) -> {
+            attachNote();
+            return false;
+        });
         note.setBackground(box(card, line, 14));
         note.setPadding(dp(14), dp(10), dp(14), dp(10));
         col.addView(note, margins(-1, -2, dp(10)));
@@ -148,7 +153,10 @@ public class MoodActivity extends Activity {
         recent = text(14, ink2, false);
         recent.setLineSpacing(0, 1.35f);
         col.addView(recent, margins(-1, -2, dp(8)));
-        setContentView(sv);
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.addView(sv, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        statusScrim(root, bg);
+        setContentView(root);
         refresh();
     }
 
@@ -387,4 +395,38 @@ public class MoodActivity extends Activity {
         p.topMargin = top;
         return p;
     }
+
+    /** A solid strip behind the status bar: scrolled content no longer runs under the clock and icons. */
+    static void statusScrim(android.widget.FrameLayout root, int colour) {
+        View scrim = new View(root.getContext());
+        scrim.setBackgroundColor(colour);
+        root.addView(scrim, new android.widget.FrameLayout.LayoutParams(-1, 0, android.view.Gravity.TOP));
+        root.setOnApplyWindowInsetsListener((v, in) -> {
+            int top = android.os.Build.VERSION.SDK_INT >= 30
+                ? in.getInsets(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.displayCutout()).top
+                : in.getSystemWindowInsetTop();
+            scrim.getLayoutParams().height = top;
+            scrim.requestLayout();
+            // Hand the insets on to the children (the scroll view pads itself with them).
+            for (int i = 0; i < root.getChildCount(); i++) root.getChildAt(i).dispatchApplyWindowInsets(in);
+            return in;
+        });
+    }
+
+    /** A word typed right after tapping a face (within 5 min) goes to that entry. */
+    private void attachNote() {
+        String n = note.getText().toString().trim();
+        if (n.isEmpty()) return;
+        JSONArray a = entries(this);
+        JSONObject last = a.length() == 0 ? null : a.optJSONObject(a.length() - 1);
+        if (last == null || System.currentTimeMillis() - last.optLong("at") > 5 * 60_000L) return;
+        try {
+            last.put("n", n);
+        } catch (Exception ignored) {
+        }
+        prefs.edit().putString("log", a.toString()).apply();
+        note.setText("");
+        refresh();
+    }
+
 }

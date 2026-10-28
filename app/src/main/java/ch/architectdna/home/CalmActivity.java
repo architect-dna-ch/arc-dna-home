@@ -244,6 +244,7 @@ public class CalmActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        MoodActivity.statusScrim(root, bg);
         setContentView(root);
         pick(prefs.getInt("last", 0));
         paintDiary();
