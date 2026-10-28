@@ -229,7 +229,12 @@ public class WeckerActivity extends Activity {
         scrim.setClickable(true);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(22), dp(18), dp(22), dp(26));
+        // Above the navigation bar (the buttons were hidden behind it).
+        int navBottom = 0;
+        if (Build.VERSION.SDK_INT >= 30 && rootView.getRootWindowInsets() != null) {
+            navBottom = rootView.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime()).bottom;
+        }
+        panel.setPadding(dp(22), dp(18), dp(22), dp(20) + navBottom);
         GradientDrawable g = new GradientDrawable();
         g.setColor(card);
         g.setCornerRadii(new float[]{dp(28), dp(28), dp(28), dp(28), 0, 0, 0, 0});
@@ -285,7 +290,9 @@ public class WeckerActivity extends Activity {
         }
         // The dial.
         Dial dial = new Dial(hour, minute);
-        panel.addView(dial, margins(-1, dp(330), dp(10)));
+        // Smaller dial on short screens, so the buttons always fit.
+        int dialH = Math.min(dp(330), (int) (getResources().getDisplayMetrics().heightPixels * (daily ? 0.42f : 0.34f)));
+        panel.addView(dial, margins(-1, dialH, dp(10)));
         // Buttons.
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.END);
