@@ -1552,6 +1552,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), o.toBundle());
             leftIcon = icon == null ? null : icon.getConstantState() != null ? icon.getConstantState().newDrawable().mutate() : icon;
             leftIntent = intent;
+            if (intent.getComponent() != null && getPackageName().equals(intent.getComponent().getPackageName())) {
+                prefs.edit().putLong("arcUsed:" + intent.getComponent().getClassName(), System.currentTimeMillis()).apply();
+            }
             leftAt = System.currentTimeMillis();
             crumplePending = true;
         } catch (ActivityNotFoundException | SecurityException e) {
@@ -4324,6 +4327,39 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }, 700);
     }
 
+    /*
+     * Now and then (at most every 2 h, then 1 in 3 home visits) the buddy points out one of
+     * ARC-DNA's own apps you haven't opened for the longest time; tap the bubble to open it.
+     */
+    private static final String[] SUGGEST = {"Schon vergessen? ", "Lange nicht gesehen: ", "Probier mal wieder ", "Kennst du noch "};
+
+    private void suggestArc() {
+        long now = System.currentTimeMillis();
+        if (pro() || dino != null || game != null || now - prefs.getLong("arcSuggestAt", 0) < 2 * 3600_000L || random.nextInt(3) != 0) return;
+        Object[] pick = null;
+        long oldest = Long.MAX_VALUE;
+        for (Object[] a : arcList()) {
+            if (a[1] == null) continue;
+            long used = prefs.getLong("arcUsed:" + ((Class<?>) a[1]).getName(), 0);
+            if (used < oldest) {
+                oldest = used;
+                pick = a;
+            }
+        }
+        if (pick == null || now - oldest < 24 * 3600_000L) return;       // everything used lately
+        prefs.edit().putLong("arcSuggestAt", now).apply();
+        Object[] app = pick;
+        hop();
+        say(SUGGEST[random.nextInt(SUGGEST.length)] + app[0] + "? → antippen", 6000);
+        bubble.setOnClickListener(v -> {
+            bubble.setOnClickListener(null);
+            bubble.setVisibility(View.GONE);
+            openApp(new Intent(this, (Class<?>) app[1]), getDrawable((Integer) app[2]));
+        });
+        handler.postDelayed(() -> bubble.setOnClickListener(null), 6500);
+        DiagLog.log("suggested " + app[0]);
+    }
+
     private void say(String s, long ms) {
         if (pro()) return;            // professional: the buddy keeps quiet
         bubble.setText(s);
@@ -4780,6 +4816,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (phoneWidgets != null) phoneWidgets.resume();
         xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
+        handler.postDelayed(this::suggestArc, 2500);
         if (crumplePending) {
             crumplePending = false;
             // Only after real use (not a launch that bounced straight back).
@@ -5133,7 +5170,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private FrameLayout arcBox;
 
     private View arcApps() {
-        Object[][] own = {{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
+        Object[][] own = arcList();
+        return arcGrid(own);
+    }
+
+    /** ARC-DNA's own apps {name, activity, line icon, launcher icon}. */
+    private static Object[][] arcList() {
+        return new Object[][]{{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
             {"Nexus Breach", NexusActivity.class, R.drawable.ic_line_nexus, R.drawable.ic_nexus},
             {"Dr. Overloaded", BoardActivity.class, R.drawable.ic_line_board, R.drawable.ic_board},
@@ -5152,6 +5195,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Spielothek", SpielothekActivity.class, R.drawable.ic_line_games, R.drawable.ic_line_games},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
+    }
+
+    private View arcGrid(Object[][] own) {
+
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
