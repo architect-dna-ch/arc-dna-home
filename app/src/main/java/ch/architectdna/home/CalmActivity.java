@@ -176,10 +176,18 @@ public class CalmActivity extends Activity {
         quote.setLineSpacing(0, 1.15f);
         quote.setPadding(0, dp(10), 0, 0);
         qc.addView(quote);
+        LinearLayout qr = new LinearLayout(this);
+        qr.setGravity(Gravity.CENTER_VERTICAL);
+        qr.setPadding(0, dp(12), 0, 0);
         TextView more = mono(10, ink3);
         more.setText("TIPPEN = NOCH EIN BLICK");
-        more.setPadding(0, dp(12), 0, 0);
-        qc.addView(more);
+        qr.addView(more, new LinearLayout.LayoutParams(0, -2, 1f));
+        // Keep this one: it goes onto the lock screen (ARC-DNA Live wallpaper) as your heart line.
+        heart = mono(11, rust);
+        heart.setPadding(dp(12), dp(8), dp(12), dp(8));
+        heart.setOnClickListener(v -> toggleHeart());
+        qr.addView(heart);
+        qc.addView(qr);
         qc.setOnClickListener(v -> nextPerspective());
         col.addView(qc, margins(-1, -2, dp(14)));
 
@@ -268,11 +276,37 @@ public class CalmActivity extends Activity {
         showPerspective();
     }
 
+    private TextView heart;
+
+    private SharedPreferences home() {
+        return getSharedPreferences("home", MODE_PRIVATE);
+    }
+
+    /** Pin the line on screen to the lock screen – or unpin it if it's the one already there. */
+    private void toggleHeart() {
+        String now = quote.getText().toString();
+        boolean pinned = now.equals(home().getString("heartQuote", ""));
+        home().edit().putString("heartQuote", pinned ? "" : now).apply();
+        heart.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        paintHeart();
+        android.widget.Toast.makeText(this, pinned ? "Vom Sperrbildschirm genommen."
+            : "♥ Auf dem Sperrbildschirm – ARC-DNA erinnert dich daran.", android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    private void paintHeart() {
+        if (heart == null) return;
+        boolean pinned = quote.getText().toString().equals(home().getString("heartQuote", ""));
+        heart.setText(pinned ? "♥ AUF DEM SPERRBILD" : "♡ AUFS SPERRBILD");
+        heart.setTextColor(pinned ? 0xFFFFFFFF : rust);
+        heart.setBackground(box(pinned ? rust : card, rust, 16));
+    }
+
     private void showPerspective() {
         quoteTag.setText("PERSPEKTIVE " + perspective + " / " + (SITUATIONS[situation].length - 1));
         quote.setAlpha(0f);
         quote.setText(SITUATIONS[situation][perspective]);
         quote.animate().alpha(1f).setDuration(300).start();
+        paintHeart();
     }
 
     /* ---------- the diary ---------- */

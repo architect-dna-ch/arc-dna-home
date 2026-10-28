@@ -280,6 +280,7 @@ public class ArcWallpaper extends WallpaperService {
             boolean panic = lock && noService;
             if (!panic) {
                 drawScene(c, lock);
+                if (lock) drawHeart(c);
                 return;
             }
             float t = SystemClock.uptimeMillis() / 1000f, s = Math.min(width, height) / 1080f;
@@ -318,6 +319,45 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawText(a, width / 2f + (random.nextFloat() - 0.5f) * 4 * s, y - 6 * s, paint);
                 paint.setTextAlign(Paint.Align.LEFT);
             }
+        }
+
+        /** Your heart line (pinned in "Gelassen") on the lock screen: a calm card in the lower third. */
+        private void drawHeart(Canvas c) {
+            String q = getSharedPreferences("home", MODE_PRIVATE).getString("heartQuote", "");
+            if (q.isEmpty()) return;
+            boolean dark = night();
+            float s = Math.min(width, height) / 1080f, maxW = Math.min(width * 0.8f, 900 * s);
+            android.text.TextPaint tp = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
+            tp.setColor(dark ? 0xFFF4F2EC : 0xFF1A1A1A);
+            tp.setTextSize(44 * s);
+            tp.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            android.text.StaticLayout lay = android.text.StaticLayout.Builder.obtain(q, 0, q.length(), tp, (int) maxW)
+                .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER).setLineSpacing(0, 1.12f).setMaxLines(4)
+                .setEllipsize(android.text.TextUtils.TruncateAt.END).build();
+            float pad = 40 * s, head = 56 * s, h = lay.getHeight() + head + pad * 2, w = maxW + pad * 2;
+            float left = (width - w) / 2, top = height * 0.68f - h / 2;
+            // A soft breathing glow: the card pulses very slowly, like a heartbeat at rest.
+            float beat = 0.5f + 0.5f * (float) Math.sin(SystemClock.uptimeMillis() / 1000f * 1.1f);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(dark ? 0xC8121211 : 0xD9FAFAF8);
+            c.drawRoundRect(left, top, left + w, top + h, 34 * s, 34 * s, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3 * s);
+            paint.setColor(((int) (90 + 120 * beat) << 24) | 0xC9402F);
+            c.drawRoundRect(left, top, left + w, top + h, 34 * s, 34 * s, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+            paint.setTextSize(24 * s);
+            paint.setLetterSpacing(0.22f);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setColor(dark ? 0xFFC9402F : 0xFFB5271E);
+            c.drawText("♥ FÜR DICH", width / 2f, top + pad + 22 * s, paint);
+            paint.setLetterSpacing(0);
+            paint.setTextAlign(Paint.Align.LEFT);
+            c.save();
+            c.translate(left + pad, top + pad + head);
+            lay.draw(c);
+            c.restore();
         }
 
         private void drawScene(Canvas c, boolean lock) {
