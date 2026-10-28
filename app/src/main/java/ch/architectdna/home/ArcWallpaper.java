@@ -1005,9 +1005,21 @@ public class ArcWallpaper extends WallpaperService {
             wave.lineTo(cx + R, cy + R);
             wave.close();
             paint.setStyle(Paint.Style.FILL);
-            paint.setShader(new android.graphics.LinearGradient(0, level, 0, cy + r, 0x992BD96B, 0x5512803C, android.graphics.Shader.TileMode.CLAMP));
+            paint.setShader(new android.graphics.LinearGradient(0, level, 0, cy + r, 0xB32BD96B, 0x880A5A28, android.graphics.Shader.TileMode.CLAMP));
             c.drawPath(wave, paint);
             paint.setShader(null);
+            // 3D: the liquid's top seen slightly from above – an ellipse as wide as the ball there.
+            float dy = level - cy, chord = (float) Math.sqrt(Math.max(0, r * r - dy * dy));
+            if (chord > 4 * s) {
+                float tilt = chord * 0.16f;
+                paint.setColor(0x997CFFA8);
+                c.drawOval(cx - chord, level - tilt, cx + chord, level + tilt, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2 * s);
+                paint.setColor(0xCCC8FFD8);
+                c.drawOval(cx - chord, level - tilt, cx + chord, level + tilt, paint);
+                paint.setStyle(Paint.Style.FILL);
+            }
             // Bubbles.
             for (int i = 0; i < 12; i++) {
                 float k = (t * (0.25f + (i % 4) * 0.08f) + i * 0.137f) % 1f;
@@ -1016,6 +1028,29 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawCircle(bx, by, (3 + i % 3 * 2) * s, paint);
             }
             c.restore();
+            // 3D glass: shade round the edge, light from the top left, a sharp highlight and a rim.
+            c.save();
+            c.clipPath(clip);
+            paint.setShader(new android.graphics.RadialGradient(cx - r * 0.3f, cy - r * 0.35f, r * 1.45f,
+                new int[]{0x00000000, 0x00000000, 0x66000000}, new float[]{0, 0.55f, 1}, android.graphics.Shader.TileMode.CLAMP));
+            c.drawCircle(cx, cy, r, paint);
+            paint.setShader(new android.graphics.RadialGradient(cx - r * 0.38f, cy - r * 0.42f, r * 0.45f,
+                new int[]{0x88FFFFFF, 0x00FFFFFF}, null, android.graphics.Shader.TileMode.CLAMP));
+            c.drawCircle(cx - r * 0.38f, cy - r * 0.42f, r * 0.45f, paint);
+            paint.setShader(null);
+            paint.setColor(0xCCFFFFFF);
+            c.drawOval(cx - r * 0.52f, cy - r * 0.62f, cx - r * 0.3f, cy - r * 0.5f, paint);
+            c.restore();
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3 * s);
+            paint.setShader(new android.graphics.LinearGradient(cx - r, cy - r, cx + r, cy + r, 0x99FFFFFF, 0x2216A34A, android.graphics.Shader.TileMode.CLAMP));
+            c.drawCircle(cx, cy, r, paint);
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            // A soft shadow under the ball.
+            paint.setShader(new android.graphics.RadialGradient(cx, cy + r * 1.08f, r * 0.8f, 0x55000000, 0x00000000, android.graphics.Shader.TileMode.CLAMP));
+            c.drawOval(cx - r * 0.8f, cy + r * 1.0f, cx + r * 0.8f, cy + r * 1.16f, paint);
+            paint.setShader(null);
             // Sparks along the grid lines, running into the orb.
             for (int i = 0; i < sparksIn.length; i++) {
                 float[] sp = sparksIn[i];

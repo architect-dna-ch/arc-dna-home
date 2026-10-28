@@ -1545,6 +1545,11 @@ final class MusicCard {
         /* Waveform history: one column per frame, coloured by sound like a DJ deck – bass red, mids green, highs blue. */
         private final float[] colAmp = new float[400];
         private final int[] colColour = new int[400];
+        /* The three layers per column (bass / beats, vocals / mids, highs), and where a beat hit. */
+        private final float[] colLo = new float[400], colMid = new float[400], colHi = new float[400];
+        private final boolean[] colBeat = new boolean[400];
+        private float bassAvg;
+        private long lastBeat;
         private int colHead;
 
         /** True while the real sound arrives; the placeholder pulse never goes into the waveform or the phases. */
@@ -1555,6 +1560,8 @@ final class MusicCard {
                 colHead = (colHead + 1) % colAmp.length;
                 colAmp[colHead] = 0;
                 colColour[colHead] = 0;
+                colLo[colHead] = colMid[colHead] = colHi[colHead] = 0;
+                colBeat[colHead] = false;
                 if (phaseLabel != null && audio.isMusicActive()) {
                     phaseLabel.setText("KEIN SIGNAL");
                     phase = PhaseBar.Phase.GROOVE;
@@ -1578,23 +1585,69 @@ final class MusicCard {
             colHead = (colHead + 1) % colAmp.length;
             colAmp[colHead] = amp;
             colColour[colHead] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            float l = lo / (BARS / 3f), m = mid / (BARS / 3f), hh = hi / (BARS / 3f);
+            colLo[colHead] = Math.min(1f, l * 1.5f);
+            colMid[colHead] = Math.min(1f, m * 1.7f);
+            colHi[colHead] = Math.min(1f, hh * 2.2f);
+            // A beat: the bass jumps well above its running average (kick drum), at most every 250 ms.
+            long now = System.currentTimeMillis();
+            colBeat[colHead] = l > 0.22f && l > bassAvg * 1.35f && now - lastBeat > 250;
+            if (colBeat[colHead]) lastBeat = now;
+            bassAvg = bassAvg * 0.92f + l * 0.08f;
         }
 
         private boolean bars() {
             return activity.getSharedPreferences("home", Activity.MODE_PRIVATE).getBoolean("vizBars", false);
         }
 
+        /*
+         * Like a DJ deck's three-band waveform: each column is layered – bass / beats wide in rust,
+         * vocals and mids in amber on top, highs (hi-hats, s-sounds) as a thin cyan core – and every
+         * kick drum gets a white tick above. So you see where the drop, the singing and the beat are.
+         */
         private void drawWave(Canvas canvas, float w, float h) {
             float col = dp(2), mid = h / 2f, head = w * 0.82f;     // the playhead, with the past to its left
+            float half = h / 2f - dp(8);
             int n = (int) (head / col);
             for (int k = 0; k < n && k < colAmp.length; k++) {
                 int idx = (colHead - k + colAmp.length) % colAmp.length;
-                float a = Math.max(0.03f, colAmp[idx]) * (h / 2f - dp(2));
-                float x = head - k * col;
-                paint.setColor(colColour[idx] == 0 ? (ink & 0x00FFFFFF) | 0x40000000 : colColour[idx]);
-                paint.setAlpha((int) (255 * (0.35f + 0.65f * (1 - k / (float) n))));   // older = fainter
-                rect.set(x - col * 0.8f, mid - a, x, mid + a);
+                float x = head - k * col, fade = 0.35f + 0.65f * (1 - k / (float) n);   // older = fainter
+                if (colColour[idx] == 0) {
+                    paint.setColor((ink & 0x00FFFFFF) | 0x40000000);
+                    rect.set(x - col * 0.8f, mid - dp(1), x, mid + dp(1));
+                    canvas.drawRect(rect, paint);
+                    continue;
+                }
+                float lo = Math.max(0.04f, colLo[idx]) * half, md = colMid[idx] * half * 0.8f, hi = colHi[idx] * half * 0.55f;
+                paint.setColor(0xFFC8402F);
+                paint.setAlpha((int) (235 * fade));
+                rect.set(x - col * 0.8f, mid - lo, x, mid + lo);
                 canvas.drawRect(rect, paint);
+                paint.setColor(0xFFFFB627);
+                paint.setAlpha((int) (235 * fade));
+                rect.set(x - col * 0.8f, mid - md, x, mid + md);
+                canvas.drawRect(rect, paint);
+                paint.setColor(0xFF6FE3FF);
+                paint.setAlpha((int) (245 * fade));
+                rect.set(x - col * 0.8f, mid - hi, x, mid + hi);
+                canvas.drawRect(rect, paint);
+                if (colBeat[idx]) {
+                    paint.setColor(0xFFFFFFFF);
+                    paint.setAlpha((int) (255 * fade));
+                    canvas.drawCircle(x - col * 0.4f, dp(4), dp(2), paint);
+                }
+            }
+            // Legend, tiny, top left.
+            paint.setAlpha(255);
+            paint.setTextSize(dp(8));
+            paint.setTypeface(Typeface.MONOSPACE);
+            float lx = dp(2);
+            int[] lc = {0xFFC8402F, 0xFFFFB627, 0xFF6FE3FF, 0xFFFFFFFF};
+            String[] ln = {"BASS", "STIMME", "HÖHEN", "● BEAT"};
+            for (int i = 0; i < 4; i++) {
+                paint.setColor(lc[i]);
+                canvas.drawText(ln[i], lx, h - dp(1), paint);
+                lx += paint.measureText(ln[i]) + dp(8);
             }
             // The part "ahead" stays a calm line, and the red playhead marks now.
             paint.setAlpha(255);
