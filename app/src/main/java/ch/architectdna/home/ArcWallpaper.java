@@ -297,7 +297,7 @@ public class ArcWallpaper extends WallpaperService {
             paint.setShader(null);
             // The warning, blinking, between the unlock button and the buddy (higher up the lock screen's
             // own clock and media card covered it).
-            if (((int) (t * 2.5f)) % 3 != 2) {
+            if (((int) (t * 2.5f)) % 3 != 2) {          // the club banner stays (loved)
                 float y = height * 0.81f;
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(44 * s);
@@ -532,7 +532,78 @@ public class ArcWallpaper extends WallpaperService {
 
         private android.graphics.drawable.Drawable foxArt, rabbitArt;
 
+        /*
+         * Panic: the buddy (the bear) stays, twice the size, and points with THREE arms at the
+         * "Emergency calls only" label top left, explaining why everything shakes.
+         */
+        private void panicStage(Canvas c, float s, boolean dark, int ink, int rust) {
+            float t = SystemClock.uptimeMillis() / 1000f;
+            float size = Math.min(width, height) * 0.34f;
+            float x = width * 0.05f, y = height * 0.64f;            // above the unlock button, the banner below it
+            float jump = Math.abs((float) Math.sin(t * 7)) * size * 0.05f;
+            // Three arms from the shoulders up to the label, each wobbling, a little hand at the end.
+            float tx = width * 0.2f, ty = 34 * s;
+            float[][] shoulders = {{x + size * 0.25f, y - size * 0.05f}, {x + size * 0.5f, y - size * 0.18f}, {x + size * 0.75f, y - size * 0.05f}};
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            for (int i = 0; i < 3; i++) {
+                float sx = shoulders[i][0], sy = shoulders[i][1] - jump;
+                float ex = tx + (i - 1) * 46 * s + (float) Math.sin(t * 9 + i) * 8 * s, ey = ty + 40 * s + i * 18 * s;
+                float mx = (sx + ex) / 2 + (i - 1) * 70 * s + (float) Math.sin(t * 5 + i * 2) * 24 * s, my = (sy + ey) / 2;
+                path.reset();
+                path.moveTo(sx, sy);
+                path.quadTo(mx, my, ex, ey);
+                paint.setStrokeWidth(16 * s);
+                paint.setColor(dark ? 0xFF6B4A33 : 0xFF7A5236);
+                c.drawPath(path, paint);
+                paint.setStyle(Paint.Style.FILL);
+                c.drawCircle(ex, ey, 16 * s, paint);
+                // The pointing finger.
+                paint.setStrokeWidth(7 * s);
+                paint.setStyle(Paint.Style.STROKE);
+                float dx = tx - ex, dy = ty - ey, d = (float) Math.max(1, Math.hypot(dx, dy));
+                c.drawLine(ex, ey, ex + dx / d * 30 * s, ey + dy / d * 30 * s, paint);
+            }
+            // A blinking ring round the status bar label.
+            if (((int) (t * 3)) % 2 == 0) {
+                paint.setStrokeWidth(5 * s);
+                paint.setColor(0xFFE8231A);
+                c.drawRoundRect(14 * s, 8 * s, width * 0.5f, 74 * s, 34 * s, 34 * s, paint);
+            }
+            paint.setStyle(Paint.Style.FILL);
+            c.save();
+            c.translate(x, y - jump);
+            bear(c, size, dark);
+            c.restore();
+            // Why, in a bubble to the right.
+            String said = "KEIN NETZ! Da oben steht's: nur Notrufe. Die SIM hat gerade keinen Empfang – deshalb zittert hier alles.";
+            float bx = x + size * 1.1f, bw = width * 0.95f - bx, by = y - size * 0.35f;
+            paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+            paint.setTextSize(32 * s);
+            List<String> rows = wrap(said, bw - 44 * s);
+            float lineH = paint.getTextSize() * 1.25f, bh = rows.size() * lineH + 36 * s;
+            box.set(bx, by - bh / 2, bx + bw, by + bh / 2);
+            paint.setColor(0xF2201010);
+            c.drawRoundRect(box, 22 * s, 22 * s, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3 * s);
+            paint.setColor(0xFFE8231A);
+            c.drawRoundRect(box, 22 * s, 22 * s, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xFFFFFFFF);
+            float ty2 = box.top + 18 * s + paint.getTextSize();
+            for (String r : rows) {
+                c.drawText(r, bx + 22 * s, ty2, paint);
+                ty2 += lineH;
+            }
+        }
+
         private void stage(Canvas c, float s, boolean dark, int ink, int rust) {
+            if (noService) {
+                panicStage(c, s, dark, ink, rust);
+                return;
+            }
             long ms = System.currentTimeMillis();
             int slot = (int) ((ms / 15000) % 4);
             long cycle = ms / 60000;

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Buddy: a mallard drake (96 × 64 like the fox): grey-white body on a ripple, green head, white
+     collar, yellow bill, the curled tail feather. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <!-- Water line. -->
+    <path android:strokeColor="#FF3C8DFF" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M6,56Q14,52 22,56T38,56T54,56T70,56T86,56" />
+    <!-- Body. -->
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.2" android:strokeLineJoin="round"
+        android:pathData="M14,40C14,30 26,27 40,29C52,31 60,30 66,36C70,41 66,52 52,53L24,53C17,52 14,47 14,40z" />
+    <!-- Brown breast and the wing. -->
+    <path android:fillColor="#FF7A4A32" android:pathData="M58,34C64,35 68,40 66,46C64,50 60,52 56,52C58,46 58,40 58,34z" />
+    <path android:fillColor="#00000000" android:strokeColor="@color/ink" android:strokeWidth="1.8" android:strokeLineCap="round"
+        android:pathData="M26,38C34,35 46,36 52,42" />
+    <path android:fillColor="#FF3C5AA8" android:pathData="M40,41L48,41L47,44L39,44z" />
+    <!-- Tail curl. -->
+    <path android:fillColor="#00000000" android:strokeColor="@color/ink" android:strokeWidth="2" android:strokeLineCap="round"
+        android:pathData="M15,36C11,33 12,29 16,30" />
+    <!-- Neck with the white collar, green head. -->
+    <path android:fillColor="#FF2E7D4F" android:strokeColor="@color/ink" android:strokeWidth="2"
+        android:pathData="M62,34C60,26 60,20 66,16C72,12 80,15 80,22C80,27 76,29 72,30L70,34z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.4" android:pathData="M61.5,33L70.5,33" />
+    <!-- Bill. -->
+    <path android:fillColor="#FFFFC400" android:strokeColor="@color/ink" android:strokeWidth="1.6" android:strokeLineJoin="round"
+        android:pathData="M78,21C83,20 89,21 91,23C89,26 83,26 78,25z" />
+</vector>

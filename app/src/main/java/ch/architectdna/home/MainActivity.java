@@ -4113,14 +4113,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** {name, "der/die …" for the greeting, its calls}. Drawables and eyes in BUDDY_ART. */
     private static final String[][] BUDDIES = {
-        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}};
+        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}, {"Ente", "die Ente Erwin"}};
     private static final String[][] BUDDY_CALLS = {
         {"Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."},
         {"Brumm.", "Hrrmm?", "Grrmpf!", "Mmmh, Honig."},
         {"Mümmel!", "Tipp-tapp!", "Snff?", "Hüpf!"},
-        {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."}};
-    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {0f, 0f, 0f, 0f}};      // the racer has no eye: its helmet is the face
-    private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy};
+        {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."},
+        {"Quak!", "Quak-quak!", "Wak?", "Quaaak."}};
+    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {0f, 0f, 0f, 0f}, {74.5f, 20.5f, 2.3f, 1.2f}};      // the racer has no eye: its helmet is the face
+    private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy, R.drawable.duckbuddy};
     private int tipIndex;
 
     private int buddy() {
@@ -4135,7 +4136,70 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** Tap the buddy: its call, plus something useful, a different thing each tap. */
+    /*
+     * Erwin the duck: unflappable, loves rain, philosophises a little, and every tap spreads ripples
+     * over the home like a pond (a feather floats down now and then).
+     */
+    private static final String[] DUCK_TRAITS = {"Regen? Herrlich. Für mich ist jeder Tag Badetag.",
+        "Alles perlt an mir ab. Probier's mal.", "Oben ruhig, unten paddeln wie verrückt. Wie du.",
+        "Brot? Nein danke, ich bin auf Wasserlinsen.", "Ich watschel nur kurz durch, mach weiter.",
+        "Gleichmut ist mein Superkraft-Gefieder.", "Wenn's stürmt: Kopf unter den Flügel. Fünf Minuten."};
+
+    private void duckRipples() {
+        if (rootFrame == null || fox == null || pro()) return;
+        int[] at = new int[2], root = new int[2];
+        fox.getLocationOnScreen(at);
+        rootFrame.getLocationOnScreen(root);
+        float cx = at[0] - root[0] + fox.getWidth() * 0.5f, cy = at[1] - root[1] + fox.getHeight() * 0.85f;
+        boolean feather = random.nextInt(3) == 0;
+        View v = new View(this) {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final long start = android.os.SystemClock.uptimeMillis();
+
+            @Override
+            protected void onDraw(Canvas c) {
+                float t = (android.os.SystemClock.uptimeMillis() - start) / 1000f;
+                if (t > 2.6f) {
+                    post(() -> rootFrame.removeView(this));
+                    return;
+                }
+                p.setStyle(Paint.Style.STROKE);
+                for (int i = 0; i < 4; i++) {
+                    float k = t - i * 0.3f;
+                    if (k <= 0 || k > 1.8f) continue;
+                    float r = dp(20) + k * dp(160);
+                    p.setStrokeWidth(dp(2.5f) * (1 - k / 1.8f) + dp(0.5f));
+                    p.setColor(((int) (180 * (1 - k / 1.8f)) << 24) | 0x3C8DFF);
+                    c.drawOval(cx - r, cy - r * 0.35f, cx + r, cy + r * 0.35f, p);
+                }
+                if (feather) {
+                    float fx = cx + dp(40) + (float) Math.sin(t * 3) * dp(26), fy = cy - dp(220) + t * dp(90);
+                    c.save();
+                    c.rotate((float) Math.sin(t * 3) * 30, fx, fy);
+                    p.setStyle(Paint.Style.FILL);
+                    p.setColor(0xDDF4F2EC);
+                    c.drawOval(fx - dp(4), fy - dp(14), fx + dp(4), fy + dp(14), p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(dp(1));
+                    p.setColor(0xFF6F6E69);
+                    c.drawLine(fx, fy - dp(16), fx, fy + dp(16), p);
+                    c.restore();
+                }
+                postInvalidateOnAnimation();
+            }
+        };
+        rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        fox.bringToFront();
+    }
+
     private void foxCall() {
+        if (buddy() == 4) {
+            hop();
+            duckRipples();
+            voice.say(BUDDY_CALLS[4][random.nextInt(BUDDY_CALLS[4].length)]);
+            say("Quak! " + DUCK_TRAITS[tipIndex++ % DUCK_TRAITS.length], 3200);
+            return;
+        }
         hop();
         String[] calls = BUDDY_CALLS[buddy()];
         String call = calls[random.nextInt(calls.length)];
