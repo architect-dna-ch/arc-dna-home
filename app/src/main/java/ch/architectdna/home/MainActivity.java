@@ -287,7 +287,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
         rust = night ? 0xFFC9402F : 0xFFB5271E;
         // Nearly solid: pixel art and the grid behind must not shine through text (contrast).
-        card = night ? 0xF2121211 : 0xF2FAFAF8;
+        card = night ? 0xD9121211 : 0xD9FAFAF8;      // a little see-through again, still readable
         panel = night ? 0xF2121211 : 0xF2FAFAF8;
         line = night ? 0xFF2C2C29 : 0xFFE0E0D8;
     }
@@ -658,7 +658,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         applyBuddy();
-        fox.setOnClickListener(v -> foxCall());
+        fox.setOnClickListener(v -> {
+            if (pro()) return;
+            if (buddy() == 4) duckRipples();
+            hop();
+            openChat();
+        });
         // Hold the fox: it kicks the glass, which cracks somewhere new every time.
         fox.setOnLongClickListener(v -> {
             foxKick();
@@ -5849,6 +5854,276 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             // Softer on the home than on the lock screen, so text stays readable.
             PixelArt.draw(c, cells, PixelArt.scale(dm.widthPixels, dm.heightPixels), p, 80);
             c.restore();
+        }
+    }
+
+
+    /* ================= Chat with the buddy (Gemini-style overlay) ================= */
+
+    private FrameLayout chat;
+    private LinearLayout chatList;
+    private EditText chatInput;
+    private ScrollView chatScroll;
+    private static final int REQ_SPEAK = 77;
+
+    /** Tap the buddy: a glowing overlay from the bottom with a chat and an "Ask …" pill (text or voice). */
+    private void openChat() {
+        if (chat != null || rootFrame == null) return;
+        String name = BUDDIES[buddy()][0];
+        chat = new FrameLayout(this);
+        chat.setClickable(true);
+        // The glow: a soft rainbow rising from the bottom edge, like Gemini's.
+        View glow = new View(this) {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(Canvas c) {
+                float w = getWidth(), h = getHeight(), t = android.os.SystemClock.uptimeMillis() / 1000f;
+                p.setShader(new android.graphics.LinearGradient(0, h * 0.35f, 0, h, 0x00000000, 0xCC000000, android.graphics.Shader.TileMode.CLAMP));
+                c.drawRect(0, 0, w, h, p);
+                int[] hues = {0xFF3C8DFF, 0xFFA77BFF, 0xFFFF4FA0, 0xFFFFB627, 0xFF2BBF6A, 0xFF3C8DFF};
+                for (int i = 0; i < 5; i++) {
+                    float x = w * (i / 4f) + (float) Math.sin(t * 0.8 + i) * w * 0.12f;
+                    p.setShader(new android.graphics.RadialGradient(x, h, w * 0.55f, (hues[i] & 0x00FFFFFF) | 0x66000000, 0x00000000,
+                        android.graphics.Shader.TileMode.CLAMP));
+                    c.drawCircle(x, h, w * 0.55f, p);
+                }
+                p.setShader(null);
+                postInvalidateOnAnimation();
+            }
+        };
+        chat.addView(glow, new FrameLayout.LayoutParams(-1, -1));
+        chat.setOnClickListener(v -> closeChat());
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setClickable(true);
+        int navBottom = 0;
+        if (Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null) {
+            navBottom = rootFrame.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).bottom;
+        }
+        col.setPadding(dp(16), 0, dp(16), dp(16) + navBottom);
+        chatScroll = new ScrollView(this);
+        chatList = new LinearLayout(this);
+        chatList.setOrientation(LinearLayout.VERTICAL);
+        chatScroll.addView(chatList);
+        col.addView(chatScroll, new LinearLayout.LayoutParams(-1, -2, 0f));
+        // Quick chips.
+        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips = new LinearLayout(this);
+        hs.addView(chips);
+        for (String q : new String[]{"Wecker?", "Akku?", "Musik heute?", "Witz", "Öffne Gelassen", "Termin morgen 13:10 Arzt"}) {
+            TextView c = text(13, 0xFF1A1A1A, true);
+            c.setText(q);
+            c.setPadding(dp(14), dp(9), dp(14), dp(9));
+            c.setBackground(box(0xF2FFFFFF, 0x00000000, 20));
+            c.setOnClickListener(v -> ask(q));
+            chips.addView(c, margins(-2, -2, 0, 0, dp(8), 0));
+        }
+        col.addView(hs, margins(-1, -2, 0, dp(10), 0, dp(10)));
+        // The pill: + (Claude), text, mic.
+        LinearLayout pill = new LinearLayout(this);
+        pill.setGravity(Gravity.CENTER_VERTICAL);
+        pill.setPadding(dp(14), dp(6), dp(8), dp(6));
+        pill.setBackground(box(0xFAFFFFFF, 0x00000000, 34));
+        pill.setElevation(dp(6));
+        TextView plus = text(26, 0xFF1A1A1A, false);
+        plus.setText("+");
+        plus.setPadding(dp(6), 0, dp(10), 0);
+        plus.setOnClickListener(v -> askClaude(chatInput.getText().toString()));
+        pill.addView(plus);
+        chatInput = new EditText(this);
+        chatInput.setHint("Frag " + BUDDIES[buddy()][1].replaceFirst("^(der|die|das) ", "") + " …");
+        chatInput.setHintTextColor(0xFF6F6E69);
+        chatInput.setTextColor(0xFF1A1A1A);
+        chatInput.setTextSize(19);
+        chatInput.setBackground(null);
+        chatInput.setSingleLine(true);
+        chatInput.setImeOptions(EditorInfo.IME_ACTION_SEND);
+        chatInput.setOnEditorActionListener((v, id, ev) -> {
+            ask(chatInput.getText().toString());
+            return true;
+        });
+        pill.addView(chatInput, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView mic = text(20, 0xFF1A1A1A, false);
+        mic.setText("🎙");
+        mic.setGravity(Gravity.CENTER);
+        GradientDrawable mg = new GradientDrawable();
+        mg.setShape(GradientDrawable.OVAL);
+        mg.setColor(0xFFC9D8FF);
+        mic.setBackground(mg);
+        mic.setOnClickListener(v -> listen());
+        pill.addView(mic, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        col.addView(pill, new LinearLayout.LayoutParams(-1, dp(66)));
+        chat.addView(col, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+        rootFrame.addView(chat, new FrameLayout.LayoutParams(-1, -1));
+        chat.setAlpha(0f);
+        col.setTranslationY(dp(120));
+        chat.animate().alpha(1f).setDuration(200).start();
+        col.animate().translationY(0).setDuration(280).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        // The buddy opens with its call and something useful.
+        String[] calls = BUDDY_CALLS[buddy()];
+        java.util.List<String> tips = buddyTips();
+        String tip = buddy() == 4 ? DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)] : tips.isEmpty() ? "Was kann ich für dich tun?" : tips.get(tipIndex++ % tips.size());
+        voice.say(calls[random.nextInt(calls.length)]);
+        bubbleMsg(calls[random.nextInt(calls.length)] + " " + tip, false);
+    }
+
+    private void closeChat() {
+        FrameLayout c = chat;
+        chat = null;
+        if (c == null) return;
+        hideKeyboard();
+        c.animate().alpha(0f).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
+    }
+
+    private void bubbleMsg(String text, boolean mine) {
+        if (chatList == null) return;
+        TextView t = text(15, mine ? 0xFFFFFFFF : 0xFF1A1A1A, false);
+        t.setText(text);
+        t.setPadding(dp(14), dp(10), dp(14), dp(10));
+        t.setBackground(box(mine ? rust : 0xF2FFFFFF, 0x00000000, 18));
+        t.setMaxWidth((int) (rootFrame.getWidth() * 0.78f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.gravity = mine ? Gravity.END : Gravity.START;
+        lp.topMargin = dp(8);
+        chatList.addView(t, lp);
+        // Keep the list from covering the whole screen.
+        chatScroll.getLayoutParams().height = Math.min(chatList.getChildCount() * dp(70), (int) (rootFrame.getHeight() * 0.45f));
+        chatScroll.requestLayout();
+        chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
+        t.setAlpha(0f);
+        t.animate().alpha(1f).setDuration(200).start();
+    }
+
+    private void ask(String q) {
+        q = q.trim();
+        if (q.isEmpty()) return;
+        chatInput.setText("");
+        bubbleMsg(q, true);
+        String answer = answer(q);
+        handler.postDelayed(() -> bubbleMsg(answer, false), 350);
+        hop();
+    }
+
+    /** On the phone, from what ARC-DNA knows; anything else goes to Claude. */
+    private String answer(String q) {
+        String l = q.toLowerCase(Locale.GERMAN);
+        // Open an app: "öffne X", "starte X", or just its name.
+        java.util.regex.Matcher om = java.util.regex.Pattern.compile("^(öffne|starte|open|zeig)\\s+(.+)$").matcher(l);
+        String want = om.find() ? om.group(2).trim() : null;
+        if (want != null) {
+            for (Object[] a : arcList()) {
+                if (a[1] != null && ((String) a[0]).toLowerCase(Locale.GERMAN).contains(want)) {
+                    Object[] app = a;
+                    handler.postDelayed(() -> {
+                        closeChat();
+                        openApp(new Intent(this, (Class<?>) app[1]), getDrawable((Integer) app[2]));
+                    }, 700);
+                    return "Mach ich – " + a[0] + " geht auf.";
+                }
+            }
+            for (AppEntry a : apps) {
+                if (a.label.toLowerCase(Locale.GERMAN).contains(want)) {
+                    handler.postDelayed(() -> {
+                        closeChat();
+                        launch(a);
+                    }, 700);
+                    return "Los geht's: " + a.label + ".";
+                }
+            }
+            return "\"" + want + "\" finde ich nicht. Wie heisst die App genau?";
+        }
+        // One-time reminder: "termin [heute|morgen] HH:MM text".
+        java.util.regex.Matcher tm = java.util.regex.Pattern.compile("(termin|erinner)\\D*?(heute|morgen|übermorgen)?\\s*(\\d{1,2})[:.](\\d{2})\\s*(.*)").matcher(l);
+        if (tm.find()) {
+            Calendar cal = Calendar.getInstance();
+            if ("morgen".equals(tm.group(2))) cal.add(Calendar.DAY_OF_YEAR, 1);
+            if ("übermorgen".equals(tm.group(2))) cal.add(Calendar.DAY_OF_YEAR, 2);
+            cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(tm.group(3)));
+            cal.set(Calendar.MINUTE, Integer.parseInt(tm.group(4)));
+            cal.set(Calendar.SECOND, 0);
+            if (tm.group(2) == null && cal.getTimeInMillis() < System.currentTimeMillis()) cal.add(Calendar.DAY_OF_YEAR, 1);
+            String what = tm.group(5).trim().isEmpty() ? "Termin" : Character.toUpperCase(tm.group(5).trim().charAt(0)) + tm.group(5).trim().substring(1);
+            AlarmScheduler.addDeadline(this, cal.getTimeInMillis(), what);
+            paintAlarm();
+            return "Notiert 🐻 " + new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(cal.getTime()) + " – " + what + ". Der Bär weckt dich.";
+        }
+        if (l.contains("wecker") || l.contains("alarm") || l.contains("termin")) {
+            StringBuilder b = new StringBuilder();
+            if (prefs.getBoolean("alarmOn", false)) {
+                long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
+                b.append("Wecker in ").append(in / 60).append(" h ").append(in % 60).append(" min.");
+            } else b.append("Der tägliche Wecker ist aus.");
+            AlarmScheduler.Deadline d = AlarmScheduler.nextDeadline(this);
+            if (d != null) b.append(" Nächster Termin: ").append(new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(new java.util.Date(d.at)))
+                .append(" – ").append(d.label).append('.');
+            return b.toString();
+        }
+        if (l.contains("akku") || l.contains("batter")) {
+            android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
+            int pct = bm == null ? -1 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            return "Akku " + pct + " %" + (bm != null && bm.isCharging() ? ", lädt gerade." : pct <= 20 ? " – bitte bald laden!" : ".");
+        }
+        if (l.contains("musik") || l.contains("gehört") || l.contains("song")) {
+            long[] week = MusicStats.week(this);
+            return "Heute " + week[6] / 60 + " h " + week[6] % 60 + " min Musik. Meist gehört: " + MusicStats.favoriteArtist(this) + ".";
+        }
+        if (l.contains("leiser") || l.contains("lauter")) {
+            android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, l.contains("leiser") ? android.media.AudioManager.ADJUST_LOWER
+                : android.media.AudioManager.ADJUST_RAISE, android.media.AudioManager.FLAG_SHOW_UI);
+            return l.contains("leiser") ? "Etwas leiser." : "Etwas lauter!";
+        }
+        if (l.contains("zeit") || l.contains("uhr") || l.contains("spät")) {
+            return "Es ist " + new java.text.SimpleDateFormat("HH:mm", Locale.GERMAN).format(new java.util.Date()) + ".";
+        }
+        if (l.contains("witz") || l.contains("lustig")) {
+            String[] jokes = {"Warum können Geister so schlecht lügen? Man sieht durch sie hindurch.",
+                "Treffen sich zwei Magnete. Sagt der eine: Was soll ich heute bloss anziehen?",
+                "Was macht ein Pirat am Computer? Er drückt die Enter-Taste.",
+                "Wie nennt man einen Bären ohne Ohren? B.", "Was sagt die Ente zum Regen? Endlich Wetter!"};
+            return jokes[random.nextInt(jokes.length)];
+        }
+        if (l.matches("^(hallo|hi|hey|servus|grüezi|moin)\\b.*")) return BUDDY_CALLS[buddy()][0] + " Schön, dass du da bist.";
+        if (l.contains("danke")) return "Gern! " + BUDDY_CALLS[buddy()][1];
+        // Anything else: Claude knows more.
+        String quest = q;
+        handler.postDelayed(() -> askClaude(quest), 1200);
+        return "Das weiss Claude besser – ich frag ihn für dich …";
+    }
+
+    /** Hand the question to the Claude app (or claude.ai). */
+    private void askClaude(String q) {
+        closeChat();
+        Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, q).setPackage("com.anthropic.claude");
+        try {
+            if (q.trim().isEmpty()) throw new ActivityNotFoundException();
+            startActivity(send.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (RuntimeException e) {
+            open(appOr("com.anthropic.claude", new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/new?q=" + Uri.encode(q)))));
+        }
+    }
+
+    private void listen() {
+        Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "de-CH")
+            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Sag's " + BUDDIES[buddy()][1] + " …");
+        try {
+            startActivityForResult(i, REQ_SPEAK);
+        } catch (RuntimeException e) {
+            bubbleMsg("Keine Spracherkennung auf diesem Gerät – tipp's lieber.", false);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQ_SPEAK && res == RESULT_OK && data != null) {
+            java.util.ArrayList<String> r = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (r != null && !r.isEmpty()) handler.postDelayed(() -> ask(r.get(0)), 200);
         }
     }
 
