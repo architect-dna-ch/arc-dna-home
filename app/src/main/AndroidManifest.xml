@@ -425,6 +425,16 @@
             </intent-filter>
         </receiver>
 
+        <!-- Flexplan live check-ins ("jetzt?") and their answers; re-armed after boot / update. -->
+        <receiver
+            android:name=".PlanReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- ARC-DNA Scroll: head / eye scrolling in apps chosen per app in the Mediathek. -->
         <service
             android:name=".ScrollAssistService"
