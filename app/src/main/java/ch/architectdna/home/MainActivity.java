@@ -622,6 +622,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         gameButton.setOnClickListener(v -> startGame());
         root.addView(gameButton, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM | Gravity.START));
 
+        // Claude, always one tap away: floating bottom right.
+        claudeFab = new ImageView(this);
+        claudeFab.setImageResource(R.drawable.ic_claude);
+        claudeFab.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        claudeFab.setPadding(dp(13), dp(13), dp(13), dp(13));
+        GradientDrawable cr = new GradientDrawable();
+        cr.setShape(GradientDrawable.OVAL);
+        cr.setColor(card);
+        cr.setStroke(dp(1.5f), rust);
+        claudeFab.setBackground(cr);
+        claudeFab.setElevation(dp(4));
+        claudeFab.setContentDescription("Claude öffnen");
+        claudeFab.setOnClickListener(v -> openApp(appOr("com.anthropic.claude",
+            new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai"))), getDrawable(R.drawable.ic_claude)));
+        root.addView(claudeFab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
+
+        // Compact (Professionell): the three main apps stay at the bottom, always reachable.
+        proDock = new LinearLayout(this);
+        proDock.setGravity(Gravity.CENTER_VERTICAL);
+        proDock.setPadding(dp(8), dp(6), dp(8), dp(6));
+        proDock.setBackground(box(card, line, 30));
+        proDock.setElevation(dp(4));
+        proDock.setVisibility(View.GONE);
+        root.addView(proDock, new FrameLayout.LayoutParams(-2, dp(60), Gravity.BOTTOM | Gravity.START));
+
         seismo = new SeismoView(this);
         root.addView(seismo, new FrameLayout.LayoutParams(-1, dp(30), Gravity.BOTTOM));
 
@@ -673,6 +698,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             ((FrameLayout.LayoutParams) seismo.getLayoutParams()).setMargins(left, 0, right, bottom + dp(6));
             ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(left + dp(14), 0, 0, bottom + dp(20));
             ((FrameLayout.LayoutParams) gameButton.getLayoutParams()).setMargins(left + dp(18), 0, 0, bottom + dp(84));
+            ((FrameLayout.LayoutParams) claudeFab.getLayoutParams()).setMargins(0, 0, right + dp(18), bottom + dp(40));
+            ((FrameLayout.LayoutParams) proDock.getLayoutParams()).setMargins(left + dp(18), 0, 0, bottom + dp(38));
+            claudeFab.requestLayout();
+            proDock.requestLayout();
             gameButton.requestLayout();
             ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(left + dp(70), 0, 0, bottom + dp(72));
             bottomScrim.requestLayout();
@@ -798,6 +827,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** The eight tiles from architect-dna.ch/home, each opening the matching app on the phone. */
     private View appTiles() {
+        return appTilesFrom(mainItems());
+    }
+
+    /** The APPS row's entries {label, icon, intent}: the mode's, else the standard eight. */
+    private Object[][] mainItems() {
         Object[][] items = {
             {"Telefon", R.drawable.ic_phone, new Intent(this, DialerActivity.class)},
             {"SMS", R.drawable.ic_sms, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)},
@@ -812,7 +846,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai")))},
         };
         Object[][] byMode = modeApps();
-        if (byMode != null) items = byMode;
+        return byMode != null ? byMode : items;
+    }
+
+    private View appTilesFrom(Object[][] items) {
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -1529,6 +1566,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** "Professionell": neat and quiet – no buddy, no rainbows or glows, plain tiles, no surprises. */
+    private ImageView claudeFab;
+    private LinearLayout proDock;
+
     private boolean pro() {
         return prefs.getBoolean("pro", false);
     }
@@ -1541,6 +1581,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (seismo != null) seismo.setVisibility(vis);
         if (on && bubble != null) bubble.setVisibility(View.GONE);
         if (on && edgeLight != null) edgeLight.watch(false);
+        if (proDock != null) {
+            proDock.removeAllViews();
+            proDock.setVisibility(on ? View.VISIBLE : View.GONE);
+            if (on) {
+                Object[][] items = mainItems();
+                for (int i = 0; i < Math.min(3, items.length); i++) {
+                    Object[] it = items[i];
+                    LinearLayout b = new LinearLayout(this);
+                    b.setGravity(Gravity.CENTER_VERTICAL);
+                    b.setPadding(dp(12), 0, dp(14), 0);
+                    ImageView ic = new ImageView(this);
+                    ic.setImageDrawable(it[1] instanceof Integer ? getDrawable((Integer) it[1]) : (Drawable) it[1]);
+                    b.addView(ic, new LinearLayout.LayoutParams(dp(26), dp(26)));
+                    TextView l = text(13, ink, true);
+                    l.setText((String) it[0]);
+                    l.setPadding(dp(8), 0, 0, 0);
+                    b.addView(l);
+                    Intent in = (Intent) it[2];
+                    b.setOnClickListener(v -> open(in));
+                    proDock.addView(b, new LinearLayout.LayoutParams(-2, -1));
+                }
+            }
+        }
     }
 
     private boolean calmSkip() {
