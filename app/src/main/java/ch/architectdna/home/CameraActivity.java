@@ -347,6 +347,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             if (s.box) {
                 float l = front ? 1 - s.r : s.l, r = front ? 1 - s.l : s.r;
                 if (!hasBox) {
+                    lockAt = SystemClock.uptimeMillis();      // a new subject: the lock-on frames fly in
                     bl = l;
                     bt = s.t;
                     br = r;
@@ -458,6 +459,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             if (hasBox) {
                 box.set(content.left + bl * content.width(), content.top + bt * content.height(),
                     content.left + br * content.width(), content.top + bb * content.height());
+                lockOn(c, now);
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(dp(2.5f));
                 p.setStrokeCap(Paint.Cap.ROUND);
@@ -600,6 +602,43 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
                 c.drawText(s, x + dp(10), y + dp(17.5f), p);
                 y += dp(32);
             }
+        }
+
+        private long lockAt = -1;
+        private final RectF frame = new RectF();
+
+        /*
+         * Lock-on like the "Back to the Future" logo: six frames in its colours – orange, orange,
+         * yellow, yellow, blue, blue – rush in from the edges one after the other, close in on the
+         * subject and fade, a little hand-drawn wobble each. Again with every new subject.
+         */
+        private void lockOn(Canvas c, long now) {
+            if (lockAt < 0) return;
+            float t = (now - lockAt) / 1000f;
+            if (t > 1.6f) return;
+            int[] cols = {0xFFFF6A1F, 0xFFFF8A2A, 0xFFFFC21F, 0xFFFFD84A, 0xFF3C8DFF, 0xFF6FB0FF};
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            for (int i = 0; i < cols.length; i++) {
+                float k = (t - i * 0.08f) / 0.7f;
+                if (k <= 0) continue;
+                float e = 1 - (1 - Math.min(1, k)) * (1 - Math.min(1, k)) * (1 - Math.min(1, k));
+                // From around the whole picture to just round the subject (inner ones end tighter).
+                float end = dp(6) + (cols.length - 1 - i) * dp(9);
+                frame.set(content.left + (box.left - end - content.left) * e, content.top + (box.top - end - content.top) * e,
+                    content.right - (content.right - box.right - end) * e, content.bottom - (content.bottom - box.bottom - end) * e);
+                float fade = k < 1 ? 1 : Math.max(0, 1 - (k - 1) * 1.6f);
+                if (fade <= 0) continue;
+                p.setStrokeWidth(dp(4) - i * dp(0.3f));
+                p.setColor((cols[i] & 0x00FFFFFF) | ((int) (230 * fade) << 24));
+                float wob = dp(3) * (1 - Math.min(1, k));
+                c.save();
+                c.rotate((i % 2 == 0 ? 1 : -1) * 1.5f * (1 - Math.min(1, k)), frame.centerX(), frame.centerY());
+                c.drawRoundRect(frame.left + wob, frame.top - wob, frame.right - wob, frame.bottom + wob, dp(18), dp(18), p);
+                c.restore();
+            }
+            if (t < 1.6f) postInvalidateOnAnimation();
         }
 
         private void speak(Canvas c, float w, float h, String text) {
