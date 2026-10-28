@@ -273,7 +273,10 @@ public class ArcWallpaper extends WallpaperService {
             }
         }
 
+        private boolean lockedNow;
+
         private void draw(Canvas c, boolean lock) {
+            lockedNow = lock;
             boolean panic = lock && noService;
             if (!panic) {
                 drawScene(c, lock);
@@ -1016,6 +1019,14 @@ public class ArcWallpaper extends WallpaperService {
             float size = Math.min(width, height) * 0.22f, bx = width * 0.08f, by = height * 0.80f;
             float pull = Math.min(1, k * 3) * size * 0.25f;
             float hx = bx + size * 0.95f - pull, hy = by + size * 0.35f;
+            // During the no-network panic the big bear is already there: it holds the cable itself
+            // (its waving paw), no second bear.
+            boolean panicBear = noService && lockedNow;
+            if (panicBear) {
+                float ps = Math.min(width, height) * 0.34f;
+                hx = width * 0.05f + ps * 1.15f - pull;
+                hy = height * 0.64f + ps * 0.3f;
+            }
             // Cable: a sagging line from the paw up to where it plugged into the orb.
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeCap(Paint.Cap.ROUND);
@@ -1032,15 +1043,17 @@ public class ArcWallpaper extends WallpaperService {
             paint.setColor(((int) (255 * fade) << 24) | 0xB0B0A8);
             c.drawRect(hx - 8 * s, hy - 34 * s, hx - 4 * s, hy - 22 * s, paint);
             c.drawRect(hx + 4 * s, hy - 34 * s, hx + 8 * s, hy - 22 * s, paint);
-            c.save();
-            c.translate(bx - pull * 0.3f, by);
-            c.rotate(-6 * Math.min(1, k * 3), size / 2, size / 2);
-            bear(c, size, true);
-            c.restore();
+            if (!panicBear) {
+                c.save();
+                c.translate(bx - pull * 0.3f, by);
+                c.rotate(-6 * Math.min(1, k * 3), size / 2, size / 2);
+                bear(c, size, true);
+                c.restore();
+            }
             // Paw over the plug.
             paint.setColor(((int) (255 * fade) << 24) | 0x6B4A33);
             c.drawCircle(hx, hy - 6 * s, size * 0.08f, paint);
-            if (k > 0.15f && k < 0.85f) {
+            if (k > 0.15f && k < 0.85f && !panicBear) {
                 paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 paint.setTextSize(34 * s);
                 paint.setColor(0xF2FFFFFF);
