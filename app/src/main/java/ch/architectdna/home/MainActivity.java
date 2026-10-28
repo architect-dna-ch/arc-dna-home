@@ -3734,7 +3734,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** The timing board takes a bit under half the screen height. */
     private int f1Height() {
-        return (int) (getResources().getDisplayMetrics().heightPixels * 0.42f);
+        // As tall as its content (time, lap, sectors, track) – it used to take 42 % of the screen,
+        // mostly empty.
+        return Math.min((int) (getResources().getDisplayMetrics().heightPixels * 0.42f), dp(232));
     }
 
     /** Into or out of split screen: rows and clock for the new width. */
