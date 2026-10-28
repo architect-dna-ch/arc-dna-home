@@ -77,14 +77,15 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         gotFrame = true;
         DiagLog.log("first camera reading");
     }
-    private long pauseUntil, ownGestureUntil;
+    private long pauseUntil, ownGestureUntil, ownDispatchedAt;
+    private int ownPending;
     private int calibFrames;
     private float calibSum, base, smooth, speed;
 
     private final Runnable scroller = new Runnable() {
         @Override
         public void run() {
-            if (speed == 0 || mode.equals("off") || paused) {
+            if (speed == 0 || mode.equals("off") || paused || SystemClock.uptimeMillis() < pauseUntil) {
                 scrolling = false;
                 return;
             }
@@ -450,6 +451,8 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         path.lineTo(x, s > 0 ? y - dist : y + dist);   // finger up = content scrolls down
         // Our own swipe also shows up as a touch outside the pill; don't let it pause us.
         ownGestureUntil = SystemClock.uptimeMillis() + ms + 120;
+        ownPending++;
+        ownDispatchedAt = SystemClock.uptimeMillis();
         swipesN++;
         try {
             boolean ok = dispatchGesture(new GestureDescription.Builder()
@@ -561,7 +564,15 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             ring.setOnTouchListener((v, e) -> {
                 // Every touch elsewhere on the screen: your finger is in charge for a moment.
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
-                    if (SystemClock.uptimeMillis() > ownGestureUntil) userTouched();
+                    // Our own swipe touches down right when it's dispatched; anything else – even while
+                    // swipes keep coming – is your finger. (The old time window covered almost all the
+                    // time while scrolling, so real touches were missed.)
+                    long t = SystemClock.uptimeMillis();
+                    if (ownPending > 0 && t - ownDispatchedAt < 250) ownPending--;
+                    else {
+                        ownPending = 0;
+                        userTouched();
+                    }
                     return true;
                 }
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP || e.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
