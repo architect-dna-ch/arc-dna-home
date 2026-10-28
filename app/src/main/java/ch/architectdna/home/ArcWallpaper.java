@@ -232,7 +232,7 @@ public class ArcWallpaper extends WallpaperService {
                 startVisualizer();
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
-            boolean busy = lock || chargeLevel >= 0 || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
+            boolean busy = lock || chargeLevel >= 0 || SystemClock.uptimeMillis() - unplugAt < UNPLUG || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
             handler.postDelayed(frame, busy ? 33 : 500);
         }
 
@@ -968,15 +968,105 @@ public class ArcWallpaper extends WallpaperService {
         private long chargeChecked;
         private final float[][] sparksIn = new float[14][3];       // grid x/y origin index, progress
 
+        private static final long UNPLUG = 3600;
+        private long unplugAt;
+        private int unplugLevel;
+
+        /*
+         * Unplugging: the bear stands bottom left holding the cable with its plug, which just came
+         * out of the orb; the green liquid pours out of the hole at the bottom of the orb, drops
+         * fall and make a puddle that sinks away; the orb empties.
+         */
+        private void unplug(Canvas c, float t, float s, long now) {
+            float k = (now - unplugAt) / (float) UNPLUG;
+            float r = lensR * 0.92f, cx = lensX, cy = lensY;
+            float fade = k > 0.8f ? 1 - (k - 0.8f) / 0.2f : 1;
+            // What's left in the orb, sinking.
+            float left = unplugLevel / 100f * Math.max(0, 1 - k * 1.4f);
+            if (left > 0.01f) {
+                float level = cy + r - 2 * r * left;
+                android.graphics.Path clip = new android.graphics.Path();
+                clip.addCircle(cx, cy, r, android.graphics.Path.Direction.CW);
+                c.save();
+                c.clipPath(clip);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0x992BD96B);
+                c.drawRect(cx - r, level + (float) Math.sin(t * 9) * 6 * s, cx + r, cy + r, paint);
+                c.restore();
+            }
+            // The stream out of the bottom, and drops.
+            float ground = height * 0.86f;
+            if (k < 0.75f) {
+                paint.setColor(0xCC2BD96B);
+                float wob = (float) Math.sin(t * 20) * 3 * s;
+                c.drawRect(cx - 7 * s + wob, cy + r * 0.95f, cx + 7 * s + wob, ground, paint);
+            }
+            for (int i = 0; i < 10; i++) {
+                float f = ((t * 1.6f + i * 0.1f) % 1f);
+                float dx = (float) Math.sin(i * 7.1) * 40 * s;
+                float y = cy + r + f * (ground - cy - r);
+                paint.setColor(((int) (200 * fade) << 24) | 0x2BD96B);
+                c.drawCircle(cx + dx * f, y, (4 + i % 3 * 2) * s, paint);
+            }
+            // The puddle, spreading then sinking away.
+            float pw = Math.min(1, k * 2.2f) * width * 0.32f;
+            paint.setColor(((int) (150 * fade) << 24) | 0x2BD96B);
+            c.drawOval(cx - pw, ground - 14 * s, cx + pw, ground + 14 * s, paint);
+            // The bear holding the cable, plug in its paw.
+            float size = Math.min(width, height) * 0.22f, bx = width * 0.08f, by = height * 0.80f;
+            float pull = Math.min(1, k * 3) * size * 0.25f;
+            float hx = bx + size * 0.95f - pull, hy = by + size * 0.35f;
+            // Cable: a sagging line from the paw up to where it plugged into the orb.
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeWidth(7 * s);
+            paint.setColor(((int) (255 * fade) << 24) | 0x1A1A1A);
+            path.reset();
+            path.moveTo(hx, hy);
+            path.quadTo((hx + cx) / 2, Math.max(hy, cy + r) + 120 * s, cx - r * 0.3f - (1 - Math.min(1, k * 3)) * 0, cy + r * 0.9f + Math.min(1, k * 3) * 60 * s);
+            c.drawPath(path, paint);
+            paint.setStyle(Paint.Style.FILL);
+            // Plug at the paw.
+            paint.setColor(((int) (255 * fade) << 24) | 0xE8E6E0);
+            c.drawRoundRect(hx - 14 * s, hy - 22 * s, hx + 14 * s, hy + 4 * s, 4 * s, 4 * s, paint);
+            paint.setColor(((int) (255 * fade) << 24) | 0xB0B0A8);
+            c.drawRect(hx - 8 * s, hy - 34 * s, hx - 4 * s, hy - 22 * s, paint);
+            c.drawRect(hx + 4 * s, hy - 34 * s, hx + 8 * s, hy - 22 * s, paint);
+            c.save();
+            c.translate(bx - pull * 0.3f, by);
+            c.rotate(-6 * Math.min(1, k * 3), size / 2, size / 2);
+            bear(c, size, true);
+            c.restore();
+            // Paw over the plug.
+            paint.setColor(((int) (255 * fade) << 24) | 0x6B4A33);
+            c.drawCircle(hx, hy - 6 * s, size * 0.08f, paint);
+            if (k > 0.15f && k < 0.85f) {
+                paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+                paint.setTextSize(34 * s);
+                paint.setColor(0xF2FFFFFF);
+                String said = "Ups – Stecker raus! Alles ausgelaufen. 🔌";
+                float tw = paint.measureText(said) + 40 * s, tx = Math.min(width - tw - 20 * s, bx + size * 1.1f), ty = by - 30 * s;
+                c.drawRoundRect(tx, ty - 50 * s, tx + tw, ty + 14 * s, 22 * s, 22 * s, paint);
+                paint.setColor(0xFF1A1A1A);
+                c.drawText(said, tx + 20 * s, ty - 6 * s, paint);
+            }
+        }
+
         private void charging(Canvas c, float t, float s) {
             long now = SystemClock.uptimeMillis();
-            if (now - chargeChecked > 3000) {
+            if (now - chargeChecked > (chargeLevel >= 0 ? 800 : 3000)) {
                 chargeChecked = now;
                 android.content.Intent b = registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
                 boolean plugged = b != null && b.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0;
                 int lvl = b == null ? -1 : b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) * 100 / Math.max(1, b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100));
+                // Unplugged right now: the buddy pulls the cable out and the orb spills.
+                if (!plugged && chargeLevel >= 0) {
+                    unplugAt = now;
+                    unplugLevel = chargeLevel;
+                }
                 chargeLevel = plugged ? lvl : -1;
             }
+            if (chargeLevel < 0 && unplugAt > 0 && now - unplugAt < UNPLUG) unplug(c, t, s, now);
             if (chargeLevel < 0 || lensR <= 0) return;
             float r = lensR * 0.92f, cx = lensX, cy = lensY;
             float level = cy + r - 2 * r * chargeLevel / 100f;
