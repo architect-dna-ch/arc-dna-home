@@ -5149,6 +5149,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"Pfeifen", TuneActivity.class, R.drawable.ic_music, R.drawable.ic_music},
             {"Pixel-Art", PixelActivity.class, R.drawable.ic_line_pixel, R.drawable.ic_line_pixel},
             {"Gelassen", CalmActivity.class, R.drawable.ic_line_calm, R.drawable.ic_line_calm},
+            {"Spielothek", SpielothekActivity.class, R.drawable.ic_line_games, R.drawable.ic_line_games},
             // Not built yet: greyed out, a tap says what's coming.
             {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
         LinearLayout wrap = new LinearLayout(this);

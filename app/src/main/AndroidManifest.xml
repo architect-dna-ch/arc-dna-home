@@ -295,6 +295,13 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC-DNA Spielothek: darts, rocket, table tennis. -->
+        <activity
+            android:name=".SpielothekActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Gelassen: perspective, breathing and gratitude. -->
         <activity
             android:name=".CalmActivity"
