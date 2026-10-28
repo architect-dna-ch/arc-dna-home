@@ -666,6 +666,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         // Hold the fox: it kicks the glass, which cracks somewhere new every time.
         fox.setOnLongClickListener(v -> {
+            if (chat != null) return true;          // no glass cracks over the chat
             foxKick();
             return true;
         });
@@ -5966,13 +5967,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (claudeFab != null) claudeFab.animate().alpha(0f).setDuration(150).start();
         fox.setElevation(dp(12));
         fox.bringToFront();
-        col.post(() -> {
-            int[] a = new int[2], b = new int[2];
-            fox.getLocationOnScreen(a);
-            col.getLocationOnScreen(b);
-            float up = (a[1] + fox.getHeight()) - (b[1] + dp(chatList.getChildCount() == 0 ? 0 : 0)) + dp(6);
-            fox.animate().translationY(-Math.max(0, up)).setDuration(320).setInterpolator(new android.view.animation.OvershootInterpolator(1.4f)).start();
-        });
+        chatCol = col;
+        floatStart = android.os.SystemClock.uptimeMillis();
+        handler.removeCallbacks(buddyFloat);
+        handler.postDelayed(buddyFloat, 60);
         chat.setAlpha(0f);
         col.setTranslationY(dp(120));
         chat.animate().alpha(1f).setDuration(200).start();
@@ -5985,13 +5983,51 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         bubbleMsg(calls[random.nextInt(calls.length)] + " " + tip, false);
     }
 
+    private View chatCol;
+    private long floatStart;
+
+    /*
+     * While chatting the buddy floats in the free space above the chat: a slow figure-eight with a
+     * gentle bob and tilt, facing the way it drifts – never over the chat or off screen.
+     */
+    private final Runnable buddyFloat = new Runnable() {
+        @Override
+        public void run() {
+            if (chat == null || chatCol == null || fox == null) return;
+            int[] f = new int[2], cc = new int[2], r = new int[2];
+            fox.getLocationOnScreen(f);
+            chatCol.getLocationOnScreen(cc);
+            rootFrame.getLocationOnScreen(r);
+            // The fox's own place without the current translation.
+            float baseX = f[0] - fox.getTranslationX(), baseY = f[1] - fox.getTranslationY();
+            float w = rootFrame.getWidth(), topY = r[1] + rootFrame.getHeight() * 0.25f, bottomY = cc[1] - fox.getHeight() - dp(12);
+            if (bottomY < topY) bottomY = topY;
+            float t = (android.os.SystemClock.uptimeMillis() - floatStart) / 1000f;
+            float cxp = r[0] + (w - fox.getWidth()) / 2f, ampX = (w - fox.getWidth()) / 2f - dp(16);
+            float cyp = (topY + bottomY) / 2f, ampY = (bottomY - topY) / 2f;
+            float x = cxp + (float) Math.sin(t * 0.45) * ampX;
+            float y = cyp + (float) Math.sin(t * 0.9) * ampY * 0.8f + (float) Math.sin(t * 3.2) * dp(5);
+            // Ease in from where it sat for the first moment.
+            float in = Math.min(1f, t / 0.8f);
+            in = in * in * (3 - 2 * in);
+            fox.setTranslationX((x - baseX) * in);
+            fox.setTranslationY((y - baseY) * in);
+            float vx = (float) Math.cos(t * 0.45);
+            fox.setScaleX(vx < 0 ? -1f : 1f);
+            fox.setRotation((float) Math.sin(t * 1.3) * 6);
+            handler.postDelayed(this, 16);
+        }
+    };
+
     private void closeChat() {
         FrameLayout c = chat;
         chat = null;
         if (c == null) return;
         hideKeyboard();
         c.animate().alpha(0f).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
-        fox.animate().translationY(0).setDuration(260).withEndAction(() -> fox.setElevation(0)).start();
+        handler.removeCallbacks(buddyFloat);
+        fox.setScaleX(1f);
+        fox.animate().translationX(0).translationY(0).rotation(0).setDuration(360).withEndAction(() -> fox.setElevation(0)).start();
         if (gameButton != null) gameButton.animate().alpha(1f).setDuration(200).start();
         if (claudeFab != null) claudeFab.animate().alpha(1f).setDuration(200).start();
     }
