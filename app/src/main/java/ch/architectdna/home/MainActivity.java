@@ -5959,6 +5959,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(pill, new LinearLayout.LayoutParams(-1, dp(66)));
         chat.addView(col, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         rootFrame.addView(chat, new FrameLayout.LayoutParams(-1, -1));
+        // Above the floating buttons (they have elevation), which step aside; the buddy hops up
+        // and sits on top of the chat, talking.
+        chat.setElevation(dp(10));
+        if (gameButton != null) gameButton.animate().alpha(0f).setDuration(150).start();
+        if (claudeFab != null) claudeFab.animate().alpha(0f).setDuration(150).start();
+        fox.setElevation(dp(12));
+        fox.bringToFront();
+        col.post(() -> {
+            int[] a = new int[2], b = new int[2];
+            fox.getLocationOnScreen(a);
+            col.getLocationOnScreen(b);
+            float up = (a[1] + fox.getHeight()) - (b[1] + dp(chatList.getChildCount() == 0 ? 0 : 0)) + dp(6);
+            fox.animate().translationY(-Math.max(0, up)).setDuration(320).setInterpolator(new android.view.animation.OvershootInterpolator(1.4f)).start();
+        });
         chat.setAlpha(0f);
         col.setTranslationY(dp(120));
         chat.animate().alpha(1f).setDuration(200).start();
@@ -5977,6 +5991,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (c == null) return;
         hideKeyboard();
         c.animate().alpha(0f).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
+        fox.animate().translationY(0).setDuration(260).withEndAction(() -> fox.setElevation(0)).start();
+        if (gameButton != null) gameButton.animate().alpha(1f).setDuration(200).start();
+        if (claudeFab != null) claudeFab.animate().alpha(1f).setDuration(200).start();
     }
 
     private void bubbleMsg(String text, boolean mine) {
