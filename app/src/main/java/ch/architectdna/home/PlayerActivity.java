@@ -110,9 +110,19 @@ public class PlayerActivity extends Activity {
             android.widget.Toast.makeText(this, "Ära wieder automatisch (pro Song).", android.widget.Toast.LENGTH_SHORT).show();
             return true;
         });
+        // The medium with a volume lever standing beside it, like a mixer fader.
+        FrameLayout deck = new FrameLayout(this);
+        FrameLayout.LayoutParams dkl = new FrameLayout.LayoutParams(-1, -1);
+        dkl.rightMargin = dp(50);
+        deck.addView(disk, dkl);
+        Lever lever = new Lever();
+        FrameLayout.LayoutParams lvl = new FrameLayout.LayoutParams(dp(46), -1, Gravity.END);
+        lvl.topMargin = dp(10);
+        lvl.bottomMargin = dp(28);
+        deck.addView(lever, lvl);
         LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(-1, dp(320));
         kl.topMargin = dp(18);
-        col.addView(disk, kl);
+        col.addView(deck, kl);
 
         title = text(22, ink, true);
         title.setPadding(0, dp(18), 0, 0);
@@ -176,12 +186,16 @@ public class PlayerActivity extends Activity {
         // Tablet across: the medium big on the left, title, controls and queue on the right.
         android.content.res.Configuration cfg = getResources().getConfiguration();
         if (cfg.screenWidthDp > cfg.screenHeightDp && cfg.screenWidthDp >= 720) {
-            col.removeView(disk);
+            col.removeView(deck);
             root.removeView(sv);
             LinearLayout across = new LinearLayout(this);
             FrameLayout left = new FrameLayout(this);
             left.setPadding(dp(28), dp(28), dp(12), dp(28));
-            left.addView(disk, new FrameLayout.LayoutParams(-1, -1));
+            dkl.rightMargin = dp(64);
+            lvl.width = dp(56);
+            lvl.topMargin = dp(60);
+            lvl.bottomMargin = dp(80);
+            left.addView(deck, new FrameLayout.LayoutParams(-1, -1));
             across.addView(left, new LinearLayout.LayoutParams(0, -1, 1f));
             across.addView(sv, new LinearLayout.LayoutParams(0, -1, 1.15f));
             root.addView(across, new FrameLayout.LayoutParams(-1, -1));
@@ -514,6 +528,170 @@ public class PlayerActivity extends Activity {
     /* ---------------- views ---------------- */
 
     /** The track as a 3½" floppy disk: shell in the cover's colour, metal shutter, the cover as label. */
+    /** Volume lever: a tall fader for the music stream, with the A/B save points as notches.
+     *  Drag the cap; tap a notch to jump there, long-press it to store the current level. */
+    private final class Lever extends View {
+        private final android.media.AudioManager audio = getSystemService(android.media.AudioManager.class);
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float shown = -1;
+        private boolean dragging;
+        private long downAt;
+        private float downY;
+        private final Runnable poll = new Runnable() {
+            @Override public void run() {
+                invalidate();
+                postDelayed(this, 400);           // follows the hardware keys too
+            }
+        };
+
+        Lever() {
+            super(PlayerActivity.this);
+            setContentDescription("Lautstärke");
+        }
+
+        @Override protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            post(poll);
+        }
+
+        @Override protected void onDetachedFromWindow() {
+            removeCallbacks(poll);
+            super.onDetachedFromWindow();
+        }
+
+        private int max() {
+            return Math.max(1, audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC));
+        }
+
+        private float level() {
+            return audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) / (float) max();
+        }
+
+        private int preset(String key) {
+            return getSharedPreferences("home", MODE_PRIVATE).getInt("vol" + key, key.equals("A") ? 70 : 25);
+        }
+
+        private float top() { return dp(26); }
+        private float bottom() { return getHeight() - dp(30); }
+
+        private float yOf(float f) {
+            return bottom() - (bottom() - top()) * f;
+        }
+
+        private float fOf(float y) {
+            return Math.max(0, Math.min(1, (bottom() - y) / Math.max(1, bottom() - top())));
+        }
+
+        private void set(float f) {
+            int v = Math.round(f * max());
+            if (v != audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)) {
+                audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, v, 0);
+                performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+            }
+            invalidate();
+        }
+
+        /** The A/B notch under the finger, if any. */
+        private String notchAt(float y) {
+            for (String k : new String[]{"A", "B"})
+                if (Math.abs(yOf(preset(k) / 100f) - y) < dp(16)) return k;
+            return null;
+        }
+
+        private final Runnable hold = () -> {
+            String k = notchAt(downY);
+            if (k == null || dragging) return;
+            int pct = Math.round(100 * level());
+            getSharedPreferences("home", MODE_PRIVATE).edit().putInt("vol" + k, pct).apply();
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            android.widget.Toast.makeText(PlayerActivity.this, k + " gespeichert: " + pct + "%", android.widget.Toast.LENGTH_SHORT).show();
+            downAt = 0;
+            invalidate();
+        };
+
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            int a = e.getActionMasked();
+            if (a == MotionEvent.ACTION_DOWN) {
+                getParent().requestDisallowInterceptTouchEvent(true);
+                downY = e.getY();
+                downAt = SystemClock.uptimeMillis();
+                dragging = Math.abs(yOf(level()) - downY) < dp(26);
+                postDelayed(hold, 550);
+                return true;
+            }
+            if (a == MotionEvent.ACTION_MOVE) {
+                if (!dragging && Math.abs(e.getY() - downY) > dp(8)) dragging = true;
+                if (dragging) {
+                    removeCallbacks(hold);
+                    set(fOf(e.getY()));
+                }
+                return true;
+            }
+            if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                removeCallbacks(hold);
+                if (a == MotionEvent.ACTION_UP && !dragging && downAt != 0) {
+                    String k = notchAt(downY);
+                    set(k != null ? preset(k) / 100f : fOf(downY));
+                }
+                dragging = false;
+                invalidate();
+                return true;
+            }
+            return super.onTouchEvent(e);
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            float f = level();
+            shown = shown < 0 || dragging ? f : shown + (f - shown) * 0.35f;
+            if (Math.abs(shown - f) > 0.002f) postInvalidateOnAnimation();
+            float cx = getWidth() / 2f, t = top(), b = bottom(), y = yOf(shown);
+            // Slot with the filled part in rust.
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(line);
+            c.drawRoundRect(cx - dp(3), t, cx + dp(3), b, dp(3), dp(3), p);
+            p.setColor(rust);
+            c.drawRoundRect(cx - dp(3), y, cx + dp(3), b, dp(3), dp(3), p);
+            // Scale ticks.
+            p.setColor(ink3);
+            for (int i = 0; i <= 10; i++) {
+                float ty = yOf(i / 10f), w = i % 5 == 0 ? dp(9) : dp(5);
+                c.drawRect(cx - dp(8) - w, ty - dp(0.6f), cx - dp(8), ty + dp(0.6f), p);
+            }
+            // A/B save points as notches on the right.
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(10));
+            p.setTextAlign(Paint.Align.LEFT);
+            for (String k : new String[]{"A", "B"}) {
+                float ny = yOf(preset(k) / 100f);
+                p.setColor(ink2);
+                c.drawRect(cx + dp(6), ny - dp(1), cx + dp(13), ny + dp(1), p);
+                c.drawText(k, cx + dp(15), ny + dp(3.5f), p);
+            }
+            // The lever cap: a grippy block with a centre line.
+            float cw = dp(17), ch = dp(11);
+            p.setColor(card);
+            c.drawRoundRect(cx - cw, y - ch, cx + cw, y + ch, dp(5), dp(5), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1.5f));
+            p.setColor(dragging ? rust : ink2);
+            c.drawRoundRect(cx - cw, y - ch, cx + cw, y + ch, dp(5), dp(5), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(rust);
+            c.drawRect(cx - cw + dp(4), y - dp(1), cx + cw - dp(4), y + dp(1), p);
+            p.setColor(ink3);
+            for (int i = -1; i <= 1; i += 2)
+                c.drawRect(cx - cw + dp(6), y + i * dp(5) - dp(0.5f), cx + cw - dp(6), y + i * dp(5) + dp(0.5f), p);
+            // Labels: VOL on top, the percent below.
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setColor(ink3);
+            p.setTextSize(dp(9));
+            c.drawText("VOL", cx, t - dp(12), p);
+            p.setColor(dragging ? rust : ink);
+            p.setTextSize(dp(11));
+            c.drawText(Math.round(100 * f) + "%", cx, b + dp(20), p);
+        }
+    }
+
     private final class Disk extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Path path = new Path();
