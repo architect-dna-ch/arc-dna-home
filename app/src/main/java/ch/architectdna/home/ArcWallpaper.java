@@ -295,9 +295,10 @@ public class ArcWallpaper extends WallpaperService {
             paint.setStyle(Paint.Style.FILL);
             c.drawRect(0, 0, width, height, paint);
             paint.setShader(null);
-            // The warning, blinking, between the date and the cube.
+            // The warning, blinking, between the unlock button and the buddy (higher up the lock screen's
+            // own clock and media card covered it).
             if (((int) (t * 2.5f)) % 3 != 2) {
-                float y = height * 0.3f;
+                float y = height * 0.81f;
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(44 * s);
                 paint.setTextAlign(Paint.Align.CENTER);
