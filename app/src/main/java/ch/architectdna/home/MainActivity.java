@@ -324,7 +324,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
-        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> updateFolds());
+        peek = new PeekDial();
+        root.addView(peek, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            updateFolds();
+            peek.follow(y);
+        });
         // Sections change size (cover loads, a fold opens): judge the blur again after every layout.
         content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             scroll.post(this::updateFolds);
@@ -5375,6 +5380,182 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         if (gap) lp.leftMargin = dp(8);
         return lp;
+    }
+
+    private PeekDial peek;
+
+    /**
+     * Scrolled down, a half dial hangs from the top edge like the clock card peeking out – but
+     * it reads something else: battery, the day, the week or the time to the alarm. Tap = next.
+     */
+    private final class PeekDial extends View {
+        private final String[] modes = {"AKKU", "TAG", "WOCHE", "WECKER"};
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private boolean shown;
+        private float shownV = -1;
+        private final Runnable tick = new Runnable() {
+            @Override public void run() {
+                invalidate();
+                if (shown) postDelayed(this, 1000);
+            }
+        };
+
+        PeekDial() {
+            super(MainActivity.this);
+            setTranslationY(-dp(400));
+            setVisibility(View.INVISIBLE);
+            setOnClickListener(v -> {
+                prefs.edit().putInt("peekMode", (mode() + 1) % modes.length).apply();
+                shownV = -1;
+                performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                invalidate();
+            });
+            setOnLongClickListener(v -> {
+                scroll.smoothScrollTo(0, 0);
+                return true;
+            });
+        }
+
+        private int mode() {
+            return Math.floorMod(prefs.getInt("peekMode", 0), modes.length);
+        }
+
+        private int statusTop() {
+            if (Build.VERSION.SDK_INT >= 30 && getRootWindowInsets() != null)
+                return getRootWindowInsets().getInsets(WindowInsets.Type.statusBars()).top;
+            return dp(24);
+        }
+
+        private float radius() {
+            return Math.min(dp(118), getResources().getDisplayMetrics().widthPixels * 0.3f);
+        }
+
+        @Override protected void onMeasure(int w, int h) {
+            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(statusTop() + radius() + dp(6)));
+        }
+
+        /** Appears once the top cards have scrolled away, slides back up at the top. */
+        void follow(int y) {
+            boolean want = y > dp(300) && chat == null;
+            if (want == shown) return;
+            shown = want;
+            animate().cancel();
+            if (want) {
+                setVisibility(View.VISIBLE);
+                shownV = -1;
+                animate().translationY(0).setDuration(420).setInterpolator(new android.view.animation.OvershootInterpolator(0.8f)).start();
+                removeCallbacks(tick);
+                post(tick);
+            } else {
+                removeCallbacks(tick);
+                animate().translationY(-getHeight() - dp(10)).setDuration(260).withEndAction(() -> {
+                    if (!shown) setVisibility(View.INVISIBLE);
+                }).start();
+            }
+        }
+
+        /** Only the disc takes touches; beside it the page stays usable. */
+        @Override public boolean onTouchEvent(android.view.MotionEvent e) {
+            if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
+                && Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.35f) > radius()) return false;
+            return super.onTouchEvent(e);
+        }
+
+        /** 0..1 on the dial plus the big readout. */
+        private Object[] read() {
+            Calendar c = Calendar.getInstance();
+            int m = mode();
+            if (m == 0) {
+                android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
+                int pct = bm == null ? 0 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                return new Object[]{pct / 100f, pct + "%", bm != null && bm.isCharging() ? "AKKU · LÄDT" : "AKKU"};
+            }
+            if (m == 1) {
+                float f = (c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)) / 1440f;
+                return new Object[]{f, Math.round(f * 100) + "%", "TAG VORBEI"};
+            }
+            if (m == 2) {
+                int d = (c.get(Calendar.DAY_OF_WEEK) + 5) % 7;           // Monday 0
+                float f = (d * 1440 + c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)) / (7f * 1440);
+                return new Object[]{f, Math.round(f * 100) + "%", "WOCHE · " + new SimpleDateFormat("EE", Locale.GERMAN).format(c.getTime()).replace(".", "").toUpperCase(Locale.GERMAN)};
+            }
+            if (!prefs.getBoolean("alarmOn", false)) return new Object[]{0f, "AUS", "WECKER"};
+            long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
+            return new Object[]{1 - Math.min(1f, in / 1440f), in / 60 + "h " + String.format(Locale.ROOT, "%02d", in % 60), "BIS WECKER"};
+        }
+
+        @Override protected void onDraw(Canvas cv) {
+            Object[] r = read();
+            float v = (Float) r[0];
+            shownV = shownV < 0 ? 0 : shownV + (v - shownV) * 0.16f;
+            if (Math.abs(shownV - v) > 0.002f) postInvalidateOnAnimation();
+            boolean night = isNight();
+            int face = night ? 0xF01A1A18 : 0xF0FAFAF8, ink = night ? 0xFFF4F2EC : 0xFF1A1A1A, ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98,
+                rust = night ? 0xFFD9472F : 0xFFB5271E;
+            float R = radius(), cx = getWidth() / 2f, cy = statusTop() * 0.35f;
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(face);
+            cv.drawCircle(cx, cy, R, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1));
+            p.setColor(night ? 0x33FFFFFF : 0x22000000);
+            cv.drawCircle(cx, cy, R, p);
+            // Filled arc from 0 (left) round the bottom to the value.
+            p.setStrokeWidth(dp(4));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setColor(rust);
+            float ar = R - dp(9);
+            android.graphics.RectF ring = new android.graphics.RectF(cx - ar, cy - ar, cx + ar, cy + ar);
+            cv.drawArc(ring, 180, -180 * shownV, false, p);
+            // Ticks and the numbers 0–10, like the clock face.
+            p.setStrokeCap(Paint.Cap.BUTT);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTypeface(Typeface.MONOSPACE);
+            for (int i = 0; i <= 50; i++) {
+                double a = Math.toRadians(180 - i * 3.6);
+                boolean big = i % 5 == 0;
+                float r1 = R - dp(big ? 26 : 20), r2 = R - dp(15);
+                p.setStyle(Paint.Style.STROKE);
+                p.setColor(big ? ink : ink3);
+                p.setStrokeWidth(dp(big ? 2.4f : 1));
+                cv.drawLine(cx + (float) Math.cos(a) * r1, cy + (float) Math.sin(a) * r1, cx + (float) Math.cos(a) * r2, cy + (float) Math.sin(a) * r2, p);
+                if (big) {
+                    p.setStyle(Paint.Style.FILL);
+                    p.setColor(ink3);
+                    p.setTextSize(dp(11));
+                    float rn = R - dp(38);
+                    cv.drawText(String.valueOf(i / 5), cx + (float) Math.cos(a) * rn, cy + (float) Math.sin(a) * rn + dp(4), p);
+                }
+            }
+            // Readout.
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(ink);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(22));
+            cv.drawText((String) r[1], cx, cy + R * 0.56f, p);
+            p.setTypeface(Typeface.MONOSPACE);
+            p.setColor(ink3);
+            p.setTextSize(dp(9.5f));
+            p.setLetterSpacing(0.18f);
+            cv.drawText((String) r[2], cx, cy + R * 0.74f, p);
+            p.setLetterSpacing(0);
+            // Needle with the rust hub.
+            double a = Math.toRadians(180 - 180 * shownV);
+            float nl = R * 0.42f;
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(dp(3));
+            p.setColor(ink);
+            cv.drawLine(cx, cy, cx + (float) Math.cos(a) * nl, cy + (float) Math.sin(a) * nl, p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(rust);
+            cv.drawCircle(cx, cy, dp(6), p);
+            // Little dots: which reading is on.
+            for (int i = 0; i < modes.length; i++) {
+                p.setColor(i == mode() ? rust : ink3);
+                cv.drawCircle(cx + (i - 1.5f) * dp(9), cy + R * 0.88f, dp(i == mode() ? 2.6f : 1.8f), p);
+            }
+        }
     }
 
     private int dp(float v) {
