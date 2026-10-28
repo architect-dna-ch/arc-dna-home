@@ -985,12 +985,24 @@ public class ArcWallpaper extends WallpaperService {
             clip.addCircle(cx, cy, r, android.graphics.Path.Direction.CW);
             c.save();
             c.clipPath(clip);
+            // Gravity: the liquid turns against the phone's tilt with a little spring, so it sloshes and
+            // settles level, like water in a bottle.
+            float target = (float) Math.toDegrees(gravRoll);
+            float d = target - slosh;
+            while (d > 180) d -= 360;
+            while (d < -180) d += 360;
+            sloshV = sloshV * 0.88f + d * 0.06f;
+            slosh += sloshV;
+            float swing = Math.min(1f, Math.abs(sloshV) / 6f);
+            c.rotate(slosh, cx, cy);
             android.graphics.Path wave = new android.graphics.Path();
-            wave.moveTo(cx - r, cy + r);
-            for (float x = cx - r; x <= cx + r; x += 6 * s) {
-                wave.lineTo(x, level + (float) Math.sin((x - cx) / (40 * s) + t * 3) * 10 * s);
+            float R = r * 1.5f;
+            wave.moveTo(cx - R, cy + R);
+            for (float x = cx - R; x <= cx + R; x += 6 * s) {
+                wave.lineTo(x, level + (float) Math.sin((x - cx) / (40 * s) + t * 3) * (10 + 26 * swing) * s
+                    + (x - cx) / R * sloshV * 4 * s);
             }
-            wave.lineTo(cx + r, cy + r);
+            wave.lineTo(cx + R, cy + R);
             wave.close();
             paint.setStyle(Paint.Style.FILL);
             paint.setShader(new android.graphics.LinearGradient(0, level, 0, cy + r, 0x992BD96B, 0x5512803C, android.graphics.Shader.TileMode.CLAMP));
@@ -1064,6 +1076,8 @@ public class ArcWallpaper extends WallpaperService {
         /** At a normal ~45° grip the cube shows the pose it used to have lying flat (your pick). */
         private static final float NEUTRAL_TILT = (float) Math.toRadians(90);
         private float tiltX, tiltY, baseX = Float.NaN;
+        private volatile float gravRoll;
+        private float slosh, sloshV;
         private android.hardware.SensorManager sensors;
 
         private final android.hardware.SensorEventListener gravity = new android.hardware.SensorEventListener() {
@@ -1079,6 +1093,8 @@ public class ArcWallpaper extends WallpaperService {
                 }
                 tiltX = tiltX * 0.8f + x * 0.2f;
                 tiltY = tiltY * 0.8f + y * 0.2f;
+                // Where "down" is on the screen: the charging liquid keeps its surface level to it.
+                if (Math.abs(e.values[0]) + Math.abs(e.values[1]) > 1.5f) gravRoll = (float) Math.atan2(e.values[0], e.values[1]);
                 // Fixed calibration (see NEUTRAL_TILT): held normally at ~45° the cube sits in its
                 // home pose, rust edge from the centre to the top right; tilting turns it.
                 yaw = BASE_YAW - tiltX * 1.4f;
