@@ -115,8 +115,16 @@ public class CalmActivity extends Activity {
         sv.addView(col);
         sv.setOnApplyWindowInsetsListener((v, in) -> {
             if (Build.VERSION.SDK_INT >= 30) {
-                android.graphics.Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                // The keyboard counts too (edge-to-edge doesn't resize): the fields scroll up above it.
+                android.graphics.Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime());
                 col.setPadding(dp(22) + i.left, dp(18) + i.top, dp(22) + i.right, dp(40) + i.bottom);
+                View f = getCurrentFocus();
+                if (f != null && in.isVisible(WindowInsets.Type.ime())) v.post(() -> {
+                    android.graphics.Rect r = new android.graphics.Rect();
+                    f.getDrawingRect(r);
+                    ((ScrollView) v).offsetDescendantRectToMyCoords(f, r);
+                    ((ScrollView) v).smoothScrollTo(0, Math.max(0, r.bottom - v.getHeight() + i.bottom + dp(80)));
+                });
             }
             return in;
         });
