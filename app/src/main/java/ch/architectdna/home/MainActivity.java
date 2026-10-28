@@ -1577,7 +1577,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Back home after using an app: whoosh, crush, throw it in the bin next to the buddy. */
     /** "Ruhig": no dino visits, bin throws or races; now and then (1 in 8) a surprise anyway. */
     private boolean calm() {
-        return prefs.getBoolean("calm", false) || pro();
+        return prefs.getBoolean("calm", false) || pro() || swept();
     }
 
     /** "Professionell": neat and quiet – no buddy, no rainbows or glows, plain tiles, no surprises. */
@@ -4825,12 +4825,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onResume();
         homeInFront = true;
         applyPro();
+        applySwept();
         if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
         xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
         handler.postDelayed(this::suggestArc, 2500);
+        handler.postDelayed(this::maybeSweep, 4200);
         if (crumplePending) {
             crumplePending = false;
             // Only after real use (not a launch that bounced straight back).
@@ -6125,7 +6127,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hs.setHorizontalScrollBarEnabled(false);
         LinearLayout chips = new LinearLayout(this);
         hs.addView(chips);
-        for (String q : new String[]{"Wecker?", "Akku?", "Musik heute?", "Witz", "Öffne Gelassen", "Termin morgen 13:10 Arzt"}) {
+        for (String q : new String[]{"Wecker?", "Akku?", "Aufräumen 🧹", "Musik heute?", "Witz", "Öffne Gelassen", "Termin morgen 13:10 Arzt"}) {
             TextView c = text(13, 0xFF1A1A1A, true);
             c.setText(q);
             c.setPadding(dp(14), dp(9), dp(14), dp(9));
@@ -6192,6 +6194,202 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         String tip = buddy() == 4 ? DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)] : tips.isEmpty() ? "Was kann ich für dich tun?" : tips.get(tipIndex++ % tips.size());
         voice.say(calls[random.nextInt(calls.length)]);
         bubbleMsg(calls[random.nextInt(calls.length)] + " " + tip, false);
+    }
+
+    /* ================= Broom: now and then the buddy sweeps the clutter away ================= */
+
+    private static final long SWEEP_FOR = 2 * 3600_000L;
+    private TextView sweptChip;
+    private boolean sweeping;
+
+    private boolean swept() {
+        return prefs.getLong("sweptUntil", 0) > System.currentTimeMillis();
+    }
+
+    /** The extras the broom takes away: game button, seismo line, ghosts; the pixel art goes faint. */
+    private View[] clutter() {
+        return new View[]{gameButton, seismo, ghosts};
+    }
+
+    /** Once a day at most, 1 in 5 returns home, when nothing else is going on. */
+    private void maybeSweep() {
+        long now = System.currentTimeMillis();
+        if (pro() || prefs.getBoolean("calm", false) || swept() || sweeping || dino != null || game != null || chat != null || f1
+            || !homeInFront || now - prefs.getLong("sweepAt", 0) < 20 * 3600_000L || random.nextInt(5) != 0) return;
+        sweep();
+    }
+
+    /** The buddy walks in from the right with a broom and sweeps across the bottom; what it passes is gone. */
+    private void sweep() {
+        if (rootFrame == null || rootFrame.getWidth() == 0 || sweeping || pro()) return;
+        sweeping = true;
+        prefs.edit().putLong("sweepAt", System.currentTimeMillis()).apply();
+        DiagLog.log("broom sweep");
+        if (fox != null) fox.animate().alpha(0f).setDuration(200).start();
+        if (bubble != null) bubble.setVisibility(View.GONE);
+        SweepView sv = new SweepView();
+        rootFrame.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        sv.setElevation(dp(14));
+    }
+
+    private void sweepDone(SweepView sv) {
+        rootFrame.removeView(sv);
+        sweeping = false;
+        prefs.edit().putLong("sweptUntil", System.currentTimeMillis() + SWEEP_FOR).apply();
+        applySwept();
+        if (fox != null) {
+            fox.animate().alpha(1f).setDuration(300).start();
+            hop();
+        }
+        say("Aufgeräumt! 🧹 Zwei Stunden nur das Nötigste. Unten ↺ holt alles zurück.", 5000);
+    }
+
+    /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */
+    private void applySwept() {
+        boolean on = swept() && !pro();
+        if (on) {
+            for (View v : clutter()) if (v != null) v.setVisibility(View.GONE);
+            if (pixelLayer != null) pixelLayer.setAlpha(0.25f);
+        } else if (pixelLayer != null) pixelLayer.setAlpha(1f);
+        if (on && sweptChip == null && rootFrame != null) {
+            sweptChip = text(12, ink, true);
+            sweptChip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+            sweptChip.setText("🧹 AUFGERÄUMT · ↺");
+            sweptChip.setPadding(dp(14), dp(8), dp(14), dp(8));
+            sweptChip.setBackground(box(card, line, 18));
+            sweptChip.setElevation(dp(6));
+            sweptChip.setOnClickListener(v -> unsweep());
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            int nav = 0;
+            if (Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null)
+                nav = rootFrame.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).bottom;
+            lp.bottomMargin = dp(40) + nav;
+            rootFrame.addView(sweptChip, lp);
+        } else if (!on && sweptChip != null) {
+            rootFrame.removeView(sweptChip);
+            sweptChip = null;
+        }
+    }
+
+    private void unsweep() {
+        prefs.edit().putLong("sweptUntil", 0).apply();
+        if (ghosts != null) ghosts.setVisibility(View.VISIBLE);
+        applyPro();
+        applySwept();
+        if (pixelLayer != null) pixelLayer.setAlpha(1f);
+        hop();
+        say("Alles wieder da. Volles Programm! 🎉", 2500);
+    }
+
+    /** The sweep itself: buddy + broom along the bottom, dust behind, clutter fading as the broom passes. */
+    private final class SweepView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final long born = android.os.SystemClock.uptimeMillis();
+        private final Drawable buddyArt = getDrawable(BUDDY_ART[buddy()]).mutate();
+        private final List<float[]> dust = new ArrayList<>();       // x, y, vx, vy, born, size
+        private final java.util.Set<View> gone = new java.util.HashSet<>();
+        private float lastT;
+
+        SweepView() {
+            super(MainActivity.this);
+            setClickable(false);
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight(), t = (android.os.SystemClock.uptimeMillis() - born) / 1000f, dt = Math.min(0.05f, t - lastT);
+            lastT = t;
+            float dur = 4.6f, f = Math.min(1, t / dur);
+            float size = Math.min(dp(120), w * 0.26f);
+            float bx = w + size - (w + size * 2.4f) * f;                // buddy x (walks right to left)
+            float ground = h * 0.86f, bob = (float) Math.abs(Math.sin(t * 9)) * dp(6);
+            float sw = (float) Math.sin(t * 11);                         // the sweep stroke
+            float broomX = bx - size * 0.55f + sw * dp(18);
+            // What the broom passes fades out.
+            for (View v : clutter()) {
+                if (v == null || v.getVisibility() != View.VISIBLE || gone.contains(v)) continue;
+                int[] a = new int[2], me = new int[2];
+                v.getLocationOnScreen(a);
+                getLocationOnScreen(me);
+                if (broomX < a[0] - me[0] + v.getWidth() / 2f) {
+                    gone.add(v);
+                    v.animate().alpha(0f).translationX(-dp(60)).setDuration(350).withEndAction(() -> {
+                        v.setVisibility(View.GONE);
+                        v.setAlpha(1f);
+                        v.setTranslationX(0);
+                    }).start();
+                    for (int i = 0; i < 10; i++) dust.add(new float[]{a[0] - me[0] + v.getWidth() / 2f, a[1] - me[1] + v.getHeight() / 2f,
+                        -dp(140) - random.nextFloat() * dp(160), -dp(60) * random.nextFloat(), t, dp(6 + 10 * random.nextFloat())});
+                }
+            }
+            if (pixelLayer != null) pixelLayer.setAlpha(Math.max(0.25f, 1 - f * 1.2f));
+            // Dust kicked up by the bristles.
+            if (f < 1 && random.nextFloat() < 0.8f)
+                dust.add(new float[]{broomX - dp(10), ground, -dp(80) - random.nextFloat() * dp(120), -dp(30) - random.nextFloat() * dp(70), t, dp(5 + 9 * random.nextFloat())});
+            p.setStyle(Paint.Style.FILL);
+            for (int i = dust.size() - 1; i >= 0; i--) {
+                float[] d = dust.get(i);
+                float age = t - d[4];
+                if (age > 1.1f) {
+                    dust.remove(i);
+                    continue;
+                }
+                d[0] += d[2] * dt;
+                d[1] += d[3] * dt;
+                d[3] += dp(40) * dt;
+                p.setColor(isNight() ? 0xFF8A8A86 : 0xFFB8B6AE);
+                p.setAlpha((int) (170 * (1 - age / 1.1f)));
+                c.drawCircle(d[0], d[1], d[5] * (1 + age), p);
+            }
+            p.setAlpha(255);
+            // Broom: stick from the buddy's paws down to the bristles in front.
+            float hx = bx - size * 0.1f, hy = ground - size * 0.55f - bob;
+            float fx = broomX, fy = ground - dp(6);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(dp(5));
+            p.setColor(0xFF8A5A2B);
+            c.drawLine(hx, hy, fx + dp(10), fy - dp(16), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFE0B54A);
+            android.graphics.Path br = new android.graphics.Path();
+            br.moveTo(fx + dp(16), fy - dp(22));
+            br.lineTo(fx + dp(4), fy - dp(24));
+            br.lineTo(fx - dp(22), fy + dp(4));
+            br.lineTo(fx + dp(22), fy + dp(4));
+            br.close();
+            c.drawPath(br, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(1.4f));
+            p.setColor(0xFF9C7A22);
+            for (int i = -3; i <= 3; i++) c.drawLine(fx + dp(6) + i * dp(1.5f), fy - dp(20), fx + i * dp(6), fy + dp(3), p);
+            // The buddy, walking (facing left), with a little sway.
+            c.save();
+            c.translate(bx, ground - bob);
+            c.rotate(-6 + sw * 4);
+            c.scale(-1, 1);
+            float aw = size, ah = size * buddyArt.getIntrinsicHeight() / (float) Math.max(1, buddyArt.getIntrinsicWidth());
+            buddyArt.setBounds((int) (-aw / 2), (int) -ah, (int) (aw / 2), 0);
+            buddyArt.draw(c);
+            c.restore();
+            if (t < 1.6f) {
+                p.setStyle(Paint.Style.FILL);
+                p.setTextSize(dp(15));
+                p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+                p.setTextAlign(Paint.Align.CENTER);
+                String line = "Hier ist's mir zu voll! 🧹";
+                float tw = p.measureText(line) + dp(24), ty = ground - size * 1.25f - dp(10), tx = Math.max(tw / 2 + dp(8), Math.min(w - tw / 2 - dp(8), bx));
+                p.setColor(0xF2FFFFFF);
+                c.drawRoundRect(tx - tw / 2, ty - dp(26), tx + tw / 2, ty + dp(10), dp(16), dp(16), p);
+                p.setColor(0xFF1A1A1A);
+                c.drawText(line, tx, ty - dp(3), p);
+                p.setTextAlign(Paint.Align.LEFT);
+            }
+            if (t > dur + 1.1f) {
+                post(() -> sweepDone(this));
+                return;
+            }
+            postInvalidateOnAnimation();
+        }
     }
 
     private View chatCol;
@@ -6420,6 +6618,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return JOKES[lastJoke][0];
         }
         if (l.matches("^(hallo|hi|hey|servus|grüezi|moin)\\b.*")) return BUDDY_CALLS[buddy()][0] + " Schön, dass du da bist.";
+        if (l.contains("aufräum") || l.contains("besen") || l.contains("zu viel") || l.contains("chaos")) {
+            handler.postDelayed(() -> {
+                closeChat();
+                handler.postDelayed(this::sweep, 400);
+            }, 900);
+            return "Ich hol den Besen! 🧹";
+        }
         if (l.contains("danke")) return "Gern! " + BUDDY_CALLS[buddy()][1];
         // Anything else: Claude knows more.
         String quest = q;
