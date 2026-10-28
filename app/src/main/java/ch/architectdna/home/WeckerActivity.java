@@ -139,6 +139,25 @@ public class WeckerActivity extends Activity {
         }
         col.addView(chips);
 
+        // Wake-up log: how long the bear needs for you.
+        LinearLayout lh = new LinearLayout(this);
+        lh.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ll = mono(11, ink3);
+        ll.setText("— AUFWACH-LOG");
+        ll.setLetterSpacing(0.2f);
+        lh.addView(ll, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView copy = chip("DATEN KOPIEREN", ink2);
+        copy.setOnClickListener(v -> {
+            android.content.ClipboardManager cm = getSystemService(android.content.ClipboardManager.class);
+            if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("ARC-DNA Aufwach-Log", AlarmLog.json(this)));
+            android.widget.Toast.makeText(this, "Aufwach-Log kopiert – einfach Claude schicken.", android.widget.Toast.LENGTH_SHORT).show();
+        });
+        lh.addView(copy);
+        col.addView(lh, margins(-1, -2, dp(30)));
+        wakeLog = new LinearLayout(this);
+        wakeLog.setOrientation(LinearLayout.VERTICAL);
+        col.addView(wakeLog, margins(-1, -2, dp(10)));
+
         rootView = new FrameLayout(this);
         rootView.addView(sv, new FrameLayout.LayoutParams(-1, -1));
         MoodActivity.statusScrim(rootView, bg);
@@ -152,6 +171,99 @@ public class WeckerActivity extends Activity {
         paint();
     }
 
+    private LinearLayout wakeLog;
+
+    /** Averages, a bar per wake-up (time until awake, snoozes in amber) and the latest entries. */
+    private void paintWakeLog() {
+        wakeLog.removeAllViews();
+        List<AlarmLog.Entry> all = AlarmLog.entries(this);
+        if (all.isEmpty()) {
+            TextView none = text(15, ink3, false);
+            none.setText("Noch keine Daten. Ab dem nächsten Bären steht hier, wie lange er klingelt, wie oft du snoozt und wann du wirklich wach bist.");
+            wakeLog.addView(none);
+            return;
+        }
+        long sumWake = 0, sumLast = 0;
+        int sumSnooze = 0, n = 0, boosted = 0;
+        for (AlarmLog.Entry e : all) {
+            if (!"wach".equals(e.outcome)) continue;
+            n++;
+            sumWake += e.wakeMs;
+            sumLast += e.lastRingMs;
+            sumSnooze += e.snoozes;
+            if (e.boosted) boosted++;
+        }
+        LinearLayout stats = new LinearLayout(this);
+        stats.setPadding(dp(16), dp(14), dp(16), dp(14));
+        stats.setBackground(box(card, line, 18));
+        String[][] cells = {
+            {n == 0 ? "–" : AlarmLog.dur(sumWake / n), "Ø BIS WACH"},
+            {n == 0 ? "–" : AlarmLog.dur(sumLast / n), "Ø LETZTES KLINGELN"},
+            {n == 0 ? "–" : String.format(Locale.GERMAN, "%.1f", sumSnooze / (float) n), "Ø SNOOZES"},
+            {boosted + "/" + n, "LAUT NÖTIG"}};
+        for (String[] c : cells) {
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            TextView v = text(20, ink, true);
+            v.setText(c[0]);
+            cell.addView(v);
+            TextView k = mono(9, ink3);
+            k.setText(c[1]);
+            cell.addView(k);
+            stats.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
+        wakeLog.addView(stats);
+
+        // Bars: the last 21 wake-ups, height = time until awake.
+        List<AlarmLog.Entry> recent = all.subList(Math.max(0, all.size() - 21), all.size());
+        android.view.View bars = new android.view.View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override protected void onDraw(android.graphics.Canvas c) {
+                float w = getWidth(), h = getHeight() - dp(16);
+                long max = 60_000;
+                for (AlarmLog.Entry e : recent) max = Math.max(max, e.wakeMs);
+                float bw = w / 21f;
+                p.setTextSize(dp(9));
+                p.setTypeface(android.graphics.Typeface.MONOSPACE);
+                for (int i = 0; i < recent.size(); i++) {
+                    AlarmLog.Entry e = recent.get(i);
+                    float x = i * bw + bw * 0.18f, bh = Math.max(dp(3), h * e.wakeMs / (float) max);
+                    float ringH = h * e.lastRingMs / (float) max;
+                    p.setColor(e.snoozes > 0 ? 0xFFE8B931 : rust);
+                    if (!"wach".equals(e.outcome)) p.setColor(ink3);
+                    c.drawRoundRect(x, h - bh, x + bw * 0.64f, h, dp(3), dp(3), p);
+                    p.setColor(0x55000000);
+                    c.drawRect(x, h - Math.min(bh, ringH), x + bw * 0.64f, h, p);   // the last ring, darker
+                }
+                p.setColor(ink3);
+                c.drawText("MAX " + AlarmLog.dur(max), 0, getHeight() - dp(2), p);
+                p.setTextAlign(android.graphics.Paint.Align.RIGHT);
+                c.drawText("ROT OHNE · GELB MIT SNOOZE", w, getHeight() - dp(2), p);
+                p.setTextAlign(android.graphics.Paint.Align.LEFT);
+            }
+        };
+        wakeLog.addView(bars, margins(-1, dp(110), dp(12)));
+
+        SimpleDateFormat f = new SimpleDateFormat("EE d.M. · HH:mm", Locale.GERMAN);
+        for (int i = all.size() - 1; i >= Math.max(0, all.size() - 8); i--) {
+            AlarmLog.Entry e = all.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(dp(14), dp(10), dp(14), dp(10));
+            row.setBackground(box(card, line, 14));
+            TextView top = text(15, ink, true);
+            top.setText(f.format(new Date(e.at)) + (e.label == null || e.label.isEmpty() ? " · Täglich" : " · " + e.label));
+            row.addView(top);
+            TextView sub = mono(10, "wach".equals(e.outcome) ? rust : ink3);
+            sub.setText(("wach".equals(e.outcome) ? "WACH NACH " + AlarmLog.dur(e.wakeMs) : "ABGEBROCHEN")
+                + " · KLINGELTE " + AlarmLog.dur(e.ringMs) + " · " + e.snoozes + " SNOOZE"
+                + (e.roared ? " · WÜTEND" : "") + (e.boosted ? " · LAUT" : ""));
+            row.addView(sub);
+            wakeLog.addView(row, margins(-1, -2, dp(8)));
+        }
+    }
+
     private void paint() {
         boolean on = prefs.getBoolean("alarmOn", false);
         int m = prefs.getInt("alarmMinutes", 7 * 60);
@@ -159,6 +271,7 @@ public class WeckerActivity extends Activity {
         daily.setTextColor(on ? ink : ink3);
         dailyState.setText(on ? "TÄGLICH · DER BÄR KOMMT AUS DER HÖHLE" : "TÄGLICH · AUS · TIPPEN ZUM STELLEN");
         dailyState.setTextColor(on ? rust : ink3);
+        paintWakeLog();
         list.removeAllViews();
         List<AlarmScheduler.Deadline> ds = AlarmScheduler.deadlines(this);
         SimpleDateFormat f = new SimpleDateFormat("EEE d. MMM · HH:mm", Locale.GERMAN);
