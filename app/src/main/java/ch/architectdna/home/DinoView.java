@@ -102,19 +102,69 @@ final class DinoView extends View {
 
     /* ================= Weapons from the bone shop ================= */
 
-    private static final int FIST = 0, STONE = 1, FLAME = 2, SABER = 3, SPELL = 4;
-    private static final String[] W_NAME = {"FAUST", "STEINE", "FLAMMEN", "LASER", "SPRUCH"};
-    private static final String[] W_ICON = {"👊", "🪨", "🔥", "⚔️", "📜"};
-    /** Bones: once for a weapon, every time for the spell (it crumbles the dino at once). */
-    private static final int[] W_COST = {0, 15, 40, 70, 60};
-    private int weapon = FIST, bonesWon;
+    private static final int FIST = 0, STONE = 1, FLAME = 2, SABER = 3, SPELL = 4, HAMMER = 5, BANANA = 6, SNOW = 7,
+        BOOMERANG = 8, WATER = 9, BOW = 10, ICE = 11, KATANA = 12, GUITAR = 13, BOLT = 14, ROCKET = 15, CONFETTI = 16,
+        LASER2 = 17, HOURGLASS = 18, SHIELD = 19, METEOR = 20, TORNADO = 21, TURBO = 22, MAGNET = 23, CLOVER = 24;
+    /** How an item works: tap the dino, throw at a spot, hold a stream, swipe, tap anywhere, use once, always on. */
+    private static final int K_TAP = 0, K_THROW = 1, K_STREAM = 2, K_SWIPE = 3, K_WAVE = 4, K_BOLT = 5, K_CAST = 6, K_PASSIVE = 7;
+    private static final String[] W_NAME = {"FAUST", "STEINE", "FLAMMEN", "LASER", "SPRUCH", "HAMMER", "BANANE", "SCHNEEBALL",
+        "BUMERANG", "WASSERBOMBE", "BOGEN", "EISSTRAHL", "KATANA", "GITARRE", "BLITZ", "RAKETE", "KONFETTI", "LASER MK II",
+        "SANDUHR", "SCHILD", "METEOR", "TORNADO", "ROBO-TURBO", "MAGNET", "GLÜCKSKLEE"};
+    private static final String[] W_ICON = {"👊", "🪨", "🔥", "⚔️", "📜", "🔨", "🍌", "❄️", "🪃", "💧", "🏹", "🧊", "🗡️", "🎸", "⚡",
+        "🚀", "🎉", "💜", "⏳", "🛡️", "☄️", "🌪️", "🤖", "🧲", "🍀"};
+    /** Bones: once for a weapon or a perk, every time for the one-shot items (scrolls, meteor …). */
+    private static final int[] W_COST = {0, 15, 40, 70, 60, 25, 25, 30, 35, 45, 50, 55, 60, 70, 80, 90, 20, 150, 35, 25, 70, 45,
+        100, 120, 80};
+    private static final int[] W_KIND = {K_TAP, K_THROW, K_STREAM, K_SWIPE, K_CAST, K_TAP, K_THROW, K_THROW, K_THROW, K_THROW,
+        K_THROW, K_STREAM, K_SWIPE, K_WAVE, K_BOLT, K_THROW, K_STREAM, K_SWIPE, K_CAST, K_CAST, K_CAST, K_CAST, K_PASSIVE, K_PASSIVE,
+        K_PASSIVE};
+    private static final String[] W_DESC = {
+        "Antippen = Tritt. Immer dabei.",
+        "Werfen: tipp, wo er landen soll.",
+        "Halten: Feuerstrahl, 4,5 s Treibstoff pro Kampf.",
+        "Durchwischen: Lichtschwert-Schnitt.",
+        "Einmal pro Kauf: der Dino zerbröselt sofort.",
+        "Antippen: doppelter Schaden, wirft ihn um.",
+        "Werfen: er rutscht aus – 1,5 s k.o.",
+        "Werfen: friert ihn 2,5 s langsam.",
+        "Werfen: trifft hin und zurück – zweimal.",
+        "Werfen: platscht breit, trifft auch knapp daneben.",
+        "Pfeil: schnell und gerade, kein Bogen.",
+        "Halten: Eisstrahl, bremst ihn ab.",
+        "Wischen: schneller als der Laser.",
+        "Tippen irgendwo: Schallwelle trifft immer.",
+        "Tippen: Blitz von oben, starker Treffer.",
+        "Werfen: langsam, aber BUMM – riesige Explosion.",
+        "Halten: Regenbogen-Konfetti. Wenig Schaden, viel Party.",
+        "Wischen: der Traum-Laser. Breit, lila, brutal.",
+        "Einmal: die Zeit steht 4 s – er bewegt sich nicht.",
+        "Einmal: +6 Sekunden Kampfzeit.",
+        "Einmal: ein Meteor – 40 % seiner Energie weg.",
+        "Einmal: Tornado wirbelt ihn 3 s herum.",
+        "Immer aktiv: der Roboter zappt 3× so stark.",
+        "Immer aktiv: +50 % Knochen pro Sieg.",
+        "Immer aktiv: 15 % Chance auf kritische Treffer (×2)."};
+    private static final int SHOP_SLOT = 4;
+    private int weapon = FIST, bonesWon, editSlot = 3;
     private final RectF[] slots = {new RectF(), new RectF(), new RectF(), new RectF(), new RectF()};
-    private float fuel, fingerX, fingerY, lastSlash = -9, crumbleAt = -1, shopMsgAt = -9;
+    private final float[] fuels = new float[W_NAME.length];
+    private float fingerX, fingerY, lastSlash = -9, crumbleAt = -1, shopMsgAt = -9, lastWave = -9, lastBolt = -9;
+    private float dclock, stunUntil = -1, slowUntil = -1, freezeUntil = -1, meteorAt = -1, tornadoUntil = -1, critAt = -9, critX, critY;
     private String shopMsg = "";
-    private boolean flaming;
-    private final List<float[]> stones = new ArrayList<>();     // from x, y, to x, y, thrown at
+    private boolean flaming, shopOpen;
+    private long shopAt;
+    private final RectF[] shopCells = new RectF[W_NAME.length];
+    private final RectF[] beltCells = {new RectF(), new RectF(), new RectF(), new RectF()};
+    private final RectF shopClose = new RectF();
+    private final List<float[]> stones = new ArrayList<>();     // from x, y, to x, y, thrown at, item
+    private final List<float[]> waves = new ArrayList<>();      // x, y, time
+    private final List<float[]> bolts = new ArrayList<>();      // x, y, time
     private final List<float[]> trail = new ArrayList<>();      // x, y, time
     private final RectF crumbleRect = new RectF();
+
+    {
+        for (int i = 0; i < shopCells.length; i++) shopCells[i] = new RectF();
+    }
 
     private android.content.SharedPreferences store() {
         return getContext().getSharedPreferences("home", Context.MODE_PRIVATE);
@@ -128,24 +178,43 @@ final class DinoView extends View {
         return w == FIST || store().getBoolean("dinoWeapon" + w, false);
     }
 
+    /** The four items on the belt (the bar in the fight); the fifth slot opens the shop. */
+    private int[] belt() {
+        int[] b = {FIST, STONE, FLAME, SABER};
+        String[] parts = store().getString("dinoBelt", "").split(",");
+        for (int i = 0; i < 4 && i < parts.length; i++) {
+            try {
+                int v = Integer.parseInt(parts[i].trim());
+                if (v >= 0 && v < W_NAME.length && W_KIND[v] != K_PASSIVE) b[i] = v;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return b;
+    }
+
+    private void setBelt(int slot, int item) {
+        int[] b = belt();
+        for (int i = 0; i < 4; i++) if (b[i] == item) b[i] = b[slot];      // swap if it's already on
+        b[slot] = item;
+        store().edit().putString("dinoBelt", b[0] + "," + b[1] + "," + b[2] + "," + b[3]).apply();
+    }
+
     private void shopSay(String m, float ft) {
         shopMsg = m;
         shopMsgAt = ft;
     }
 
-    /** A slot in the weapon bar was tapped: pick, buy, or cast the spell. */
+    /** A belt slot was tapped: pick, buy, or use a one-shot item. */
     private void pickWeapon(int i, float ft) {
         int have = bones();
-        if (i == SPELL) {
+        if (W_KIND[i] == K_CAST) {
             if (crumbleAt >= 0) return;
-            if (have < W_COST[SPELL]) {
-                shopSay("Spruch kostet " + W_COST[SPELL] + " 🦴 – du hast " + have + ".", ft);
+            if (have < W_COST[i]) {
+                shopSay(W_NAME[i] + " kostet " + W_COST[i] + " 🦴 – du hast " + have + ".", ft);
                 return;
             }
-            store().edit().putInt("dinoBones", have - W_COST[SPELL]).apply();
-            crumbleAt = ft;
-            crumbleRect.set(dinoRect);
-            host.chomp();
+            store().edit().putInt("dinoBones", have - W_COST[i]).apply();
+            cast(i, ft);
             return;
         }
         if (owns(i)) {
@@ -153,14 +222,42 @@ final class DinoView extends View {
             store().edit().putInt("dinoWeaponSel", i).apply();
             return;
         }
+        if (!buy(i, ft)) return;
+        weapon = i;
+        store().edit().putInt("dinoWeaponSel", i).apply();
+    }
+
+    /** Pay for a weapon or perk; false (with a word why) when the bones don't reach. */
+    private boolean buy(int i, float ft) {
+        int have = bones();
         if (have < W_COST[i]) {
             shopSay(W_NAME[i] + ": noch " + (W_COST[i] - have) + " 🦴 sammeln.", ft);
-            return;
+            return false;
         }
-        store().edit().putInt("dinoBones", have - W_COST[i]).putBoolean("dinoWeapon" + i, true).putInt("dinoWeaponSel", i).apply();
-        weapon = i;
+        store().edit().putInt("dinoBones", have - W_COST[i]).putBoolean("dinoWeapon" + i, true).apply();
         shopSay("Gekauft: " + W_NAME[i] + "!", ft);
         host.chomp();
+        return true;
+    }
+
+    /** One-shot items. */
+    private void cast(int i, float ft) {
+        if (i == SPELL) {
+            crumbleAt = ft;
+            crumbleRect.set(dinoRect);
+            host.chomp();
+        } else if (i == HOURGLASS) {
+            freezeUntil = ft + 4;
+            shopSay("⏳ Die Zeit steht still!", ft);
+        } else if (i == SHIELD) {
+            timeLimit += 6;
+            shopSay("🛡️ +6 Sekunden!", ft);
+        } else if (i == METEOR) {
+            meteorAt = ft;
+        } else if (i == TORNADO) {
+            tornadoUntil = ft + 3;
+            host.stomp();
+        }
     }
 
     /** A hit with dmg (tap = 1); false when it bounced off the triceratops' horns. */
@@ -168,6 +265,12 @@ final class DinoView extends View {
         if (charging) {
             if (pop) pops.add(new float[]{x, y, ft, 0});
             return false;
+        }
+        if (owns(CLOVER) && rnd.nextFloat() < 0.15f && dmg >= 1) {
+            dmg *= 2;
+            critAt = lastFt;
+            critX = x;
+            critY = y;
         }
         hp = Math.max(0, hp - dmg * (type == STEGO ? 0.5f : 1));     // stego plates: half damage
         knock = (x < dinoRect.centerX() ? 1 : -1) * dp(8);
@@ -183,9 +286,14 @@ final class DinoView extends View {
         fightAt = SystemClock.uptimeMillis();
         bringToFront();          // the weapon bar over everything (the bunny button covered FAUST)
         int sel = store().getInt("dinoWeaponSel", FIST);
-        weapon = owns(sel) && sel != SPELL ? sel : FIST;
-        fuel = 4.5f;
+        weapon = owns(sel) && W_KIND[sel] != K_CAST && W_KIND[sel] != K_PASSIVE ? sel : FIST;
+        java.util.Arrays.fill(fuels, 4.5f);
         flaming = false;
+        shopOpen = false;
+        dclock = 0;
+        stunUntil = slowUntil = freezeUntil = meteorAt = tornadoUntil = -1;
+        waves.clear();
+        bolts.clear();
         stones.clear();
         trail.clear();
         crumbleAt = -1;
@@ -210,12 +318,14 @@ final class DinoView extends View {
     private boolean fightTouch(android.view.MotionEvent e) {
         int a = e.getActionMasked();
         float x = e.getX(), y = e.getY(), w = getWidth(), h = getHeight();
+        if (fstate == FIGHT && shopOpen) return shopTouch(e);
         if (fstate == FIGHT) {
             float ft = (SystemClock.uptimeMillis() - fightAt) / 1000f;
             if (a == android.view.MotionEvent.ACTION_DOWN) {
                 for (int i = 0; i < slots.length; i++) {
                     if (slots[i].contains(x, y)) {
-                        pickWeapon(i, ft);
+                        if (i == SHOP_SLOT) openShop();
+                        else pickWeapon(belt()[i], ft);
                         return true;
                     }
                 }
@@ -223,26 +333,42 @@ final class DinoView extends View {
             if (crumbleAt >= 0) return true;
             boolean down = a == android.view.MotionEvent.ACTION_DOWN, up = a == android.view.MotionEvent.ACTION_UP
                 || a == android.view.MotionEvent.ACTION_CANCEL;
-            if (weapon == FIST && down) {
-                // Every kick knocks it down a bit, it springs back up.
-                if (dinoRect.contains(x, y)) damage(1, x, y, ft, true);
-                else pops.add(new float[]{x, y, ft, 0});
-            } else if (weapon == STONE && down) {
-                stones.add(new float[]{w / 2f, h - dp(120), x, y, ft});
-            } else if (weapon == FLAME) {
+            int kind = W_KIND[weapon];
+            if (kind == K_TAP && down) {
+                // Every kick knocks it down a bit, it springs back up; the hammer hits twice as hard.
+                if (dinoRect.contains(x, y)) {
+                    damage(weapon == HAMMER ? 2 : 1, x, y, ft, true);
+                    if (weapon == HAMMER) knockY = Math.max(knockY, dp(70));
+                } else pops.add(new float[]{x, y, ft, 0});
+            } else if (kind == K_THROW && down) {
+                stones.add(new float[]{w / 2f, h - dp(120), x, y, ft, weapon});
+            } else if (kind == K_STREAM) {
                 flaming = !up;
                 fingerX = x;
                 fingerY = y;
-            } else if (weapon == SABER) {
+            } else if (kind == K_SWIPE) {
                 if (down) trail.clear();
                 if (!up) {
                     trail.add(new float[]{x, y, ft});
-                    // A swipe through the dino slashes (at most every 0.22 s).
-                    if (!down && dinoRect.contains(x, y) && ft - lastSlash > 0.22f && trail.size() > 2) {
+                    float cool = weapon == KATANA ? 0.1f : weapon == LASER2 ? 0.18f : 0.22f;
+                    float dmg = weapon == KATANA ? 2.2f : weapon == LASER2 ? 5 : 3;
+                    RectF hit = new RectF(dinoRect);
+                    if (weapon == LASER2) hit.inset(-dp(18), -dp(18));
+                    if (!down && hit.contains(x, y) && ft - lastSlash > cool && trail.size() > 2) {
                         lastSlash = ft;
-                        damage(3, x, y, ft, true);
+                        damage(dmg, x, y, ft, true);
                     }
                 }
+            } else if (kind == K_WAVE && down && ft - lastWave > 0.35f) {
+                lastWave = ft;
+                waves.add(new float[]{x, y, ft, 0});
+            } else if (kind == K_BOLT && down && ft - lastBolt > 0.7f) {
+                lastBolt = ft;
+                bolts.add(new float[]{x, y, ft});
+                RectF hit = new RectF(dinoRect);
+                hit.inset(-dp(30), -dp(30));
+                if (hit.contains(x, y)) damage(4, x, y, ft, true);
+                host.stomp();
             }
             return true;
         }
@@ -288,6 +414,7 @@ final class DinoView extends View {
     }
 
     private void drawFight(Canvas c, long now, float w, float h, float ground, float k, float mid) {
+        if (shopOpen) now = shopAt;                       // the fight waits while you shop
         float ft = (now - fightAt) / 1000f, dt = Math.max(0, Math.min(0.05f, ft - lastFt));
         lastFt = ft;
         knock *= 0.8f;
@@ -295,8 +422,11 @@ final class DinoView extends View {
         ground = h * 0.62f;             // the whole fight plays mid-screen
         if (fstate == FIGHT) {
             // The fight happens mid-screen: up where you can reach it; higher levels also hop up and down.
-            float hop = h * 0.12f * Math.min(1, level / 50f) * (float) Math.sin(ft * (0.5f + level * 0.01f) * Math.PI * 2 + 1);
-            if (type == PTERO) hop += h * 0.16f * (float) Math.sin(ft * 1.4f) - h * 0.08f;   // flies up and down
+            // The dino's own clock: stops when stunned, frozen or caught in the tornado, crawls when iced.
+            boolean held = ft < stunUntil || ft < freezeUntil || ft < tornadoUntil;
+            dclock += dt * (held ? 0 : ft < slowUntil ? 0.35f : 1);
+            float hop = h * 0.12f * Math.min(1, level / 50f) * (float) Math.sin(dclock * (0.5f + level * 0.01f) * Math.PI * 2 + 1);
+            if (type == PTERO) hop += h * 0.16f * (float) Math.sin(dclock * 1.4f) - h * 0.08f;   // flies up and down
             ground += hop + knockY;
             // The dino dodges more and faster the higher its level; above 30 it heals a little.
             float amp = w * 0.32f * Math.min(1, level / 40f), freq = 0.35f + level * 0.012f;
@@ -310,16 +440,20 @@ final class DinoView extends View {
                 freq *= 0.8f;
             }
             if (rage) freq *= 1.5f;
-            float fx = mid + amp * (float) Math.sin(ft * freq * Math.PI * 2) + knock;
+            float fx = mid + amp * (float) Math.sin(dclock * freq * Math.PI * 2) + knock;
             // Triceratops: every 3.5 s it charges across the screen, horns first; taps bounce off.
-            float cp = ft % 3.5f;
-            charging = type == TRIKE && ft > 1.5f && cp < 0.7f;
-            if (charging) fx += (float) Math.sin(cp / 0.7f * Math.PI) * w * 0.3f * (((int) (ft / 3.5f)) % 2 == 0 ? 1 : -1);
-            boolean right = Math.cos(ft * freq * Math.PI * 2) > 0 && amp > 0;
-            if (level > 30) hp = Math.min(maxHp, hp + (level - 30) * 0.012f * dt);
+            float cp = dclock % 3.5f;
+            charging = type == TRIKE && dclock > 1.5f && cp < 0.7f && !held;
+            if (charging) fx += (float) Math.sin(cp / 0.7f * Math.PI) * w * 0.3f * (((int) (dclock / 3.5f)) % 2 == 0 ? 1 : -1);
+            boolean right = Math.cos(dclock * freq * Math.PI * 2) > 0 && amp > 0;
+            if (ft < tornadoUntil) {
+                damage(maxHp * 0.25f / 3f * dt, fx, ground - 50 * k, ft, false);
+                fx += (float) Math.sin(ft * 14) * dp(14);
+            }
+            if (level > 30 && ft >= freezeUntil) hp = Math.min(maxHp, hp + (level - 30) * 0.012f * dt);
             if (ft - lastZap > 1.3f && ft > 1) {
                 lastZap = ft;
-                hp = Math.max(0, hp - 0.35f);           // the robot helps a bit
+                hp = Math.max(0, hp - (owns(TURBO) ? 1.05f : 0.35f));     // the robot helps a bit (turbo: 3×)
             }
             hurt = hp / maxHp > 0.8f ? 0 : hp / maxHp > 0.6f ? 1 : hp / maxHp > 0.4f ? 2 : hp / maxHp > 0.2f ? 3 : 4;
             float cd = crumbleAt < 0 ? -1 : ft - crumbleAt;
@@ -327,7 +461,8 @@ final class DinoView extends View {
                 c.save();
                 if (hurt >= 4) c.rotate(6 * (float) Math.sin(ft * 5), fx, ground);
                 if (cd >= 0) c.translate((rnd.nextFloat() - 0.5f) * dp(10) * cd, (rnd.nextFloat() - 0.5f) * dp(6) * cd);
-                drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, ft, amp > 0, !right);
+                if (ft < tornadoUntil) c.rotate(25 * (float) Math.sin(ft * 9), fx, ground - 50 * k);
+                drawSide(c, fx, ground, k, Math.abs(knock) > dp(2) ? 0.7f : 0.15f, held ? dclock : ft, amp > 0 && !held, !right);
                 c.restore();
                 if (cd >= 0) cracks(c, crumbleRect, cd / 0.9f);
                 else if (hurt >= 4) smoke(c, fx, ground, k, ft);
@@ -345,7 +480,12 @@ final class DinoView extends View {
             drawPops(c, ft);
             weaponBar(c, w, h, ft);
             hud(c, w, TYPE_NAME[type] + " · LV " + level + " · " + bones() + " 🦴", hp / maxHp, Math.max(0, timeLimit - ft), rust);
-            if (ft - shopMsgAt < 2f) bubble(c, shopMsg, w / 2, slots[0].top - dp(6), false, false);
+            if (ft - shopMsgAt < 2f && !shopOpen) bubble(c, shopMsg, w / 2, slots[0].top - dp(6), false, false);
+            if (ft < freezeUntil) bubble(c, "⏳ " + (int) Math.ceil(freezeUntil - ft), fx, ground - 110 * k, true, false);
+            else if (ft < stunUntil) bubble(c, "🍌 RUTSCH!", fx, ground - 110 * k, true, false);
+            else if (ft < slowUntil) bubble(c, "❄️ BRRR", fx, ground - 110 * k, false, false);
+            if (ft - critAt < 0.6f) bubble(c, "KRIT! ×2", critX, critY - dp(30), true, false);
+            if (shopOpen) drawShop(c, w, h);
             if (ft < 3f) bubble(c, TYPE_TIP[type], rx, ry - dp(30), false, false);
             else if (charging) bubble(c, "BLOCK!", fx, ground - 110 * k, true, false);
             else if (rage && ft % 2 < 0.8f) bubble(c, "WUT!", fx, ground - 110 * k, true, false);
@@ -353,7 +493,7 @@ final class DinoView extends View {
                 fstate = KO;
                 phaseAt = ft;
                 flaming = false;
-                bonesWon = 6 + level / 2;
+                bonesWon = (6 + level / 2) * (owns(MAGNET) ? 3 : 2) / 2;
                 store().edit().putInt("dinoBones", bones() + bonesWon).apply();
                 host.levelUp();
                 host.chomp();
@@ -498,58 +638,90 @@ final class DinoView extends View {
         c.drawRoundRect(r, dp(5), dp(5), p);
     }
 
-    /** Stones in flight, the flame stream, the laser trail. */
+    /** Throws in flight, the streams, swipe trails, sound waves, bolts, meteor and tornado. */
     private void weaponsFx(Canvas c, float w, float h, float ft, float dt) {
         float ox = w / 2f, oy = h - dp(120);
-        // Stones: an arc from the bottom to where you tapped; a hit if the dino is still there.
+        // Throws: an arc (or a straight shot) from the bottom to where you tapped; a hit if the dino is still there.
         for (int i = stones.size() - 1; i >= 0; i--) {
             float[] st = stones.get(i);
-            float f = (ft - st[4]) / 0.38f;
-            if (f >= 1) {
-                stones.remove(i);
-                if (crumbleAt < 0 && dinoRect.contains(st[2], st[3])) damage(2.5f, st[2], st[3], ft, true);
-                else pops.add(new float[]{st[2], st[3], ft, 0});
+            int item = (int) st[5];
+            float dur = item == BOW ? 0.18f : item == ROCKET ? 0.7f : item == BOOMERANG ? 0.45f : item == WATER ? 0.45f : 0.38f;
+            float f = (ft - st[4]) / dur;
+            if (item == BOOMERANG && f >= 1 && f < 2.6f) {
+                // Circles round the target, hits again on the turn, flies home.
+                if (st.length < 7) {
+                    st = new float[]{st[0], st[1], st[2], st[3], st[4], st[5], 0};
+                    stones.set(i, st);
+                }
+                if (st[6] == 0) {
+                    st[6] = 1;
+                    hitAt(item, st[2], st[3], ft);
+                } else if (st[6] == 1 && f > 1.7f) {
+                    st[6] = 2;
+                    hitAt(item, st[2], st[3], ft);
+                }
+                float back = Math.max(0, (f - 1.8f) / 0.8f), ang = (f - 1) * 9;
+                float bx = st[2] + (float) Math.cos(ang) * dp(26) * (1 - back), by = st[3] + (float) Math.sin(ang) * dp(18) * (1 - back);
+                bx += (st[0] - bx) * back;
+                by += (st[1] - by) * back;
+                drawThrown(c, item, bx, by, ft, 0);
                 continue;
             }
-            float sx = st[0] + (st[2] - st[0]) * f, sy = st[1] + (st[3] - st[1]) * f - (float) Math.sin(f * Math.PI) * dp(90);
-            p.setStyle(Paint.Style.FILL);
-            p.setColor(0xFF7A7570);
-            c.drawCircle(sx, sy, dp(8 - 3 * f), p);
-            p.setColor(0xFFA8A29C);
-            c.drawCircle(sx - dp(2), sy - dp(2), dp(3 - f), p);
+            if (f >= 1) {
+                stones.remove(i);
+                if (item != BOOMERANG) hitAt(item, st[2], st[3], ft);
+                continue;
+            }
+            float lift = item == BOW || item == ROCKET ? 0 : (float) Math.sin(f * Math.PI) * dp(90);
+            float sx = st[0] + (st[2] - st[0]) * f, sy = st[1] + (st[3] - st[1]) * f - lift;
+            if (item == ROCKET) sx += (float) Math.sin(f * 20) * dp(4);
+            drawThrown(c, item, sx, sy, ft, f);
         }
-        // Flames: while the finger is down, a stream from the bottom to it; burns what it touches.
-        if (weapon == FLAME && flaming && crumbleAt < 0) {
-            if (fuel > 0) {
-                fuel = Math.max(0, fuel - dt);
+        // Streams: while the finger is down, from the bottom to it; each weapon its own fuel.
+        int kind = W_KIND[weapon];
+        if (kind == K_STREAM && flaming && crumbleAt < 0) {
+            if (fuels[weapon] > 0) {
+                fuels[weapon] = Math.max(0, fuels[weapon] - dt);
                 p.setStyle(Paint.Style.FILL);
+                int[] confetti = {0xFFFF4FA0, 0xFFFFD60A, 0xFF3C8DFF, 0xFF2BBF6A, 0xFFA77BFF, 0xFFFF7A2B};
                 for (int i = 0; i < 26; i++) {
                     float f = (i + rnd.nextFloat()) / 26f;
                     float x = ox + (fingerX - ox) * f + (rnd.nextFloat() - 0.5f) * dp(18) * f;
                     float y = oy + (fingerY - oy) * f + (rnd.nextFloat() - 0.5f) * dp(18) * f;
-                    p.setColor(f < 0.35f ? 0xFFFFF27A : f < 0.7f ? 0xFFFFA62B : 0xFFE5482C);
+                    if (weapon == CONFETTI) {
+                        p.setColor(confetti[rnd.nextInt(confetti.length)]);
+                        c.drawRect(x - dp(4), y - dp(3), x + dp(4), y + dp(3), p);
+                        continue;
+                    }
+                    if (weapon == ICE) p.setColor(f < 0.35f ? 0xFFFFFFFF : f < 0.7f ? 0xFFBFE9FF : 0xFF6FC3F2);
+                    else p.setColor(f < 0.35f ? 0xFFFFF27A : f < 0.7f ? 0xFFFFA62B : 0xFFE5482C);
                     p.setAlpha((int) (230 * (1 - f * 0.4f)));
                     c.drawCircle(x, y, dp(5 + 13 * f), p);
                 }
                 p.setAlpha(255);
                 if (dinoRect.contains(fingerX, fingerY)) {
-                    if (damage(5.5f * dt, fingerX, fingerY, ft, false)) {
+                    float dps = weapon == ICE ? 3.5f : weapon == CONFETTI ? 2f : 5.5f;
+                    if (damage(dps * dt, fingerX, fingerY, ft, false)) {
                         knockY = Math.max(knockY, dp(8));
+                        if (weapon == ICE) slowUntil = Math.max(slowUntil, ft + 0.6f);
                         if (rnd.nextFloat() < dt * 6) pops.add(new float[]{fingerX, fingerY - dp(20), ft, 1});
                     }
                 }
             } else if (ft - shopMsgAt > 2f) {
-                shopSay("Flammenwerfer leer – nächster Kampf wieder voll.", ft);
+                shopSay(W_NAME[weapon] + " leer – nächster Kampf wieder voll.", ft);
             }
         }
-        // Laser: a glowing trail of the last 0.2 s of your swipe.
+        // Swipes: a glowing trail of the last 0.2 s.
         for (int i = trail.size() - 1; i >= 0; i--) if (ft - trail.get(i)[2] > 0.2f) trail.remove(i);
         if (trail.size() > 1) {
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
+            int glow = weapon == KATANA ? 0x55FFFFFF : weapon == LASER2 ? 0x77B04BFF : 0x5533E0FF;
+            int core = weapon == KATANA ? 0xFFD8D8D8 : weapon == LASER2 ? 0xFFF3E6FF : 0xFFE9FDFF;
+            float wide = weapon == LASER2 ? 2f : weapon == KATANA ? 0.6f : 1f;
             for (int pass = 0; pass < 2; pass++) {
-                p.setColor(pass == 0 ? 0x5533E0FF : 0xFFE9FDFF);
-                p.setStrokeWidth(dp(pass == 0 ? 14 : 4));
+                p.setColor(pass == 0 ? glow : core);
+                p.setStrokeWidth(dp(pass == 0 ? 14 * wide : 4 * Math.max(1, wide * 0.8f)));
                 path.reset();
                 for (int i = 0; i < trail.size(); i++) {
                     float[] q = trail.get(i);
@@ -559,48 +731,393 @@ final class DinoView extends View {
                 c.drawPath(path, p);
             }
         }
+        // Guitar: rings from the tap; the first one reaching the dino hits, wherever you tapped.
+        p.setStyle(Paint.Style.STROKE);
+        for (int i = waves.size() - 1; i >= 0; i--) {
+            float[] q = waves.get(i);
+            float age = ft - q[2];
+            if (age > 0.7f) {
+                waves.remove(i);
+                continue;
+            }
+            if (q[3] == 0 && age > 0.15f) {
+                q[3] = 1;
+                damage(1.2f, dinoRect.centerX(), dinoRect.centerY(), ft, true);
+            }
+            for (int ring = 0; ring < 3; ring++) {
+                float r = dp(30) + (age - ring * 0.08f) * Math.max(w, h) * 1.1f;
+                if (r < 0) continue;
+                p.setStrokeWidth(dp(3));
+                p.setColor(ring == 0 ? 0xFFFFD60A : ring == 1 ? 0xFFFF7A2B : rust);
+                p.setAlpha((int) (220 * (1 - age / 0.7f)));
+                c.drawCircle(q[0], q[1], r, p);
+            }
+            p.setAlpha(255);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextSize(dp(20));
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText("🎵", q[0] + age * dp(40), q[1] - age * dp(90), p);
+            p.setTextAlign(Paint.Align.LEFT);
+            p.setStyle(Paint.Style.STROKE);
+        }
+        // Lightning: a zigzag from the top of the screen down to the tap.
+        for (int i = bolts.size() - 1; i >= 0; i--) {
+            float[] q = bolts.get(i);
+            float age = ft - q[2];
+            if (age > 0.3f) {
+                bolts.remove(i);
+                continue;
+            }
+            java.util.Random br = new java.util.Random((long) (q[2] * 1000));
+            for (int pass = 0; pass < 2; pass++) {
+                p.setColor(pass == 0 ? 0x66FFF27A : 0xFFFFFFFF);
+                p.setStrokeWidth(dp(pass == 0 ? 12 : 3));
+                path.reset();
+                path.moveTo(q[0] + (br.nextFloat() - 0.5f) * dp(60), 0);
+                br.setSeed((long) (q[2] * 1000));
+                for (int sgm = 1; sgm <= 9; sgm++) {
+                    float f = sgm / 9f;
+                    path.lineTo(q[0] + (sgm == 9 ? 0 : (br.nextFloat() - 0.5f) * dp(46)), q[1] * f);
+                }
+                c.drawPath(path, p);
+            }
+            if (age < 0.08f) c.drawColor(0x33FFFFFF);
+        }
+        // Meteor: falls from the top right onto the dino, then a big hit.
+        if (meteorAt >= 0) {
+            float f = (ft - meteorAt) / 0.7f;
+            float tx = dinoRect.centerX(), ty = dinoRect.centerY();
+            if (f >= 1) {
+                meteorAt = -1;
+                damage(maxHp * 0.4f, tx, ty, ft, true);
+                knockY = Math.max(knockY, dp(80));
+                host.stomp();
+                for (int k = 0; k < 6; k++) pops.add(new float[]{tx + (rnd.nextFloat() - 0.5f) * dp(90), ty + (rnd.nextFloat() - 0.5f) * dp(60), ft, 1});
+            } else {
+                float mx = w + dp(40) + (tx - w - dp(40)) * f, my = -dp(40) + (ty + dp(40)) * f;
+                p.setStyle(Paint.Style.FILL);
+                for (int t = 0; t < 8; t++) {
+                    float b = t / 8f;
+                    p.setColor(t < 3 ? 0xFFFFF27A : t < 6 ? 0xFFFFA62B : 0xFFE5482C);
+                    p.setAlpha((int) (200 * (1 - b)));
+                    c.drawCircle(mx + b * dp(70), my - b * dp(60), dp(16) * (1 - b * 0.7f), p);
+                }
+                p.setAlpha(255);
+                p.setColor(0xFF5A4A40);
+                c.drawCircle(mx, my, dp(15), p);
+            }
+        }
+        // Tornado: grey funnel around the dino.
+        if (ft < tornadoUntil) {
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(3));
+            float tx = dinoRect.centerX(), base = dinoRect.bottom;
+            for (int ring = 0; ring < 9; ring++) {
+                float f = ring / 8f, rw = dp(30) + f * dinoRect.width() * 0.9f;
+                p.setColor(0xFF9A9A98);
+                p.setAlpha((int) (200 * (1 - f * 0.5f)));
+                float y = base - f * dinoRect.height() * 1.3f, sh = (float) Math.sin(ft * 12 + ring) * dp(10);
+                c.drawOval(tx - rw / 2 + sh, y - dp(7), tx + rw / 2 + sh, y + dp(7), p);
+            }
+            p.setAlpha(255);
+        }
     }
 
-    /** The weapon bar along the bottom: owned ones to pick, the rest with their price in bones. */
+    /** A throw lands at (x, y): what it does depends on the item. */
+    private void hitAt(int item, float x, float y, float ft) {
+        RectF hit = new RectF(dinoRect);
+        float splash = item == ROCKET ? dp(60) : item == WATER ? dp(40) : 0;
+        hit.inset(-splash, -splash);
+        if (item == ROCKET) {
+            host.stomp();
+            for (int k = 0; k < 5; k++) pops.add(new float[]{x + (rnd.nextFloat() - 0.5f) * dp(80), y + (rnd.nextFloat() - 0.5f) * dp(60), ft, 1});
+        }
+        if (crumbleAt >= 0 || !hit.contains(x, y)) {
+            pops.add(new float[]{x, y, ft, 0});
+            return;
+        }
+        float dmg = item == STONE ? 2.5f : item == BANANA ? 1 : item == SNOW ? 1.5f : item == BOOMERANG ? 2
+            : item == WATER ? 3 : item == BOW ? 3 : item == ROCKET ? 6 : 2;
+        if (damage(dmg, x, y, ft, true)) {
+            if (item == BANANA) stunUntil = ft + 1.5f;
+            if (item == SNOW) slowUntil = ft + 2.5f;
+            if (item == ROCKET) knockY = Math.max(knockY, dp(70));
+        }
+    }
+
+    /** One thrown thing in flight. */
+    private void drawThrown(Canvas c, int item, float x, float y, float ft, float f) {
+        p.setStyle(Paint.Style.FILL);
+        if (item == STONE) {
+            p.setColor(0xFF7A7570);
+            c.drawCircle(x, y, dp(8 - 3 * f), p);
+            p.setColor(0xFFA8A29C);
+            c.drawCircle(x - dp(2), y - dp(2), dp(3 - f), p);
+            return;
+        }
+        if (item == SNOW) {
+            p.setColor(0xFFFFFFFF);
+            c.drawCircle(x, y, dp(9 - 3 * f), p);
+            p.setColor(0xFFBFE9FF);
+            c.drawCircle(x + dp(2), y + dp(2), dp(4 - f), p);
+            return;
+        }
+        if (item == WATER) {
+            p.setColor(0xFF3C8DFF);
+            c.drawCircle(x, y, dp(11 - 3 * f), p);
+            p.setColor(0xFFBFE0FF);
+            c.drawCircle(x - dp(3), y - dp(3), dp(3), p);
+            return;
+        }
+        if (item == BOW) {
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(3));
+            p.setColor(0xFF8A5A2B);
+            c.drawLine(x, y + dp(22), x, y - dp(4), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFB0B0B0);
+            path.reset();
+            path.moveTo(x, y - dp(12));
+            path.lineTo(x - dp(5), y - dp(2));
+            path.lineTo(x + dp(5), y - dp(2));
+            path.close();
+            c.drawPath(path, p);
+            return;
+        }
+        // Emoji items: banana, boomerang (spinning), rocket.
+        c.save();
+        c.rotate(item == BOOMERANG ? ft * 900 : item == BANANA ? ft * 400 : -45, x, y);
+        p.setTextSize(dp(item == ROCKET ? 30 : 24));
+        p.setTextAlign(Paint.Align.CENTER);
+        c.drawText(W_ICON[item], x, y + dp(8), p);
+        p.setTextAlign(Paint.Align.LEFT);
+        c.restore();
+        if (item == ROCKET) {
+            p.setColor(0xFFFFA62B);
+            for (int t = 1; t < 5; t++) {
+                p.setAlpha(200 - t * 40);
+                c.drawCircle(x, y + dp(10) + t * dp(8), dp(6 - t), p);
+            }
+            p.setAlpha(255);
+        }
+    }
+
+    /** The belt along the bottom: four items to pick (price if not yet bought) and the shop. */
     private void weaponBar(Canvas c, float w, float h, float ft) {
         float sw = Math.min((w - dp(32)) / 5f - dp(6), dp(82)), sh = dp(72);
         float total = sw * 5 + dp(6) * 4, left = (w - total) / 2, top = h - dp(36) - sh;
         int have = bones();
+        int[] b = belt();
         for (int i = 0; i < 5; i++) {
             RectF s = slots[i];
             s.set(left + i * (sw + dp(6)), top, left + i * (sw + dp(6)) + sw, top + sh);
-            boolean own = owns(i) && i != SPELL, sel = weapon == i && i != SPELL;
-            boolean afford = have >= W_COST[i];
+            boolean shop = i == SHOP_SLOT;
+            int it = shop ? -1 : b[i];
+            boolean cast = !shop && W_KIND[it] == K_CAST;
+            boolean own = !shop && owns(it) && !cast, sel = !shop && weapon == it && !cast;
+            boolean afford = shop || have >= W_COST[it];
             p.setStyle(Paint.Style.FILL);
-            p.setColor(sel ? 0xFFFFF4E8 : 0xF2FAFAF8);
+            p.setColor(shop ? 0xFF1A1A1A : sel ? 0xFFFFF4E8 : 0xF2FAFAF8);
             c.drawRoundRect(s, dp(14), dp(14), p);
             p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(dp(sel ? 3 : 1.5f));
-            p.setColor(sel ? rust : 0xFF1A1A1A);
+            p.setStrokeWidth(dp(sel || shop ? 3 : 1.5f));
+            p.setColor(sel || shop ? rust : 0xFF1A1A1A);
             c.drawRoundRect(s, dp(14), dp(14), p);
             p.setStyle(Paint.Style.FILL);
             p.setTextAlign(Paint.Align.CENTER);
             p.setTextSize(dp(24));
             p.setAlpha(own || afford ? 255 : 110);
-            c.drawText(W_ICON[i], s.centerX(), s.top + dp(32), p);
+            c.drawText(shop ? "🛒" : W_ICON[it], s.centerX(), s.top + dp(32), p);
             p.setAlpha(255);
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-            p.setTextSize(dp(10));
+            p.setTextSize(dp(9.5f));
             p.setLetterSpacing(0.04f);
-            String sub = own ? W_NAME[i] : W_COST[i] + " 🦴";
-            p.setColor(own ? 0xFF1A1A1A : afford ? rust : 0xFF9A9A98);
+            String sub = shop ? "SHOP" : own ? W_NAME[it] : W_COST[it] + " 🦴";
+            if (p.measureText(sub) > s.width() - dp(6)) sub = sub.substring(0, Math.min(sub.length(), 7)) + "…";
+            p.setColor(shop ? 0xFFFAFAF8 : own ? 0xFF1A1A1A : afford ? rust : 0xFF9A9A98);
             c.drawText(sub, s.centerX(), s.bottom - dp(14), p);
-            if (i == FLAME && own) {
+            if (own && W_KIND[it] == K_STREAM) {
                 // Fuel gauge.
                 float fw = s.width() - dp(20);
                 p.setColor(0xFFE0E0D8);
                 c.drawRect(s.left + dp(10), s.bottom - dp(8), s.left + dp(10) + fw, s.bottom - dp(5), p);
-                p.setColor(0xFFFFA62B);
-                c.drawRect(s.left + dp(10), s.bottom - dp(8), s.left + dp(10) + fw * fuel / 4.5f, s.bottom - dp(5), p);
+                p.setColor(it == ICE ? 0xFF6FC3F2 : it == CONFETTI ? 0xFFFF4FA0 : 0xFFFFA62B);
+                c.drawRect(s.left + dp(10), s.bottom - dp(8), s.left + dp(10) + fw * fuels[it] / 4.5f, s.bottom - dp(5), p);
             }
             p.setTextAlign(Paint.Align.LEFT);
             p.setLetterSpacing(0);
+            p.setTypeface(Typeface.DEFAULT);
         }
+    }
+
+    /* ================= The bone shop ================= */
+
+    private void openShop() {
+        shopOpen = true;
+        shopAt = SystemClock.uptimeMillis();
+        flaming = false;
+        trail.clear();
+        shopMsg = "Tipp ein Teil: kaufen. Gekauft: kommt in den gewählten Gürtel-Platz.";
+        shopMsgAt = Float.MAX_VALUE / 4;
+        invalidate();
+    }
+
+    private void closeShop() {
+        shopOpen = false;
+        fightAt += SystemClock.uptimeMillis() - shopAt;      // the fight carries on where it stopped
+        lastFt = (SystemClock.uptimeMillis() - fightAt) / 1000f;
+        shopMsgAt = -9;
+        invalidate();
+    }
+
+    private boolean shopTouch(android.view.MotionEvent e) {
+        if (e.getActionMasked() != android.view.MotionEvent.ACTION_DOWN) return true;
+        float x = e.getX(), y = e.getY(), ft = Float.MAX_VALUE / 4;
+        if (shopClose.contains(x, y)) {
+            closeShop();
+            return true;
+        }
+        for (int i = 0; i < 4; i++) {
+            if (beltCells[i].contains(x, y)) {
+                editSlot = i;
+                invalidate();
+                return true;
+            }
+        }
+        for (int i = 0; i < shopCells.length; i++) {
+            if (!shopCells[i].contains(x, y)) continue;
+            boolean cast = W_KIND[i] == K_CAST, passive = W_KIND[i] == K_PASSIVE;
+            if (!cast && !owns(i)) {
+                if (!buy(i, ft)) {
+                    shopMsgAt = ft;
+                    break;
+                }
+            }
+            if (passive) {
+                shopSay(W_ICON[i] + " " + W_NAME[i] + ": " + W_DESC[i], ft);
+            } else {
+                setBelt(editSlot, i);
+                if (!cast) {
+                    weapon = i;
+                    store().edit().putInt("dinoWeaponSel", i).apply();
+                }
+                shopSay(W_ICON[i] + " " + W_NAME[i] + " → Platz " + (editSlot + 1) + ". " + W_DESC[i], ft);
+            }
+            break;
+        }
+        invalidate();
+        return true;
+    }
+
+    /** Full-screen shop: bones on top, all items in a grid, the belt and "back to the fight" below. */
+    private void drawShop(Canvas c, float w, float h) {
+        c.drawColor(0xF20E0E0D);
+        float pad = dp(16), top = dp(56);
+        p.setStyle(Paint.Style.FILL);
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextAlign(Paint.Align.LEFT);
+        p.setLetterSpacing(0.16f);
+        p.setTextSize(dp(11));
+        p.setColor(rust);
+        c.drawText("— KNOCHEN-SHOP", pad, top, p);
+        p.setLetterSpacing(-0.03f);
+        p.setTextSize(dp(30));
+        p.setColor(0xFFF4F2EC);
+        p.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
+        c.drawText(bones() + " 🦴", pad, top + dp(38), p);
+        p.setLetterSpacing(0);
+
+        int cols = w > dp(600) ? 7 : 5;
+        float gap = dp(6), cw = (w - pad * 2 - gap * (cols - 1)) / cols, ch = Math.min(dp(86), cw * 1.15f);
+        float gy = top + dp(58);
+        int have = bones();
+        int[] b = belt();
+        for (int i = 0; i < shopCells.length; i++) {
+            int col = i % cols, row = i / cols;
+            RectF r = shopCells[i];
+            r.set(pad + col * (cw + gap), gy + row * (ch + gap), pad + col * (cw + gap) + cw, gy + row * (ch + gap) + ch);
+            boolean cast = W_KIND[i] == K_CAST, passive = W_KIND[i] == K_PASSIVE;
+            boolean own = owns(i) && !cast, onBelt = false;
+            for (int v : b) if (v == i) onBelt = true;
+            boolean afford = have >= W_COST[i];
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(own ? 0xFF262624 : 0xFF1A1A18);
+            c.drawRoundRect(r, dp(12), dp(12), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(onBelt ? 2.5f : 1));
+            p.setColor(onBelt ? rust : passive && own ? 0xFF2BBF6A : own ? 0xFF5A5A58 : afford ? 0xFFE8B931 : 0xFF2C2C2A);
+            c.drawRoundRect(r, dp(12), dp(12), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTypeface(Typeface.DEFAULT);
+            p.setTextSize(Math.min(dp(26), ch * 0.3f));
+            p.setAlpha(own || afford || cast ? 255 : 90);
+            c.drawText(W_ICON[i], r.centerX(), r.top + ch * 0.42f, p);
+            p.setAlpha(255);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(Math.min(dp(8.5f), cw / 9f));
+            String name = W_NAME[i];
+            while (p.measureText(name) > cw - dp(6) && name.length() > 3) name = name.substring(0, name.length() - 1);
+            p.setColor(0xFFF4F2EC);
+            c.drawText(name, r.centerX(), r.top + ch * 0.66f, p);
+            String sub = passive && own ? "AKTIV" : own ? (onBelt ? "IM GÜRTEL" : "BESITZT") : cast ? W_COST[i] + "🦴/MAL" : W_COST[i] + " 🦴";
+            p.setColor(passive && own ? 0xFF2BBF6A : own ? 0xFF9A9A98 : afford ? 0xFFE8B931 : 0xFF6F6E69);
+            while (p.measureText(sub) > cw - dp(4) && sub.length() > 3) sub = sub.substring(0, sub.length() - 1);
+            c.drawText(sub, r.centerX(), r.top + ch * 0.86f, p);
+        }
+        int rows = (shopCells.length + cols - 1) / cols;
+        float by = gy + rows * (ch + gap) + dp(14);
+
+        // The belt: pick the place, then an item.
+        p.setTextAlign(Paint.Align.LEFT);
+        p.setTextSize(dp(10));
+        p.setLetterSpacing(0.16f);
+        p.setColor(0xFF9A9A98);
+        c.drawText("GÜRTEL · PLATZ WÄHLEN, DANN TEIL ANTIPPEN", pad, by, p);
+        p.setLetterSpacing(0);
+        float bw = (w - pad * 2 - gap * 3) / 4, bh = dp(54);
+        for (int i = 0; i < 4; i++) {
+            RectF r = beltCells[i];
+            r.set(pad + i * (bw + gap), by + dp(8), pad + i * (bw + gap) + bw, by + dp(8) + bh);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(i == editSlot ? 0xFF3A1814 : 0xFF1A1A18);
+            c.drawRoundRect(r, dp(12), dp(12), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(i == editSlot ? 2.5f : 1));
+            p.setColor(i == editSlot ? rust : 0xFF3A3A38);
+            c.drawRoundRect(r, dp(12), dp(12), p);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTypeface(Typeface.DEFAULT);
+            p.setTextSize(dp(22));
+            c.drawText(W_ICON[b[i]], r.centerX() - dp(16), r.centerY() + dp(8), p);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextSize(dp(10));
+            p.setColor(i == editSlot ? rust : 0xFF9A9A98);
+            c.drawText(String.valueOf(i + 1), r.centerX() + dp(18), r.centerY() + dp(4), p);
+        }
+        // The last word (what you bought / what it does) and back to the fight.
+        float my = by + dp(8) + bh + dp(26);
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setTypeface(Typeface.DEFAULT);
+        p.setTextSize(dp(13));
+        p.setColor(0xFFF4F2EC);
+        String msg = shopMsg;
+        while (p.measureText(msg) > w - pad * 2 && msg.length() > 4) msg = msg.substring(0, msg.length() - 2);
+        if (!msg.equals(shopMsg)) msg = msg + "…";
+        c.drawText(msg, w / 2, my, p);
+        shopClose.set(pad, Math.min(h - dp(36) - dp(56), my + dp(16)), w - pad, Math.min(h - dp(36), my + dp(16) + dp(56)));
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(rust);
+        c.drawRoundRect(shopClose, dp(14), dp(14), p);
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextSize(dp(14));
+        p.setLetterSpacing(0.1f);
+        p.setColor(0xFFFAFAF8);
+        c.drawText("WEITER KÄMPFEN ⚔", shopClose.centerX(), shopClose.centerY() + dp(5), p);
+        p.setLetterSpacing(0);
+        p.setTextAlign(Paint.Align.LEFT);
+        p.setTypeface(Typeface.DEFAULT);
     }
 
     /** Cracks spreading over the dino while the spell takes hold. */
