@@ -6113,6 +6113,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         col.setPadding(dp(16), 0, dp(16), dp(16) + navBottom);
         chatScroll = new ScrollView(this);
+        chatScroll.setVerticalFadingEdgeEnabled(true);          // older bubbles fade out instead of a hard cut
+        chatScroll.setFadingEdgeLength(dp(48));
+        chatScroll.setVerticalScrollBarEnabled(false);
         chatList = new LinearLayout(this);
         chatList.setOrientation(LinearLayout.VERTICAL);
         chatScroll.addView(chatList);
@@ -6175,6 +6178,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fox.setElevation(dp(12));
         fox.bringToFront();
         chatCol = col;
+        blurHome(true);
         floatStart = android.os.SystemClock.uptimeMillis();
         handler.removeCallbacks(buddyFloat);
         handler.postDelayed(buddyFloat, 60);
@@ -6193,6 +6197,27 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private View chatCol;
     private long floatStart;
 
+    /** Where a view sits inside rootFrame by layout alone (its own and its parents' translations left out). */
+    private float[] placeIn(View v) {
+        float x = v.getLeft(), y = v.getTop();
+        android.view.ViewParent p = v.getParent();
+        while (p instanceof View && p != rootFrame) {
+            View pv = (View) p;
+            x += pv.getLeft() - pv.getScrollX();
+            y += pv.getTop() - pv.getScrollY();
+            p = pv.getParent();
+        }
+        return new float[]{x, y};
+    }
+
+    /** The home behind the chat goes soft, so the bubbles read clearly. */
+    private void blurHome(boolean on) {
+        if (Build.VERSION.SDK_INT < 31) return;
+        android.graphics.RenderEffect fx = on ? android.graphics.RenderEffect.createBlurEffect(dp(14), dp(14), android.graphics.Shader.TileMode.CLAMP) : null;
+        if (scroll != null) scroll.setRenderEffect(fx);
+        if (pixelLayer != null) pixelLayer.setRenderEffect(fx);
+    }
+
     /*
      * While chatting the buddy floats in the free space above the chat: a slow figure-eight with a
      * gentle bob and tilt, facing the way it drifts – never over the chat or off screen.
@@ -6201,13 +6226,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         @Override
         public void run() {
             if (chat == null || chatCol == null || fox == null) return;
-            int[] f = new int[2], cc = new int[2], r = new int[2];
-            fox.getLocationOnScreen(f);
-            chatCol.getLocationOnScreen(cc);
-            rootFrame.getLocationOnScreen(r);
-            // The fox's own place without the current translation.
-            float baseX = f[0] - fox.getTranslationX(), baseY = f[1] - fox.getTranslationY();
-            float w = rootFrame.getWidth(), topY = r[1] + rootFrame.getHeight() * 0.25f, bottomY = cc[1] - fox.getHeight() - dp(12);
+            // Layout places inside the root (no transforms: flipping and tilting the duck skewed
+            // getLocationOnScreen, so it ended up between the bubbles).
+            float[] f = placeIn(fox), cc = placeIn(chatCol);
+            int[] r = {0, 0};
+            float baseX = f[0], baseY = f[1];
+            float chatTop = cc[1] + chatCol.getTranslationY() + chatScroll.getTop();
+            float w = rootFrame.getWidth(), topY = dp(70), bottomY = chatTop - fox.getHeight() - dp(16);
             if (bottomY < topY) bottomY = topY;
             float t = (android.os.SystemClock.uptimeMillis() - floatStart) / 1000f;
             float cxp = r[0] + (w - fox.getWidth()) / 2f, ampX = (w - fox.getWidth()) / 2f - dp(16);
@@ -6231,6 +6256,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         chat = null;
         if (c == null) return;
         hideKeyboard();
+        blurHome(false);
         c.animate().alpha(0f).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
         handler.removeCallbacks(buddyFloat);
         fox.setScaleX(1f);
