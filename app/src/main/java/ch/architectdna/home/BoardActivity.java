@@ -114,6 +114,8 @@ public class BoardActivity extends Activity {
 
         LinearLayout ui = new LinearLayout(this);
         ui.setOrientation(LinearLayout.VERTICAL);
+        guide = new Guide();
+        root.addView(guide, new FrameLayout.LayoutParams(-1, -1));
         mischief = new Mischief();
         root.addView(mischief, new FrameLayout.LayoutParams(-1, -1));
         root.addView(ui, new FrameLayout.LayoutParams(-1, -1));
@@ -161,6 +163,7 @@ public class BoardActivity extends Activity {
             if (prefs.getBoolean("buddy", false)) Toast.makeText(this, "Fuchs darf Chaos machen. Viel Glück.", Toast.LENGTH_SHORT).show();
         });
         top.addView(buddyChip);
+        top.addView(chip("✏ LERNEN", v -> pickGuide()));
         top.addView(chip("+ BILD", v -> pickImage()));
         top.addView(chip("+ NEU", v -> newBoard()));
         top.addView(chip("TEILEN", v -> share()));
@@ -1628,6 +1631,182 @@ public class BoardActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             c.drawText(text, x, y - dp(10), p);
             p.setTextAlign(Paint.Align.LEFT);
+        }
+    }
+
+
+    /* ---------- drawing guide for kids ---------- */
+
+    /*
+     * Step by step: the next stroke to draw shows as a dashed, pulsing rust shape in the middle of
+     * the screen; you trace it with your finger or pen on the board, then "Weiter". Earlier steps
+     * stay faint as a guide. Shapes in −1 … 1 around the screen's middle.
+     * c x y r = circle · o l t r b = oval · l x1 y1 x2 y2 = line · p x y x y … = polyline ·
+     * a l t r b start sweep = arc
+     */
+    private static final String[] MOTIFS = {"🐱 Katze", "🏠 Haus", "☀ Sonne", "🐟 Fisch", "🌷 Blume", "🚗 Auto"};
+    private static final String[][][] STEPS = {
+        {{"Ein grosser Kreis für den Kopf", "c 0 0.05 0.55"},
+            {"Zwei spitze Ohren oben", "p -0.5 -0.2 -0.42 -0.75 -0.15 -0.45", "p 0.15 -0.45 0.42 -0.75 0.5 -0.2"},
+            {"Zwei Augen", "o -0.3 -0.12 -0.12 0.08", "o 0.12 -0.12 0.3 0.08"},
+            {"Eine kleine Nase und ein Mund wie ein W", "p -0.06 0.15 0.06 0.15 0 0.23 -0.06 0.15", "p -0.18 0.3 -0.09 0.36 0 0.25 0.09 0.36 0.18 0.3"},
+            {"Schnurrhaare – drei auf jeder Seite", "l -0.25 0.22 -0.75 0.12", "l -0.25 0.27 -0.75 0.28", "l -0.25 0.32 -0.72 0.45",
+                "l 0.25 0.22 0.75 0.12", "l 0.25 0.27 0.75 0.28", "l 0.25 0.32 0.72 0.45"}},
+        {{"Ein Viereck als Haus", "p -0.55 -0.05 0.55 -0.05 0.55 0.7 -0.55 0.7 -0.55 -0.05"},
+            {"Ein Dreieck als Dach", "p -0.7 -0.05 0 -0.7 0.7 -0.05"},
+            {"Eine Tür in der Mitte", "p -0.13 0.7 -0.13 0.3 0.13 0.3 0.13 0.7"},
+            {"Zwei Fenster", "p -0.42 0.1 -0.2 0.1 -0.2 0.3 -0.42 0.3 -0.42 0.1", "p 0.2 0.1 0.42 0.1 0.42 0.3 0.2 0.3 0.2 0.1"},
+            {"Ein Kamin mit Rauch", "p 0.3 -0.35 0.3 -0.6 0.45 -0.6 0.45 -0.2", "a 0.32 -0.85 0.5 -0.68 180 270"}},
+        {{"Ein Kreis in der Mitte", "c 0 0 0.35"},
+            {"Strahlen rundherum", "l 0 -0.45 0 -0.75", "l 0 0.45 0 0.75", "l -0.45 0 -0.75 0", "l 0.45 0 0.75 0",
+                "l 0.32 -0.32 0.53 -0.53", "l -0.32 -0.32 -0.53 -0.53", "l 0.32 0.32 0.53 0.53", "l -0.32 0.32 -0.53 0.53"},
+            {"Augen und ein Lächeln", "c -0.12 -0.08 0.04", "c 0.12 -0.08 0.04", "a -0.18 -0.1 0.18 0.2 20 140"}},
+        {{"Ein langes Oval als Körper", "o -0.6 -0.32 0.4 0.32"},
+            {"Ein Dreieck als Schwanz", "p 0.38 0 0.75 -0.32 0.75 0.32 0.38 0"},
+            {"Ein Auge", "c -0.35 -0.08 0.06"},
+            {"Ein Mund und Schuppen", "a -0.62 -0.02 -0.48 0.12 270 120", "a -0.2 -0.2 0 0.2 300 120", "a 0 -0.2 0.2 0.2 300 120"},
+            {"Blasen nach oben", "c -0.75 -0.45 0.05", "c -0.85 -0.62 0.07", "c -0.72 -0.8 0.09"}},
+        {{"Ein Stiel von unten nach oben", "l 0 0.8 0 -0.1"},
+            {"Zwei Blätter am Stiel", "o -0.32 0.32 0 0.48", "o 0 0.12 0.32 0.28"},
+            {"Ein Kreis als Blütenmitte", "c 0 -0.3 0.13"},
+            {"Fünf Blütenblätter rundherum", "c 0 -0.55 0.13", "c 0.24 -0.38 0.13", "c 0.15 -0.08 0.13", "c -0.15 -0.08 0.13", "c -0.24 -0.38 0.13"}},
+        {{"Der Körper: ein langes Rechteck", "p -0.75 0 0.75 0 0.75 0.35 -0.75 0.35 -0.75 0"},
+            {"Das Dach oben drauf", "p -0.45 0 -0.3 -0.35 0.3 -0.35 0.5 0"},
+            {"Zwei Fenster", "p -0.35 -0.03 -0.25 -0.28 -0.03 -0.28 -0.03 -0.03", "p 0.05 -0.03 0.05 -0.28 0.27 -0.28 0.4 -0.03"},
+            {"Zwei Räder", "c -0.42 0.38 0.17", "c 0.42 0.38 0.17"},
+            {"Licht vorne und hinten", "o 0.62 0.05 0.75 0.15", "o -0.75 0.05 -0.65 0.15"}}};
+
+    private Guide guide;
+    private LinearLayout guideBar;
+    private TextView guideText;
+    private int guideMotif = -1, guideStep;
+
+    private void pickGuide() {
+        new AlertDialog.Builder(this)
+            .setTitle("Was möchtest du zeichnen?")
+            .setItems(MOTIFS, (d, w) -> startGuide(w))
+            .show();
+    }
+
+    private void startGuide(int motif) {
+        guideMotif = motif;
+        guideStep = 0;
+        FrameLayout root = (FrameLayout) board.getParent();
+        if (guideBar == null) {
+            guideBar = new LinearLayout(this);
+            guideBar.setOrientation(LinearLayout.VERTICAL);
+            guideBar.setPadding(dp(18), dp(14), dp(18), dp(14));
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(card);
+            g.setStroke(dp(1.5f), rust);
+            g.setCornerRadius(dp(22));
+            guideBar.setBackground(g);
+            guideBar.setElevation(dp(6));
+            guideText = new TextView(this);
+            guideText.setTextColor(ink);
+            guideText.setTextSize(18);
+            guideText.setTypeface(android.graphics.Typeface.create("casual", android.graphics.Typeface.BOLD));
+            guideBar.addView(guideText);
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.END);
+            row.setPadding(0, dp(10), 0, 0);
+            row.addView(chip("✕ ENDE", v -> stopGuide()));
+            row.addView(chip("← ZURÜCK", v -> {
+                guideStep = Math.max(0, guideStep - 1);
+                paintGuide();
+            }));
+            row.addView(chip("WEITER →", v -> {
+                guideStep++;
+                if (guideStep >= STEPS[guideMotif].length) {
+                    guideText.setText("Super gemacht! 🎉 Jetzt ausmalen – mit den Farben unten.");
+                    guide.postDelayed(this::stopGuide, 2600);
+                    guideStep = STEPS[guideMotif].length;
+                    guide.invalidate();
+                    return;
+                }
+                paintGuide();
+            }));
+            guideBar.addView(row);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+            lp.setMargins(dp(14), 0, dp(14), dp(110));
+            root.addView(guideBar, lp);
+        }
+        guideBar.setVisibility(View.VISIBLE);
+        paintGuide();
+    }
+
+    private void paintGuide() {
+        if (guideMotif < 0) return;
+        String[] step = STEPS[guideMotif][guideStep];
+        guideText.setText("Schritt " + (guideStep + 1) + "/" + STEPS[guideMotif].length + ": " + step[0] + ". Fahr der gestrichelten Linie nach!");
+        guide.invalidate();
+    }
+
+    private void stopGuide() {
+        guideMotif = -1;
+        if (guideBar != null) guideBar.setVisibility(View.GONE);
+        guide.invalidate();
+    }
+
+    private final class Guide extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final android.graphics.RectF r = new android.graphics.RectF();
+
+        Guide() {
+            super(BoardActivity.this);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            return false;
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            if (guideMotif < 0) return;
+            float cx = getWidth() / 2f, cy = getHeight() * 0.45f, k = Math.min(getWidth(), getHeight()) * 0.36f;
+            long now = SystemClock.uptimeMillis();
+            String[][] steps = STEPS[guideMotif];
+            for (int i = 0; i < steps.length && i <= guideStep; i++) {
+                boolean cur = i == guideStep;
+                p.setPathEffect(cur ? new android.graphics.DashPathEffect(new float[]{dp(12), dp(9)}, -(now / 30f) % dp(21)) : null);
+                p.setStrokeWidth(cur ? dp(4) : dp(2));
+                p.setColor(cur ? ((int) (160 + 95 * Math.abs(Math.sin(now / 300.0))) << 24) | (rust & 0x00FFFFFF) : (ink3 & 0x00FFFFFF) | 0x55000000);
+                for (int j = 1; j < steps[i].length; j++) shape(c, steps[i][j], cx, cy, k);
+            }
+            p.setPathEffect(null);
+            if (guideStep < steps.length) postInvalidateOnAnimation();
+        }
+
+        private void shape(Canvas c, String spec, float cx, float cy, float k) {
+            String[] t = spec.split(" ");
+            float[] v = new float[t.length - 1];
+            for (int i = 1; i < t.length; i++) v[i - 1] = Float.parseFloat(t[i]);
+            switch (t[0]) {
+                case "c":
+                    c.drawCircle(cx + v[0] * k, cy + v[1] * k, v[2] * k, p);
+                    break;
+                case "o":
+                    c.drawOval(cx + v[0] * k, cy + v[1] * k, cx + v[2] * k, cy + v[3] * k, p);
+                    break;
+                case "l":
+                    c.drawLine(cx + v[0] * k, cy + v[1] * k, cx + v[2] * k, cy + v[3] * k, p);
+                    break;
+                case "a":
+                    r.set(cx + v[0] * k, cy + v[1] * k, cx + v[2] * k, cy + v[3] * k);
+                    c.drawArc(r, v[4], v[5], false, p);
+                    break;
+                default:
+                    path.reset();
+                    path.moveTo(cx + v[0] * k, cy + v[1] * k);
+                    for (int i = 2; i + 1 < v.length; i += 2) path.lineTo(cx + v[i] * k, cy + v[i + 1] * k);
+                    c.drawPath(path, p);
+                    break;
+            }
         }
     }
 

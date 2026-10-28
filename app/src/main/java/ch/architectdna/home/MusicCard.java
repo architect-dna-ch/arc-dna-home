@@ -132,12 +132,31 @@ final class MusicCard {
             return true;
         });
         artist = label(13, ink2, false);
+        // 0–5 stars: tap a star = that rating, tap it again (or hold) = 0.
+        stars = label(20, rust, false);
+        stars.setLetterSpacing(0.08f);
+        stars.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() != android.view.MotionEvent.ACTION_UP || songTitle == null) return true;
+            float w = stars.getPaint().measureText("★★★★★") * (1 + 0.08f);
+            int n = Math.max(1, Math.min(5, (int) (e.getX() / (w / 5)) + 1));
+            int now = MusicStats.rating(activity, songTitle, songArtist);
+            MusicStats.rate(activity, songTitle, songArtist, n == now ? 0 : n);
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+            paintStars();
+            return true;
+        });
+        stars.setOnLongClickListener(v -> {
+            MusicStats.rate(activity, songTitle, songArtist, 0);
+            paintStars();
+            return true;
+        });
         source = label(10, ink3, true);
         source.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         source.setLetterSpacing(0.12f);
         source.setOnClickListener(v -> openPlayer());      // "YOUTUBE MUSIC ↗" opens the app
         text.addView(title);
         text.addView(artist);
+        text.addView(stars);
         text.addView(source);
         source.setVisibility(View.GONE);           // replaced by the era button
         top.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -861,6 +880,8 @@ final class MusicCard {
             artist.setText("🎧 Titel antippen = DJ wählen · ▶ = letzte Musik");
             source.setText("");
             if (eraButton != null) eraButton.set(null, null);
+            songTitle = null;
+            paintStars();
             art.setImageResource(R.drawable.ic_music);
             art.setScaleType(ImageView.ScaleType.CENTER);
         } else {
@@ -869,6 +890,9 @@ final class MusicCard {
             if (a == null) a = meta.getString(MediaMetadata.METADATA_KEY_ALBUM);
             title.setText(t != null ? t : "–");
             artist.setText(a != null ? a : "");
+            songTitle = t;
+            songArtist = a;
+            paintStars();
             Bitmap cover = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
             if (cover == null) cover = meta.getBitmap(MediaMetadata.METADATA_KEY_ART);
             if (cover == null) cover = meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
@@ -1474,8 +1498,24 @@ final class MusicCard {
             super(activity);
         }
 
+        /* Beats from the raw spectrum (the bars are smoothed and lose the kick): the low-end energy's
+           rise from one capture to the next, against its own running average (spectral flux). */
+        private float prevBass, fluxAvg = 1;
+        private volatile boolean beatPending;
+        private long lastKick;
+
         void feed(byte[] fft) {
             int bins = fft.length / 2;
+            float bass = 0;
+            for (int k = 1; k < Math.min(bins, 7); k++) bass += (float) Math.hypot(fft[2 * k], fft[2 * k + 1]);
+            float flux = Math.max(0, bass - prevBass);
+            prevBass = bass;
+            long nowMs = System.currentTimeMillis();
+            if (flux > fluxAvg * 1.8f + 4 && nowMs - lastKick > 260) {
+                beatPending = true;
+                lastKick = nowMs;
+            }
+            fluxAvg = fluxAvg * 0.93f + flux * 0.07f;
             float total = 0;
             for (int b = 0; b < BARS; b++) {
                 int lo = (int) Math.max(1, Math.pow(bins, (double) b / BARS));
@@ -1558,8 +1598,7 @@ final class MusicCard {
         /* The three layers per column (bass / beats, vocals / mids, highs), and where a beat hit. */
         private final float[] colLo = new float[400], colMid = new float[400], colHi = new float[400];
         private final boolean[] colBeat = new boolean[400];
-        private float bassAvg;
-        private long lastBeat;
+        private float peak = 0.3f;
         private int colHead;
 
         /** True while the real sound arrives; the placeholder pulse never goes into the waveform or the phases. */
@@ -1599,11 +1638,14 @@ final class MusicCard {
             colLo[colHead] = Math.min(1f, l * 1.5f);
             colMid[colHead] = Math.min(1f, m * 1.7f);
             colHi[colHead] = Math.min(1f, hh * 2.2f);
-            // A beat: the bass jumps well above its running average (kick drum), at most every 250 ms.
-            long now = System.currentTimeMillis();
-            colBeat[colHead] = l > 0.22f && l > bassAvg * 1.35f && now - lastBeat > 250;
-            if (colBeat[colHead]) lastBeat = now;
-            bassAvg = bassAvg * 0.92f + l * 0.08f;
+            colBeat[colHead] = beatPending;
+            beatPending = false;
+            // Auto level: scaled to this song's recent loudest moment, so loud tracks don't become a block.
+            peak = Math.max(peak * 0.997f, Math.max(l, Math.max(m, hh)));
+            float gain = 0.85f / Math.max(0.15f, peak);
+            colLo[colHead] = Math.min(1f, l * gain);
+            colMid[colHead] = Math.min(1f, m * gain * 0.9f);
+            colHi[colHead] = Math.min(1f, hh * gain * 1.2f);
         }
 
         private boolean bars() {
@@ -1933,6 +1975,20 @@ final class MusicCard {
         o.setScaleY(0.85f);
         o.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).withEndAction(() ->
             o.animate().alpha(0f).setStartDelay(900).setDuration(260).withEndAction(() -> top.removeView(o)).start()).start();
+    }
+
+
+    private TextView stars;
+    private String songTitle, songArtist;
+
+    private void paintStars() {
+        if (stars == null) return;
+        int n = songTitle == null ? 0 : MusicStats.rating(activity, songTitle, songArtist);
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 5; i++) b.append(i < n ? '★' : '☆');
+        stars.setText(b);
+        stars.setTextColor(n > 0 ? 0xFFFFB627 : ink3);
+        stars.setVisibility(songTitle == null ? View.GONE : View.VISIBLE);
     }
 
 }

@@ -54,6 +54,20 @@ final class MusicStats {
             .contains((title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist));
     }
 
+    /* ---- Rating 0–5 per song ---- */
+
+    static int rating(Context c, String title, String artist) {
+        return c.getSharedPreferences("ratings", Context.MODE_PRIVATE)
+            .getInt((title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist), 0);
+    }
+
+    static void rate(Context c, String title, String artist, int stars) {
+        String k = (title == null ? "" : title) + "\u0001" + (artist == null ? "" : artist);
+        SharedPreferences p = c.getSharedPreferences("ratings", Context.MODE_PRIVATE);
+        if (stars <= 0) p.edit().remove(k).apply();
+        else p.edit().putInt(k, Math.min(5, stars)).apply();
+    }
+
     /* ---- Track history for the Musik-Verlauf screen: one line per started song, on the phone only ---- */
 
     private static final long HISTORY_MAX_BYTES = 400_000;

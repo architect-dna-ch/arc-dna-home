@@ -295,6 +295,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Stimmung: mood log and patterns. -->
+        <activity
+            android:name=".MoodActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC-DNA Spielothek: darts, rocket, table tennis. -->
         <activity
             android:name=".SpielothekActivity"
