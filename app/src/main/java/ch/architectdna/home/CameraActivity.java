@@ -532,6 +532,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
                 c.drawLine(cx - half - dp(14), cy, cx - half - dp(4), cy, p);
                 c.drawLine(cx + half + dp(4), cy, cx + half + dp(14), cy, p);
             }
+            tunnel(c, now);
             drawZoomLook(c);
             drawMeta(c);
             // The character with its tip, above the controls.
@@ -602,6 +603,62 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
                 c.drawText(s, x + dp(10), y + dp(17.5f), p);
                 y += dp(32);
             }
+        }
+
+        private long searchSince = -1;
+
+        /*
+         * While it's still searching for a subject: a time tunnel like the DeLorean charging up –
+         * frames in orange, yellow and blue rush from the edges into the middle, faster and faster
+         * the longer it searches, the edges darken. Once a subject is found the lock-on takes over.
+         */
+        private void tunnel(Canvas c, long now) {
+            if (hasBox) {
+                searchSince = -1;
+                return;
+            }
+            if (searchSince < 0) searchSince = now;
+            float t = (now - searchSince) / 1000f;
+            float speed = Math.min(2.2f, 0.35f + t * 0.25f);            // charging up
+            float ramp = Math.min(1f, t / 0.6f);
+            float cx = content.centerX(), cy = content.centerY();
+            // Vignette.
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new android.graphics.RadialGradient(cx, cy, Math.max(content.width(), content.height()) * 0.7f,
+                new int[]{0x00000000, 0x00000000, (int) (150 * ramp) << 24}, new float[]{0, 0.55f, 1}, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(content, p);
+            p.setShader(null);
+            int[] cols = {0xFFFF6A1F, 0xFFFFC21F, 0xFF3C8DFF};
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            int n = 9;
+            for (int i = 0; i < n; i++) {
+                float k = ((i / (float) n) + t * speed * 0.35f) % 1f;          // 0 = edge, 1 = centre
+                float e = k * k;
+                float hw = content.width() / 2f * (1 - e * 0.92f), hh = content.height() / 2f * (1 - e * 0.92f);
+                int col = cols[i % 3];
+                float a = (float) Math.sin(Math.PI * k) * ramp * 0.85f;
+                p.setStrokeWidth(dp(5) * (1 - k * 0.7f));
+                p.setColor((col & 0x00FFFFFF) | ((int) (255 * a) << 24));
+                c.drawRoundRect(cx - hw, cy - hh, cx + hw, cy + hh, dp(26) * (1 - e) + dp(6), dp(26) * (1 - e) + dp(6), p);
+            }
+            // Streaks flying out of the centre, like the time-travel flash.
+            p.setStrokeWidth(dp(2));
+            for (int i = 0; i < 16; i++) {
+                double ang = i * Math.PI / 8 + (i % 2) * 0.2;
+                float k = ((i * 0.37f) + t * speed * 0.9f) % 1f;
+                float r0 = k * Math.max(content.width(), content.height()) * 0.6f, r1 = r0 + dp(30) + k * dp(50);
+                p.setColor((cols[i % 3] & 0x00FFFFFF) | ((int) (180 * ramp * (1 - k)) << 24));
+                c.drawLine(cx + (float) Math.cos(ang) * r0, cy + (float) Math.sin(ang) * r0,
+                    cx + (float) Math.cos(ang) * r1, cy + (float) Math.sin(ang) * r1, p);
+            }
+            if (speed > 1.6f) {           // full charge: a quick white flash now and then
+                float fl = (float) Math.max(0, Math.sin(t * 9) - 0.85) / 0.15f;
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(((int) (70 * fl) << 24) | 0xFFFFFF);
+                c.drawRect(content, p);
+            }
+            postInvalidateOnAnimation();
         }
 
         private long lockAt = -1;
