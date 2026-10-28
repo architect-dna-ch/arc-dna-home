@@ -550,22 +550,8 @@ public class ArcWallpaper extends WallpaperService {
             diry /= dl;
             paint.setShader(null);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            float[][] shoulders = {{x + size * 0.12f, y + size * 0.15f}, {x + size * 0.5f, y - size * 0.32f}, {x + size * 0.88f, y + size * 0.15f}};
-            for (int i = 0; i < 3; i++) {
-                float sx = shoulders[i][0], sy = shoulders[i][1] - jump;
-                float wave = (float) Math.sin(t * 8 + i * 2) * 0.25f;
-                float ax = dirx * (float) Math.cos(wave) - diry * (float) Math.sin(wave), ay = dirx * (float) Math.sin(wave) + diry * (float) Math.cos(wave);
-                float len = size * 0.42f, ex = sx + ax * len, ey = sy + ay * len;
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(size * 0.11f);
-                paint.setColor(dark ? 0xFF6B4A33 : 0xFF7A5236);
-                c.drawLine(sx, sy, ex, ey, paint);
-                paint.setStyle(Paint.Style.FILL);
-                c.drawCircle(ex, ey, size * 0.075f, paint);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(size * 0.04f);
-                c.drawLine(ex, ey, ex + ax * size * 0.12f, ey + ay * size * 0.12f, paint);     // the pointing finger
-            }
+            // Arms are drawn after the bear (see below), from its sides – never out of the top of
+            // its head (that one looked like a rude finger).
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(5 * s);
             for (int k = 0; k < 4; k++) {
@@ -587,6 +573,35 @@ public class ArcWallpaper extends WallpaperService {
             c.translate(x, y - jump);
             bear(c, size, dark);
             c.restore();
+            // Two arms on the left point up-left at the label, one on the right waves for help.
+            // Round mitten hands, no single fingers.
+            float[][] arms = {{x + size * 0.08f, y + size * 0.48f, 0}, {x + size * 0.1f, y + size * 0.75f, 0}, {x + size * 0.92f, y + size * 0.55f, 1}};
+            for (int i = 0; i < 3; i++) {
+                float sx = arms[i][0], sy = arms[i][1] - jump;
+                float ax, ay;
+                if (arms[i][2] == 0) {
+                    float wave = (float) Math.sin(t * 8 + i * 2) * 0.2f;
+                    float bx = dirx - 0.35f, by = diry, bl = (float) Math.hypot(bx, by);
+                    bx /= bl;
+                    by /= bl;
+                    ax = bx * (float) Math.cos(wave) - by * (float) Math.sin(wave);
+                    ay = bx * (float) Math.sin(wave) + by * (float) Math.cos(wave);
+                } else {
+                    double a2 = Math.toRadians(-40 + Math.sin(t * 10) * 25);       // waving, up and out to the right
+                    ax = (float) Math.cos(a2);
+                    ay = (float) Math.sin(a2);
+                }
+                float len = size * 0.36f, ex = sx + ax * len, ey = sy + ay * len;
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setStrokeWidth(size * 0.12f);
+                paint.setColor(dark ? 0xFF6B4A33 : 0xFF7A5236);
+                c.drawLine(sx, sy, ex, ey, paint);
+                paint.setStyle(Paint.Style.FILL);
+                c.drawCircle(ex, ey, size * 0.085f, paint);
+                paint.setColor(dark ? 0xFF8A6448 : 0xFF9A6B48);
+                c.drawCircle(ex + ax * size * 0.02f, ey + ay * size * 0.02f, size * 0.045f, paint);      // the paw pad
+            }
             // Why, in a bubble to the right.
             String said = "KEIN NETZ! Da oben steht's: nur Notrufe. Die SIM hat gerade keinen Empfang – deshalb zittert hier alles.";
             float bx = x + size * 1.1f, bw = width * 0.95f - bx, by = y - size * 0.35f;
