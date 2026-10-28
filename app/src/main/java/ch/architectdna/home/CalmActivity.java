@@ -339,7 +339,7 @@ public class CalmActivity extends Activity {
 
         @Override
         protected void onDraw(Canvas c) {
-            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2 - dp(10), rMax = Math.min(w, h) * 0.36f;
+            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2 - dp(22), rMax = Math.min(w, h) * 0.3f;
             String say;
             float k;
             if (start < 0) {
@@ -384,7 +384,7 @@ public class CalmActivity extends Activity {
             p.setTextSize(dp(14));
             p.setColor(ink);
             p.setTextAlign(Paint.Align.CENTER);
-            c.drawText(say, cx, cy + dp(5), p);
+            c.drawText(say, cx, cy + rMax * 1.15f + dp(22), p);          // under the circle, never across it
             p.setTextAlign(Paint.Align.LEFT);
             if (start >= 0) postInvalidateOnAnimation();
         }

@@ -541,29 +541,40 @@ public class ArcWallpaper extends WallpaperService {
             float size = Math.min(width, height) * 0.34f;
             float x = width * 0.05f, y = height * 0.64f;            // above the unlock button, the banner below it
             float jump = Math.abs((float) Math.sin(t * 7)) * size * 0.05f;
-            // Three arms from the shoulders up to the label, each wobbling, a little hand at the end.
-            float tx = width * 0.2f, ty = 34 * s;
-            float[][] shoulders = {{x + size * 0.25f, y - size * 0.05f}, {x + size * 0.5f, y - size * 0.18f}, {x + size * 0.75f, y - size * 0.05f}};
+            // Three short arms (cartoon, not spaghetti), all pointing up-left at the label, waving;
+            // chevrons fly from the bear towards it.
+            float tx = width * 0.2f, ty = 40 * s;
+            float hx = x + size * 0.5f, hy = y - size * 0.1f - jump;
+            float dirx = tx - hx, diry = ty - hy, dl = (float) Math.max(1, Math.hypot(dirx, diry));
+            dirx /= dl;
+            diry /= dl;
             paint.setShader(null);
-            paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeCap(Paint.Cap.ROUND);
+            float[][] shoulders = {{x + size * 0.12f, y + size * 0.15f}, {x + size * 0.5f, y - size * 0.32f}, {x + size * 0.88f, y + size * 0.15f}};
             for (int i = 0; i < 3; i++) {
                 float sx = shoulders[i][0], sy = shoulders[i][1] - jump;
-                float ex = tx + (i - 1) * 46 * s + (float) Math.sin(t * 9 + i) * 8 * s, ey = ty + 40 * s + i * 18 * s;
-                float mx = (sx + ex) / 2 + (i - 1) * 70 * s + (float) Math.sin(t * 5 + i * 2) * 24 * s, my = (sy + ey) / 2;
-                path.reset();
-                path.moveTo(sx, sy);
-                path.quadTo(mx, my, ex, ey);
-                paint.setStrokeWidth(16 * s);
-                paint.setColor(dark ? 0xFF6B4A33 : 0xFF7A5236);
-                c.drawPath(path, paint);
-                paint.setStyle(Paint.Style.FILL);
-                c.drawCircle(ex, ey, 16 * s, paint);
-                // The pointing finger.
-                paint.setStrokeWidth(7 * s);
+                float wave = (float) Math.sin(t * 8 + i * 2) * 0.25f;
+                float ax = dirx * (float) Math.cos(wave) - diry * (float) Math.sin(wave), ay = dirx * (float) Math.sin(wave) + diry * (float) Math.cos(wave);
+                float len = size * 0.42f, ex = sx + ax * len, ey = sy + ay * len;
                 paint.setStyle(Paint.Style.STROKE);
-                float dx = tx - ex, dy = ty - ey, d = (float) Math.max(1, Math.hypot(dx, dy));
-                c.drawLine(ex, ey, ex + dx / d * 30 * s, ey + dy / d * 30 * s, paint);
+                paint.setStrokeWidth(size * 0.11f);
+                paint.setColor(dark ? 0xFF6B4A33 : 0xFF7A5236);
+                c.drawLine(sx, sy, ex, ey, paint);
+                paint.setStyle(Paint.Style.FILL);
+                c.drawCircle(ex, ey, size * 0.075f, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(size * 0.04f);
+                c.drawLine(ex, ey, ex + ax * size * 0.12f, ey + ay * size * 0.12f, paint);     // the pointing finger
+            }
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5 * s);
+            for (int k = 0; k < 4; k++) {
+                float f = ((t * 0.8f + k / 4f) % 1f);
+                float cx2 = hx + (tx - hx) * (0.25f + f * 0.65f), cy2 = hy + (ty - hy) * (0.25f + f * 0.65f);
+                paint.setColor(((int) (220 * Math.sin(f * Math.PI)) << 24) | 0xE8231A);
+                float a = 22 * s, px = -diry, py = dirx;
+                c.drawLine(cx2 - dirx * a + px * a, cy2 - diry * a + py * a, cx2, cy2, paint);
+                c.drawLine(cx2 - dirx * a - px * a, cy2 - diry * a - py * a, cx2, cy2, paint);
             }
             // A blinking ring round the status bar label.
             if (((int) (t * 3)) % 2 == 0) {
