@@ -105,6 +105,7 @@ public class ArcWallpaper extends WallpaperService {
             } catch (RuntimeException ignored) {
             }
             watchTilt(false);
+            watchService(false);
             handler.removeCallbacks(frame);
             stopVisualizer();
         }
@@ -200,6 +201,7 @@ public class ArcWallpaper extends WallpaperService {
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
+            watchService(true);
             try {
                 registerReceiver(unlock, new android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT));
             } catch (RuntimeException ignored) {
@@ -237,7 +239,84 @@ public class ArcWallpaper extends WallpaperService {
         private java.util.Map<Long, Integer> pixels = new java.util.HashMap<>();
         private long pixelsChecked, pixelsMod = -1;
 
+        /*
+         * No mobile network ("Notrufe only"): the lock screen panics – the whole scene trembles,
+         * a red / blue siren sweeps the edges and a warning blinks. Calms down by itself once the
+         * phone has service again; only the mobile network counts – that's what calls need.
+         */
+        private volatile boolean noService;
+        private Object serviceCallback;
+
+        private void watchService(boolean on) {
+            android.telephony.TelephonyManager tm = getSystemService(android.telephony.TelephonyManager.class);
+            if (tm == null || android.os.Build.VERSION.SDK_INT < 31) return;
+            try {
+                if (on && serviceCallback == null) {
+                    final class Cb extends android.telephony.TelephonyCallback implements android.telephony.TelephonyCallback.ServiceStateListener {
+                        @Override
+                        public void onServiceStateChanged(android.telephony.ServiceState st) {
+                            boolean none = st.getState() != android.telephony.ServiceState.STATE_IN_SERVICE
+                                && st.getState() != android.telephony.ServiceState.STATE_POWER_OFF;      // airplane mode isn't a panic
+                            if (none != noService) DiagLog.log("wallpaper: mobile service " + (none ? "lost – panic" : "back"));
+                            noService = none && tm.getSimState() != android.telephony.TelephonyManager.SIM_STATE_ABSENT;   // a SIM, but no network
+                        }
+                    }
+                    Cb cb = new Cb();
+                    tm.registerTelephonyCallback(getMainExecutor(), cb);
+                    serviceCallback = cb;
+                } else if (!on && serviceCallback != null) {
+                    tm.unregisterTelephonyCallback((android.telephony.TelephonyCallback) serviceCallback);
+                    serviceCallback = null;
+                }
+            } catch (RuntimeException e) {
+                DiagLog.log("wallpaper service watch: " + e.getMessage());
+            }
+        }
+
         private void draw(Canvas c, boolean lock) {
+            boolean panic = lock && noService;
+            if (!panic) {
+                drawScene(c, lock);
+                return;
+            }
+            float t = SystemClock.uptimeMillis() / 1000f, s = Math.min(width, height) / 1080f;
+            c.save();
+            c.translate((float) Math.sin(t * 47) * 6 * s + (random.nextFloat() - 0.5f) * 4 * s, (float) Math.cos(t * 39) * 5 * s);
+            c.rotate((float) Math.sin(t * 23) * 0.6f, width / 2f, height / 2f);
+            drawScene(c, lock);
+            c.restore();
+            // Siren: red and blue sweeping round the edges, alternating.
+            boolean red = ((int) (t * 3)) % 2 == 0;
+            float pulse = 0.5f + 0.5f * (float) Math.sin(t * 12);
+            int col = red ? 0xFFE8231A : 0xFF2A6BFF;
+            paint.setShader(new android.graphics.RadialGradient(width / 2f, height / 2f, Math.max(width, height) * 0.75f,
+                new int[]{0x00000000, 0x00000000, (col & 0x00FFFFFF) | ((int) (120 + 90 * pulse) << 24)}, new float[]{0, 0.55f, 1},
+                android.graphics.Shader.TileMode.CLAMP));
+            paint.setStyle(Paint.Style.FILL);
+            c.drawRect(0, 0, width, height, paint);
+            paint.setShader(null);
+            // The warning, blinking, between the date and the cube.
+            if (((int) (t * 2.5f)) % 3 != 2) {
+                float y = height * 0.3f;
+                paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+                paint.setTextSize(44 * s);
+                paint.setTextAlign(Paint.Align.CENTER);
+                String a = "⚠ KEIN NETZ · NUR NOTRUFE ⚠";
+                float tw = paint.measureText(a) + 60 * s;
+                paint.setColor(0xE6120808);
+                c.drawRoundRect(width / 2f - tw / 2, y - 64 * s, width / 2f + tw / 2, y + 26 * s, 30 * s, 30 * s, paint);
+                paint.setColor(col);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(5 * s);
+                c.drawRoundRect(width / 2f - tw / 2, y - 64 * s, width / 2f + tw / 2, y + 26 * s, 30 * s, 30 * s, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0xFFFFFFFF);
+                c.drawText(a, width / 2f + (random.nextFloat() - 0.5f) * 4 * s, y - 6 * s, paint);
+                paint.setTextAlign(Paint.Align.LEFT);
+            }
+        }
+
+        private void drawScene(Canvas c, boolean lock) {
             boolean dark = night();
             int bg = dark ? 0xFF121211 : 0xFFFAFAF8;
             int ink = dark ? 0xECEBE6 : 0x1A1A1A;
