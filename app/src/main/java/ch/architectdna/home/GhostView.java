@@ -83,7 +83,9 @@ final class GhostView extends View {
         lightY = e.getY();
         // 2.5× the thumb's contact diameter (Android measures it), at least a 12 mm thumb.
         float thumb = Math.max(e.getTouchMajor(), 12 * pxPerMm);
-        lightR = Math.min(getWidth() * 0.45f, thumb * 2.5f / 2f);
+        // Big screens (tablet) get a bigger torch: the thumb is the same, the page isn't.
+        float big = getResources().getConfiguration().smallestScreenWidthDp >= 600 ? 2.2f : 1f;
+        lightR = Math.min(getWidth() * 0.45f, thumb * 2.5f / 2f * big);
     }
 
     private final Runnable frame = new Runnable() {

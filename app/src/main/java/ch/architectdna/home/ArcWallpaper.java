@@ -232,7 +232,7 @@ public class ArcWallpaper extends WallpaperService {
                 startVisualizer();
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
-            boolean busy = lock || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
+            boolean busy = lock || chargeLevel >= 0 || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
             handler.postDelayed(frame, busy ? 33 : 500);
         }
 
@@ -360,6 +360,7 @@ public class ArcWallpaper extends WallpaperService {
             // The orb's rim and specks first, then the cube: its edges and letters stay on top (the blue
             // circles ran through the letters).
             orbFront(c, dark, t, s);
+            charging(c, t, s);
             stepCube();
             drawCube(c, width / 2f, height * 0.52f, cubeScale, ink, rust);
 
@@ -861,6 +862,78 @@ public class ArcWallpaper extends WallpaperService {
         }
 
         /** In front: the glass rim (a bright arc top left, blue below right) and slow specks inside. */
+        /*
+         * While charging: the orb fills with green energy up to the battery level, a wavy surface,
+         * bubbles rising, and sparks running along the grid lines into the orb.
+         */
+        private int chargeLevel = -1;
+        private long chargeChecked;
+        private final float[][] sparksIn = new float[14][3];       // grid x/y origin index, progress
+
+        private void charging(Canvas c, float t, float s) {
+            long now = SystemClock.uptimeMillis();
+            if (now - chargeChecked > 3000) {
+                chargeChecked = now;
+                android.content.Intent b = registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+                boolean plugged = b != null && b.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0;
+                int lvl = b == null ? -1 : b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) * 100 / Math.max(1, b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100));
+                chargeLevel = plugged ? lvl : -1;
+            }
+            if (chargeLevel < 0 || lensR <= 0) return;
+            float r = lensR * 0.92f, cx = lensX, cy = lensY;
+            float level = cy + r - 2 * r * chargeLevel / 100f;
+            // Liquid with a wave on top, clipped to the orb.
+            android.graphics.Path clip = new android.graphics.Path();
+            clip.addCircle(cx, cy, r, android.graphics.Path.Direction.CW);
+            c.save();
+            c.clipPath(clip);
+            android.graphics.Path wave = new android.graphics.Path();
+            wave.moveTo(cx - r, cy + r);
+            for (float x = cx - r; x <= cx + r; x += 6 * s) {
+                wave.lineTo(x, level + (float) Math.sin((x - cx) / (40 * s) + t * 3) * 10 * s);
+            }
+            wave.lineTo(cx + r, cy + r);
+            wave.close();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new android.graphics.LinearGradient(0, level, 0, cy + r, 0x992BD96B, 0x5512803C, android.graphics.Shader.TileMode.CLAMP));
+            c.drawPath(wave, paint);
+            paint.setShader(null);
+            // Bubbles.
+            for (int i = 0; i < 12; i++) {
+                float k = (t * (0.25f + (i % 4) * 0.08f) + i * 0.137f) % 1f;
+                float bx = cx + (float) Math.sin(i * 2.3 + t) * r * 0.6f, by = cy + r - k * (cy + r - level);
+                paint.setColor(0x88C8FFD8);
+                c.drawCircle(bx, by, (3 + i % 3 * 2) * s, paint);
+            }
+            c.restore();
+            // Sparks along the grid lines, running into the orb.
+            for (int i = 0; i < sparksIn.length; i++) {
+                float[] sp = sparksIn[i];
+                if (sp[2] <= 0 || sp[2] >= 1) {
+                    double a = random.nextDouble() * Math.PI * 2;
+                    sp[0] = cx + (float) Math.cos(a) * Math.max(width, height);
+                    sp[1] = cy + (float) Math.sin(a) * Math.max(width, height);
+                    sp[2] = 0.001f + random.nextFloat() * 0.3f;
+                }
+                sp[2] += 0.012f;
+                float k = sp[2] * sp[2];
+                float x = sp[0] + (cx - sp[0]) * k, y = sp[1] + (cy - sp[1]) * k;
+                float px = sp[0] + (cx - sp[0]) * Math.max(0, k - 0.04f), py = sp[1] + (cy - sp[1]) * Math.max(0, k - 0.04f);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(3 * s);
+                paint.setColor(((int) (200 * sp[2]) << 24) | 0x7CFFA8);
+                c.drawLine(px, py, x, y, paint);
+            }
+            // The level in the middle.
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+            paint.setTextSize(30 * s);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setColor(0xFF7CFFA8);
+            c.drawText("⚡ " + chargeLevel + " %", cx, cy + r + 50 * s, paint);
+            paint.setTextAlign(Paint.Align.LEFT);
+        }
+
         private void orbFront(Canvas c, boolean dark, float t, float s) {
             float r = lensR;
             paint.setShader(null);
