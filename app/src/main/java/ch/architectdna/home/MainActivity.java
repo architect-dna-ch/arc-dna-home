@@ -334,6 +334,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             scroll.post(this::updateFolds);
             scroll.post(this::fitClock);
+            scroll.post(() -> peek.findClocks(content));
         });
         scroll.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFolds);
 
@@ -5393,6 +5394,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private boolean shown;
         private float shownV = -1;
+        /** Where the last clock on the page ends (content y): the dial only comes once it's gone. */
+        private int clocksEnd;
+
+        void findClocks(View root) {
+            int[] end = {0};
+            walk(root, end);
+            clocksEnd = end[0];
+            follow(scroll.getScrollY());
+        }
+
+        private void walk(View v, int[] end) {
+            if (v.getVisibility() != View.VISIBLE) return;
+            if (v == clock || "Clock".equals(v.getClass().getSimpleName())) {
+                int[] a = new int[2], b = new int[2];
+                v.getLocationInWindow(a);
+                content.getLocationInWindow(b);
+                end[0] = Math.max(end[0], a[1] - b[1] + v.getHeight());
+            }
+            if (v instanceof android.view.ViewGroup) {
+                android.view.ViewGroup g = (android.view.ViewGroup) v;
+                for (int i = 0; i < g.getChildCount(); i++) walk(g.getChildAt(i), end);
+            }
+        }
         private final Runnable tick = new Runnable() {
             @Override public void run() {
                 invalidate();
@@ -5427,16 +5451,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         private float radius() {
-            return Math.min(dp(118), getResources().getDisplayMetrics().widthPixels * 0.3f);
+            return Math.min(dp(108), getResources().getDisplayMetrics().widthPixels * 0.28f);
         }
 
         @Override protected void onMeasure(int w, int h) {
-            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(statusTop() + radius() + dp(6)));
+            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(statusTop() * 0.9f + radius() + dp(6)));
         }
 
         /** Appears once the top cards have scrolled away, slides back up at the top. */
         void follow(int y) {
-            boolean want = y > dp(300) && chat == null;
+            boolean want = y > Math.max(dp(300), clocksEnd - dp(8)) && chat == null;
             if (want == shown) return;
             shown = want;
             animate().cancel();
@@ -5457,7 +5481,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         /** Only the disc takes touches; beside it the page stays usable. */
         @Override public boolean onTouchEvent(android.view.MotionEvent e) {
             if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
-                && Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.35f) > radius()) return false;
+                && Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius()) return false;
             return super.onTouchEvent(e);
         }
 
@@ -5490,9 +5514,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             shownV = shownV < 0 ? 0 : shownV + (v - shownV) * 0.16f;
             if (Math.abs(shownV - v) > 0.002f) postInvalidateOnAnimation();
             boolean night = isNight();
-            int face = night ? 0xF01A1A18 : 0xF0FAFAF8, ink = night ? 0xFFF4F2EC : 0xFF1A1A1A, ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98,
+            int face = night ? 0xFF1A1A18 : 0xFFFAFAF8, ink = night ? 0xFFF4F2EC : 0xFF1A1A1A, ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98,
                 rust = night ? 0xFFD9472F : 0xFFB5271E;
-            float R = radius(), cx = getWidth() / 2f, cy = statusTop() * 0.35f;
+            float R = radius(), cx = getWidth() / 2f, cy = statusTop() * 0.9f;
             p.setStyle(Paint.Style.FILL);
             p.setColor(face);
             cv.drawCircle(cx, cy, R, p);
@@ -5523,7 +5547,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     p.setStyle(Paint.Style.FILL);
                     p.setColor(ink3);
                     p.setTextSize(dp(11));
-                    float rn = R - dp(38);
+                    float rn = R - dp(34);
                     cv.drawText(String.valueOf(i / 5), cx + (float) Math.cos(a) * rn, cy + (float) Math.sin(a) * rn + dp(4), p);
                 }
             }
@@ -5532,28 +5556,28 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setColor(ink);
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(22));
-            cv.drawText((String) r[1], cx, cy + R * 0.56f, p);
+            cv.drawText((String) r[1], cx, cy + R * 0.36f, p);
             p.setTypeface(Typeface.MONOSPACE);
             p.setColor(ink3);
             p.setTextSize(dp(9.5f));
             p.setLetterSpacing(0.18f);
-            cv.drawText((String) r[2], cx, cy + R * 0.74f, p);
+            cv.drawText((String) r[2], cx, cy + R * 0.50f, p);
             p.setLetterSpacing(0);
-            // Needle with the rust hub.
+            // Pointer on the rim (no centre needle: it ran through the readout).
             double a = Math.toRadians(180 - 180 * shownV);
-            float nl = R * 0.42f;
+            float n1 = R - dp(44), n2 = R - dp(6);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeWidth(dp(3));
             p.setColor(ink);
-            cv.drawLine(cx, cy, cx + (float) Math.cos(a) * nl, cy + (float) Math.sin(a) * nl, p);
+            cv.drawLine(cx + (float) Math.cos(a) * n1, cy + (float) Math.sin(a) * n1, cx + (float) Math.cos(a) * n2, cy + (float) Math.sin(a) * n2, p);
             p.setStyle(Paint.Style.FILL);
             p.setColor(rust);
-            cv.drawCircle(cx, cy, dp(6), p);
+            cv.drawCircle(cx + (float) Math.cos(a) * n1, cy + (float) Math.sin(a) * n1, dp(4), p);
             // Little dots: which reading is on.
             for (int i = 0; i < modes.length; i++) {
                 p.setColor(i == mode() ? rust : ink3);
-                cv.drawCircle(cx + (i - 1.5f) * dp(9), cy + R * 0.88f, dp(i == mode() ? 2.6f : 1.8f), p);
+                cv.drawCircle(cx + (i - 1.5f) * dp(9), cy + R * 0.58f, dp(i == mode() ? 2.6f : 1.8f), p);
             }
         }
     }
