@@ -286,7 +286,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ink2 = night ? 0xFFA9A8A2 : 0xFF5A5A58;
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
         rust = night ? 0xFFC9402F : 0xFFB5271E;
-        card = night ? 0xB3121211 : 0xB3FAFAF8;
+        // Nearly solid: pixel art and the grid behind must not shine through text (contrast).
+        card = night ? 0xF2121211 : 0xF2FAFAF8;
         panel = night ? 0xF2121211 : 0xF2FAFAF8;
         line = night ? 0xFF2C2C29 : 0xFFE0E0D8;
     }
@@ -575,6 +576,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView hint = monoText(11, ink3);
         hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Buddy (Fuchs, Bär, Hase oder F1 – in den Einstellungen): tippen = Wecker, Akku, Musik, Heute zählt · halten = Tritt ins Glas · schütteln = Erdbeben");
         hint.setLineSpacing(0, 1.3f);
+        hint.setTextColor(ink2);
+        hint.setPadding(dp(14), dp(12), dp(14), dp(12));
+        hint.setBackground(box(card, line, 16));          // its own card, like the music player
         foldable("Tipps", "hints", false, hint, dp(20));
 
         // While hidden, this transparent layer takes the tap that brings everything back,
@@ -5720,7 +5724,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             getLocationOnScreen(at);
             c.save();
             c.translate(-at[0], -at[1]);
-            PixelArt.draw(c, cells, PixelArt.scale(dm.widthPixels, dm.heightPixels), p, isNight() ? 150 : 140);
+            // Softer on the home than on the lock screen, so text stays readable.
+            PixelArt.draw(c, cells, PixelArt.scale(dm.widthPixels, dm.heightPixels), p, 80);
             c.restore();
         }
     }
