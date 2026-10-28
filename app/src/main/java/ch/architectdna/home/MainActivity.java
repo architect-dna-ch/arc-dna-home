@@ -4741,6 +4741,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void hop() {
+        if (chat != null) {                 // floating in the chat: hop in place (buddyFloat draws it)
+            chatHopAt = android.os.SystemClock.uptimeMillis();
+            return;
+        }
         fox.animate().cancel();
         fox.animate().translationY(-dp(26)).setDuration(180)
             .withEndAction(() -> fox.animate().translationY(0).setDuration(220).start()).start();
@@ -6393,7 +6397,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private View chatCol;
-    private long floatStart;
+    private long floatStart, chatHopAt;
 
     /** Where a view sits inside rootFrame by layout alone (its own and its parents' translations left out). */
     private float[] placeIn(View v) {
@@ -6440,8 +6444,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             // Ease in from where it sat for the first moment.
             float in = Math.min(1f, t / 0.8f);
             in = in * in * (3 - 2 * in);
-            fox.setTranslationX((x - baseX) * in);
-            fox.setTranslationY((y - baseY) * in);
+            // A hop while chatting: a quick bounce up from wherever it floats.
+            float hk = (android.os.SystemClock.uptimeMillis() - chatHopAt) / 400f;
+            if (hk >= 0 && hk < 1) y -= (float) Math.sin(Math.PI * hk) * dp(26);
+            float tx = (x - baseX) * in, ty = (y - baseY) * in;
+            if (in >= 1) {
+                // Glide (the free space changes when a bubble arrives) instead of jumping.
+                tx = fox.getTranslationX() + (tx - fox.getTranslationX()) * 0.15f;
+                ty = fox.getTranslationY() + (ty - fox.getTranslationY()) * (hk >= 0 && hk < 1 ? 0.5f : 0.15f);
+            }
+            fox.setTranslationX(tx);
+            fox.setTranslationY(ty);
             float vx = (float) Math.cos(t * 0.45);
             fox.setScaleX(vx < 0 ? -1f : 1f);
             fox.setRotation((float) Math.sin(t * 1.3) * 6);
