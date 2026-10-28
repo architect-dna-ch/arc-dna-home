@@ -296,8 +296,18 @@ final class MusicCard {
             public void onStopTrackingTouch(SeekBar s) {
             }
         });
-        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(-1, dp(36));
-        root.addView(volume, vlp);
+        // Volume row: two save points (A 70 %, B 25 % to start) beside the slider.
+        // Tap = jump there (a big overlay shows it), hold = save the current volume into it.
+        LinearLayout volRow = new LinearLayout(activity);
+        volRow.setGravity(Gravity.CENTER_VERTICAL);
+        volRow.addView(volume, new LinearLayout.LayoutParams(0, dp(36), 1f));
+        presetA = presetChip("A", 70);
+        presetB = presetChip("B", 25);
+        volRow.addView(presetA);
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-2, -2);
+        bl.leftMargin = dp(6);
+        volRow.addView(presetB, bl);
+        root.addView(volRow, new LinearLayout.LayoutParams(-1, -2));
 
         accessHint = label(12, ink, true);
         accessHint.setText("Titel & Cover von Spotify & Co. anzeigen → Benachrichtigungszugriff für ARC-DNA erlauben");
@@ -1843,6 +1853,86 @@ final class MusicCard {
         } catch (RuntimeException e) {
             openPlayer();
         }
+    }
+
+
+    /* ---------------- volume save points ---------------- */
+
+    private TextView presetA, presetB;
+
+    private android.content.SharedPreferences homePrefs() {
+        return activity.getSharedPreferences("home", Activity.MODE_PRIVATE);
+    }
+
+    private int presetOf(String key, int def) {
+        return homePrefs().getInt("vol" + key, def);
+    }
+
+    private TextView presetChip(String key, int def) {
+        TextView t = label(11, ink, true);
+        t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        t.setPadding(dp(10), dp(6), dp(10), dp(6));
+        t.setBackground(box(card, line, 14));
+        t.setText(key + " " + presetOf(key, def) + "%");
+        t.setOnClickListener(v -> {
+            int pct = presetOf(key, def);
+            int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+            int target = Math.round(max * pct / 100f);
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+            volume.setProgress(target);
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
+            volumeOverlay(key, pct, false);
+        });
+        t.setOnLongClickListener(v -> {
+            int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+            int pct = Math.round(100f * audio.getStreamVolume(AudioManager.STREAM_MUSIC) / Math.max(1, max));
+            homePrefs().edit().putInt("vol" + key, pct).apply();
+            t.setText(key + " " + pct + "%");
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            volumeOverlay(key, pct, true);
+            return true;
+        });
+        return t;
+    }
+
+    /** A big card over the home: the save point, its level as a bar, then it fades. */
+    private void volumeOverlay(String key, int pct, boolean saved) {
+        android.view.ViewGroup top = (android.view.ViewGroup) activity.getWindow().getDecorView();
+        LinearLayout o = new LinearLayout(activity);
+        o.setOrientation(LinearLayout.VERTICAL);
+        o.setGravity(Gravity.CENTER);
+        o.setPadding(dp(28), dp(20), dp(28), dp(22));
+        o.setBackground(box(0xF2121211, rust, 24));
+        TextView big = label(44, 0xFFFFFFFF, true);
+        big.setText(pct + "%");
+        big.setGravity(Gravity.CENTER);
+        o.addView(big);
+        TextView sub = label(11, 0xFFA5A5A0, true);
+        sub.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        sub.setText(saved ? "LAUTSTÄRKE " + key + " GESPEICHERT" : "LAUTSTÄRKE " + key);
+        sub.setGravity(Gravity.CENTER);
+        o.addView(sub);
+        View bar = new View(activity) {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(Canvas c) {
+                p.setColor(0xFF2C2C2A);
+                c.drawRoundRect(0, 0, getWidth(), getHeight(), getHeight() / 2f, getHeight() / 2f, p);
+                p.setColor(rust);
+                c.drawRoundRect(0, 0, getWidth() * pct / 100f, getHeight(), getHeight() / 2f, getHeight() / 2f, p);
+            }
+        };
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(200), dp(8));
+        lp.topMargin = dp(14);
+        o.addView(bar, lp);
+        android.widget.FrameLayout.LayoutParams fl = new android.widget.FrameLayout.LayoutParams(-2, -2, Gravity.CENTER);
+        top.addView(o, fl);
+        o.setAlpha(0f);
+        o.setScaleX(0.85f);
+        o.setScaleY(0.85f);
+        o.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).withEndAction(() ->
+            o.animate().alpha(0f).setStartDelay(900).setDuration(260).withEndAction(() -> top.removeView(o)).start()).start();
     }
 
 }
