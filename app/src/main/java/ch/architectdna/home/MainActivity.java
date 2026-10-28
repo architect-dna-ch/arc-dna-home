@@ -3949,14 +3949,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 ViewGroup g = (ViewGroup) block;
                 for (int k = 0; k < g.getChildCount(); k++) frost(g.getChildAt(k), 0);
             }
-            if (isLabel && block instanceof LinearLayout && block.getVisibility() == View.VISIBLE
-                && block != musicView && block.getHeight() > scroll.getHeight() / 2) {
+            // Every section with rows (apps grids, Zuletzt, the Mediathek) frosts row by row, so only
+            // the row under the fold blurs, not the whole section.
+            LinearLayout rows = rowsOf(block);
+            if (isLabel && rows != null && block.getVisibility() == View.VISIBLE && block != musicView) {
                 frost(child, 0);
                 frost(block, 0);
-                LinearLayout rows = (LinearLayout) block;
+                int off = rows == block ? 0 : rows.getTop();
                 for (int k = 0; k < rows.getChildCount(); k++) {
                     View r = rows.getChildAt(k);
-                    int bottom = block.getTop() + r.getBottom();
+                    int bottom = block.getTop() + off + r.getBottom();
                     frost(r, r.getHeight() == 0 ? 0
                         : Math.max(0f, Math.min(1f, (bottom - limit) / (float) r.getHeight())));
                 }
@@ -4013,6 +4015,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** The music card is never frosted: it's interactive and animates its own alpha (page swipe). */
     private View musicView;
+
+    /** The vertical list of rows inside a section (directly, or inside its frame), or null. */
+    private LinearLayout rowsOf(View block) {
+        View v = block;
+        if (v instanceof FrameLayout && ((FrameLayout) v).getChildCount() == 1) v = ((FrameLayout) v).getChildAt(0);
+        if (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL
+            && ((LinearLayout) v).getChildCount() > 1) return (LinearLayout) v;
+        return null;
+    }
 
     private void frost(View v, float hidden) {
         if (v == musicView || v == dashboardView || v == widgetStrip) hidden = 0;     // widgets stay sharp
