@@ -5883,7 +5883,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             @Override
             protected void onDraw(Canvas c) {
                 float w = getWidth(), h = getHeight(), t = android.os.SystemClock.uptimeMillis() / 1000f;
-                p.setShader(new android.graphics.LinearGradient(0, h * 0.35f, 0, h, 0x00000000, 0xCC000000, android.graphics.Shader.TileMode.CLAMP));
+                p.setShader(new android.graphics.LinearGradient(0, 0, 0, h * 0.7f, 0xA6000000, 0xE8000000, android.graphics.Shader.TileMode.CLAMP));
                 c.drawRect(0, 0, w, h, p);
                 int[] hues = {0xFF3C8DFF, 0xFFA77BFF, 0xFFFF4FA0, 0xFFFFB627, 0xFF2BBF6A, 0xFF3C8DFF};
                 for (int i = 0; i < 5; i++) {
@@ -6063,9 +6063,52 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hop();
     }
 
+    /** The buddy's joke book: the joke, and what's funny about it if you ask. */
+    private static final String[][] JOKES = {
+        {"Warum können Geister so schlecht lügen? Man sieht durch sie hindurch.", "\"Durchschauen\" heisst auch: eine Lüge erkennen. Geister sind durchsichtig – doppelt ertappt."},
+        {"Treffen sich zwei Magnete. Sagt der eine: Was soll ich heute bloss anziehen?", "Magnete ziehen an – und \"anziehen\" heisst auch Kleider wählen."},
+        {"Was macht ein Pirat am Computer? Er drückt die Enter-Taste.", "Enter klingt wie \"Entern\" – das, was Piraten mit Schiffen machen."},
+        {"Wie nennt man einen Bären ohne Ohren? B.", "\"Bär\" klingt wie B + \"är\". Nimm die \"Ohren\" (das \"är\") weg – bleibt nur B. Reiner Klang-Kalauer."},
+        {"Was sagt die Ente zum Regen? Endlich Wetter!", "Für Menschen ist Regen schlechtes Wetter – für eine Ente ist's genau ihr Ding."},
+        {"Was ist orange und läuft durch den Wald? Eine Wanderine.", "Mandarine + wandern = Wanderine."},
+        {"Was ist grün und klopft an die Tür? Ein Klopfsalat.", "Kopfsalat mit einem L mehr – und schon klopft er."},
+        {"Wie heisst ein Spanier ohne Auto? Carlos.", "\"Car los\" – das Auto ist los, also weg."},
+        {"Was liegt am Strand und spricht undeutlich? Eine Nuschel.", "Muschel + nuscheln (undeutlich reden)."},
+        {"Was ist ein Keks unter einem Baum? Ein schattiges Plätzchen.", "Plätzchen = Keks und auch ein gemütlicher Ort im Schatten."},
+        {"Was macht ein Clown im Büro? Faxen.", "Faxen = Blödsinn machen, aber auch das alte Büro-Fax."},
+        {"Was ist rot und schlecht für die Zähne? Ein Ziegelstein.", "Man erwartet Süssigkeiten – aber es ist ein Ziegelstein. Der Witz ist, dass er wörtlich stimmt."},
+        {"Sitzen zwei Kühe auf der Weide. Sagt die eine: Muh. Sagt die andere: Ich wollt's gerade sagen.", "Kühe sagen eh nur Muh – darum ist das so trocken."},
+    };
+    private final java.util.ArrayList<Integer> jokeBag = new java.util.ArrayList<>();
+    private int lastJoke = -1;
+
+    /** "Woher hast du den Witz?", "Versteh ich nicht" … about the joke just told. */
+    private String jokeFollowUp(String l) {
+        if (lastJoke < 0) return null;
+        if (l.contains("woher") || l.contains("quelle") || l.contains("wer hat") || l.contains("selbst ausgedacht") || l.contains("erfunden")) {
+            String[] who = {"Aus meinem kleinen Witzebuch – fest in ARC-DNA eingebaut, ganz offline. Klassiker vom Pausenhof, ich hab sie nur gesammelt.",
+                "Ehrlich? Uralte Kalauer. Die erzählt man sich in der Schweiz und in Deutschland seit Jahrzehnten – ich hab sie in mein Notizbuch geschrieben.",
+                "Nicht selbst erfunden – " + JOKES.length + " Stück stehen in meinem eingebauten Witzebuch. Willst du noch einen?"};
+            return who[random.nextInt(who.length)];
+        }
+        if (l.contains("versteh") || l.contains("warum") || l.contains("wieso") || l.contains("erklär") || l.contains("was heisst") || l.contains("check")) {
+            return JOKES[lastJoke][1];
+        }
+        if (l.contains("schlecht") || l.contains("flach") || l.contains("lahm") || l.contains("nicht lustig") || l.contains("cringe")) {
+            return "Autsch. 😅 Okay, der war flach. Sag \"noch einen\" – der nächste wird besser. Vielleicht.";
+        }
+        if (l.contains("haha") || l.contains("lol") || l.contains("😂") || l.contains("gut") || l.contains("nice")) {
+            return "Hehe, freut mich! Noch einen?";
+        }
+        return null;
+    }
+
     /** On the phone, from what ARC-DNA knows; anything else goes to Claude. */
     private String answer(String q) {
         String l = q.toLowerCase(Locale.GERMAN);
+        String follow = jokeFollowUp(l);
+        if (follow != null) return follow;
+        if (!l.contains("witz") && !l.matches("^(ja|gern|noch|nochmal|mehr|weiter)\\b.*")) lastJoke = -1;
         // Open an app: "öffne X", "starte X", or just its name.
         java.util.regex.Matcher om = java.util.regex.Pattern.compile("^(öffne|starte|open|zeig)\\s+(.+)$").matcher(l);
         String want = om.find() ? om.group(2).trim() : null;
@@ -6135,12 +6178,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (l.contains("zeit") || l.contains("uhr") || l.contains("spät")) {
             return "Es ist " + new java.text.SimpleDateFormat("HH:mm", Locale.GERMAN).format(new java.util.Date()) + ".";
         }
-        if (l.contains("witz") || l.contains("lustig")) {
-            String[] jokes = {"Warum können Geister so schlecht lügen? Man sieht durch sie hindurch.",
-                "Treffen sich zwei Magnete. Sagt der eine: Was soll ich heute bloss anziehen?",
-                "Was macht ein Pirat am Computer? Er drückt die Enter-Taste.",
-                "Wie nennt man einen Bären ohne Ohren? B.", "Was sagt die Ente zum Regen? Endlich Wetter!"};
-            return jokes[random.nextInt(jokes.length)];
+        if (l.contains("witz") || l.contains("lustig") || (lastJoke >= 0 && l.matches("^(ja|gern|noch (einen|einer|eins|mal)|nochmal|mehr|weiter)\\b.*"))) {
+            // Every joke once before any repeats.
+            if (jokeBag.isEmpty()) {
+                for (int i = 0; i < JOKES.length; i++) jokeBag.add(i);
+                java.util.Collections.shuffle(jokeBag, random);
+                if (jokeBag.size() > 1 && jokeBag.get(0) == lastJoke) jokeBag.add(jokeBag.remove(0));
+            }
+            lastJoke = jokeBag.remove(0);
+            return JOKES[lastJoke][0];
         }
         if (l.matches("^(hallo|hi|hey|servus|grüezi|moin)\\b.*")) return BUDDY_CALLS[buddy()][0] + " Schön, dass du da bist.";
         if (l.contains("danke")) return "Gern! " + BUDDY_CALLS[buddy()][1];
