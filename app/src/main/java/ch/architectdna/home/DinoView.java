@@ -1271,14 +1271,14 @@ final class DinoView extends View {
     private float scaredAt = -1, deadAt = -1, scaredFromX;
     private final RectF bush = new RectF();
 
-    /** You looked at the screen again. In the first 2 s of the black hole that scares the dino off. */
+    /** You looked at the screen again. While it peeks and creeps in (9 s) that scares the dino off. */
     void lookedBack() {
         if (!vacuum || test || scaredAt >= 0 || locked || start < 0) return;
         float t = (SystemClock.uptimeMillis() - start) / 1000f;
-        if (t > 2.0f) return;               // too late: the sucking has started
+        if (t > INTRO + 0.6f) return;       // too late: the sucking has started
         scaredAt = t;
         float w = getWidth(), mid = w / 2, k = Math.min(dp(170), Math.min(w, getHeight()) * 0.42f) / 100f;
-        scaredFromX = t < 1.4f ? w + 80 * k - (w + 80 * k - mid) * ease(t / 1.4f) : mid;
+        scaredFromX = t < INTRO ? introX(t, w, k, mid) : mid;
         host.vacuum(0, 0, 0);
         host.stomp();
     }
@@ -1302,7 +1302,7 @@ final class DinoView extends View {
         return true;
     }
 
-    /** The other scene: the dino swallows the whole home like a black hole (7.5 s) and the phone locks. */
+    /** The other scene: peek, creep in (9 s), then the dino swallows the whole home like a black hole and the phone locks. */
     DinoView blackHole() {
         vacuum = true;
         return this;
@@ -1678,18 +1678,22 @@ final class DinoView extends View {
             drawScared(c, t, w, ground, k);
             return;
         }
-        // 0–1.4 s: stomps in from the right.
-        if (t < 1.4f) {
-            float x = w + 80 * k - (w + 80 * k - mid) * ease(t / 1.4f);
-            if ((int) (t * 2.4f) != lastStep) {
-                lastStep = (int) (t * 2.4f);
+        // First it peeks in from the right edge (1.5 s), then creeps in slowly (7.5 s): plenty of time
+        // to look back and scare it off. Only then the black hole.
+        if (t < INTRO) {
+            float x = introX(t, w, k, mid);
+            boolean walking = t >= PEEK;
+            if (walking && (int) ((t - PEEK) * 1.3f) != lastStep) {
+                lastStep = (int) ((t - PEEK) * 1.3f);
                 host.stomp();
             }
             markDino(x, ground, k, 1);
-            drawSide(c, x, ground, k, 0, t, true, true);
-            postInvalidateOnAnimation();      // keep walking in (this frame request was missing)
+            drawSide(c, x, ground, k, walking ? 0 : 0.3f, walking ? t * 0.45f : 0, walking, true);
+            if (!walking && t > 0.5f) bubble(c, "…?", x - 60 * k, ground - 110 * k, false, false);
+            postInvalidateOnAnimation();
             return;
         }
+        t = t - INTRO + 1.4f;          // from here the old timeline: turn, come up to the glass, suck
         // 1.4–2.6 s: turns to you and comes up to the glass (like the bin), mouth opening wide.
         float come = ease((t - 1.4f) / 1.2f);
         float sc = 1 + 0.5f * come, groundC = ground + (h * 0.8f - ground) * come;
@@ -1745,6 +1749,22 @@ final class DinoView extends View {
             return;
         }
         if (!locked) postInvalidateOnAnimation();
+    }
+
+    private static final float PEEK = 1.5f, INTRO = PEEK + 7.5f;
+
+    /** Where the dino is during the intro: the head peeks round the edge, ducks a bit, then it creeps to the middle. */
+    private float introX(float t, float w, float k, float mid) {
+        float edge = w + 80 * k, peek = w + 8 * k;
+        if (t < PEEK) {
+            float f = t / PEEK;
+            float in = f < 0.3f ? ease(f / 0.3f) : f < 0.65f ? 1 : 1 - 0.4f * ease((f - 0.65f) / 0.35f);
+            return edge - (edge - peek) * in;
+        }
+        float from = edge - (edge - peek) * 0.6f;
+        float f = (t - PEEK) / (INTRO - PEEK);
+        float e = f * f * (3 - 2 * f);                       // slow start, slow arrival
+        return from - (from - mid) * e;
     }
 
     /** Runs to the bush (0.9 s), hides and peeks; tapped → plays dead; untouched for 12 s → sneaks away. */
