@@ -3486,6 +3486,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "Aus – eigenes Wallpaper behalten",
             "Hell/Dunkel wieder dem System folgen",
             prefs.getBoolean("stealMe", true) ? "Sperrbildschirm-Spruch „STEAL ME.“ ausblenden" : "Sperrbildschirm-Spruch „STEAL ME.“ zeigen",
+            prefs.getBoolean("theftCam", true) ? "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) aus" : "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) an",
         };
         arcSheet("Wallpaper & Farben", wallpaperStatus(), items, pick -> {
                 if (pick == 0) {
@@ -3521,6 +3522,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 } else if (which == 3) {
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
                     pop("Hell/Dunkel folgt wieder dem System");
+                } else if (which == 5) {
+                    boolean on = !prefs.getBoolean("theftCam", true);
+                    prefs.edit().putBoolean("theftCam", on).apply();
+                    if (on && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 77);
+                    }
+                    pop(on ? "📷 Wache an: Sperrbildschirm zeigt Selfie-Kamera, GPS & Mikro – nur lokal, nichts gespeichert"
+                        : "Wache aus");
                 } else {
                     boolean on = !prefs.getBoolean("stealMe", true);
                     prefs.edit().putBoolean("stealMe", on).apply();

@@ -93,6 +93,7 @@ public class ArcWallpaper extends WallpaperService {
             } else {
                 handler.removeCallbacks(frame);
                 stopVisualizer();
+                watchTheft(false);
             }
         }
 
@@ -275,10 +276,12 @@ public class ArcWallpaper extends WallpaperService {
         private void draw(Canvas c, boolean lock) {
             lockedNow = lock;
             boolean panic = lock && noService;
+            watchTheft(lock && visible && !isPreview());
             if (!panic) {
                 drawScene(c, lock);
                 if (lock) {
                     drawStealMe(c);
+                    drawTheft(c);
                     drawHeart(c);
                 }
                 return;
@@ -319,6 +322,119 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawText(a, width / 2f + (random.nextFloat() - 0.5f) * 4 * s, y - 6 * s, paint);
                 paint.setTextAlign(Paint.Align.LEFT);
             }
+        }
+
+        private boolean theftAsked;
+
+        private boolean theftWanted() {
+            android.content.SharedPreferences hp = getSharedPreferences("home", MODE_PRIVATE);
+            return hp.getBoolean("stealMe", true) && hp.getBoolean("theftCam", true);
+        }
+
+        /** The lock screen is up: the scroll service runs the watch (camera, mic, GPS); off right after. */
+        private void watchTheft(boolean lockUp) {
+            boolean want = lockUp && theftWanted();
+            if (want == theftAsked) return;
+            theftAsked = want;
+            ScrollAssistService.theft(want);
+        }
+
+        /**
+         * The watch on the lock screen, above "STEAL ME.": the selfie camera live (security-cam green,
+         * ● REC), the phone's own GPS position, and the microphone as a moving graph. Nothing leaves
+         * the phone.
+         */
+        private void drawTheft(Canvas c) {
+            if (!theftWanted()) return;
+            float s = Math.min(width, height) / 1080f, t = SystemClock.uptimeMillis() / 1000f;
+            float top = height * 0.30f, camW = width * 0.30f, camH = camW * 4 / 3f, left = width * 0.07f;
+            android.graphics.RectF box = new android.graphics.RectF(left, top, left + camW, top + camH);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xE6081008);
+            c.drawRoundRect(box, 22 * s, 22 * s, paint);
+            android.graphics.Bitmap f = TheftWatch.frame;
+            if (f != null) {
+                c.save();
+                android.graphics.Path clip = new android.graphics.Path();
+                clip.addRoundRect(box, 22 * s, 22 * s, android.graphics.Path.Direction.CW);
+                c.clipPath(clip);
+                float sc = Math.max(camW / f.getWidth(), camH / f.getHeight());
+                float dw = f.getWidth() * sc, dh = f.getHeight() * sc;
+                c.drawBitmap(f, null, new android.graphics.RectF(box.centerX() - dw / 2, box.centerY() - dh / 2, box.centerX() + dw / 2, box.centerY() + dh / 2), paint);
+                // Scan lines.
+                paint.setColor(0x22000000);
+                for (float y = box.top; y < box.bottom; y += 6 * s) c.drawRect(box.left, y, box.right, y + 2 * s, paint);
+                c.restore();
+            } else {
+                paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+                paint.setTextSize(24 * s);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(0xFF7FE07F);
+                String st = TheftWatch.status.isEmpty() ? (ScrollAssistService.instance == null ? "ARC-DNA SCROLL AUS" : "KAMERA STARTET …") : TheftWatch.status.toUpperCase(java.util.Locale.GERMAN);
+                c.drawText(st, box.centerX(), box.centerY(), paint);
+                if (ScrollAssistService.instance == null) {
+                    paint.setTextSize(18 * s);
+                    c.drawText("Bedienungshilfen → einschalten", box.centerX(), box.centerY() + 32 * s, paint);
+                }
+                paint.setTextAlign(Paint.Align.LEFT);
+            }
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(4 * s);
+            paint.setColor(0xFF7FE07F);
+            c.drawRoundRect(box, 22 * s, 22 * s, paint);
+            paint.setStyle(Paint.Style.FILL);
+            // ● REC and the time.
+            paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+            paint.setTextSize(22 * s);
+            if (((int) (t * 2)) % 2 == 0) {
+                paint.setColor(0xFFE8231A);
+                c.drawCircle(box.left + 24 * s, box.top + 28 * s, 8 * s, paint);
+            }
+            paint.setColor(0xFFFFFFFF);
+            c.drawText("REC", box.left + 40 * s, box.top + 36 * s, paint);
+            c.drawText(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()),
+                box.left + 18 * s, box.bottom - 18 * s, paint);
+            // Right side: position and microphone.
+            float rx = box.right + 30 * s, rw = width * 0.93f - rx;
+            boolean dark = night();
+            android.graphics.RectF info = new android.graphics.RectF(rx, top, rx + rw, top + camH);
+            paint.setColor(dark ? 0xCC0A0F0A : 0xCCFAFAF8);
+            c.drawRoundRect(info, 22 * s, 22 * s, paint);
+            paint.setColor(dark ? 0xFF7FE07F : 0xFF1F7A3A);
+            paint.setTextSize(20 * s);
+            c.drawText("◎ GPS · NUR LOKAL", rx + 22 * s, top + 40 * s, paint);
+            android.location.Location loc = TheftWatch.where;
+            paint.setColor(dark ? 0xFFF4F2EC : 0xFF1A1A1A);
+            paint.setTextSize(30 * s);
+            if (loc != null) {
+                c.drawText(String.format(java.util.Locale.ROOT, "%.5f° %s", Math.abs(loc.getLatitude()), loc.getLatitude() >= 0 ? "N" : "S"), rx + 22 * s, top + 84 * s, paint);
+                c.drawText(String.format(java.util.Locale.ROOT, "%.5f° %s", Math.abs(loc.getLongitude()), loc.getLongitude() >= 0 ? "E" : "W"), rx + 22 * s, top + 122 * s, paint);
+                paint.setTextSize(19 * s);
+                paint.setColor(dark ? 0xFFA9A8A2 : 0xFF5A5A58);
+                long age = Math.max(0, (System.currentTimeMillis() - loc.getTime()) / 1000);
+                c.drawText("± " + Math.round(loc.getAccuracy()) + " m · vor " + (age < 120 ? age + " s" : age / 60 + " min"), rx + 22 * s, top + 154 * s, paint);
+            } else {
+                c.drawText("SUCHE …", rx + 22 * s, top + 84 * s, paint);
+            }
+            // Microphone graph.
+            float gTop = top + 190 * s, gBot = top + camH - 50 * s, gl = rx + 22 * s, gr = rx + rw - 22 * s;
+            paint.setColor(dark ? 0xFF7FE07F : 0xFF1F7A3A);
+            paint.setTextSize(20 * s);
+            c.drawText("🎙 MIKRO LIVE", gl, top + camH - 18 * s, paint);
+            if (gBot > gTop + 20 * s) {
+                float[] lv = TheftWatch.levels;
+                int head = TheftWatch.head, n = lv.length;
+                float mid = (gTop + gBot) / 2, half = (gBot - gTop) / 2, step = (gr - gl) / (n - 1);
+                paint.setStrokeWidth(Math.max(2, step * 0.6f));
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                for (int i = 0; i < n; i++) {
+                    float v = lv[(head + i) % n];
+                    float a = Math.max(2 * s, v * half);
+                    paint.setColor(v > 0.75f ? 0xFFE8231A : v > 0.45f ? 0xFFF29A1F : (dark ? 0xFF7FE07F : 0xFF1F7A3A));
+                    c.drawLine(gl + i * step, mid - a, gl + i * step, mid + a, paint);
+                }
+            }
+            paint.setTextAlign(Paint.Align.LEFT);
         }
 
         /**

@@ -284,6 +284,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     private void apply(String m) {
         if (m.equals(mode)) return;
+        if (theftOn && !m.equals("off")) return;       // locked: the watch has the camera
         stopTracking();
         mode = m;
         if (m.equals("off")) {
@@ -316,13 +317,80 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         main.postDelayed(frameWatchdog, 6000);
     }
 
+    /* ---------------- Anti-theft watch on the lock screen (asked for by the wallpaper) ---------------- */
+
+    private boolean theftOn;
+
+    /** The wallpaper shows the lock screen with "STEAL ME." on: camera, microphone and GPS on / off. */
+    static void theft(boolean on) {
+        ScrollAssistService s = instance;
+        if (s != null) s.main.post(() -> s.setTheft(on));
+    }
+
+    private void setTheft(boolean on) {
+        if (on == theftOn) return;
+        if (on) apply("off");          // the camera is the watch's now (head scroll picks up again after unlocking)
+        theftOn = on;
+        if (on) {
+            if (!theftForeground()) {
+                theftOn = false;
+                TheftWatch.status = "Hintergrund blockiert";
+                return;
+            }
+            showPill("◉ WACHE · KAMERA · MIKRO · GPS");
+            TheftWatch.start(this);
+        } else {
+            TheftWatch.stop();
+            if (mode.equals("off")) hidePill();
+            if (foreground && mode.equals("off")) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+                foreground = false;
+            }
+        }
+    }
+
+    private boolean theftForeground() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
+                nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Kopf-Scroll", NotificationManager.IMPORTANCE_MIN));
+            }
+            Notification n = new Notification.Builder(this, CHANNEL)
+                .setSmallIcon(R.drawable.ic_cube)
+                .setContentTitle("ARC-DNA Diebstahl-Wache")
+                .setContentText("Sperrbildschirm: Selfie-Kamera, Mikrofon, GPS – nur auf dem Handy, nichts gespeichert.")
+                .setOngoing(true)
+                .build();
+            int[] tries = Build.VERSION.SDK_INT >= 30 ? new int[]{
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE | ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA} : new int[]{0};
+            RuntimeException last = null;
+            for (int type : tries) {
+                try {
+                    if (Build.VERSION.SDK_INT >= 30) startForeground(1, n, type);
+                    else startForeground(1, n);
+                    foreground = true;
+                    DiagLog.log("theft watch foreground ok, types=" + type);
+                    return true;
+                } catch (RuntimeException e) {
+                    last = e;
+                }
+            }
+            DiagLog.log("theft watch foreground refused: " + (last == null ? "" : last.getMessage()));
+        } catch (RuntimeException e) {
+            DiagLog.log("theft watch foreground refused: " + e.getMessage());
+        }
+        return false;
+    }
+
     private void stopTracking() {
         if (head != null) head.stop();
         hideEdge();
         speed = 0;
         main.removeCallbacks(scroller);
         scrolling = false;
-        if (foreground) {
+        if (foreground && !theftOn) {
             stopForeground(STOP_FOREGROUND_REMOVE);
             foreground = false;
         }
@@ -789,6 +857,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     @Override
     public void onDestroy() {
         if (instance == this) instance = null;
+        TheftWatch.stop();
         try {
             unregisterReceiver(screen);
         } catch (RuntimeException ignored) {

@@ -30,6 +30,7 @@
          RECORD_AUDIO; nothing is recorded or stored). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <!-- Galerie: photos on the globe (Android 14+ also works with "only selected photos"). -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
@@ -454,7 +455,7 @@
         <service
             android:name=".ScrollAssistService"
             android:exported="true"
-            android:foregroundServiceType="camera"
+            android:foregroundServiceType="camera|microphone|location"
             android:label="ARC-DNA Scroll"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
