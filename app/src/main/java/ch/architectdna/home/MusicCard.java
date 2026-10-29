@@ -1531,6 +1531,7 @@ final class MusicCard {
         private long lastKick;
 
         void feed(byte[] fft) {
+            BackgroundPhases.cardLiveAt = android.os.SystemClock.uptimeMillis();     // the card reads the phases itself
             int bins = fft.length / 2;
             float bass = 0;
             for (int k = 1; k < Math.min(bins, 7); k++) bass += (float) Math.hypot(fft[2 * k], fft[2 * k + 1]);

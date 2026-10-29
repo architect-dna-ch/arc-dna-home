@@ -116,10 +116,13 @@ public class MediaListener extends NotificationListenerService {
         watched.clear();
         main.removeCallbacks(tick);
         main.removeCallbacks(progress);
+        if (bgPhases != null) bgPhases.stop();
         ArcMediaNotice.cancel(this);
         BtSync.stopServer();
         report();
     }
+
+    private BackgroundPhases bgPhases;
 
     private void watch(List<MediaController> list) {
         for (MediaController c : watched) c.unregisterCallback(callback);
@@ -150,6 +153,8 @@ public class MediaListener extends NotificationListenerService {
         }
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
         MusicMood.onUpdate(this, playing != null, title, artist);
+        if (bgPhases == null) bgPhases = new BackgroundPhases(this);
+        bgPhases.follow(playing);                  // phases + beats also while ARC-DNA is in the background
         // The ARC Player notice: the playing session, else a paused one; none = gone.
         MediaController shown = playing;
         if (shown == null) {
