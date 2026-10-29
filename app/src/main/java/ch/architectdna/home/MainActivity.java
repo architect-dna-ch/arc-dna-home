@@ -4879,6 +4879,33 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         DiagLog.log("dino visit");
     }
 
+    /**
+     * Watchdog: every 3 s while the home is in front and nothing is going on, a buddy that ended up
+     * hidden, faded, shrunk or off screen fades back in – and the log says how it was found.
+     */
+    private final Runnable buddyWatch = new Runnable() {
+        @Override
+        public void run() {
+            handler.removeCallbacks(this);
+            if (!homeInFront) return;
+            handler.postDelayed(this, 3000);
+            if (fox == null || dino != null || chat != null || sweeping || world != null || game != null || libraryOpen || pro()) return;
+            boolean off = Math.abs(fox.getTranslationX()) > dp(40) || Math.abs(fox.getTranslationY()) > dp(60);
+            if (fox.getVisibility() == View.VISIBLE && fox.getAlpha() > 0.9f && fox.getScaleX() > 0.9f && Math.abs(fox.getScaleX()) <= 1.3f && !off) return;
+            DiagLog.log("buddy watchdog: vis=" + fox.getVisibility() + " a=" + fox.getAlpha() + " s=" + fox.getScaleX()
+                + " tx=" + (int) fox.getTranslationX() + " ty=" + (int) fox.getTranslationY() + " f1=" + f1 + " swept=" + swept());
+            fox.animate().cancel();
+            fox.setVisibility(View.VISIBLE);
+            fox.setScaleX(1f);
+            fox.setScaleY(1f);
+            fox.setRotation(0f);
+            fox.setTranslationX(0f);
+            fox.setTranslationY(0f);
+            fox.animate().alpha(1f).setDuration(300).start();
+            fox.bringToFront();
+        }
+    };
+
     /** Nothing going on (no dino, chat or sweep): the buddy is visible, full size, in its place. */
     private void reviveBuddy() {
         if (fox == null || dino != null || chat != null || sweeping || pro()) return;
@@ -5058,6 +5085,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         applyPro();
         applySwept();
         reviveBuddy();
+        handler.postDelayed(buddyWatch, 3000);
         if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
