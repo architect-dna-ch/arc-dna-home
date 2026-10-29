@@ -5475,6 +5475,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             setOnClickListener(v -> {
                 prefs.edit().putInt("peekMode", (mode() + 1) % modes.length).apply();
                 shownV = -1;
+                lastRead = null;
                 performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
                 invalidate();
             });
@@ -5530,13 +5531,40 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         /** 0..1 on the dial plus the big readout. */
+        /** Plugged in (BatteryManager.isCharging() said no on a slow charger, so ask the battery broadcast). */
+        private boolean charging() {
+            Intent b = registerReceiver(null, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (b == null) return false;
+            int st = b.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1);
+            return b.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0
+                || st == android.os.BatteryManager.BATTERY_STATUS_CHARGING;
+        }
+
+        private boolean overdrive;
+        private long checkedAt;
+        private Object[] lastRead;
+
         private Object[] read() {
+            // The overdrive redraws every frame: the battery is asked once a second, not 60 times.
+            long now = android.os.SystemClock.uptimeMillis();
+            if (lastRead != null && now - checkedAt < 1000) return lastRead;
+            checkedAt = now;
+            return lastRead = readNow();
+        }
+
+        private Object[] readNow() {
             Calendar c = Calendar.getInstance();
             int m = mode();
-            if (m == 0) {
+            overdrive = charging();
+            if (m == 0 || overdrive) {                 // charging: the battery takes over, in overdrive
                 android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
                 int pct = bm == null ? 0 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                return new Object[]{pct / 100f, pct + "%", bm != null && bm.isCharging() ? "AKKU · LÄDT" : "AKKU"};
+                String sub = "AKKU";
+                if (overdrive) {
+                    long full = bm != null && Build.VERSION.SDK_INT >= 28 ? bm.computeChargeTimeRemaining() : -1;
+                    sub = full > 0 ? String.format(Locale.ROOT, "⚡ VOLL IN %d:%02d", full / 3600_000, full / 60_000 % 60) : pct >= 100 ? "⚡ VOLL" : "⚡ LÄDT";
+                }
+                return new Object[]{pct / 100f, pct + "%", sub};
             }
             if (m == 1) {
                 float f = (c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)) / 1440f;
@@ -5579,6 +5607,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             float ar = R - dp(9);
             android.graphics.RectF ring = new android.graphics.RectF(cx - ar, cy - ar, cx + ar, cy + ar);
             cv.drawArc(ring, 180, -180 * shownV, false, p);
+            float rev = 0, tt = android.os.SystemClock.uptimeMillis() / 1000f;
+            if (overdrive) {
+                // Overdrive: the charge level glows green, a spark runs along it, the rim pulses, and every
+                // 3 s the needle revs up into the red zone and drops back – like an engine on the dyno.
+                float pulse = 0.5f + 0.5f * (float) Math.sin(tt * 5);
+                p.setColor(0xFF2BBF6A);
+                p.setStrokeWidth(dp(6));
+                cv.drawArc(ring, 180, -180 * shownV, false, p);
+                p.setStrokeWidth(dp(2));
+                p.setColor(((int) (60 + 120 * pulse) << 24) | 0x2BBF6A);
+                cv.drawCircle(cx, cy, R - dp(1.5f), p);
+                // Red zone 8–10, glowing.
+                p.setStrokeWidth(dp(5));
+                p.setColor(((int) (90 + 140 * pulse) << 24) | 0xE5482C);
+                cv.drawArc(ring, 180 - 180 * 0.8f, -180 * 0.2f, false, p);
+                // The spark.
+                float sp = (tt % 1.2f) / 1.2f * shownV;
+                double sa = Math.toRadians(180 - 180 * sp);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0xFFFFFFFF);
+                cv.drawCircle(cx + (float) Math.cos(sa) * ar, cy + (float) Math.sin(sa) * ar, dp(3.5f), p);
+                p.setColor(0x66B6FFCB);
+                cv.drawCircle(cx + (float) Math.cos(sa) * ar, cy + (float) Math.sin(sa) * ar, dp(8), p);
+                p.setStyle(Paint.Style.STROKE);
+                // The rev: up fast, hold with a shake, fall back.
+                float ph = (tt % 3.2f) / 3.2f;
+                float up = ph < 0.18f ? (float) Math.sin(ph / 0.18f * Math.PI / 2) : ph < 0.4f ? 1 : Math.max(0, 1 - (ph - 0.4f) / 0.35f);
+                rev = up * (0.97f - shownV) + (float) Math.sin(tt * 47) * 0.006f * (0.3f + up);
+                if (up > 0.95f) {
+                    cv.translate((float) Math.sin(tt * 61) * dp(0.8f), 0);
+                    p.setColor(0x88FFA62B);
+                    p.setStrokeWidth(dp(3));
+                    cv.drawArc(ring, 180 - 180 * shownV, -180 * (0.97f - shownV), false, p);
+                }
+                postInvalidateOnAnimation();
+            }
             // Ticks and the numbers 0–10, like the clock face.
             p.setStrokeCap(Paint.Cap.BUTT);
             p.setTextAlign(Paint.Align.CENTER);
@@ -5612,7 +5676,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             cv.drawText((String) r[2], cx, cy + R * 0.50f, p);
             p.setLetterSpacing(0);
             // Pointer on the rim (no centre needle: it ran through the readout).
-            double a = Math.toRadians(180 - 180 * shownV);
+            double a = Math.toRadians(180 - 180 * Math.min(1f, shownV + rev));
             float n1 = R - dp(44), n2 = R - dp(6);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
@@ -5624,7 +5688,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             cv.drawCircle(cx + (float) Math.cos(a) * n1, cy + (float) Math.sin(a) * n1, dp(4), p);
             // Little dots: which reading is on.
             for (int i = 0; i < modes.length; i++) {
-                p.setColor(i == mode() ? rust : ink3);
+                p.setColor(i == (overdrive ? 0 : mode()) ? (overdrive ? 0xFF2BBF6A : rust) : ink3);
                 cv.drawCircle(cx + (i - 1.5f) * dp(9), cy + R * 0.58f, dp(i == mode() ? 2.6f : 1.8f), p);
             }
         }
