@@ -2193,6 +2193,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             lastHeading = Float.NaN;
             downX = lastPX = ev.getX();
             downY = lastPY = ev.getY();
+            boxL = boxR = downX;
+            boxT = boxB = downY;
             downTime = ev.getEventTime();
             strokeOnSlider = music != null && music.isOnSlider(ev.getRawX(), ev.getRawY());
             strokeOnCard = !strokeOnSlider && music != null && music.isOnCard(ev.getRawX(), ev.getRawY());
@@ -2222,7 +2224,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (cardFlipped) return true;
             // No circle-to-rotate in the Geister-Level: there the finger roams around as a torch.
             if (gestures && ghosts == null && !strokeMulti && !circling && !strokeOnSlider
-                && Math.abs(pathTurn) > Math.toRadians(150) && pathLen > dp(120)) {
+                && Math.abs(pathTurn) > Math.toRadians(150) && pathLen > dp(120)
+                && boxR - boxL > dp(60) && boxB - boxT > dp(60)) {          // a real loop is wide and tall
                 circling = true;
                 MotionEvent cancel = MotionEvent.obtain(ev);
                 cancel.setAction(MotionEvent.ACTION_CANCEL);
@@ -2270,6 +2273,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return super.dispatchTouchEvent(ev);
     }
 
+    private float boxL, boxR, boxT, boxB;
+
     /** Adds a point (≥ 8 dp from the last, which smooths finger jitter) and adds up how far the path's direction has turned. */
     private void addPoint(float x, float y) {
         float dx = x - lastPX, dy = y - lastPY;
@@ -2280,8 +2285,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             float t = heading - lastHeading;
             if (t > Math.PI) t -= 2 * Math.PI;
             if (t < -Math.PI) t += 2 * Math.PI;
-            pathTurn += t;  // screen y points down, so a positive turn looks clockwise
+            // A sudden about-turn is a scroll changing direction, not a circle: start counting again
+            // (it read as a circle, cancelled the scroll and held the finger until it let go).
+            if (Math.abs(t) > Math.toRadians(100)) pathTurn = 0;
+            else pathTurn += t;  // screen y points down, so a positive turn looks clockwise
         }
+        boxL = Math.min(boxL, x);
+        boxR = Math.max(boxR, x);
+        boxT = Math.min(boxT, y);
+        boxB = Math.max(boxB, y);
         lastHeading = heading;
         lastPX = x;
         lastPY = y;
