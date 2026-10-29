@@ -638,6 +638,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         bottomScrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
             new int[]{panel, (panel & 0x00FFFFFF) | 0xB3000000, panel & 0x00FFFFFF}));
         root.addView(bottomScrim, new FrameLayout.LayoutParams(-1, dp(100), Gravity.BOTTOM));
+        // The half dial hangs from the top edge itself: above the status-bar fade, not greyed under it.
+        root.removeView(peek);
+        root.addView(peek, root.indexOfChild(topScrim) + 1, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
         // Floating rabbit button bottom-left, just above the fox: starts the Fuchsjagd game.
         gameButton = new ImageView(this);
@@ -5791,10 +5794,26 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
                 invalidate();
             });
+            // Hold, then turn: the numbers ring rotates under your finger like a watch bezel, clicking
+            // at every mark, and stays where you leave it. Hold and let go without turning = back to the top.
             setOnLongClickListener(v -> {
-                scroll.smoothScrollTo(0, 0);
+                turning = true;
+                turned = false;
+                startAngle = angleAt(touchX, touchY);
+                startBezel = bezel;
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                getParent().requestDisallowInterceptTouchEvent(true);
+                invalidate();
                 return true;
             });
+            bezel = prefs.getFloat("peekBezel", 0);
+        }
+
+        private boolean turning, turned;
+        private float touchX, touchY, startAngle, startBezel, bezel;
+
+        private float angleAt(float x, float y) {
+            return (float) Math.toDegrees(Math.atan2(y - statusTop() * 0.9f, x - getWidth() / 2f));
         }
 
         private int mode() {
@@ -5847,9 +5866,33 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         /** Only the disc takes touches; beside it the page stays usable. */
         @Override public boolean onTouchEvent(android.view.MotionEvent e) {
-            if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN && (dino != null
+            int act = e.getActionMasked();
+            if (act == android.view.MotionEvent.ACTION_DOWN && (dino != null
                 || Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius())) return false;
-            return super.onTouchEvent(e);
+            touchX = e.getX();
+            touchY = e.getY();
+            if (!turning) return super.onTouchEvent(e);
+            if (act == android.view.MotionEvent.ACTION_MOVE) {
+                float d = angleAt(touchX, touchY) - startAngle;
+                if (d > 180) d -= 360;
+                if (d < -180) d += 360;
+                float next = Math.round((startBezel + d) / 3.6f) * 3.6f;      // clicks into each mark
+                if (next != bezel) {
+                    bezel = next;
+                    turned = true;
+                    performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                    invalidate();
+                }
+            } else if (act == android.view.MotionEvent.ACTION_UP || act == android.view.MotionEvent.ACTION_CANCEL) {
+                turning = false;
+                bezel = ((bezel % 360) + 360) % 360;
+                prefs.edit().putFloat("peekBezel", bezel).apply();
+                if (!turned && act == android.view.MotionEvent.ACTION_UP) scroll.smoothScrollTo(0, 0);
+                super.onTouchEvent(android.view.MotionEvent.obtain(e.getDownTime(), e.getEventTime(),
+                    android.view.MotionEvent.ACTION_CANCEL, touchX, touchY, 0));      // no click after the turn
+                invalidate();
+            }
+            return true;
         }
 
         /** 0..1 on the dial plus the big readout. */
@@ -5914,6 +5957,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             boolean night = isNight();
             int face = night ? 0xFF1A1A18 : 0xFFFAFAF8, ink = night ? 0xFFF4F2EC : 0xFF1A1A1A, ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98,
                 rust = night ? 0xFFD9472F : 0xFFB5271E;
+            if (spicy()) {
+                face = night ? 0xFF152A20 : 0xFFFFFBF3;
+                ink = MainActivity.this.ink;
+                ink3 = MainActivity.this.ink3;
+                rust = MainActivity.this.rust;
+            }
             float R = radius(), cx = getWidth() / 2f, cy = statusTop() * 0.9f;
             p.setStyle(Paint.Style.FILL);
             p.setColor(face);
@@ -5969,9 +6018,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setStrokeCap(Paint.Cap.BUTT);
             p.setTextAlign(Paint.Align.CENTER);
             p.setTypeface(Typeface.MONOSPACE);
-            for (int i = 0; i <= 50; i++) {
-                double a = Math.toRadians(180 - i * 3.6);
+            if (turning) {          // turning: the bezel lights up
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(dp(3));
+                p.setColor(spicy() ? (night ? SpicyBackdrop.GREEN_NIGHT : SpicyBackdrop.GREEN) : rust);
+                cv.drawCircle(cx, cy, R - dp(2), p);
+            }
+            // The bezel turns the full ring of marks; 0–10 sit on the half you see when it's not turned.
+            for (int i = 0; i < 100; i++) {
+                double a = Math.toRadians(180 - i * 3.6 + bezel);
                 boolean big = i % 5 == 0;
+                if (bezel == 0 && i > 50) break;
+                int label = i <= 50 ? i / 5 : (100 - i) / 5;
                 float r1 = R - dp(big ? 26 : 20), r2 = R - dp(15);
                 p.setStyle(Paint.Style.STROKE);
                 p.setColor(big ? ink : ink3);
@@ -5982,7 +6040,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     p.setColor(ink3);
                     p.setTextSize(dp(11));
                     float rn = R - dp(34);
-                    cv.drawText(String.valueOf(i / 5), cx + (float) Math.cos(a) * rn, cy + (float) Math.sin(a) * rn + dp(4), p);
+                    cv.drawText(String.valueOf(label), cx + (float) Math.cos(a) * rn, cy + (float) Math.sin(a) * rn + dp(4), p);
                 }
             }
             // Readout.
