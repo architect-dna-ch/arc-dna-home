@@ -22,7 +22,7 @@ final class SpicyBackdrop extends View {
     static final int PINK = 0xFFFF3D7F, PINK_NIGHT = 0xFFFF5C93, GREEN = 0xFF1FB86E, GREEN_NIGHT = 0xFF3DDC8F;
 
     private final boolean night, quiet;
-    private final int base, pink, green;
+    private final int base, pink, green, pale;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RadialGradient[] glow = new RadialGradient[3];
     private final android.graphics.Matrix m = new android.graphics.Matrix();
@@ -52,16 +52,17 @@ final class SpicyBackdrop extends View {
         }
     };
 
-    /** quiet = "Professionell": the glows stay, no speed lines and no beat. */
-    SpicyBackdrop(Context c, boolean night, boolean quiet) {
+    /** Colours from the picked theme's palette; quiet = "Professionell": the glows stay, no speed lines and no beat. */
+    SpicyBackdrop(Context c, boolean night, int[] pal, boolean quiet) {
         super(c);
         this.night = night;
         this.quiet = quiet;
-        base = night ? 0xFF0E1A14 : 0xFFF2E8D5;
-        pink = night ? PINK_NIGHT : PINK;
-        green = night ? GREEN_NIGHT : GREEN;
+        base = pal[Themes.BG];
+        pink = pal[Themes.GLOW_A];
+        green = pal[Themes.GLOW_B];
+        pale = pal[Themes.GLOW_C];
         streak.setStrokeCap(Paint.Cap.ROUND);
-        dots.setColor(night ? 0x14F2E8D5 : 0x1413261D);
+        dots.setColor((pal[Themes.INK] & 0x00FFFFFF) | 0x14000000);
     }
 
     /** From the home's scroll listener: position and change since the last call. */
@@ -115,7 +116,7 @@ final class SpicyBackdrop extends View {
 
         float flare = Math.abs(speed), pulse = bass;
         for (float[] b : BLOBS) {
-            int col = b[4] == 0 ? pink : b[4] == 1 ? green : (night ? 0xFF7A2E4C : 0xFFFFB3CB);
+            int col = b[4] == 0 ? pink : b[4] == 1 ? green : pale;
             float cx = b[0] * w;
             float cy = b[1] * h - scrollY * b[3] % (h * 1.4f);
             if (cy < -h * 0.4f) cy += h * 1.4f;

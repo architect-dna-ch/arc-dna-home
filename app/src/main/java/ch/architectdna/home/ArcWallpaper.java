@@ -459,14 +459,14 @@ public class ArcWallpaper extends WallpaperService {
             // Shadow for contrast on any wallpaper, then the line; a short RGB split as the glitch.
             for (int pass = 0; pass < (glitch ? 3 : 2); pass++) {
                 float dx = pass == 0 ? 5 * s : pass == 2 ? -9 * s : 0, dy = pass == 0 ? 6 * s : 0;
-                paint.setColor(pass == 0 ? (dark ? 0xCC000000 : 0x55000000) : pass == 2 ? 0xAA1FA8FF : (dark ? 0xFFE5482C : 0xFFB5271E));
+                paint.setColor(pass == 0 ? (dark ? 0xCC000000 : 0x55000000) : pass == 2 ? 0xAA1FA8FF : accent());
                 c.drawText(l1, cx + dx, cy + dy, paint);
                 c.drawText(l2, cx + dx, cy + big * 0.98f + dy, paint);
             }
             paint.setLetterSpacing(0.02f);
             paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
             paint.setTextSize(34 * s);
-            paint.setColor(dark ? 0xFFF4F2EC : 0xFF1A1A1A);
+            paint.setColor(theme().pal(dark)[Themes.INK]);
             c.drawText("I'm an IT guy. I'll hack myself back", cx, cy + big * 0.98f + 70 * s, paint);
             c.drawText("– and find you. 👹😈🥸", cx, cy + big * 0.98f + 116 * s, paint);
             paint.setLetterSpacing(0);
@@ -514,15 +514,43 @@ public class ArcWallpaper extends WallpaperService {
             c.restore();
         }
 
+        /** The theme picked in the home (Themes): the wallpaper wears the same colours. */
+        private Themes.Theme theme() {
+            return Themes.current(getSharedPreferences("home", MODE_PRIVATE));
+        }
+
+        private int accent() {
+            return theme().pal(night())[Themes.ACCENT];
+        }
+
         private void drawScene(Canvas c, boolean lock) {
             boolean dark = night();
-            int bg = dark ? 0xFF121211 : 0xFFFAFAF8;
-            int ink = dark ? 0xECEBE6 : 0x1A1A1A;
-            int rust = dark ? 0xFFC9402F : 0xFFB5271E;
+            Themes.Theme th = theme();
+            int[] pal = th.pal(dark);
+            int bg = pal[Themes.BG];
+            int ink = pal[Themes.INK] & 0x00FFFFFF;
+            int rust = pal[Themes.ACCENT];
             // Sized by the shorter side, so a landscape tablet doesn't get a giant cube.
             float s = Math.min(width, height) / 1080f;
             float t = SystemClock.uptimeMillis() / 1000f;
             c.drawColor(bg);
+            if (th.glow) {
+                // The theme's glows (pink and green in Spicy): drifting slowly, flaring with the beat.
+                float[][] blobs = {{0.88f, 0.12f, 0.9f, pal[Themes.GLOW_A]}, {0.08f, 0.5f, 0.85f, pal[Themes.GLOW_B]}, {0.8f, 0.86f, 0.8f, pal[Themes.GLOW_C]}};
+                paint.setStyle(Paint.Style.FILL);
+                for (int i = 0; i < blobs.length; i++) {
+                    float[] b = blobs[i];
+                    int col = (int) b[3];
+                    float cx = width * b[0] + (float) Math.sin(t * 0.21 + i * 2) * 40 * s;
+                    float cy = height * b[1] + (float) Math.cos(t * 0.17 + i) * 50 * s;
+                    float r = width * b[2] * (1 + 0.08f * beat);
+                    int a = (int) Math.min(220, (dark ? 90 : 120) + 90 * beat);
+                    paint.setShader(new android.graphics.RadialGradient(cx, cy, r,
+                        new int[]{(col & 0x00FFFFFF) | (a << 24), col & 0x00FFFFFF}, null, android.graphics.Shader.TileMode.CLAMP));
+                    c.drawCircle(cx, cy, r, paint);
+                }
+                paint.setShader(null);
+            }
 
             // Blueprint grid.
             paint.setStyle(Paint.Style.STROKE);

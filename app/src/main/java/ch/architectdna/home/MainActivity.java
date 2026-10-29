@@ -280,29 +280,52 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             == Configuration.UI_MODE_NIGHT_YES;
     }
 
-    /** "Spicy" (the default): beige, deep green ink, hot pink + green. "Klassisch": the old ink/rust. */
-    private boolean spicy() {
-        return !"classic".equals(prefs.getString("theme", "spicy"));
+    /** The picked look (Themes.ALL): "Spicy" is the default, "Klassisch" the original ink/rust. */
+    private Themes.Theme theme() {
+        return Themes.current(prefs);
     }
 
-    /** The page colour behind everything (beige / deep green in Spicy). */
+    /** Glow themes get the drawn backdrop, the flip-in scroll and the bolder outlines. */
+    private boolean spicy() {
+        return theme().glow;
+    }
+
+    private int[] pal() {
+        return theme().pal(isNight());
+    }
+
+    /** The page colour behind everything. */
     private int paper() {
-        if (spicy()) return isNight() ? 0xFF0E1A14 : 0xFFF2E8D5;
-        return isNight() ? 0xFF121211 : 0xFFFAFAF8;
+        return pal()[Themes.BG] | 0xFF000000;
+    }
+
+    /** Pick a look: the home rebuilds, the live wallpaper follows on its next frame. */
+    private void showThemePicker() {
+        String[] rows = new String[Themes.ALL.length];
+        Themes.Theme now = theme();
+        for (int i = 0; i < rows.length; i++) {
+            Themes.Theme t = Themes.ALL[i];
+            rows[i] = (t == now ? "● " : "○ ") + t.name + " – " + t.desc;
+        }
+        arcSheet("Theme", "Home + Sperrbildschirm · mehr kommen dazu", rows, pick -> {
+            prefs.edit().putString("theme", Themes.ALL[pick].id).apply();
+            recreate();
+        });
     }
 
     private void pickColours() {
         boolean night = isNight();
         // The ARC-DNA Live wallpaper follows exactly this (it lagged behind the home before).
         prefs.edit().putBoolean("uiNight", night).putLong("uiNightAt", System.currentTimeMillis()).apply();
-        if (spicy()) {
-            ink = night ? 0xFFF2E8D5 : 0xFF13261D;
-            ink2 = night ? 0xFFBFC9BA : 0xFF46594D;
-            ink3 = night ? 0xFF718273 : 0xFF8F9A8A;
-            rust = night ? SpicyBackdrop.PINK_NIGHT : SpicyBackdrop.PINK;
-            card = night ? 0xE0152A20 : 0xE6FFF8EC;
-            panel = night ? 0xF2152A20 : 0xF2FFF8EC;
-            line = night ? 0xFF2A4535 : 0xFFE3D3B6;
+        if (!"classic".equals(theme().id)) {
+            int[] pl = theme().pal(night);
+            ink = pl[Themes.INK];
+            ink2 = pl[Themes.INK2];
+            ink3 = pl[Themes.INK3];
+            rust = pl[Themes.ACCENT];
+            card = pl[Themes.CARD];
+            panel = pl[Themes.PANEL];
+            line = pl[Themes.LINE];
             return;
         }
         ink = night ? 0xFFECEBE6 : 0xFF1A1A1A;
@@ -323,7 +346,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Light mode while the phone's own theme is dark: Android dims the wallpaper then (grey
         // page). So in light mode the launcher paints the light ARC wallpaper itself, undimmed.
         if (spicy()) {
-            backdrop = new SpicyBackdrop(this, isNight(), pro());
+            backdrop = new SpicyBackdrop(this, isNight(), pal(), pro());
             root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         } else if (!isNight() && prefs.getBoolean("autoWallpaper", true)) {
             ImageView paper = new ImageView(this);
@@ -1108,10 +1131,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 recreate();
             }, null);
         }
-        settingsRow(home, "Theme", () -> spicy() ? "SPICY · Beige, Pink, Grün" : "KLASSISCH · Tinte & Rost", v -> {
-            prefs.edit().putString("theme", spicy() ? "classic" : "spicy").apply();
-            recreate();
-        }, null);
+        settingsRow(home, "Theme", () -> theme().name.toUpperCase(Locale.GERMAN) + " · " + theme().desc, v -> showThemePicker(), null);
         settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
             prefs.edit().putBoolean("pro", !pro()).apply();
             if (pro()) {
@@ -2294,6 +2314,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) maybePlayUnlock();
         if (hasFocus) hideNavBar();
+        if (hasFocus && ghosts == null) systemBarIcons(paperIsLight());     // Neon is dark even by day
+    }
+
+    private boolean paperIsLight() {
+        return android.graphics.Color.luminance(paper()) > 0.5f;
     }
 
     /** Dark icons on a light screen, light icons on the dark one (and in the Geister-Level). */
@@ -2314,7 +2339,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             && Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 3) <= 1) {
             Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[0]);
         }
-        systemBarIcons(!isNight());
+        systemBarIcons(paperIsLight());
         say("Licht an. Die Geister sind weg.", 1600);
         syncLever();
     }
@@ -6029,7 +6054,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             int face = night ? 0xFF1A1A18 : 0xFFFAFAF8, ink = night ? 0xFFF4F2EC : 0xFF1A1A1A, ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98,
                 rust = night ? 0xFFD9472F : 0xFFB5271E;
             if (spicy()) {
-                face = night ? 0xFF152A20 : 0xFFFFFBF3;
+                face = pal()[Themes.PANEL] | 0xFF000000;
                 ink = MainActivity.this.ink;
                 ink3 = MainActivity.this.ink3;
                 rust = MainActivity.this.rust;
@@ -6092,7 +6117,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (turning) {          // turning: the bezel lights up
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(dp(3));
-                p.setColor(spicy() ? (night ? SpicyBackdrop.GREEN_NIGHT : SpicyBackdrop.GREEN) : rust);
+                p.setColor(spicy() ? pal()[Themes.GLOW_B] : rust);
                 cv.drawCircle(cx, cy, R - dp(2), p);
             }
             // The bezel turns the full ring of marks; 0–10 sit on the half you see when it's not turned.
