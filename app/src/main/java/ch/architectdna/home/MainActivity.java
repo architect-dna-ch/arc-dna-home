@@ -1624,6 +1624,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ---- Opening and coming back: slide up; back home the app is crushed and binned ---- */
 
+    private float downX = -1, downY = -1;
+    private long downAt;
     private Drawable leftIcon;
     private Intent leftIntent;
     private long leftAt, pausedAt;
@@ -1632,12 +1634,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Start an app sliding up from the bottom; remember it for the paper ball on the way back. */
     private void openApp(Intent intent, Drawable icon) {
         try {
-            // Android ignores custom slides for app launches from a launcher (new task), but honours a
-            // clip reveal: starting from a thin strip along the bottom edge, the app grows upward.
+            // The app grows out of the tile you tapped (the pop-up from the bottom edge was disliked);
+            // without a fresh tap (voice, Claude, a shortcut) it grows from the middle.
             int w = rootFrame.getWidth(), h = rootFrame.getHeight();
-            android.app.ActivityOptions o = w > 0 && h > 0
-                ? android.app.ActivityOptions.makeClipRevealAnimation(rootFrame, 0, h - 1, w, 1)
-                : android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold);
+            android.app.ActivityOptions o;
+            if (w > 0 && h > 0) {
+                int[] at = new int[2];
+                rootFrame.getLocationOnScreen(at);
+                boolean fresh = android.os.SystemClock.uptimeMillis() - downAt < 1500 && downX >= 0;
+                int size = dp(56);
+                int cx = fresh ? Math.round(downX) - at[0] : w / 2, cy = fresh ? Math.round(downY) - at[1] : h / 2;
+                o = android.app.ActivityOptions.makeScaleUpAnimation(rootFrame, cx - size / 2, cy - size / 2, size, size);
+            } else {
+                o = android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold);
+            }
             startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), o.toBundle());
             leftIcon = icon == null ? null : icon.getConstantState() != null ? icon.getConstantState().newDrawable().mutate() : icon;
             leftIntent = intent;
@@ -2159,6 +2169,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
+        if (action == MotionEvent.ACTION_DOWN) {
+            downX = ev.getRawX();
+            downY = ev.getRawY();
+            downAt = lastTouch;
+        }
         if (ghosts != null) ghosts.touch(ev);
         if (fox != null) {
             boolean down = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL;
