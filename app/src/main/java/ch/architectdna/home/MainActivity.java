@@ -5828,10 +5828,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** With the dashboard: the section just added hides; its content opens from the dock. */
     private void intoFolder(int which) {
-        if (dashboard == null) return;
         int n = content.getChildCount();
         folderHead[which] = content.getChildAt(n - 2);
         folderBlock[which] = content.getChildAt(n - 1);
+        if (dashboard == null) return;              // phone: just remembered (the swept home opens them as folders)
         folderHead[which].setVisibility(View.GONE);
         folderBlock[which].setVisibility(View.GONE);
     }
@@ -5841,6 +5841,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         View block = folderBlock[which];
         if (block == null || folderPanel != null) return;
         int index = content.indexOfChild(block);
+        int wasVis = block.getVisibility();
         content.removeView(block);
         block.setVisibility(View.VISIBLE);
         block.setAlpha(1f);
@@ -5877,7 +5878,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (p == null) return;
             p.animate().alpha(0f).setDuration(160).withEndAction(() -> {
                 sv.removeView(block);
-                block.setVisibility(View.GONE);
+                block.setVisibility(wasVis);
                 content.addView(block, Math.min(index, content.getChildCount()));
                 rootFrame.removeView(p);
             }).start();
@@ -6278,17 +6279,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         rootFrame.removeView(sv);
         sweeping = false;
         prefs.edit().putLong("sweptUntil", System.currentTimeMillis() + SWEEP_FOR).apply();
-        applySwept();
+        content.animate().alpha(0f).setDuration(220).withEndAction(() -> {
+            applySwept();
+            content.animate().alpha(1f).setDuration(320).start();
+        }).start();
         if (fox != null) {
             fox.animate().alpha(1f).setDuration(300).start();
             hop();
         }
-        say("Aufgeräumt! 🧹 Zwei Stunden nur das Nötigste. Unten ↺ holt alles zurück.", 5000);
+        scroll.smoothScrollTo(0, 0);
+        say("☕ Aufgeräumt! Zwei Stunden nur das Nötigste: 3 Apps, Ordner, Wetter, Musik. Unten ↺ holt alles zurück.", 5000);
     }
 
     /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */
     private void applySwept() {
         boolean on = swept() && !pro();
+        strip(on);
         if (on) {
             for (View v : clutter()) if (v != null) v.setVisibility(View.GONE);
             if (pixelLayer != null) pixelLayer.setAlpha(0.25f);
@@ -6296,7 +6302,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (on && sweptChip == null && rootFrame != null) {
             sweptChip = text(12, ink, true);
             sweptChip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-            sweptChip.setText("🧹 AUFGERÄUMT · ↺");
+            sweptChip.setText("☕ AUFGERÄUMT · ↺ ALLES ZURÜCK");
             sweptChip.setPadding(dp(14), dp(8), dp(14), dp(8));
             sweptChip.setBackground(box(card, line, 18));
             sweptChip.setElevation(dp(6));
@@ -6313,6 +6319,91 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
     }
 
+    private LinearLayout minimalBlock;
+    private final java.util.Map<View, Integer> stripped = new java.util.HashMap<>();
+
+    /**
+     * The real clean-up: below the clock only three apps, the folders, the weather and the music
+     * card stay; every other section is hidden until ↺ (or 2 hours).
+     */
+    private void strip(boolean on) {
+        if (content == null || widgetStrip == null) return;
+        if (!on) {
+            for (java.util.Map.Entry<View, Integer> e : stripped.entrySet()) e.getKey().setVisibility(e.getValue());
+            stripped.clear();
+            if (minimalBlock != null) content.removeView(minimalBlock);
+            minimalBlock = null;
+            return;
+        }
+        int from = content.indexOfChild(widgetStrip) - 1;           // the mode bar: everything above (clock) stays
+        if (from < 0) return;
+        if (minimalBlock == null || content.indexOfChild(minimalBlock) < 0) {
+            minimalBlock = buildMinimal();
+            content.addView(minimalBlock, from, margins(-1, -2, 0, dp(18), 0, 0));
+            from++;
+        } else from = content.indexOfChild(minimalBlock) + 1;
+        View musicBlock = musicView;
+        while (musicBlock != null && musicBlock.getParent() != content) {
+            musicBlock = musicBlock.getParent() instanceof View ? (View) musicBlock.getParent() : null;
+        }
+        int mi = musicBlock == null ? -1 : content.indexOfChild(musicBlock);
+        for (int i = from; i < content.getChildCount(); i++) {
+            View v = content.getChildAt(i);
+            if (v == minimalBlock || i == mi || i == mi - 1) continue;      // the music card and its title stay
+            if (!stripped.containsKey(v)) stripped.put(v, v.getVisibility());
+            v.setVisibility(View.GONE);
+        }
+        if (musicBlock != null) musicBlock.setVisibility(View.VISIBLE);
+    }
+
+    /** Three apps, three folders, the weather. */
+    private LinearLayout buildMinimal() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout apps = new LinearLayout(this);
+        Object[][] items = mainItems();
+        for (int i = 0; i < Math.min(3, items.length); i++) {
+            Object[] it = items[i];
+            LinearLayout b = new LinearLayout(this);
+            b.setOrientation(LinearLayout.VERTICAL);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(dp(8), dp(14), dp(8), dp(12));
+            b.setBackground(box(card, line, 20));
+            ImageView ic = new ImageView(this);
+            ic.setImageDrawable(it[1] instanceof Integer ? getDrawable((Integer) it[1]) : (Drawable) it[1]);
+            b.addView(ic, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            TextView l = text(13, ink, true);
+            l.setText((String) it[0]);
+            l.setPadding(0, dp(8), 0, 0);
+            b.addView(l);
+            Intent in = (Intent) it[2];
+            b.setOnClickListener(v -> open(in));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
+            lp.rightMargin = i < 2 ? dp(10) : 0;
+            apps.addView(b, lp);
+        }
+        box.addView(apps);
+        LinearLayout folders = new LinearLayout(this);
+        String[] names = {"▦  Apps", "◆  ARC-DNA", "◷  Zuletzt"};
+        for (int i = 0; i < 3; i++) {
+            TextView f = monoText(12, ink);
+            f.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+            f.setText(names[i]);
+            f.setGravity(Gravity.CENTER);
+            f.setPadding(dp(6), dp(14), dp(6), dp(14));
+            f.setBackground(box(card, line, 18));
+            int which = i;
+            f.setOnClickListener(v -> openFolder(which));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
+            lp.rightMargin = i < 2 ? dp(10) : 0;
+            folders.addView(f, lp);
+        }
+        box.addView(folders, margins(-1, -2, 0, dp(10), 0, 0));
+        if (phoneWidgets == null) phoneWidgets = new Dashboard(this, new int[]{ink, ink2, ink3, rust, card, line}, null);
+        box.addView(phoneWidgets.widget("weather"), margins(-1, dp(190), 0, dp(12), 0, 0));
+        return box;
+    }
+
     private void unsweep() {
         prefs.edit().putLong("sweptUntil", 0).apply();
         if (ghosts != null) ghosts.setVisibility(View.VISIBLE);
@@ -6323,7 +6414,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         say("Alles wieder da. Volles Programm! 🎉", 2500);
     }
 
-    /** The sweep itself: buddy + broom along the bottom, dust behind, clutter fading as the broom passes. */
+    private static final float COFFEE = 2.8f;
+
+    /** The sweep itself: first a coffee, then buddy + broom along the bottom, dust behind, clutter fading as the broom passes. */
     private final class SweepView extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final long born = android.os.SystemClock.uptimeMillis();
@@ -6337,9 +6430,94 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             setClickable(false);
         }
 
+        /** Buddy pours a coffee into a mug: stream, rising level, steam. */
+        private void coffee(Canvas c, float w, float h, float t) {
+            float size = Math.min(dp(120), w * 0.26f), ground = h * 0.86f;
+            float in = Math.min(1, t / 0.4f), mx = w * 0.56f, my = ground;
+            // Buddy.
+            c.save();
+            c.translate(w * 0.32f, ground + (1 - in) * dp(80));
+            float aw = size, ah = size * buddyArt.getIntrinsicHeight() / (float) Math.max(1, buddyArt.getIntrinsicWidth());
+            buddyArt.setBounds((int) (-aw / 2), (int) -ah, (int) (aw / 2), 0);
+            buddyArt.draw(c);
+            c.restore();
+            // Mug.
+            float mw = dp(54), mh = dp(60);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFF4F2EC);
+            c.drawRoundRect(mx - mw / 2, my - mh, mx + mw / 2, my, dp(8), dp(8), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(5));
+            p.setColor(0xFFF4F2EC);
+            c.drawArc(mx + mw / 2 - dp(10), my - mh * 0.8f, mx + mw / 2 + dp(18), my - mh * 0.25f, -90, 180, false, p);
+            // Coffee level rises while pouring (0.5 … 2.1 s).
+            float lvl = Math.max(0, Math.min(1, (t - 0.5f) / 1.6f));
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF5A3B24);
+            c.drawRect(mx - mw / 2 + dp(4), my - dp(4) - (mh - dp(12)) * lvl, mx + mw / 2 - dp(4), my - dp(4), p);
+            p.setColor(rust);
+            c.drawRect(mx - mw / 2, my - mh * 0.55f, mx + mw / 2, my - mh * 0.45f, p);
+            // Pot, tilted, with the stream.
+            float tilt = t < 0.4f ? t / 0.4f : t < 2.2f ? 1 : Math.max(0, 1 - (t - 2.2f) / 0.4f);
+            c.save();
+            c.translate(mx - dp(34), my - mh - dp(70));
+            c.rotate(-35 * tilt);
+            p.setColor(0xFF1A1A1A);
+            c.drawRoundRect(-dp(30), -dp(28), dp(20), dp(26), dp(10), dp(10), p);
+            p.setColor(0xFF3A3A38);
+            c.drawRect(-dp(30), -dp(30), dp(20), -dp(20), p);
+            android.graphics.Path sp = new android.graphics.Path();
+            sp.moveTo(dp(18), -dp(8));
+            sp.lineTo(dp(34), -dp(18));
+            sp.lineTo(dp(22), dp(4));
+            sp.close();
+            c.drawPath(sp, p);
+            c.restore();
+            if (t > 0.4f && t < 2.2f) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeCap(Paint.Cap.ROUND);
+                p.setStrokeWidth(dp(5));
+                p.setColor(0xFF6B4528);
+                float sx = mx - dp(4), wob = (float) Math.sin(t * 30) * dp(1.5f);
+                c.drawLine(sx + wob, my - mh - dp(50), sx, my - dp(6) - (mh - dp(12)) * lvl, p);
+            }
+            // Steam.
+            if (lvl > 0.3f) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(dp(2.5f));
+                p.setColor(0x99FFFFFF);
+                for (int i = -1; i <= 1; i++) {
+                    android.graphics.Path st = new android.graphics.Path();
+                    float bx = mx + i * dp(12), base = my - mh - dp(6);
+                    st.moveTo(bx, base);
+                    for (int k = 1; k <= 6; k++) st.lineTo(bx + (float) Math.sin(t * 4 + k + i) * dp(5), base - k * dp(7));
+                    c.drawPath(st, p);
+                }
+            }
+            // Its line.
+            p.setStyle(Paint.Style.FILL);
+            p.setTextSize(dp(15));
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            p.setTextAlign(Paint.Align.CENTER);
+            String line = t < 1.5f ? "Erst mal Kaffee ☕" : "So. Und jetzt: aufräumen!";
+            float tw = p.measureText(line) + dp(24), tx = w * 0.32f, ty = ground - size * 1.2f - dp(14);
+            tx = Math.max(tw / 2 + dp(8), Math.min(w - tw / 2 - dp(8), tx));
+            p.setColor(0xF2FFFFFF);
+            c.drawRoundRect(tx - tw / 2, ty - dp(26), tx + tw / 2, ty + dp(10), dp(16), dp(16), p);
+            p.setColor(0xFF1A1A1A);
+            c.drawText(line, tx, ty - dp(3), p);
+            p.setTextAlign(Paint.Align.LEFT);
+        }
+
         @Override protected void onDraw(Canvas c) {
             float w = getWidth(), h = getHeight(), t = (android.os.SystemClock.uptimeMillis() - born) / 1000f, dt = Math.min(0.05f, t - lastT);
             lastT = t;
+            if (t < COFFEE) {
+                coffee(c, w, h, t);
+                postInvalidateOnAnimation();
+                return;
+            }
+            t -= COFFEE;
             float dur = 4.6f, f = Math.min(1, t / dur);
             float size = Math.min(dp(120), w * 0.26f);
             float bx = w + size - (w + size * 2.4f) * f;                // buddy x (walks right to left)
