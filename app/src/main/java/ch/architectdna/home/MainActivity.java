@@ -3356,9 +3356,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "Aus – eigenes Wallpaper behalten",
             "Hell/Dunkel wieder dem System folgen",
         };
-        new AlertDialog.Builder(this)
-            .setTitle("Wallpaper & Farben\n" + wallpaperStatus())
-            .setItems(items, (d, pick) -> {
+        arcSheet("Wallpaper & Farben", wallpaperStatus(), items, pick -> {
                 if (pick == 0) {
                     showLockIntro();
                     return;
@@ -3393,8 +3391,50 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
                     pop("Hell/Dunkel folgt wieder dem System");
                 }
-            })
-            .show();
+        });
+    }
+
+    /** A choice sheet in the ARC look (instead of the grey Android dialog): title, small status line, big rows. */
+    private void arcSheet(String title, String sub, String[] rows, java.util.function.IntConsumer pick) {
+        FrameLayout scrim = new FrameLayout(this);
+        scrim.setBackgroundColor(0x99000000);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(18), dp(20), dp(18));
+        box.setBackground(box(isNight() ? 0xFF1C1C1A : 0xFFFFFFFF, line, 26));
+        box.setClickable(true);
+        TextView tag = monoText(10, rust);
+        tag.setLetterSpacing(0.22f);
+        tag.setText("— " + title.toUpperCase(Locale.GERMAN));
+        box.addView(tag);
+        if (sub != null && !sub.isEmpty()) {
+            TextView st = text(17, ink, true);
+            st.setText(sub);
+            box.addView(st, margins(-1, -2, 0, dp(6), 0, 0));
+        }
+        for (int i = 0; i < rows.length; i++) {
+            TextView r = text(15, ink, false);
+            r.setText(rows[i]);
+            r.setPadding(dp(16), dp(14), dp(16), dp(14));
+            r.setBackground(box(isNight() ? 0xFF121211 : 0xFFFAFAF8, line, 16));
+            int k = i;
+            r.setOnClickListener(v -> {
+                rootFrame.removeView(scrim);
+                pick.accept(k);
+            });
+            box.addView(r, margins(-1, -2, 0, dp(8), 0, 0));
+        }
+        int nav = 0;
+        if (Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null)
+            nav = rootFrame.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).bottom;
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        lp.setMargins(dp(10), dp(60), dp(10), dp(10) + nav);
+        scrim.addView(box, lp);
+        scrim.setOnClickListener(v -> rootFrame.removeView(scrim));
+        scrim.setElevation(dp(20));
+        rootFrame.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        box.setTranslationY(dp(300));
+        box.animate().translationY(0).setDuration(240).setInterpolator(new DecelerateInterpolator(1.6f)).start();
     }
 
     /* ================= Clock, focus, network ================= */
@@ -3433,8 +3473,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hm.setTimeZone(tz);
         String to = hm.format(new java.util.Date(hi));
         String wd = new SimpleDateFormat("EE", Locale.GERMAN).format(new java.util.Date(hi)).replace(".", "");
-        oldTime.setText((wasSummer ? "SOMMERZEIT " : "WINTERZEIT ") + old + "  ·  UMGESTELLT "
-            + wd.toUpperCase(Locale.GERMAN) + " " + day.format(new java.util.Date(hi)) + " " + from + " → " + to);
+        oldTime.setText((wasSummer ? "UHR ZURÜCKGESTELLT " : "UHR VORGESTELLT ") + wd.toUpperCase(Locale.GERMAN) + " "
+            + day.format(new java.util.Date(hi)) + " (" + from + " → " + to + ")  ·  NACH " + (wasSummer ? "SOMMERZEIT" : "WINTERZEIT") + " WÄRE ES " + old);
         oldTime.setVisibility(View.VISIBLE);
     }
 
@@ -3491,10 +3531,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         else s.setSpan(new ForegroundColorSpan(rust), 2, 3, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         clock.setText(s);
         date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(c.getTime()));
-        if (dstOldOffset != Integer.MIN_VALUE && !flipArmed && homeInFront) {
-            flipArmed = true;
-            handler.postDelayed(clockFlip, 12_500);
-        }
+        // (The big clock no longer flips to the old summer time – it read like a wrong clock.)
         String hello = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : h < 22 ? "Guten Abend" : "Gute Nacht";
         greet.setText(hello + ", Muharrem.");
 
@@ -4854,7 +4891,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.postDelayed(this::startFaceWatch, 1500);
         handler.removeCallbacks(clockFlip);
         flipArmed = dstOldOffset != Integer.MIN_VALUE;
-        if (flipArmed) handler.postDelayed(clockFlip, 12_500);
+        clockShowsOld = false;
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.startServer(this);          // also without notification access: the partner must find us
         RouteLearner.note(this);           // at a station? (Routen learns your usual routes)
