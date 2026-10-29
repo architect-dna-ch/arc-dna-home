@@ -116,6 +116,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private int ink, ink2, ink3, rust, card, panel, line;
+    private SpicyBackdrop backdrop;
     private final Typeface mono = Typeface.MONOSPACE;
     private SharedPreferences prefs;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -279,10 +280,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             == Configuration.UI_MODE_NIGHT_YES;
     }
 
+    /** "Spicy" (the default): beige, deep green ink, hot pink + green. "Klassisch": the old ink/rust. */
+    private boolean spicy() {
+        return !"classic".equals(prefs.getString("theme", "spicy"));
+    }
+
+    /** The page colour behind everything (beige / deep green in Spicy). */
+    private int paper() {
+        if (spicy()) return isNight() ? 0xFF0E1A14 : 0xFFF2E8D5;
+        return isNight() ? 0xFF121211 : 0xFFFAFAF8;
+    }
+
     private void pickColours() {
         boolean night = isNight();
         // The ARC-DNA Live wallpaper follows exactly this (it lagged behind the home before).
         prefs.edit().putBoolean("uiNight", night).putLong("uiNightAt", System.currentTimeMillis()).apply();
+        if (spicy()) {
+            ink = night ? 0xFFF2E8D5 : 0xFF13261D;
+            ink2 = night ? 0xFFBFC9BA : 0xFF46594D;
+            ink3 = night ? 0xFF718273 : 0xFF8F9A8A;
+            rust = night ? SpicyBackdrop.PINK_NIGHT : SpicyBackdrop.PINK;
+            card = night ? 0xE0152A20 : 0xE6FFF8EC;
+            panel = night ? 0xF2152A20 : 0xF2FFF8EC;
+            line = night ? 0xFF2A4535 : 0xFFE3D3B6;
+            return;
+        }
         ink = night ? 0xFFECEBE6 : 0xFF1A1A1A;
         ink2 = night ? 0xFFA9A8A2 : 0xFF5A5A58;
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
@@ -300,7 +322,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         rootFrame = root;
         // Light mode while the phone's own theme is dark: Android dims the wallpaper then (grey
         // page). So in light mode the launcher paints the light ARC wallpaper itself, undimmed.
-        if (!isNight() && prefs.getBoolean("autoWallpaper", true)) {
+        if (spicy()) {
+            backdrop = new SpicyBackdrop(this, isNight(), pro());
+            root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
+        } else if (!isNight() && prefs.getBoolean("autoWallpaper", true)) {
             ImageView paper = new ImageView(this);
             paper.setImageResource(R.drawable.wallpaper_light);
             paper.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -328,6 +353,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         peek = new PeekDial();
         root.addView(peek, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
         scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            if (backdrop != null) backdrop.scrolled(y, y - oy);
             updateFolds();
             peek.follow(y);
         });
@@ -668,7 +694,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibOverlay = buildCalibOverlay();
         root.addView(calibOverlay, new FrameLayout.LayoutParams(-1, -1));
 
-        fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
+        fox = new FoxView(this, ink, paper());
         applyBuddy();
         // Tap the buddy: it says something. Double-tap: its own world (game). Hold: the Gemini-style chat.
         android.view.GestureDetector buddyTaps = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
@@ -1079,6 +1105,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 recreate();
             }, null);
         }
+        settingsRow(home, "Theme", () -> spicy() ? "SPICY · Beige, Pink, Grün" : "KLASSISCH · Tinte & Rost", v -> {
+            prefs.edit().putString("theme", spicy() ? "classic" : "spicy").apply();
+            recreate();
+        }, null);
         settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
             prefs.edit().putBoolean("pro", !pro()).apply();
             if (pro()) {
@@ -3539,7 +3569,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             TextView r = text(15, ink, false);
             r.setText(rows[i]);
             r.setPadding(dp(16), dp(14), dp(16), dp(14));
-            r.setBackground(box(isNight() ? 0xFF121211 : 0xFFFAFAF8, line, 16));
+            r.setBackground(box(paper(), line, 16));
             int k = i;
             r.setOnClickListener(v -> {
                 rootFrame.removeView(scrim);
@@ -4071,7 +4101,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (game != null) return;
         exitGhosts();
         hideKeyboard();
-        game = new FoxRunView(this, new int[]{ink, ink2, ink3, rust, card, line, isNight() ? 0xFF121211 : 0xFFFAFAF8},
+        game = new FoxRunView(this, new int[]{ink, ink2, ink3, rust, card, line, paper()},
             voice, prefs, this::exitGame, buddy() == 2);
         rootFrame.addView(game, new FrameLayout.LayoutParams(-1, -1));
         game.setAlpha(0f);
@@ -4258,6 +4288,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (foldState.remove(v) != null) {          // only what the fold effect touched (faded tiles keep their look)
             v.setAlpha(1f);
             if (Build.VERSION.SDK_INT >= 31) v.setRenderEffect(null);
+            if (spicy()) {
+                v.setRotationX(0);
+                v.setScaleX(1f);
+                v.setScaleY(1f);
+            }
         }
         if (depth > 0 && v instanceof android.view.ViewGroup) {
             android.view.ViewGroup g = (android.view.ViewGroup) v;
@@ -4270,6 +4305,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Float last = foldState.get(v);
         if (last != null && Math.abs(last - hidden) < 0.02f && (hidden > 0 || last == 0)) return;
         foldState.put(v, hidden);
+        if (spicy()) {
+            // Spicy: rows flip up out of the bottom edge like cards off a deck, instead of the blur.
+            if (pro()) hidden = Math.min(hidden, 0.35f);
+            v.setPivotX(v.getWidth() / 2f);
+            v.setPivotY(0);
+            v.setCameraDistance(getResources().getDisplayMetrics().density * 9000);
+            v.setRotationX(hidden * 62);
+            float sc = 1 - 0.14f * hidden;
+            v.setScaleX(sc);
+            v.setScaleY(sc);
+            v.setAlpha(1 - 0.6f * hidden);
+            return;
+        }
         if (hidden <= 0.001f) {
             v.setAlpha(1f);
             if (Build.VERSION.SDK_INT >= 31) v.setRenderEffect(null);
@@ -5668,8 +5716,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private GradientDrawable box(int fill, int stroke, int radiusDp) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(fill);
-        d.setStroke(dp(1), stroke);
-        d.setCornerRadius(dp(radiusDp));
+        // Spicy: a 1.5 dp outline and rounder corners – friendly, a bit bold.
+        d.setStroke(spicy() ? Math.round(getResources().getDisplayMetrics().density * 1.5f) : dp(1), stroke);
+        d.setCornerRadius(dp(spicy() ? radiusDp + 4 : radiusDp));
         return d;
     }
 
