@@ -285,6 +285,7 @@ final class DinoView extends View {
     private void startFight() {
         fightAt = SystemClock.uptimeMillis();
         bringToFront();          // the weapon bar over everything (the bunny button covered FAUST)
+        setElevation(getResources().getDisplayMetrics().density * 40);    // above the floating buttons too (they have elevation)
         int sel = store().getInt("dinoWeaponSel", FIST);
         weapon = owns(sel) && W_KIND[sel] != K_CAST && W_KIND[sel] != K_PASSIVE ? sel : FIST;
         java.util.Arrays.fill(fuels, 4.5f);

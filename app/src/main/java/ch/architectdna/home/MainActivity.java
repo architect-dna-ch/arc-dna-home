@@ -5524,8 +5524,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         /** Only the disc takes touches; beside it the page stays usable. */
         @Override public boolean onTouchEvent(android.view.MotionEvent e) {
-            if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
-                && Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius()) return false;
+            if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN && (dino != null
+                || Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius())) return false;
             return super.onTouchEvent(e);
         }
 
@@ -5553,6 +5553,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         @Override protected void onDraw(Canvas cv) {
+            if (dino != null) {                 // a dino visit / fight owns the top of the screen
+                postInvalidateDelayed(500);
+                return;
+            }
             Object[] r = read();
             float v = (Float) r[0];
             shownV = shownV < 0 ? 0 : shownV + (v - shownV) * 0.16f;
