@@ -153,14 +153,37 @@ final class HeadTracker implements LifecycleOwner {
             if (!running) return;
             try {
                 provider = future.get();
-                ImageAnalysis analysis = new ImageAnalysis.Builder()
+                // The picture is turned for the screen's rotation now and on every turn after (in
+                // landscape the faces came sideways and none were found: "81 readings, 81 lost").
+                ImageAnalysis a = new ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                    .setTargetRotation(displayRotation())
                     .build();
-                analysis.setAnalyzer(analysisExecutor, this::analyze);
+                a.setAnalyzer(analysisExecutor, this::analyze);
+                analysis = a;
                 provider.unbindAll();
                 lifecycle.setCurrentState(Lifecycle.State.RESUMED);
-                provider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, analysis);
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, a);
+                android.hardware.display.DisplayManager dm = context.getSystemService(android.hardware.display.DisplayManager.class);
+                if (dm != null && turns == null) {
+                    turns = new android.hardware.display.DisplayManager.DisplayListener() {
+                        @Override
+                        public void onDisplayAdded(int id) {
+                        }
+
+                        @Override
+                        public void onDisplayRemoved(int id) {
+                        }
+
+                        @Override
+                        public void onDisplayChanged(int id) {
+                            ImageAnalysis now = analysis;
+                            if (now != null) now.setTargetRotation(displayRotation());
+                        }
+                    };
+                    dm.registerDisplayListener(turns, main);
+                }
             } catch (Exception e) {
                 running = false;
                 listener.onError("Kamera nicht verfügbar.");
@@ -168,8 +191,23 @@ final class HeadTracker implements LifecycleOwner {
         }, mainExecutor);
     }
 
+    private ImageAnalysis analysis;
+    private android.hardware.display.DisplayManager.DisplayListener turns;
+
+    private int displayRotation() {
+        android.hardware.display.DisplayManager dm = context.getSystemService(android.hardware.display.DisplayManager.class);
+        android.view.Display d = dm == null ? null : dm.getDisplay(android.view.Display.DEFAULT_DISPLAY);
+        return d == null ? android.view.Surface.ROTATION_0 : d.getRotation();
+    }
+
     void stop() {
         running = false;
+        analysis = null;
+        if (turns != null) {
+            android.hardware.display.DisplayManager dm = context.getSystemService(android.hardware.display.DisplayManager.class);
+            if (dm != null) dm.unregisterDisplayListener(turns);
+            turns = null;
+        }
         if (provider != null) provider.unbindAll();
         lifecycle.setCurrentState(Lifecycle.State.CREATED);
     }

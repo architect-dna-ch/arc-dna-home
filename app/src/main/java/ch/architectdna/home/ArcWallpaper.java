@@ -332,7 +332,17 @@ public class ArcWallpaper extends WallpaperService {
         }
 
         /** The lock screen is up: the scroll service runs the watch (camera, mic, GPS); off right after. */
+        private boolean lastLockUp;
+
         private void watchTheft(boolean lockUp) {
+            if (lockUp != lastLockUp) {
+                lastLockUp = lockUp;
+                if (lockUp) {
+                    android.content.SharedPreferences hp = getSharedPreferences("home", MODE_PRIVATE);
+                    DiagLog.log("theft watch: lock screen up, stealMe=" + hp.getBoolean("stealMe", true) + " watch=" + hp.getBoolean("theftCam", true)
+                        + " scroll service=" + (ScrollAssistService.instance != null));
+                }
+            }
             boolean want = lockUp && theftWanted();
             if (want == theftAsked) return;
             theftAsked = want;

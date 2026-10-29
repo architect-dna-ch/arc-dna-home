@@ -325,6 +325,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     static void theft(boolean on) {
         ScrollAssistService s = instance;
         if (s != null) s.main.post(() -> s.setTheft(on));
+        else if (on) DiagLog.log("theft watch: ARC-DNA Scroll (Bedienungshilfe) is off – no camera on the lock screen");
     }
 
     private void setTheft(boolean on) {
