@@ -214,6 +214,13 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                 shadeUntil = SystemClock.uptimeMillis() + 6000;
                 setSpeed(0);
             }
+            // Our own floating pill / overlays are ARC-DNA windows too: they said "the launcher is in
+            // front" half a second after head scroll started in an app, which switched it off again.
+            // Only a real ARC-DNA screen (an Activity) counts as the launcher.
+            if (pkg.equals(getPackageName())) {
+                CharSequence cn = event.getClassName();
+                if (cn == null || !cn.toString().endsWith("Activity")) return;
+            }
             if (ignored(pkg) || !launchable(pkg)) {
                 main.removeCallbacks(settle);
                 return;
