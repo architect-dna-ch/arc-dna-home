@@ -295,6 +295,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Kino mode: the popcorn microwave, full screen. -->
+        <activity
+            android:name=".PopcornActivity"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+
         <!-- Flexplan: calendar blocks that move with how you feel. -->
         <activity
             android:name=".PlanActivity"

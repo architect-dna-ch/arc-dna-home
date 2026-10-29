@@ -5936,7 +5936,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 + "com.google.android.apps.youtube.music;com.android.chrome"},
         {"Social", "💬", "clock,weather", "0",
             "com.whatsapp;com.instagram.android;org.telegram.messenger;sms;phone;com.zhiliaoapp.musically;"
-                + "com.linkedin.android;CameraActivity"}};
+                + "com.linkedin.android;CameraActivity"},
+        {"Kino", "🍿", "", "1",
+            "com.netflix.mediaclient;com.disney.disneyplus;ch.srgssr.playsuisse;com.amazon.avod.thirdpartyclient;"
+                + "com.google.android.youtube;com.plexapp.android;PlayerActivity;com.google.android.apps.youtube.music"}};
 
     private LinearLayout widgetStrip;
     private Dashboard phoneWidgets;
@@ -5982,6 +5985,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         appTilesBox.addView(appTiles());
         renderWidgets();
         if (m > 0) say(MODES[m][1] + " " + MODES[m][0] + "-Modus.", 1200);
+        // Kino: popcorn first – the microwave runs 2:30, full screen.
+        if ("Kino".equals(MODES[m][0])) startActivity(new Intent(this, PopcornActivity.class));
         if (calm()) {
             if (f1) setF1(false);
             if (dino != null) endDino();
