@@ -1624,7 +1624,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ---- Opening and coming back: slide up; back home the app is crushed and binned ---- */
 
-    private float downX = -1, downY = -1;
+    private float tapX = -1, tapY = -1;
     private long downAt;
     private Drawable leftIcon;
     private Intent leftIntent;
@@ -1641,9 +1641,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (w > 0 && h > 0) {
                 int[] at = new int[2];
                 rootFrame.getLocationOnScreen(at);
-                boolean fresh = android.os.SystemClock.uptimeMillis() - downAt < 1500 && downX >= 0;
+                boolean fresh = android.os.SystemClock.uptimeMillis() - downAt < 1500 && tapX >= 0;
                 int size = dp(56);
-                int cx = fresh ? Math.round(downX) - at[0] : w / 2, cy = fresh ? Math.round(downY) - at[1] : h / 2;
+                int cx = fresh ? Math.round(tapX) - at[0] : w / 2, cy = fresh ? Math.round(tapY) - at[1] : h / 2;
                 o = android.app.ActivityOptions.makeScaleUpAnimation(rootFrame, cx - size / 2, cy - size / 2, size, size);
             } else {
                 o = android.app.ActivityOptions.makeCustomAnimation(this, R.anim.app_slide_up, R.anim.home_hold);
@@ -2170,8 +2170,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int action = ev.getActionMasked();
         lastTouch = android.os.SystemClock.uptimeMillis();
         if (action == MotionEvent.ACTION_DOWN) {
-            downX = ev.getRawX();
-            downY = ev.getRawY();
+            tapX = ev.getRawX();
+            tapY = ev.getRawY();
             downAt = lastTouch;
         }
         if (ghosts != null) ghosts.touch(ev);
