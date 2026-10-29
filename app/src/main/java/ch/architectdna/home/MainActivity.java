@@ -3185,6 +3185,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     public void onPose(float pitch, float yaw) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
+        headRetries = 0;
         if (Float.isNaN(facingPitch)) facingPitch = pitch;
         boolean away = Math.abs(yaw) > 28 || Math.abs(pitch - facingPitch) > 25;     // was 20/18: reading at an angle counted as away
         long now = android.os.SystemClock.uptimeMillis();
@@ -3232,11 +3233,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onError(String message) {
-        pop(message);
-        prefs.edit().putString("headMode", "off").apply();
-        paintHeadToggle();
+        // Often only a busy camera (the face watch or the scroll service still had it): try again
+        // a few times before giving up – and never switch the user's setting off for that.
+        DiagLog.log("head error (" + headRetries + "): " + message);
         stopHead();
+        if (libraryOpen && !headMode().equals("off") && headRetries < 3) {
+            headRetries++;
+            handler.postDelayed(() -> {
+                if (libraryOpen && !headMode().equals("off") && head != null) startHead();
+            }, 1500L * headRetries);
+            return;
+        }
+        headRetries = 0;
+        pop(message + " – Kopf-Scroll pausiert. Mediathek schliessen und wieder öffnen startet neu.");
     }
+
+    private int headRetries;
 
     private void setHeadSpeed(float speed) {
         // Eyes rest for a moment after the screen was touched or scrolled by finger.
