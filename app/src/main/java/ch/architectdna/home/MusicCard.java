@@ -157,6 +157,18 @@ final class MusicCard {
         text.addView(title);
         text.addView(artist);
         text.addView(stars);
+        // What the last half hour of music sounds like (a guess). Tap = "yes, that's me" (into Stimmung).
+        moodLine = label(10, ink3, true);
+        moodLine.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        moodLine.setLetterSpacing(0.08f);
+        moodLine.setPadding(0, dp(2), 0, dp(2));
+        moodLine.setVisibility(View.GONE);
+        moodLine.setOnClickListener(v -> confirmMood());
+        moodLine.setOnLongClickListener(v -> {
+            activity.startActivity(new Intent(activity, MoodActivity.class));
+            return true;
+        });
+        text.addView(moodLine);
         text.addView(source);
         source.setVisibility(View.GONE);           // replaced by the era button
         top.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -906,6 +918,7 @@ final class MusicCard {
             songTitle = t;
             songArtist = a;
             paintStars();
+            paintMood();
             Bitmap cover = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
             if (cover == null) cover = meta.getBitmap(MediaMetadata.METADATA_KEY_ART);
             if (cover == null) cover = meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
@@ -1527,6 +1540,7 @@ final class MusicCard {
             if (flux > fluxAvg * 1.8f + 4 && nowMs - lastKick > 260) {
                 beatPending = true;
                 lastKick = nowMs;
+                MusicMood.beat();                // tempo for the music-mood guess
             }
             fluxAvg = fluxAvg * 0.93f + flux * 0.07f;
             float total = 0;
@@ -1545,6 +1559,7 @@ final class MusicCard {
             float level = total / BARS;
             if (level > 0.03f) lastSignal = System.currentTimeMillis();
             host.onLevel(level);
+            MusicMood.level(level);
         }
 
         /**
@@ -1991,7 +2006,29 @@ final class MusicCard {
     }
 
 
-    private TextView stars;
+    private TextView stars, moodLine;
+
+    private void paintMood() {
+        if (moodLine == null) return;
+        String l = MusicMood.line(activity);
+        moodLine.setVisibility(l == null ? View.GONE : View.VISIBLE);
+        if (l != null) moodLine.setText(l + " · STIMMT?");
+    }
+
+    /** "Stimmt": the guess becomes a real entry in the Stimmung log. */
+    private void confirmMood() {
+        int m = MusicMood.guessedMood(activity);
+        if (m < 0) return;
+        try {
+            android.content.SharedPreferences mp = activity.getSharedPreferences("mood", Activity.MODE_PRIVATE);
+            org.json.JSONArray log = new org.json.JSONArray(mp.getString("log", "[]"));
+            log.put(new org.json.JSONObject().put("at", System.currentTimeMillis()).put("m", m).put("n", "🎵 bestätigt"));
+            mp.edit().putString("log", log.toString()).apply();
+        } catch (Exception ignored) {
+        }
+        moodLine.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        moodLine.setText("✓ NOTIERT IN STIMMUNG · HALTEN = ÖFFNEN");
+    }
     private String songTitle, songArtist;
 
     private void paintStars() {

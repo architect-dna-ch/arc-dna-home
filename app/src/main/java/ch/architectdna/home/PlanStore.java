@@ -203,7 +203,7 @@ final class PlanStore {
                 int d = (c.get(Calendar.DAY_OF_WEEK) + 5) % 7, h = c.get(Calendar.HOUR_OF_DAY), m = o.optInt("m", 3);
                 for (int dd = 0; dd < 7; dd++) {
                     for (int hh = Math.max(0, h - 1); hh <= Math.min(23, h + 1); hh++) {
-                        double ww = (dd == d ? 1 : 0.35) * (hh == h ? 1 : 0.5);
+                        double ww = (dd == d ? 1 : 0.35) * (hh == h ? 1 : 0.5) * (o.optBoolean("auto") ? 0.4 : 1);   // music guesses count less
                         sum[dd][hh] += m * ww;
                         w[dd][hh] += ww;
                     }

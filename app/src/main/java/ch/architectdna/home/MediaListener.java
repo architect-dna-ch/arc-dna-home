@@ -149,6 +149,7 @@ public class MediaListener extends NotificationListenerService {
             artist = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
         }
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
+        MusicMood.onUpdate(this, playing != null, title, artist);
         // The ARC Player notice: the playing session, else a paused one; none = gone.
         MediaController shown = playing;
         if (shown == null) {
