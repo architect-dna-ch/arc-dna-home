@@ -154,7 +154,9 @@ final class HeadDebugView extends View {
 
     @Override
     protected void onDraw(Canvas c) {
-        float w = getWidth(), textH = dp(64), ih = getHeight() - textH;
+        // Wide strip (along the top): picture left, numbers right. Tall box: picture on top, numbers below.
+        boolean wide = getWidth() > getHeight() * 1.4f;
+        float w = getWidth(), textH = wide ? 0 : dp(64), ih = getHeight() - textH;
         line.setStyle(Paint.Style.FILL);
         line.setColor(0x66121211);
         r.set(0, 0, w, getHeight());
@@ -184,10 +186,11 @@ final class HeadDebugView extends View {
         }
         // The frame, fitted and mirrored (selfie view); points are mirrored the same way.
         float fw = d.frame.getWidth(), fh = d.frame.getHeight();
-        float s = Math.min(w / fw, ih / fh), dw = fw * s, dh = fh * s, ox = (w - dw) / 2, oy = 0;
+        float pw = wide ? Math.min(w * 0.45f, ih * fw / fh) : w;
+        float s = Math.min(pw / fw, ih / fh), dw = fw * s, dh = fh * s, ox = (pw - dw) / 2, oy = (ih - dh) / 2;
         c.save();
-        c.clipRect(0, 0, w, ih);
-        c.scale(-1, 1, w / 2, 0);
+        c.clipRect(0, 0, pw, ih);
+        c.scale(-1, 1, pw / 2, 0);
         r.set(ox, oy, ox + dw, oy + dh);
         c.drawBitmap(d.frame, null, r, img);
         if (d.box != null) {
@@ -227,18 +230,18 @@ final class HeadDebugView extends View {
         c.restore();
 
         // Read-out.
-        text.setTextSize(dp(9.5f));
-        float y = ih + dp(14);
+        text.setTextSize(dp(wide ? 11 : 9.5f));
+        float tx = wide ? pw + dp(12) : dp(8), y = wide ? dp(26) : ih + dp(14), step = dp(wide ? 18 : 13);
         text.setColor(d.face ? 0xFFFFFFFF : rust);
-        c.drawText(d.face ? String.format(java.util.Locale.ROOT, "KOPF  ↕%+5.1f°  ↔%+5.1f°", d.pitch, d.yaw) : "KEIN GESICHT", dp(8), y, text);
-        y += dp(13);
+        c.drawText(d.face ? String.format(java.util.Locale.ROOT, "KOPF  ↕%+5.1f°  ↔%+5.1f°", d.pitch, d.yaw) : "KEIN GESICHT", tx, y, text);
+        y += step;
         text.setColor(0xFF1FA8FF);
-        c.drawText(Float.isNaN(d.gazeV) ? "AUGEN  –" : String.format(java.util.Locale.ROOT, "AUGEN ↕%+.2f  ↔%+.2f", d.gazeV, d.gazeH), dp(8), y, text);
-        y += dp(13);
+        c.drawText(Float.isNaN(d.gazeV) ? "AUGEN  –" : String.format(java.util.Locale.ROOT, "AUGEN ↕%+.2f  ↔%+.2f", d.gazeV, d.gazeH), tx, y, text);
+        y += step;
         text.setColor(rust);
-        c.drawText(decision, dp(8), y, text);
-        y += dp(13);
+        c.drawText(decision, tx, y, text);
+        y += step;
         text.setColor(0x99FFFFFF);
-        c.drawText("ROT NICKEN · BLAU/GELB AUGEN", dp(8), y, text);
+        c.drawText("ROT NICKEN · BLAU/GELB AUGEN", tx, y, text);
     }
 }

@@ -2639,8 +2639,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             headDebug = new HeadDebugView(this, rust);
             int top = Build.VERSION.SDK_INT >= 30 && rootFrame.getRootWindowInsets() != null
                 ? rootFrame.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.systemBars()).top : dp(24);
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(150), dp(150 * 4 / 3 + 64), Gravity.TOP | Gravity.END);
-            lp.setMargins(0, top + dp(60), dp(12), 0);
+            // A wide strip along the top (over search and header), so the apps stay free.
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, dp(140), Gravity.TOP);
+            lp.setMargins(dp(12), top + dp(4), dp(12), 0);
             rootFrame.addView(headDebug, lp);
         }
         if (!pro()) edgeLight.watch(true);
