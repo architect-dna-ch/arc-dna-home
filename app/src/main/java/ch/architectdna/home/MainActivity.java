@@ -3,7 +3,6 @@ package ch.architectdna.home;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.UiModeManager;
 import android.app.SearchManager;
@@ -2490,7 +2489,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         paintAppScroll(allChip, prefs.getString("appScrollAll", "off"));
         allRow.addView(allChip);
         list.addView(allRow);
-        final AlertDialog[] dialog = new AlertDialog[1];
         allChip.setOnClickListener(v -> {
             String now = prefs.getString("appScrollAll", "off");
             String next = now.equals("off") ? "nod" : "off";
@@ -2500,8 +2498,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (!next.equals("off") && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
             }
-            if (dialog[0] != null) dialog[0].dismiss();
-            showAppScrollSettings();
+            showAppScrollSettings();          // the sheet opens anew (the old one closes)
         });
 
         java.util.Set<String> seen = new java.util.HashSet<>();
@@ -2545,11 +2542,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         ScrollView sv = new ScrollView(this);
         sv.addView(list);
-        dialog[0] = new AlertDialog.Builder(this)
-            .setTitle("Kopf-Scroll pro App")
-            .setView(sv)
-            .setPositiveButton("Fertig", null)
-            .show();
+        sv.setLayoutParams(new LinearLayout.LayoutParams(-1, Math.min(dp(420), (int) (rootFrame.getHeight() * 0.55f))));
+        arcSheet("Kopf-Scroll pro App", "Wo soll Nicken scrollen?", null, sv, new String[]{"Fertig"}, i -> { });
     }
 
     /** The app's own setting, else the "Alle Apps" switch. */
@@ -2582,19 +2576,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         FrameLayout wrap = new FrameLayout(this);
         wrap.setPadding(dp(20), dp(8), dp(20), 0);
         wrap.addView(input);
-        new AlertDialog.Builder(this)
-            .setTitle("Updates einrichten")
-            .setMessage("GitHub → Fine-grained token: Repository access nur „arc-dna-home“, "
-                + "Permissions → Contents: Read-only. Token hier einfügen – er bleibt nur auf diesem Handy.")
-            .setView(wrap)
-            .setPositiveButton("Speichern", (d, w) -> {
-                updater.setToken(input.getText().toString());
-                updater.check(true);
-            })
-            .setNeutralButton("Token erstellen", (d, w) ->
-                open(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens/new"))))
-            .setNegativeButton("Abbrechen", null)
-            .show();
+        input.setTextColor(ink);
+        input.setHintTextColor(ink3);
+        arcSheet("Updates einrichten", "Token einfügen",
+            "GitHub → Fine-grained token: Resource owner architect-dna-ch, nur „arc-dna-home“, Contents: Read-only. "
+                + "Er bleibt nur auf diesem Handy.", wrap,
+            new String[]{"Speichern & prüfen", "Token auf GitHub erstellen", "Abbrechen"}, i -> {
+                if (i == 0) {
+                    updater.setToken(input.getText().toString());
+                    updater.check(true);
+                } else if (i == 1) {
+                    open(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens/new")));
+                }
+            });
     }
 
     /* ================= Head / gaze scrolling ================= */
@@ -2744,19 +2738,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (Build.VERSION.SDK_INT < 34) return;
         android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
         if (nm == null || nm.canUseFullScreenIntent()) return;
-        new AlertDialog.Builder(this)
-            .setTitle("Bär über dem Sperrbildschirm")
-            .setMessage("Damit der Wecker bei gesperrtem Handy im Vollbild klingelt, erlaube \"Vollbild-Benachrichtigungen\" für ARC-DNA.")
-            .setPositiveButton("Einstellungen", (d, w) -> {
+        arcSheet("Bär-Wecker", "🐻 Über dem Sperrbildschirm",
+            "Damit der Wecker bei gesperrtem Handy im Vollbild klingelt, erlaube „Vollbild-Benachrichtigungen“ für ARC-DNA. "
+                + "Android nimmt das nach jedem Update wieder weg.", null,
+            new String[]{"Jetzt erlauben", "Später"}, i -> {
+                if (i != 0) return;
                 try {
                     startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
                         Uri.parse("package:" + getPackageName())));
                 } catch (RuntimeException e) {
                     pop("Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen");
                 }
-            })
-            .setNegativeButton("Später", null)
-            .show();
+            });
     }
 
     @Override
@@ -3414,26 +3407,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             + (mic ? "✓" : "✗") + "  Mikrofon für den Beat (nichts wird aufgenommen)\n\n"
             + (lockLive && mic ? "Alles bereit – sperr das Handy und spiel Musik."
             : "Tippe auf den Knopf. Bei der Frage wo: \"Startbildschirm und Sperrbildschirm\".");
-        AlertDialog.Builder b = new AlertDialog.Builder(this)
-            .setTitle("Dynamischer Sperrbildschirm")
-            .setMessage(msg)
-            .setNegativeButton("Später", null);
-        if (!lockLive) {
-            b.setPositiveButton("Einrichten", (d, w) -> {
-                Intent i = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                    .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
-                try {
-                    startActivity(i);
-                } catch (ActivityNotFoundException e) {
-                    open(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
-                }
-                if (!mic) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
-            });
-        } else if (!mic) {
-            b.setPositiveButton("Mikrofon erlauben", (d, w) ->
-                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO));
-        }
-        b.show();
+        Runnable setup = () -> {
+            Intent in = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
+            try {
+                startActivity(in);
+            } catch (ActivityNotFoundException e) {
+                open(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+            }
+            if (!mic) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+        };
+        String[] rows = !lockLive ? new String[]{"Einrichten", "Später"} : !mic ? new String[]{"Mikrofon erlauben", "Später"} : new String[]{"Fertig"};
+        arcSheet("Sperrbildschirm", "Dynamischer Sperrbildschirm", msg, null, rows, k -> {
+            if (k != 0 || rows.length == 1) return;
+            if (!lockLive) setup.run();
+            else requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+        });
     }
 
     /** Long-press the clock: ARC-DNA Live, static light/dark, or leave the wallpaper alone. */
@@ -3485,7 +3474,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** A choice sheet in the ARC look (instead of the grey Android dialog): title, small status line, big rows. */
     private void arcSheet(String title, String sub, String[] rows, java.util.function.IntConsumer pick) {
+        arcSheet(title, sub, null, null, rows, pick);
+    }
+
+    private FrameLayout arcSheetOpen;
+
+    private void closeArcSheet() {
+        if (arcSheetOpen != null) rootFrame.removeView(arcSheetOpen);
+        arcSheetOpen = null;
+    }
+
+    /** The ARC sheet with an optional message and an extra view (a text field, a list) above the rows. */
+    private void arcSheet(String title, String sub, String message, View extra, String[] rows, java.util.function.IntConsumer pick) {
+        closeArcSheet();
         FrameLayout scrim = new FrameLayout(this);
+        arcSheetOpen = scrim;
         scrim.setBackgroundColor(0x99000000);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -3501,6 +3504,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             st.setText(sub);
             box.addView(st, margins(-1, -2, 0, dp(6), 0, 0));
         }
+        if (message != null) {
+            TextView m = text(14, ink2, false);
+            m.setText(message);
+            m.setLineSpacing(0, 1.18f);
+            box.addView(m, margins(-1, -2, 0, dp(10), 0, 0));
+        }
+        if (extra != null) box.addView(extra, margins(-1, -2, 0, dp(12), 0, 0));
         for (int i = 0; i < rows.length; i++) {
             TextView r = text(15, ink, false);
             r.setText(rows[i]);
@@ -3509,8 +3519,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             int k = i;
             r.setOnClickListener(v -> {
                 rootFrame.removeView(scrim);
+                if (arcSheetOpen == scrim) arcSheetOpen = null;
                 pick.accept(k);
             });
+            if (i == 0 && rows.length > 1) {          // the first row is the main action: in rust
+                r.setTextColor(0xFFFFFFFF);
+                r.setBackground(box(rust, rust, 16));
+            }
             box.addView(r, margins(-1, -2, 0, dp(8), 0, 0));
         }
         int nav = 0;
@@ -3518,8 +3533,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             nav = rootFrame.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).bottom;
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         lp.setMargins(dp(10), dp(60), dp(10), dp(10) + nav);
-        scrim.addView(box, lp);
-        scrim.setOnClickListener(v -> rootFrame.removeView(scrim));
+        ScrollView bs = new ScrollView(this);
+        bs.addView(box);
+        scrim.addView(bs, lp);
+        scrim.setOnClickListener(v -> closeArcSheet());
         scrim.setElevation(dp(20));
         rootFrame.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
         box.setTranslationY(dp(300));
@@ -3536,7 +3553,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      */
     private void paintOldTime(Calendar c) {
         java.util.TimeZone tz = c.getTimeZone();
-        long now = c.getTimeInMillis(), weekAgo = now - 7L * 24 * 3600 * 1000;
+        long now = c.getTimeInMillis(), weekAgo = now - 3L * 24 * 3600 * 1000;      // 3 days is plenty to get used to it
         int offNow = tz.getOffset(now), offBefore = tz.getOffset(weekAgo);
         if (offNow == offBefore) {
             oldTime.setVisibility(View.GONE);
@@ -3564,7 +3581,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         String wd = new SimpleDateFormat("EE", Locale.GERMAN).format(new java.util.Date(hi)).replace(".", "");
         oldTime.setText((wasSummer ? "UHR ZURÜCKGESTELLT " : "UHR VORGESTELLT ") + wd.toUpperCase(Locale.GERMAN) + " "
             + day.format(new java.util.Date(hi)) + " (" + from + " → " + to + ")  ·  NACH " + (wasSummer ? "SOMMERZEIT" : "WINTERZEIT") + " WÄRE ES " + old);
-        oldTime.setVisibility(View.VISIBLE);
+        oldTime.setVisibility(prefs.getLong("dstHidden", 0) == hi / 60_000 ? View.GONE : View.VISIBLE);
+        final long change = hi / 60_000;
+        oldTime.setOnClickListener(v -> {                 // tap = got it, gone for this change
+            prefs.edit().putLong("dstHidden", change).apply();
+            v.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                v.setVisibility(View.GONE);
+                v.setAlpha(1f);
+            }).start();
+        });
     }
 
     /** The old (pre-change) time's colour: a warm amber, neutral but clearly not "now". */
@@ -5329,6 +5354,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (arcSheetOpen != null) {
+            closeArcSheet();
+            return;
+        }
         if (world != null) {
             exitWorld();
             return;
@@ -6579,10 +6608,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (pixelLayer != null) pixelLayer.setAlpha(0.25f);
         } else if (pixelLayer != null) pixelLayer.setAlpha(1f);
         if (on && sweptChip == null && rootFrame != null) {
-            sweptChip = text(12, ink, true);
+            sweptChip = text(10, ink2, true);
             sweptChip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-            sweptChip.setText("☕ AUFGERÄUMT · ↺ ALLES ZURÜCK");
-            sweptChip.setPadding(dp(14), dp(8), dp(14), dp(8));
+            sweptChip.setText("☕ ↺ ALLES ZURÜCK");
+            sweptChip.setPadding(dp(12), dp(5), dp(12), dp(5));
             sweptChip.setBackground(box(card, line, 18));
             sweptChip.setElevation(dp(6));
             sweptChip.setOnClickListener(v -> unsweep());
