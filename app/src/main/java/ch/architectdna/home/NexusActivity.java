@@ -111,6 +111,8 @@ public class NexusActivity extends Activity {
         Game() {
             super(NexusActivity.this);
             best = prefs.getInt("best", 0);
+            // The bank is new: the coins of the runs before were never kept – a start capital instead.
+            if (!prefs.contains("bank")) prefs.edit().putInt("bank", 1000).apply();
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         }
 
@@ -196,6 +198,13 @@ public class NexusActivity extends Activity {
                     stepParticles(dt);
                     drawWorld(c);
                     drawDead(c);
+                    break;
+                case "arsenal":
+                    stepParticles(dt);
+                    drawArsenal(c);
+                    break;
+                case "scores":
+                    drawScores(c);
                     break;
                 default:
                     break;
@@ -286,6 +295,7 @@ public class NexusActivity extends Activity {
                     best = score;
                     prefs.edit().putInt("best", best).apply();
                 }
+                endRun();
             }
             if (particles.size() < 180 && rnd.nextFloat() < 0.03f) {
                 double a = rnd.nextFloat() * Math.PI * 2;
@@ -324,6 +334,7 @@ public class NexusActivity extends Activity {
             meteors.clear();
             later.clear();
             wave = score = coins = streak = mkCount = 0;
+            applyArsenal();
             streakMult = 1;
             streakTimer = mkTimer = waveTimer = gameT = 0;
             event = null;
@@ -1465,8 +1476,190 @@ public class NexusActivity extends Activity {
             small(c, "BESTER: " + best + " PUNKTE", H * 0.62f, 12, GOLD);
             small(c, "LINKER DAUMEN = BEWEGEN · RECHTS = DASH · NOVA · STORM · PULL", H * 0.68f, 10, INK3);
             float pp = 0.5f + 0.5f * (float) Math.sin(t * 3);
-            small(c, "TIPPEN = START", H * 0.78f, 14, (pp > 0.5f) ? INK : INK2);
+            small(c, "TIPPEN = START", H * 0.76f, 14, (pp > 0.5f) ? INK : INK2);
+            small(c, "BANK ⬡ " + bank() + "  ·  BESTES LEVEL " + prefs.getInt("bestLevel", 1), H * 0.81f, 11, GOLD);
+            float bw = Math.min(W * 0.42f, 190 * d), by = H * 0.85f;
+            arsenalBtn.set(CX - bw - 6 * d, by, CX - 6 * d, by + 46 * d);
+            scoresBtn.set(CX + 6 * d, by, CX + bw + 6 * d, by + 46 * d);
+            button(c, arsenalBtn, "⬡ ARSENAL", GOLD);
+            button(c, scoresBtn, "🏆 BESTENLISTE", INK);
             small(c, "✕", 30 * d, 16, INK2);
+        }
+
+        final RectF arsenalBtn = new RectF(), scoresBtn = new RectF(), backBtn = new RectF();
+
+        void button(Canvas c, RectF r, String label, int col) {
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFF1C1C1A);
+            c.drawRoundRect(r, 14 * d, 14 * d, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.5f * d);
+            p.setColor(col);
+            c.drawRoundRect(r, 14 * d, 14 * d, p);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setColor(col);
+            fit(label, 13, r.width() - 16 * d);
+            c.drawText(label, r.centerX(), r.centerY() + 5 * d, p);
+        }
+
+        /* ---- between runs: the bank, the arsenal (permanent upgrades) and the high scores ---- */
+
+        int bank() {
+            return prefs.getInt("bank", 0);
+        }
+
+        /** {key, name, what it does per level, base price, max level} */
+        final String[][] ARSENAL = {
+            {"hp", "PANZER", "+20 Max-HP pro Stufe", "80", "5"},
+            {"dmg", "KALIBER", "+10 % Schaden pro Stufe", "100", "5"},
+            {"spd", "TRIEBWERK", "+6 % Tempo pro Stufe", "70", "5"},
+            {"rate", "SCHNELLFEUER", "−7 % Nachladezeit pro Stufe", "110", "5"},
+            {"coin", "STARTKAPITAL", "+15 Münzen zum Start pro Stufe", "60", "5"},
+            {"multi", "ZWILLINGSLAUF", "+1 Geschoss pro Stufe", "400", "2"},
+            {"steal", "VAMPIR-KERN", "+3 % Lebensraub pro Stufe", "150", "3"}};
+
+        int lvl(String key) {
+            return prefs.getInt("ars:" + key, 0);
+        }
+
+        int price(int i) {
+            return Integer.parseInt(ARSENAL[i][3]) * (lvl(ARSENAL[i][0]) + 1);
+        }
+
+        void applyArsenal() {
+            player.maxHp += 20 * lvl("hp");
+            player.hp = player.maxHp;
+            player.dmg = Math.round(player.dmg * (1 + 0.1f * lvl("dmg")));
+            player.speed *= 1 + 0.06f * lvl("spd");
+            player.atkCd = Math.max(0.12f, player.atkCd * (float) Math.pow(0.93, lvl("rate")));
+            coins += 15 * lvl("coin");
+            player.multi += lvl("multi");
+            player.lifesteal += 0.03f * lvl("steal");
+        }
+
+        int bankedNow;
+
+        /** Game over: the run's coins go to the bank, the run into the high scores. */
+        void endRun() {
+            bankedNow = coins;
+            prefs.edit().putInt("bank", bank() + coins).putInt("bestLevel", Math.max(prefs.getInt("bestLevel", 1), player.level)).apply();
+            try {
+                org.json.JSONArray a = new org.json.JSONArray(prefs.getString("scores", "[]"));
+                a.put(new org.json.JSONObject().put("s", score).put("w", wave).put("l", player.level).put("at", System.currentTimeMillis()));
+                List<org.json.JSONObject> l = new ArrayList<>();
+                for (int i = 0; i < a.length(); i++) l.add(a.getJSONObject(i));
+                java.util.Collections.sort(l, (x, y) -> y.optInt("s") - x.optInt("s"));
+                org.json.JSONArray out = new org.json.JSONArray();
+                for (int i = 0; i < Math.min(10, l.size()); i++) out.put(l.get(i));
+                prefs.edit().putString("scores", out.toString()).apply();
+            } catch (Exception ignored) {
+            }
+        }
+
+        final RectF[] arsenalRows = new RectF[7];
+
+        {
+            for (int i = 0; i < arsenalRows.length; i++) arsenalRows[i] = new RectF();
+        }
+
+        float arsenalFlash = -9;
+        int arsenalFlashRow = -1;
+
+        void drawArsenal(Canvas c) {
+            readInsets();
+            overlay(c, 0xF2121211);
+            small(c, "— ARSENAL · FÜR JEDEN NEUEN LAUF", H * 0.08f + insT, 11, INK3);
+            small(c, "⬡ " + bank() + " AUF DER BANK", H * 0.08f + insT + 28 * d, 16, GOLD);
+            float top = H * 0.08f + insT + 50 * d, rowH = Math.min(70 * d, (H - top - 110 * d - insB) / ARSENAL.length), w = Math.min(W - 32 * d, 520 * d);
+            float t = SystemClock.uptimeMillis() / 1000f;
+            for (int i = 0; i < ARSENAL.length; i++) {
+                String[] it = ARSENAL[i];
+                int lv = lvl(it[0]), max = Integer.parseInt(it[4]), cost = price(i);
+                boolean full = lv >= max, can = !full && bank() >= cost;
+                RectF r = arsenalRows[i];
+                r.set(CX - w / 2, top + i * rowH, CX + w / 2, top + i * rowH + rowH - 6 * d);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(i == arsenalFlashRow && t - arsenalFlash < 0.4f ? 0xFF2A2418 : 0xFF1C1C1A);
+                c.drawRoundRect(r, 14 * d, 14 * d, p);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(1.5f * d);
+                p.setColor(full ? GREEN : can ? GOLD : LINE);
+                c.drawRoundRect(r, 14 * d, 14 * d, p);
+                p.setStyle(Paint.Style.FILL);
+                p.setTextAlign(Paint.Align.LEFT);
+                p.setColor(INK);
+                fit(it[1], 14, r.width() * 0.5f);
+                c.drawText(it[1], r.left + 14 * d, r.top + r.height() * 0.42f, p);
+                p.setColor(INK3);
+                fit(it[2], 10, r.width() * 0.55f);
+                c.drawText(it[2], r.left + 14 * d, r.top + r.height() * 0.78f, p);
+                // Level pips.
+                for (int k = 0; k < max; k++) {
+                    p.setColor(k < lv ? GOLD : LINE);
+                    c.drawCircle(r.right - 14 * d - (max - 1 - k) * 11 * d, r.top + r.height() * 0.32f, 3.5f * d, p);
+                }
+                p.setTextAlign(Paint.Align.RIGHT);
+                p.setColor(full ? GREEN : can ? GOLD : INK3);
+                String price = full ? "MAX" : "⬡ " + cost;
+                fit(price, 13, r.width() * 0.3f);
+                c.drawText(price, r.right - 12 * d, r.top + r.height() * 0.78f, p);
+            }
+            p.setTextAlign(Paint.Align.CENTER);
+            float by = H - 70 * d - insB;
+            backBtn.set(CX - 100 * d, by, CX + 100 * d, by + 46 * d);
+            button(c, backBtn, "← ZURÜCK", RUST);
+        }
+
+        void arsenalTap(float x, float y) {
+            if (backBtn.contains(x, y)) {
+                state = "title";
+                return;
+            }
+            for (int i = 0; i < ARSENAL.length; i++) {
+                if (!arsenalRows[i].contains(x, y)) continue;
+                int lv = lvl(ARSENAL[i][0]), max = Integer.parseInt(ARSENAL[i][4]), cost = price(i);
+                if (lv >= max || bank() < cost) {
+                    shake(4);
+                    return;
+                }
+                prefs.edit().putInt("bank", bank() - cost).putInt("ars:" + ARSENAL[i][0], lv + 1).apply();
+                arsenalFlash = SystemClock.uptimeMillis() / 1000f;
+                arsenalFlashRow = i;
+                return;
+            }
+        }
+
+        void drawScores(Canvas c) {
+            readInsets();
+            overlay(c, 0xF2121211);
+            small(c, "— BESTENLISTE", H * 0.1f + insT, 11, INK3);
+            big(c, "TOP 10", H * 0.1f + insT + 44 * S, 34, GOLD);
+            float y = H * 0.1f + insT + 90 * d, w = Math.min(W - 32 * d, 520 * d), lx = CX - w / 2;
+            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("d.M.yy", java.util.Locale.GERMAN);
+            try {
+                org.json.JSONArray a = new org.json.JSONArray(prefs.getString("scores", "[]"));
+                if (a.length() == 0) small(c, "NOCH KEINE LÄUFE – SPIEL EINEN!", y + 20 * d, 12, INK3);
+                for (int i = 0; i < a.length(); i++) {
+                    org.json.JSONObject o = a.getJSONObject(i);
+                    float ry = y + i * 34 * d;
+                    p.setTextAlign(Paint.Align.LEFT);
+                    p.setTextSize(14 * d);
+                    p.setColor(i == 0 ? GOLD : i < 3 ? INK : INK2);
+                    c.drawText((i + 1) + ".", lx, ry, p);
+                    c.drawText(o.optInt("s") + "", lx + 40 * d, ry, p);
+                    p.setColor(INK3);
+                    p.setTextSize(11 * d);
+                    c.drawText("WELLE " + o.optInt("w") + " · LV " + o.optInt("l"), lx + 130 * d, ry, p);
+                    p.setTextAlign(Paint.Align.RIGHT);
+                    c.drawText(f.format(new java.util.Date(o.optLong("at"))), lx + w, ry, p);
+                }
+            } catch (Exception ignored) {
+            }
+            p.setTextAlign(Paint.Align.CENTER);
+            float by = H - 70 * d - insB;
+            backBtn.set(CX - 100 * d, by, CX + 100 * d, by + 46 * d);
+            button(c, backBtn, "← ZURÜCK", RUST);
         }
 
         // Shop feedback per card: flash after a buy, shake when too expensive, bought marker; coins roll down.
@@ -1574,7 +1767,8 @@ public class NexusActivity extends Activity {
             big(c, score + "", CY - 20 * S, 54, INK);
             small(c, "PUNKTE · WELLE " + wave + " · LEVEL " + player.level, CY + 14 * S, 12, INK2);
             small(c, score >= best && score > 0 ? "NEUER REKORD!" : "BESTER: " + best, CY + 40 * S, 13, score >= best && score > 0 ? RUST : GOLD);
-            small(c, "TIPPEN = NOCHMAL", CY + 80 * S, 14, INK);
+            small(c, "+" + bankedNow + " ⬡ AUF DIE BANK · JETZT " + bank() + " ⬡", CY + 62 * S, 12, GOLD);
+            small(c, "TIPPEN = NOCHMAL · OBEN TIPPEN = MENÜ", CY + 92 * S, 13, INK);
         }
 
         /* ----------------------------------- touch ----------------------------------- */
@@ -1587,10 +1781,19 @@ public class NexusActivity extends Activity {
                 switch (state) {
                     case "title":
                         if (y < 60 * d && Math.abs(x - CX) < 40 * d) finish();
+                        else if (arsenalBtn.contains(x, y)) state = "arsenal";
+                        else if (scoresBtn.contains(x, y)) state = "scores";
                         else startGame();
                         return true;
                     case "dead":
-                        startGame();
+                        if (y < 90 * d) state = "title";           // the top: back to the title (arsenal, high scores)
+                        else startGame();
+                        return true;
+                    case "arsenal":
+                        arsenalTap(x, y);
+                        return true;
+                    case "scores":
+                        if (backBtn.contains(x, y)) state = "title";
                         return true;
                     case "paused":
                         state = "countdown";
