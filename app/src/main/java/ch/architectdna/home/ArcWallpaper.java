@@ -11,7 +11,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.SweepGradient;
-import android.media.audiofx.Visualizer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -52,7 +51,6 @@ public class ArcWallpaper extends WallpaperService {
         private int width, height;
         private boolean visible;
         private Rect camera;
-        private Visualizer visualizer;
         private float bassAvg, beat;
         private long lastBeat, lastFft, lastRestart;
 
@@ -228,9 +226,7 @@ public class ArcWallpaper extends WallpaperService {
             long t = SystemClock.uptimeMillis();
             if (am != null && am.isMusicActive() && t - lastFft > 2000 && t - lastRestart > 3000) {
                 lastRestart = t;
-                DiagLog.log("wallpaper visualizer reconnect, lock=" + lock);
-                stopVisualizer();
-                startVisualizer();
+                if (AudioTap.reconnect()) DiagLog.log("wallpaper visualizer reconnect, lock=" + lock);
             }
             // Smooth while something moves; otherwise just watch for the lock state twice a second.
             boolean busy = lock || chargeLevel >= 0 || SystemClock.uptimeMillis() - unplugAt < UNPLUG || !rings.isEmpty() || cubeMoving() || SystemClock.uptimeMillis() - unlockedAt < 1200;
@@ -1471,38 +1467,15 @@ public class ArcWallpaper extends WallpaperService {
 
         /* ---- Beat detection on the phone's output mix (needs the microphone permission; nothing is recorded) ---- */
 
-        private void startVisualizer() {
-            if (visualizer != null) return;
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return;
-            try {
-                visualizer = new Visualizer(0);
-                visualizer.setEnabled(false);
-                int[] range = Visualizer.getCaptureSizeRange();
-                visualizer.setCaptureSize(Math.max(range[0], Math.min(512, range[1])));
-                visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
-                    @Override
-                    public void onWaveFormDataCapture(Visualizer v, byte[] w, int r) {
-                    }
+        private final AudioTap.Sink tapSink = this::onFft;
 
-                    @Override
-                    public void onFftDataCapture(Visualizer v, byte[] fft, int r) {
-                        onFft(fft);
-                    }
-                }, Math.min(Visualizer.getMaxCaptureRate(), 20000), false, true);
-                visualizer.setEnabled(true);
-            } catch (RuntimeException e) {
-                visualizer = null;
-            }
+        private void startVisualizer() {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return;
+            AudioTap.add(tapSink);         // shared with the music card and the background phase reader
         }
 
         private void stopVisualizer() {
-            if (visualizer == null) return;
-            try {
-                visualizer.setEnabled(false);
-                visualizer.release();
-            } catch (RuntimeException ignored) {
-            }
-            visualizer = null;
+            AudioTap.remove(tapSink);
         }
 
         /** Bass energy well above its running average = a beat → spawn rings. */

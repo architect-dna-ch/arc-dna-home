@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadata;
-import android.media.audiofx.Visualizer;
 import android.media.session.MediaController;
 import android.media.session.PlaybackState;
 import android.os.Handler;
@@ -25,10 +24,9 @@ final class BackgroundPhases {
     private final Context ctx;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final PhaseBar bar;
-    private Visualizer viz;
     private MediaController controller;
     private String trackKey = "";
-    private long lastSignal, startedAt;
+    private long lastSignal;
     private boolean loggedSignal;
 
     // Band averages (fast ≈0.3 s, mid ≈2 s, slow ≈8 s at ~20 frames/s).
@@ -68,70 +66,55 @@ final class BackgroundPhases {
         }
     }
 
-    private void start() {
-        if (viz != null) return;
-        try {
-            viz = new Visualizer(0);
-            viz.setEnabled(false);
-            int[] range = Visualizer.getCaptureSizeRange();
-            viz.setCaptureSize(Math.max(range[0], Math.min(512, range[1])));
-            viz.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
-                @Override
-                public void onWaveFormDataCapture(Visualizer v, byte[] w, int r) {
-                }
+    private final AudioTap.Sink sink = this::feed;
+    private int misses;
 
-                @Override
-                public void onFftDataCapture(Visualizer v, byte[] fft, int r) {
-                    feed(fft);
-                }
-            }, Math.min(Visualizer.getMaxCaptureRate(), 20000), false, true);
-            viz.setEnabled(true);
-            if (!trackKey.isEmpty()) bar.newTrack(trackKey);     // reload: the card may have voted meanwhile
-            startedAt = SystemClock.uptimeMillis();
-            loggedSignal = false;
-            main.removeCallbacks(watchdog);
-            main.postDelayed(watchdog, 8000);
-        } catch (RuntimeException e) {
-            DiagLog.log("bg phases: visualizer refused (" + e.getMessage() + ")");
-            viz = null;
-        }
+    private void start() {
+        if (AudioTap.listening(sink)) return;
+        AudioTap.add(sink);
+        if (!trackKey.isEmpty()) bar.newTrack(trackKey);     // reload: the card may have voted meanwhile
+        loggedSignal = false;
+        misses = 0;
+        lastSignal = SystemClock.uptimeMillis();
+        main.removeCallbacks(watchdog);
+        main.postDelayed(watchdog, 5000);
     }
 
     void stop() {
         main.removeCallbacks(watchdog);
         bar.save();
-        if (viz == null) return;
-        try {
-            viz.setEnabled(false);
-            viz.release();
-        } catch (RuntimeException ignored) {
-        }
-        viz = null;
+        AudioTap.remove(sink);
     }
 
-    /** No sound arriving (e.g. Android mutes the tap in the background): log once, try again later. */
+    /** No sound arriving while music plays: reconnect the shared tap; after a few misses, rest a minute. */
     private final Runnable watchdog = new Runnable() {
         @Override
         public void run() {
-            if (viz == null) return;
-            if (SystemClock.uptimeMillis() - lastSignal > 8000) {
-                DiagLog.log("bg phases: no signal in the background – retry in 60 s");
-                stop();
-                main.postDelayed(recheck, 60_000);
-                return;
-            }
+            if (!AudioTap.listening(sink)) return;
             if (SystemClock.uptimeMillis() - cardLiveAt < 3000) {      // the card took over
                 stop();
                 main.postDelayed(recheck, 5000);
                 return;
             }
-            main.postDelayed(this, 5000);
+            if (SystemClock.uptimeMillis() - lastSignal > 4000) {
+                if (++misses > 4) {
+                    DiagLog.log("bg phases: no signal in the background – retry in 60 s");
+                    stop();
+                    main.postDelayed(recheck, 60_000);
+                    return;
+                }
+                AudioTap.reconnect();
+            } else {
+                misses = 0;
+            }
+            main.postDelayed(this, 4000);
         }
     };
 
     private final Runnable recheck = () -> follow(controller);
 
     private void feed(byte[] fft) {
+        if (SystemClock.uptimeMillis() - cardLiveAt < 1500) return;      // the card reads it itself
         int bins = fft.length / 2;
         float lo = 0, mid = 0, hi = 0, bass = 0;
         int nl = 0, nm = 0, nh = 0;

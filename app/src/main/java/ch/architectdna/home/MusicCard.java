@@ -17,7 +17,6 @@ import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.media.MediaMetadata;
-import android.media.audiofx.Visualizer;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
@@ -83,7 +82,6 @@ final class MusicCard {
     private Spectrum spectrum;
 
     private MediaController controller;
-    private Visualizer visualizer;
     private boolean started;
     private String btName;
     private long btSince;
@@ -1466,43 +1464,19 @@ final class MusicCard {
         return activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private final AudioTap.Sink tapSink = fft -> spectrum.feed(fft);
+
     private void startVisualizer() {
-        if (visualizer != null) return;
         if (!hasAudioPermission()) {
             vizHint.setVisibility(View.VISIBLE);
             return;
         }
         vizHint.setVisibility(View.GONE);
-        try {
-            visualizer = new Visualizer(0);       // 0 = the phone's whole output mix
-            visualizer.setEnabled(false);
-            int[] range = Visualizer.getCaptureSizeRange();
-            visualizer.setCaptureSize(Math.max(range[0], Math.min(512, range[1])));
-            visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
-                @Override
-                public void onWaveFormDataCapture(Visualizer v, byte[] waveform, int rate) {
-                }
-
-                @Override
-                public void onFftDataCapture(Visualizer v, byte[] fft, int rate) {
-                    spectrum.feed(fft);
-                }
-            }, Math.min(Visualizer.getMaxCaptureRate(), 20000), false, true);
-            visualizer.setEnabled(true);
-        } catch (RuntimeException e) {
-            visualizer = null;          // Spectrum falls back to a gentle pulse while music plays.
-        }
+        AudioTap.add(tapSink);         // the app's one output-mix visualizer; Spectrum pulses gently without it
     }
 
     private void stopVisualizer() {
-        if (visualizer != null) {
-            try {
-                visualizer.setEnabled(false);
-                visualizer.release();
-            } catch (RuntimeException ignored) {
-            }
-            visualizer = null;
-        }
+        AudioTap.remove(tapSink);
     }
 
     /**
@@ -1582,9 +1556,8 @@ final class MusicCard {
             if (resumed || (playing && noSignal && now - lastRestart > wait)) {
                 if (!resumed) failedRestarts++;
                 lastRestart = now;
-                DiagLog.log("visualizer reconnect (" + (resumed ? "resumed" : "no signal, try " + failedRestarts) + ")");
-                stopVisualizer();
-                startVisualizer();
+                if (AudioTap.reconnect())
+                    DiagLog.log("visualizer reconnect (" + (resumed ? "resumed" : "no signal, try " + failedRestarts) + ")");
             }
         }
 
