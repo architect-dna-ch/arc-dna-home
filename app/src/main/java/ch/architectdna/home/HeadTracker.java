@@ -105,7 +105,7 @@ final class HeadTracker implements LifecycleOwner {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Executor mainExecutor = main::post;
     private final ExecutorService analysisExecutor = Executors.newSingleThreadExecutor();
-    private FaceDetector detector, contourDetector;
+    private FaceDetector detector, contourDetector, accurate;
     private FaceLandmarker landmarker;
     private ProcessCameraProvider provider;
     private volatile boolean running;
@@ -179,6 +179,7 @@ final class HeadTracker implements LifecycleOwner {
         analysisExecutor.execute(() -> {
             if (detector != null) detector.close();
             if (contourDetector != null) contourDetector.close();
+            if (accurate != null) accurate.close();
             if (landmarker != null) landmarker.close();
             if (debugLandmarker != null) debugLandmarker.close();
         });
@@ -228,6 +229,16 @@ final class HeadTracker implements LifecycleOwner {
         if (detector == null) return;
         try {
             List<Face> faces = Tasks.await(detector.process(InputImage.fromBitmap(frame, 0)));
+            if (faces.isEmpty()) {
+                // The fast detector misses a face that's very close, tilted or cut off at the frame edge
+                // ("KEIN GESICHT" with the face clearly there). The accurate one gives the same angles.
+                if (accurate == null) accurate = FaceDetection.getClient(new FaceDetectorOptions.Builder()
+                    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                    .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+                    .setMinFaceSize(0.15f)
+                    .build());
+                faces = Tasks.await(accurate.process(InputImage.fromBitmap(frame, 0)));
+            }
             if (debug && SystemClock.uptimeMillis() - lastDebug > 120) {
                 lastDebug = SystemClock.uptimeMillis();
                 List<Face> outline = faces;

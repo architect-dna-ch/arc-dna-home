@@ -282,6 +282,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void pickColours() {
         boolean night = isNight();
+        // The ARC-DNA Live wallpaper follows exactly this (it lagged behind the home before).
+        prefs.edit().putBoolean("uiNight", night).putLong("uiNightAt", System.currentTimeMillis()).apply();
         ink = night ? 0xFFECEBE6 : 0xFF1A1A1A;
         ink2 = night ? 0xFFA9A8A2 : 0xFF5A5A58;
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
@@ -4865,6 +4867,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         homeInFront = true;
+        prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         applyPro();
         applySwept();
         if (pixelLayer != null) pixelLayer.refresh();

@@ -168,13 +168,14 @@ public class ArcWallpaper extends WallpaperService {
         }
 
         private boolean nightNow() {
+            // The home says what it shows (written on every theme change): follow it, so a light home never
+            // sits on a dark wallpaper (battery saver turning off flipped the home light, but an old "dark"
+            // from the service's lagging configuration kept the wallpaper dark).
+            android.content.SharedPreferences hp = getSharedPreferences("home", MODE_PRIVATE);
+            if (hp.contains("uiNight") && System.currentTimeMillis() - hp.getLong("uiNightAt", 0) < 10 * 60_000L)
+                return hp.getBoolean("uiNight", false);
             int mask = Configuration.UI_MODE_NIGHT_MASK, yes = Configuration.UI_MODE_NIGHT_YES;
-            if ((getResources().getConfiguration().uiMode & mask) == yes) return true;
-            if ((android.content.res.Resources.getSystem().getConfiguration().uiMode & mask) == yes) return true;
-            android.app.UiModeManager um = getSystemService(android.app.UiModeManager.class);
-            if (um != null && um.getNightMode() == android.app.UiModeManager.MODE_NIGHT_YES) return true;
-            android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
-            return pm != null && pm.isPowerSaveMode();
+            return (android.content.res.Resources.getSystem().getConfiguration().uiMode & mask) == yes;
         }
 
         /**
