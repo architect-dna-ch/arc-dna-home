@@ -354,9 +354,21 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     /* ---------------- Readings → speed (same feel as in the Mediathek) ---------------- */
 
+    private float lastYaw;
+
+    @Override
+    public void onPose(float pitch, float yaw) {
+        lastYaw = yaw;
+    }
+
     @Override
     public void onTilt(float pitch) {
         frameArrived();
+        if (Math.abs(lastYaw) > 18 && calibFrames >= 6) {     // head turned aside: no nod reading
+            overN = 0;
+            setSpeed(0);
+            return;
+        }
         if (calibFrames < 6) {
             calibSum += pitch;
             if (++calibFrames == 6) base = calibSum / 6f;

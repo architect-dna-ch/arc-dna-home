@@ -2806,6 +2806,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (++calibFrames == 6) basePitch = calibSum / 6f;
             return;
         }
+        // Head turned aside: its pitch reading goes wild (the recording showed a sideways turn as a 95 % "nod").
+        if (Math.abs(lastYaw) > 18) {
+            setHeadSpeed(0);
+            return;
+        }
         float delta = pitch - basePitch;
         smoothTilt = smoothTilt * 0.5f + delta * 0.5f;
         float frac = nodFraction(prefs, smoothTilt);
@@ -2833,8 +2838,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     static float nodFraction(SharedPreferences p, float tilt) {
         float mid = p.getFloat("nodMid", 0f);
         // At least 5° each way, so a tiny calibrated nod doesn't make scrolling twitchy.
-        float up = Math.max(5f, p.getFloat("nodUp", mid + 8f) - mid);
-        float down = Math.max(5f, mid - p.getFloat("nodDown", mid - 8f));
+        // Capped at 10° each way: a wide calibration made a normal ~8° nod read only 30 % (debug recording).
+        float up = Math.min(10f, Math.max(5f, p.getFloat("nodUp", mid + 8f) - mid));
+        float down = Math.min(10f, Math.max(5f, mid - p.getFloat("nodDown", mid - 8f)));
         return tilt > 0 ? tilt / up : -tilt / down;
     }
 
@@ -3110,7 +3116,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** Facing the screen? Head turned more than ~28° aside or tipped far up / down (25°) counts as looking away. */
-    private float facingPitch = Float.NaN;
+    private float facingPitch = Float.NaN, lastYaw;
     private long facingSince;
     private TextView awayChip;
 
@@ -3184,6 +3190,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onPose(float pitch, float yaw) {
+        lastYaw = yaw;
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
         headRetries = 0;
         if (Float.isNaN(facingPitch)) facingPitch = pitch;
