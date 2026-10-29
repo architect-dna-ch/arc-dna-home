@@ -4082,15 +4082,33 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             else setF1(true);
             return;
         }
-        if (world != null || game != null) return;
+        if (world != null || scene != null || game != null) return;
         exitGhosts();
         hideKeyboard();
+        if (b >= 5) {                                      // panda, ice bear, owl, dragon: their own scenes
+            scene = new BuddySceneView(this, b - 5, getDrawable(BUDDY_ART[b]), prefs, this::exitScene);
+            scene.setElevation(dp(30));
+            rootFrame.addView(scene, new FrameLayout.LayoutParams(-1, -1));
+            scene.setAlpha(0f);
+            scene.animate().alpha(1f).setDuration(300).start();
+            voice.say(BUDDY_CALLS[b][0]);
+            return;
+        }
         world = new BuddyWorldView(this, b == 4 ? BuddyWorldView.DUCK : BuddyWorldView.BEAR, getDrawable(BUDDY_ART[b]), prefs, this::exitWorld);
         world.setElevation(dp(30));
         rootFrame.addView(world, new FrameLayout.LayoutParams(-1, -1));
         world.setAlpha(0f);
         world.animate().alpha(1f).setDuration(300).start();
         voice.say(BUDDY_CALLS[b][0]);
+    }
+
+    private BuddySceneView scene;
+
+    private void exitScene() {
+        BuddySceneView v = scene;
+        scene = null;
+        if (v == null) return;
+        v.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(v)).start();
     }
 
     private void exitWorld() {
@@ -4483,15 +4501,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** {name, "der/die …" for the greeting, its calls}. Drawables and eyes in BUDDY_ART. */
     private static final String[][] BUDDIES = {
-        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}, {"Ente", "die Ente Erwin"}};
+        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}, {"Ente", "die Ente Erwin"},
+        {"Panda", "der Panda"}, {"Eisbär", "der Eisbär"}, {"Eule", "die Eule"}, {"Drache", "der Drache"}};
     private static final String[][] BUDDY_CALLS = {
         {"Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."},
         {"Brumm.", "Hrrmm?", "Grrmpf!", "Mmmh, Honig."},
         {"Mümmel!", "Tipp-tapp!", "Snff?", "Hüpf!"},
         {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."},
-        {"Quak!", "Quak-quak!", "Wak?", "Quaaak."}};
-    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {0f, 0f, 0f, 0f}, {74.5f, 20.5f, 2.3f, 1.2f}};      // the racer has no eye: its helmet is the face
-    private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy, R.drawable.duckbuddy};
+        {"Quak!", "Quak-quak!", "Wak?", "Quaaak."},
+        {"Mampf.", "Bambus?", "Hmpf-hmpf!", "Kuschelzeit."},
+        {"Eisbär ist da.", "Eisbär sagt Hallo.", "Brrr.", "Eisbär macht Tee."},
+        {"Huhu!", "Uhu-uhu!", "Schuhu?", "Ich seh alles."},
+        {"Rawrr!", "Fffshhh!", "Grrooar.", "Kleines Feuer?"}};
+    private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {0f, 0f, 0f, 0f}, {74.5f, 20.5f, 2.3f, 1.2f},
+        {76f, 27f, 3.2f, 1.7f}, {76f, 28f, 3f, 1.6f}, {58f, 25f, 4.6f, 2.4f}, {75f, 18f, 3f, 1.6f}};      // the racer has no eye: its helmet is the face
+    private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy, R.drawable.duckbuddy,
+        R.drawable.pandabuddy, R.drawable.icebearbuddy, R.drawable.owlbuddy, R.drawable.dragonbuddy};
     private int tipIndex;
 
     private int buddy() {
@@ -5468,6 +5493,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         if (world != null) {
             exitWorld();
+            return;
+        }
+        if (scene != null) {
+            exitScene();
             return;
         }
         if (fabMenu != null) {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <!-- Buddy: the owl, big eyes, ear tufts, rust beak and feet. -->
+    <path android:strokeColor="@color/rust" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M42,58 L42,52 M50,58 L50,52 M39,58 L45,58 M47,58 L53,58" />
+    <path android:fillColor="@color/ink" android:pathData="M39,22 L36,8 L47,17 Z M60,16 L64,4 L66,17 Z" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2.5" android:pathData="M30,38 A17,20 0 1,0 64,38 A17,20 0 1,0 30,38 Z" />
+    <path android:strokeColor="@color/ink" android:strokeWidth="1.4" android:strokeLineCap="round" android:pathData="M39,41 l3,3 l3,-3 M45,41 l3,3 l3,-3 M42,48 l3,3 l3,-3" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2" android:pathData="M31,30 Q23,44 34,55 Q39,42 31,30 Z" />
+    <path android:strokeColor="@color/rust" android:strokeWidth="1.4" android:pathData="M29,40 L34,42 M29,46 L35,47" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="2" android:pathData="M41,26 A12,11 0 1,0 65,26 A12,11 0 1,0 41,26 Z" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="1.4" android:pathData="M43.5,25 A4,4 0 1,0 51.5,25 A4,4 0 1,0 43.5,25 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M46,25 A2,2 0 1,0 50,25 A2,2 0 1,0 46,25 Z" />
+    <path android:fillColor="@color/paper" android:strokeColor="@color/ink" android:strokeWidth="1.4" android:pathData="M53.4,25 A4.6,4.6 0 1,0 62.6,25 A4.6,4.6 0 1,0 53.4,25 Z" />
+    <path android:fillColor="@color/ink" android:pathData="M55.6,25 A2.4,2.4 0 1,0 60.4,25 A2.4,2.4 0 1,0 55.6,25 Z" />
+    <path android:fillColor="@color/rust" android:pathData="M51,30 L56,30 L53.5,35.5 Z" />
+</vector>
