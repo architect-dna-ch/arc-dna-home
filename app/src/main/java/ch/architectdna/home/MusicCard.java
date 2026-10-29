@@ -730,16 +730,29 @@ final class MusicCard {
         stats.addView(back);
     }
 
+    /**
+     * Opens the music app's own "now playing" (its session link). Since Android 14 the sender has to
+     * allow that link to start an activity, or Android drops it silently – the YT Music link did nothing.
+     */
+    static boolean openSession(android.content.Context c, android.app.PendingIntent pi) {
+        if (pi == null) return false;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 34) {
+                android.app.ActivityOptions o = android.app.ActivityOptions.makeBasic();
+                o.setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                pi.send(c, 0, null, null, null, null, o.toBundle());
+            } else {
+                pi.send();
+            }
+            return true;
+        } catch (android.app.PendingIntent.CanceledException | RuntimeException e) {
+            return false;
+        }
+    }
+
     private void openPlayer() {
         if (controller == null) return;
-        android.app.PendingIntent session = controller.getSessionActivity();
-        try {
-            if (session != null) {
-                session.send();
-                return;
-            }
-        } catch (android.app.PendingIntent.CanceledException ignored) {
-        }
+        if (openSession(activity, controller.getSessionActivity())) return;
         Intent launch = activity.getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
         if (launch != null) host.open(launch);
     }

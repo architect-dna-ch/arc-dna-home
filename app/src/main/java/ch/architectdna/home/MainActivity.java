@@ -641,9 +641,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         cr.setStroke(dp(1.5f), rust);
         claudeFab.setBackground(cr);
         claudeFab.setElevation(dp(4));
-        claudeFab.setContentDescription("Claude öffnen");
-        claudeFab.setOnClickListener(v -> openApp(appOr("com.anthropic.claude",
-            new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai"))), getDrawable(R.drawable.ic_claude)));
+        claudeFab.setContentDescription("Menü: Claude, Mediathek, Aufräumen");
+        // Tap: bubbles float up (Claude, Mediathek, buddy, broom). Hold: straight to Claude.
+        claudeFab.setOnClickListener(v -> toggleFabMenu());
+        claudeFab.setOnLongClickListener(v -> {
+            openClaude();
+            return true;
+        });
         root.addView(claudeFab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
 
         // Compact (Professionell): the three main apps stay at the bottom, always reachable.
@@ -1584,6 +1588,69 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** "Professionell": neat and quiet – no buddy, no rainbows or glows, plain tiles, no surprises. */
     private ImageView claudeFab;
+    private FrameLayout fabMenu;
+
+    private void openClaude() {
+        openApp(appOr("com.anthropic.claude", new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai"))), getDrawable(R.drawable.ic_claude));
+    }
+
+    /** The floating button's bubbles: they rise one after another above it; tap outside = close. */
+    private void toggleFabMenu() {
+        if (fabMenu != null) {
+            closeFabMenu();
+            return;
+        }
+        FrameLayout m = new FrameLayout(this);
+        fabMenu = m;
+        m.setOnClickListener(v -> closeFabMenu());
+        m.setElevation(dp(9));
+        String name = BUDDIES[buddy()][1];
+        Object[][] items = {
+            {"✳  Claude", (Runnable) this::openClaude},
+            {"▦  Mediathek", (Runnable) this::openLibrary},
+            {swept() ? "↺  Alles zurück" : "🧹  Aufräumen", (Runnable) () -> {
+                if (swept()) unsweep();
+                else sweep();
+            }},
+            {"💬  " + name + " fragen", (Runnable) this::openChat},
+        };
+        FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) claudeFab.getLayoutParams();
+        for (int i = 0; i < items.length; i++) {
+            TextView b = text(15, ink, true);
+            b.setText((String) items[i][0]);
+            b.setPadding(dp(18), dp(12), dp(18), dp(12));
+            b.setBackground(box(isNight() ? 0xF21C1C1A : 0xF2FFFFFF, rust, 24));
+            b.setElevation(dp(6));
+            Runnable act = (Runnable) items[i][1];
+            b.setOnClickListener(v -> {
+                closeFabMenu();
+                act.run();
+            });
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
+            lp.setMargins(0, 0, fl.rightMargin, fl.bottomMargin + dp(68) + i * dp(58));
+            m.addView(b, lp);
+            b.setAlpha(0f);
+            b.setTranslationY(dp(40));
+            b.setScaleX(0.8f);
+            b.setScaleY(0.8f);
+            b.animate().alpha(1f).translationY(0).scaleX(1f).scaleY(1f).setStartDelay(i * 45L).setDuration(260)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.3f)).start();
+        }
+        rootFrame.addView(m, new FrameLayout.LayoutParams(-1, -1));
+        claudeFab.bringToFront();
+        claudeFab.setElevation(dp(10));
+        claudeFab.animate().rotation(135).setDuration(260).start();
+    }
+
+    private void closeFabMenu() {
+        FrameLayout m = fabMenu;
+        fabMenu = null;
+        if (m == null) return;
+        claudeFab.animate().rotation(0).setDuration(220).start();
+        claudeFab.setElevation(dp(4));
+        for (int i = 0; i < m.getChildCount(); i++) m.getChildAt(i).animate().alpha(0f).translationY(dp(30)).setStartDelay(0).setDuration(150).start();
+        m.postDelayed(() -> rootFrame.removeView(m), 170);
+    }
     private LinearLayout proDock;
 
     private boolean pro() {
@@ -5164,6 +5231,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (fabMenu != null) {
+            closeFabMenu();
+            return;
+        }
         if (djPicker != null) {
             djPicker.close();
             return;
@@ -6317,7 +6388,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ================= Broom: now and then the buddy sweeps the clutter away ================= */
 
-    private static final long SWEEP_FOR = 2 * 3600_000L;
+    private static final long SWEEP_FOR = 4 * 3600_000L;
     private TextView sweptChip;
     private boolean sweeping;
 
@@ -6330,11 +6401,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return new View[]{gameButton, seismo, ghosts};
     }
 
-    /** Once a day at most, 1 in 5 returns home, when nothing else is going on. */
+    /** Every 6 hours at most, 1 in 3 returns home, when nothing else is going on (the home needs it). */
     private void maybeSweep() {
         long now = System.currentTimeMillis();
         if (pro() || prefs.getBoolean("calm", false) || swept() || sweeping || dino != null || game != null || chat != null || f1
-            || !homeInFront || now - prefs.getLong("sweepAt", 0) < 20 * 3600_000L || random.nextInt(5) != 0) return;
+            || !homeInFront || now - prefs.getLong("sweepAt", 0) < 6 * 3600_000L || random.nextInt(3) != 0) return;
         sweep();
     }
 
@@ -6364,7 +6435,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
         }
         scroll.smoothScrollTo(0, 0);
-        say("☕ Aufgeräumt! Zwei Stunden nur das Nötigste: 3 Apps, Ordner, Wetter, Musik. Unten ↺ holt alles zurück.", 5000);
+        say("☕ Aufgeräumt! Vier Stunden nur das Nötigste: 3 Apps, Ordner, Wetter, Musik. Unten ↺ holt alles zurück.", 5000);
     }
 
     /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */

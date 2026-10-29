@@ -33,6 +33,14 @@ final class HeadDebugView extends View {
         line.setStrokeJoin(Paint.Join.ROUND);
         text.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         text.setColor(0xFFFFFFFF);
+        img.setAlpha(175);              // see-through: the apps underneath stay visible
+        setClickable(false);            // and touches go straight through to them
+        setFocusable(false);
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent e) {
+        return false;
     }
 
     void update(HeadTracker.Debug d, String decision) {
@@ -49,10 +57,20 @@ final class HeadDebugView extends View {
     protected void onDraw(Canvas c) {
         float w = getWidth(), textH = dp(64), ih = getHeight() - textH;
         line.setStyle(Paint.Style.FILL);
-        line.setColor(0xE0121211);
+        line.setColor(0x66121211);
         r.set(0, 0, w, getHeight());
-        c.drawRoundRect(r, dp(8), dp(8), line);
+        c.drawRoundRect(r, dp(14), dp(14), line);
+        // A neon rim that breathes: the flex.
+        float beat = 0.5f + 0.5f * (float) Math.sin(android.os.SystemClock.uptimeMillis() / 1000f * 3);
         line.setStyle(Paint.Style.STROKE);
+        line.setStrokeWidth(dp(1.5f));
+        line.setColor(((int) (90 + 120 * beat) << 24) | (rust & 0x00FFFFFF));
+        r.inset(dp(0.75f), dp(0.75f));
+        c.drawRoundRect(r, dp(14), dp(14), line);
+        postInvalidateDelayed(50);
+        android.graphics.Path clip = new android.graphics.Path();
+        clip.addRoundRect(0, 0, w, getHeight(), dp(14), dp(14), android.graphics.Path.Direction.CW);
+        c.clipPath(clip);
         if (d == null || d.frame == null) {
             text.setTextSize(dp(10));
             c.drawText("KAMERA STARTET …", dp(8), dp(18), text);

@@ -412,14 +412,7 @@ public class PlayerActivity extends Activity {
 
     private void openApp() {
         if (controller == null) return;
-        PendingIntent pi = controller.getSessionActivity();
-        try {
-            if (pi != null) {
-                pi.send();
-                return;
-            }
-        } catch (PendingIntent.CanceledException ignored) {
-        }
+        if (MusicCard.openSession(this, controller.getSessionActivity())) return;
         Intent launch = getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
         if (launch != null) startActivity(launch);
     }
