@@ -185,6 +185,9 @@ final class Updater {
                 PackageInstaller.SessionParams params =
                     new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
                 params.setAppPackageName(activity.getPackageName());
+                // Once ARC-DNA installed itself (it's the installer of record), Android 12+ updates
+                // without asking again – the first in-app update still shows Android's confirmation.
+                if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
                 int id = installer.createSession(params);
                 session = installer.openSession(id);
                 try (InputStream in = source;
