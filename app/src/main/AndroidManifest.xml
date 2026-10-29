@@ -296,6 +296,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Kompass: anchors, own rules, parked doubts, money envelopes, pace & dose. -->
+        <activity
+            android:name=".KompassActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Kino mode: the popcorn microwave, full screen. -->
         <activity
             android:name=".PopcornActivity"
