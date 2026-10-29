@@ -24,8 +24,11 @@ final class SpicyBackdrop extends View {
     private final boolean night, quiet;
     private final int base, pink, green;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RadialGradient[] glow = new RadialGradient[3];
+    private final android.graphics.Matrix m = new android.graphics.Matrix();
     private final Paint streak = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint dots = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private float[] grid;
     private float scrollY, speed, bass, bassAvg = 1;
     private long lastFrame;
     private boolean tapped;
@@ -97,9 +100,18 @@ final class SpicyBackdrop extends View {
 
         // Paper dots: a quiet grid that slides with the page.
         float step = w / 14f, off = -(scrollY * 0.5f) % step;
-        for (float y = off; y < h; y += step) {
-            for (float x = step / 2; x < w; x += step) c.drawCircle(x, y, 1.6f, dots);
+        int cols = (int) Math.ceil(w / step), rows = (int) Math.ceil(h / step) + 1;
+        if (grid == null || grid.length != cols * rows * 2) grid = new float[cols * rows * 2];
+        int n = 0;
+        for (int j = 0; j < rows; j++) {
+            for (int i = 0; i < cols; i++) {
+                grid[n++] = step / 2 + i * step;
+                grid[n++] = off + j * step;
+            }
         }
+        dots.setStrokeWidth(3.2f);
+        dots.setStrokeCap(Paint.Cap.ROUND);
+        c.drawPoints(grid, 0, n, dots);
 
         float flare = Math.abs(speed), pulse = bass;
         for (float[] b : BLOBS) {
@@ -109,9 +121,16 @@ final class SpicyBackdrop extends View {
             if (cy < -h * 0.4f) cy += h * 1.4f;
             float r = b[2] * w * (1 + 0.12f * flare + 0.10f * pulse);
             int a = (int) ((night ? 70 : 92) + 80 * flare + 50 * pulse);
-            fill.setShader(new RadialGradient(cx, cy, r, new int[]{withAlpha(col, Math.min(200, a)), withAlpha(col, 0)},
-                null, Shader.TileMode.CLAMP));
+            // One unit gradient per colour, moved and scaled by a matrix (no new shader per frame).
+            RadialGradient g = glow[(int) b[4]];
+            if (g == null) g = glow[(int) b[4]] = new RadialGradient(0, 0, 1, new int[]{col, withAlpha(col, 0)}, null, Shader.TileMode.CLAMP);
+            m.setScale(r, r);
+            m.postTranslate(cx, cy);
+            g.setLocalMatrix(m);
+            fill.setShader(g);
+            fill.setAlpha(Math.min(200, a));
             c.drawCircle(cx, cy, r, fill);
+            fill.setAlpha(255);
         }
         fill.setShader(null);
 

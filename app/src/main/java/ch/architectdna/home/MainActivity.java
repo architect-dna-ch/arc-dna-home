@@ -4313,7 +4313,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (pro()) hidden = Math.min(hidden, 0.35f);
             v.setPivotX(v.getWidth() / 2f);
             v.setPivotY(0);
-            v.setCameraDistance(getResources().getDisplayMetrics().density * 9000);
+            if (v.getCameraDistance() < 1000 * getResources().getDisplayMetrics().density)
+                v.setCameraDistance(getResources().getDisplayMetrics().density * 9000);
             v.setRotationX(hidden * 62);
             float sc = 1 - 0.14f * hidden;
             v.setScaleX(sc);
@@ -5813,7 +5814,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             bezel = prefs.getFloat("peekBezel", 0);
         }
 
-        private boolean turning, turned;
+        private boolean turning, turned, passing;
+        private float downRawY;
+
+        private void forward(android.view.MotionEvent e, int action) {
+            int[] at = new int[2];
+            scroll.getLocationOnScreen(at);
+            android.view.MotionEvent ev = android.view.MotionEvent.obtain(e.getDownTime(), e.getEventTime(), action,
+                e.getRawX() - at[0], e.getRawY() - at[1], 0);
+            scroll.dispatchTouchEvent(ev);
+            ev.recycle();
+        }
         private float touchX, touchY, startAngle, startBezel, bezel;
 
         private float angleAt(float x, float y) {
@@ -5875,6 +5886,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 || Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius())) return false;
             touchX = e.getX();
             touchY = e.getY();
+            // A drag that starts on the dial is a scroll of the page, not a press on the dial: hand it
+            // over to the page (it got stuck under the dial before).
+            if (act == android.view.MotionEvent.ACTION_DOWN) {
+                downRawY = e.getRawY();
+                passing = false;
+            }
+            if (!turning && !passing && act == android.view.MotionEvent.ACTION_MOVE
+                && Math.abs(e.getRawY() - downRawY) > android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop()) {
+                passing = true;
+                super.onTouchEvent(android.view.MotionEvent.obtain(e.getDownTime(), e.getEventTime(),
+                    android.view.MotionEvent.ACTION_CANCEL, touchX, touchY, 0));
+                forward(e, android.view.MotionEvent.ACTION_DOWN);
+            }
+            if (passing) {
+                forward(e, act);
+                if (act == android.view.MotionEvent.ACTION_UP || act == android.view.MotionEvent.ACTION_CANCEL) passing = false;
+                return true;
+            }
             if (!turning) return super.onTouchEvent(e);
             if (act == android.view.MotionEvent.ACTION_MOVE) {
                 float d = angleAt(touchX, touchY) - startAngle;
