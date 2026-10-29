@@ -3029,7 +3029,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         noteAway();
     }
 
-    /** Facing the screen? Head turned more than ~25° aside or tipped far up / down counts as looking away. */
+    /** Facing the screen? Head turned more than ~28° aside or tipped far up / down (25°) counts as looking away. */
     private float facingPitch = Float.NaN;
     private long facingSince;
     private TextView awayChip;
@@ -3106,7 +3106,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     public void onPose(float pitch, float yaw) {
         lastFaceEvent = android.os.SystemClock.uptimeMillis();
         if (Float.isNaN(facingPitch)) facingPitch = pitch;
-        boolean away = Math.abs(yaw) > 20 || Math.abs(pitch - facingPitch) > 18;
+        boolean away = Math.abs(yaw) > 28 || Math.abs(pitch - facingPitch) > 25;     // was 20/18: reading at an angle counted as away
         long now = android.os.SystemClock.uptimeMillis();
         if (away) {
             facingSince = 0;
