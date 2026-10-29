@@ -5457,6 +5457,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (raceOverlay != null && raceOverlay.driving()) {
+            raceOverlay.quitDriving();
+            return;
+        }
         if (arcSheetOpen != null) {
             closeArcSheet();
             return;

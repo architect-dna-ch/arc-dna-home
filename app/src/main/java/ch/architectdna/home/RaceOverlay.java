@@ -20,7 +20,11 @@ import java.util.Random;
  * Race day over the whole home: while the F1 board is open and the buddy is the racer, a circuit
  * runs round the screen (kerbs, a chicane, the start line) and five cars go wild on it — each its
  * own pace that keeps changing, overtakes, slides wide in the corners with sparks and streaks.
- * Touches pass straight through to the home underneath.
+ * Touches pass straight through to the home underneath – until you tap the pill under the camera:
+ * then you drive ARC yourself. Hold anywhere = brake, let go = full throttle; it steers itself, but
+ * too fast into a corner and it runs wide – onto the grass (a foul: track limits, slowed down) or,
+ * way too fast, into the wall (crash). Tap the pill again to switch the view: cockpit (driver's eye,
+ * with brake boards before each corner), chase cam, bird's eye.
  */
 final class RaceOverlay extends View {
 
@@ -54,6 +58,54 @@ final class RaceOverlay extends View {
     /** The race is over (after the victory lap): the home closes the F1 board. */
     Runnable onFinished;
     private float zoomAngle;
+
+    // You at the wheel.
+    private static final int VIEW_COCKPIT = 0, VIEW_CHASE = 1, VIEW_BIRD = 2;
+    private static final String[] VIEWS = {"COCKPIT", "VERFOLGER", "VOGEL"};
+    private boolean driving, braking;
+    private int view = VIEW_COCKPIT, fouls, crashes;
+    private float drift, peakExcess, spin;
+    private long drivingAt, penaltyUntil, crashUntil, brakeUpAt, msgAt;
+    private String msg = "";
+    private int msgColour;
+    private float lastLimit = 9999;
+    private final RectF pillRect = new RectF();
+    /** Track distances (px) where a corner starts: brake boards stand before them. */
+    private final List<Float> corners = new ArrayList<>();
+
+    boolean driving() {
+        return driving;
+    }
+
+    /** Back button: hand the wheel back to ARC. */
+    void quitDriving() {
+        driving = false;
+        braking = false;
+        drift = 0;
+        say("ARC FÄHRT WIEDER", 0xFFF4F2EC);
+        invalidate();
+    }
+
+    private void say(String text, int colour) {
+        msg = text;
+        msgColour = colour;
+        msgAt = SystemClock.uptimeMillis();
+    }
+
+    /** The grip limit right here: v² = a·r, with the radius read off the turn just ahead. */
+    private float limitAt(float at) {
+        measure.getPosTan(at, pos, tan);
+        float a1 = (float) Math.atan2(tan[1], tan[0]);
+        float[] p2 = new float[2], t2 = new float[2];
+        float span = dp(24);
+        measure.getPosTan((at + span) % length, p2, t2);
+        float d = (float) Math.atan2(t2[1], t2[0]) - a1;
+        while (d > Math.PI) d -= (float) (2 * Math.PI);
+        while (d < -Math.PI) d += (float) (2 * Math.PI);
+        float k = Math.abs(d) / span;
+        if (k < 1e-5f) return dp(9999);
+        return (float) Math.sqrt(dp(1000) / k);
+    }
 
     private static final class Car {
         int livery;
@@ -209,7 +261,35 @@ final class RaceOverlay extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        return false;        // the home stays usable underneath
+        if (!running || phase == FINISH) return false;          // the home stays usable underneath
+        int act = e.getActionMasked();
+        boolean onPill = pillRect.contains(e.getX(), e.getY());
+        if (!driving) {
+            if (act != MotionEvent.ACTION_DOWN || !onPill) return false;
+            driving = true;
+            drivingAt = SystemClock.uptimeMillis();
+            view = VIEW_COCKPIT;
+            fouls = 0;
+            crashes = 0;
+            drift = 0;
+            zoomAt = -1;
+            say("HALTEN = BREMSEN · LOSLASSEN = GAS", 0xFFF4F2EC);
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            return true;
+        }
+        if (act == MotionEvent.ACTION_DOWN) {
+            if (onPill) {
+                view = (view + 1) % VIEWS.length;
+                say("SICHT: " + VIEWS[view], 0xFFF4F2EC);
+                performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+            } else {
+                braking = true;
+            }
+        } else if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {
+            if (braking) brakeUpAt = SystemClock.uptimeMillis();
+            braking = false;
+        }
+        return true;
     }
 
     private float dp(float v) {
@@ -330,6 +410,13 @@ final class RaceOverlay extends View {
         track.close();
         measure = new PathMeasure(track, true);
         length = measure.getLength();
+        corners.clear();
+        boolean in = false;
+        for (float d = 0; d < length; d += dp(8)) {
+            boolean tight = limitAt(d) < dp(330);
+            if (tight && !in) corners.add(d);
+            in = tight;
+        }
     }
 
     private static float ease(float t) {
@@ -389,7 +476,7 @@ final class RaceOverlay extends View {
         // Chase cam: when he's closing in on someone, now and then.
         boolean busy = covered();
         if (busy && zoomAt >= 0 && now - zoomAt < ZOOM - 450) zoomAt = now - (ZOOM - 450);      // something else on top: fade out
-        if (racing && !busy && zoomAt < 0 && now > nextZoom && myPlace > 1) {
+        if (racing && !busy && !driving && zoomAt < 0 && now > nextZoom && myPlace > 1) {
             float gap = Float.MAX_VALUE;
             for (Car o : cars) if (o != me) gap = Math.min(gap, ((o.s - me.s) % 1 + 1) % 1 * length);
             // Close behind someone; from lap 3 on without a chase cam yet, any time he isn't leading.
@@ -430,7 +517,8 @@ final class RaceOverlay extends View {
                     else if (myPlace < aim) want -= dp(30);                                         // not too early
                     if (zooming && myPlace > aim) want += dp(30);
                 }
-                k.speed += (want - k.speed) * Math.min(1, dt * 1.6f);
+                if (k == me && driving) drive(now, dt);
+                else k.speed += (want - k.speed) * Math.min(1, dt * 1.6f);
             } else if (phase == FINISH) {
                 k.speed += (dp(120) - k.speed) * Math.min(1, dt * 0.8f);      // cool-down lap
             } else {
@@ -447,7 +535,8 @@ final class RaceOverlay extends View {
             while (turn > 180) turn -= 360;
             while (turn < -180) turn += 360;
             k.turn = turn;
-            k.wideTarget = -Math.signum(turn) * Math.min(dp(11), Math.abs(turn) * k.speed / dp(400) * dp(0.4f));
+            k.wideTarget = k == me && driving ? drift
+                : -Math.signum(turn) * Math.min(dp(11), Math.abs(turn) * k.speed / dp(400) * dp(0.4f));
             k.wide += (k.wideTarget - k.wide) * Math.min(1, dt * 4);
             // Someone just ahead: pull out to the side and pass (no more cars on top of each other).
             float ahead = Float.MAX_VALUE, aheadLane = 0;
@@ -459,7 +548,7 @@ final class RaceOverlay extends View {
                     aheadLane = o.lane;
                 }
             }
-            if (phase != INTRO) {
+            if (phase != INTRO && !(k == me && driving)) {
                 float laneTarget = ahead < dp(46) ? (aheadLane > 0 ? -dp(9) : dp(9)) : (k.livery - 2) * dp(2);
                 k.lane += (laneTarget - k.lane) * Math.min(1, dt * 5);
                 if (ahead < dp(20) && k != me) k.speed = Math.max(k.speed * 0.98f, 0);       // brakes rather than drive through
@@ -468,13 +557,14 @@ final class RaceOverlay extends View {
             k.x = pos[0] + nx * (k.wide + k.lane);
             k.y = pos[1] + ny * (k.wide + k.lane);
             float slide = turn * 0.6f * Math.min(1, k.speed / dp(400));      // drift angle in the corner
-            k.angle = ang + slide;
+            k.angle = ang + slide + (k == me ? spin : 0);
             if (racing && Math.abs(turn) > 18 && k.speed > dp(330) && rnd.nextFloat() < 0.5f) {
                 sparks.add(new float[]{k.x - tan[0] * dp(14), k.y - tan[1] * dp(14),
                     -tan[0] * dp(60) + (rnd.nextFloat() - 0.5f) * dp(80), -tan[1] * dp(60) + (rnd.nextFloat() - 0.5f) * dp(80), 0});
             }
         }
         myPlace = place(me);
+        if (driving && myPlace < placeBefore) passes = 1400;
         if (zooming && myPlace < placeBefore) passes = 1400;          // "ÜBERHOLT!" flash (ms)
         if (passes > 0) passes -= (int) (dt * 1000);
         updateDino(now, dt);
@@ -490,6 +580,8 @@ final class RaceOverlay extends View {
         // One race, then it's over: the home closes the F1 board (and with it this track).
         if (phase == FINISH && now - phaseAt > 6000 && running) {
             running = false;
+            driving = false;
+            braking = false;
             if (onFinished != null) post(onFinished);
         }
 
@@ -500,8 +592,15 @@ final class RaceOverlay extends View {
             me.y = h * 0.5f + (me.y - h * 0.5f) * roll;
         }
 
-        // Chase cam amount: dives in and out.
+        // Chase cam amount: dives in and out (at the wheel: always in, in the chase view).
         float z = 0;
+        if (driving && view == VIEW_CHASE) {
+            float d = me.angle - zoomAngle;
+            while (d > 180) d -= 360;
+            while (d < -180) d += 360;
+            zoomAngle += d * Math.min(1, dt * 3);
+            z = 1;
+        }
         if (zooming) {
             long t = now - zoomAt;
             z = ease(Math.min(t, ZOOM - t) / 450f);
@@ -511,7 +610,10 @@ final class RaceOverlay extends View {
             zoomAngle += d * Math.min(1, dt * 3);      // the camera swings after him, smoothly
         }
 
+        boolean eye = driving && view == VIEW_COCKPIT && phase != FINISH;
+        if (eye) driverEye(c, w, h, me, now);
         c.save();
+        if (eye) c.clipRect(0, 0, 0, 0);           // the top-down track only outside the cockpit
         if (z > 0) {
             p.setStyle(Paint.Style.FILL);
             p.setColor(0xFF2A2A28);
@@ -594,8 +696,8 @@ final class RaceOverlay extends View {
         c.restore();
 
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD_ITALIC));
-        if (z > 0.05f) {
-            cockpit(c, w, h, z, myPlace);
+        if (z > 0.05f || eye) {
+            cockpit(c, w, h, eye ? 1 : z, myPlace);
         } else {
             // His tag above him.
             p.setTextSize(dp(10));
@@ -606,16 +708,19 @@ final class RaceOverlay extends View {
         }
 
         if (phase == INTRO) intro(c, w, h, me, inPhase, roll);
+        if (driving) driverHud(c, w, h, now);
 
         // The pill under the camera (like the head-scroll notice): his speed, place and lap.
         String board = phase == INTRO ? "ARC GP · " + TRACKS[variant] + " · " + LAPS + " RUNDEN"
-            : phase == FINISH ? "🏁 ARC GEWINNT · " + TRACKS[variant]
-            : (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · RUNDE " + Math.min(LAPS, myLap + 1) + "/" + LAPS;
+            : phase == FINISH ? (driving ? "🏁 DU: P" + myPlace + " · " + fouls + " FOULS · " + crashes + " CRASH" : "🏁 ARC GEWINNT · " + TRACKS[variant])
+            : driving ? (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · R " + Math.min(LAPS, myLap + 1) + "/" + LAPS + " · " + VIEWS[view] + " ⟳"
+            : (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · RUNDE " + Math.min(LAPS, myLap + 1) + "/" + LAPS + " · TIPP = FAHREN";
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         p.setTextSize(dp(13));
         float tw = p.measureText(board);
         float pcx = camX >= 0 ? camX : w / 2;
         RectF r = new RectF(pcx - tw / 2 - dp(16), pillY, pcx + tw / 2 + dp(16), pillY + dp(34));
+        pillRect.set(r.left - dp(8), r.top - dp(10), r.right + dp(8), r.bottom + dp(10));
         p.setStyle(Paint.Style.FILL);
         p.setColor(0xF0121211);
         c.drawRoundRect(r, dp(17), dp(17), p);
@@ -634,17 +739,265 @@ final class RaceOverlay extends View {
             p.setTextSize(dp(40));
             p.setColor(0xFFD9472F);
             p.setAlpha((int) (255 * in));
-            c.drawText("SIEG!", w / 2, h * 0.36f, p);
+            int fin = place(me);
+            c.drawText(!driving || fin == 1 ? "SIEG!" : "P" + fin, w / 2, h * 0.36f, p);
             p.setTextSize(dp(13));
             p.setColor(0xFFF4F2EC);
             p.setAlpha((int) (255 * in));
-            c.drawText("ARC · " + LAPS + " RUNDEN · P1", w / 2, h * 0.36f + dp(26), p);
+            c.drawText(driving ? "DU · " + LAPS + " RUNDEN · " + fouls + " FOULS · " + crashes + " CRASH" : "ARC · " + LAPS + " RUNDEN · P1",
+                w / 2, h * 0.36f + dp(26), p);
             p.setAlpha(255);
             p.setTextAlign(Paint.Align.LEFT);
             for (int i = 0; i < 2; i++) chequer(c, w / 2 + (i == 0 ? -1 : 1) * dp(110), h * 0.34f + dp(8) * (float) Math.sin(t / 120.0 + i));
         }
 
         if (running || cars.get(0).speed > 1) postInvalidateOnAnimation();
+    }
+
+    /**
+     * You drive: throttle unless you hold, brake while you hold. Faster than the grip allows in a
+     * corner and the car slides outwards; off the track it's a foul (grass) or, much too fast, a crash.
+     */
+    private void drive(long now, float dt) {
+        Car me = buddy();
+        float at = ((me.s % 1) + 1) % 1 * length;
+        if (now < crashUntil) {
+            me.speed = Math.max(0, me.speed - dp(1400) * dt);
+            spin += 540 * dt * Math.max(0.1f, (crashUntil - now) / 2200f);
+            drift *= 1 - Math.min(1, dt * 1.5f);
+            return;
+        }
+        spin *= 1 - Math.min(1, dt * 6);
+        if (braking) me.speed = Math.max(dp(60), me.speed - dp(620) * dt);
+        else me.speed += (dp(560) - me.speed) * Math.min(1, dt * 0.75f);
+        if (now < penaltyUntil) me.speed = Math.min(me.speed, dp(180));
+        float limit = limitAt(at);
+        // A corner starts: well braked (just under the limit, brakes off moments ago) is praised.
+        if (limit < dp(300) && lastLimit >= dp(300)) {
+            float r = me.speed / limit;
+            if (r > 0.88f && r < 1.06f && now - brakeUpAt < 900) say("SPÄT GEBREMST · PERFEKT", 0xFF2BD96B);
+        }
+        lastLimit = limit;
+        float excess = me.speed / limit;
+        // Which way is out: away from the bend.
+        float[] p2 = new float[2], t2 = new float[2];
+        measure.getPosTan(at, pos, tan);
+        measure.getPosTan((at + dp(24)) % length, p2, t2);
+        float bend = (float) (Math.atan2(t2[1], t2[0]) - Math.atan2(tan[1], tan[0]));
+        while (bend > Math.PI) bend -= (float) (2 * Math.PI);
+        while (bend < -Math.PI) bend += (float) (2 * Math.PI);
+        if (excess > 1.06f) {
+            peakExcess = Math.max(peakExcess, excess);
+            drift += -Math.signum(bend) * (excess - 1) * dp(150) * dt;
+        } else {
+            drift *= 1 - Math.min(1, dt * (now < penaltyUntil ? 1.2f : 2.5f));
+            if (Math.abs(drift) < dp(2)) peakExcess = 0;
+        }
+        if (Math.abs(drift) > dp(17) && now > penaltyUntil) {
+            if (peakExcess > 1.38f) {                      // much too fast: into the wall
+                crashes++;
+                crashUntil = now + 2200;
+                say("CRASH! · MAUER", 0xFFE8231A);
+                performHapticFeedback(android.view.HapticFeedbackConstants.REJECT);
+                for (int i = 0; i < 40; i++) {
+                    sparks.add(new float[]{me.x, me.y, (rnd.nextFloat() - 0.5f) * dp(420), (rnd.nextFloat() - 0.5f) * dp(420), 0});
+                }
+                me.speed = Math.min(me.speed, dp(200));
+            } else {                                         // on the grass: track limits
+                fouls++;
+                penaltyUntil = now + 2600;
+                say(fouls >= 3 ? "FOUL " + fouls + " · TRACK LIMITS · STRAFE" : "FOUL · TRACK LIMITS · GRAS", 0xFFFFB020);
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                if (fouls >= 3) penaltyUntil = now + 5000;       // the third one is a drive-through
+            }
+            drift = Math.signum(drift) * dp(15);
+            peakExcess = 0;
+        }
+    }
+
+    /** Messages and the brake light while you drive. */
+    private void driverHud(Canvas c, float w, float h, long now) {
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextAlign(Paint.Align.CENTER);
+        long t = now - msgAt;
+        if (t < 2200 && !msg.isEmpty()) {
+            float in = Math.min(1, t / 150f) * Math.min(1, (2200 - t) / 300f);
+            p.setTextSize(dp(msg.startsWith("CRASH") ? 34 : 18));
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xCC111110);
+            float tw = p.measureText(msg);
+            float y = h * 0.24f;
+            p.setAlpha((int) (200 * in));
+            c.drawRoundRect(w / 2 - tw / 2 - dp(14), y - dp(30), w / 2 + tw / 2 + dp(14), y + dp(12), dp(10), dp(10), p);
+            p.setColor(msgColour);
+            p.setAlpha((int) (255 * in));
+            c.drawText(msg, w / 2, y, p);
+        }
+        // Brake / throttle bar on the left edge.
+        float bh = h * 0.22f, bx = dp(10), by = h * 0.55f;
+        p.setAlpha(255);
+        p.setColor(0x66111110);
+        c.drawRoundRect(bx, by, bx + dp(12), by + bh, dp(6), dp(6), p);
+        p.setColor(braking ? 0xFFE8231A : 0xFF2BD96B);
+        float f = braking ? 1 : Math.min(1, buddy().speed / dp(560));
+        c.drawRoundRect(bx, by + bh * (1 - f), bx + dp(12), by + bh, dp(6), dp(6), p);
+        p.setTextSize(dp(9));
+        p.setColor(0xFFF4F2EC);
+        c.drawText(braking ? "BREMSE" : "GAS", bx + dp(6) + dp(14), by + bh + dp(14), p);
+        if (now < penaltyUntil) {
+            p.setColor(0xFFFFB020);
+            c.drawText("STRAFE · " + (penaltyUntil - now) / 1000 + "." + (penaltyUntil - now) / 100 % 10 + " s", w / 2, h * 0.24f + dp(36), p);
+        }
+        p.setTextAlign(Paint.Align.LEFT);
+    }
+
+    /**
+     * The driver's eye: the track ahead projected in perspective from where the car is – grass in
+     * bands, red-white kerbs, the road with its centre line, brake boards (150 / 100 / 50) before
+     * every corner and the other cars ahead – under the F1 halo.
+     */
+    private void driverEye(Canvas c, float w, float h, Car me, long now) {
+        float at = ((me.s % 1) + 1) % 1 * length;
+        measure.getPosTan(at, pos, tan);
+        float hx = tan[0], hy = tan[1];
+        float ox = me.x, oy = me.y;
+        float shake = now < crashUntil ? dp(6) * (crashUntil - now) / 2200f : me.speed > dp(450) ? dp(0.8f) : 0;
+        float sx = (float) Math.sin(now / 23.0) * shake, sy = (float) Math.cos(now / 29.0) * shake;
+        float horizon = h * 0.42f + sy;
+        float focal = w * 1.2f, camH = h * 0.45f * dp(40) / focal;
+        float tilt = (float) Math.toRadians(spin);
+        c.save();
+        c.rotate((float) Math.toDegrees(tilt) * 0.15f, w / 2, h / 2);
+        // Sky and the grass far away.
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new android.graphics.LinearGradient(0, 0, 0, horizon, 0xFF2D6CDF, 0xFFBFE3FF, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(-w, -h, 2 * w, horizon, p);
+        p.setShader(null);
+        p.setColor(0xFF2E7D32);
+        c.drawRect(-w, horizon, 2 * w, 2 * h, p);
+        // Sample the centre line ahead; draw far to near.
+        int n = 110;
+        float[] sxL = new float[n], sxR = new float[n], sy2 = new float[n], sxC = new float[n], hw = new float[n], dist = new float[n];
+        int got = 0;
+        float lastF = 0;
+        for (int i = 0; i < n; i++) {
+            float d = dp(4) + i * dp(7) + i * i * dp(0.03f);
+            measure.getPosTan((at + d) % length, pos, tan);
+            float dx = pos[0] - ox, dy = pos[1] - oy;
+            float f = dx * hx + dy * hy, l = -dx * hy + dy * hx;
+            if (f < dp(3) || (i > 3 && f < lastF)) break;       // bends back behind us: stop there
+            lastF = f;
+            float k = focal / f;
+            sxC[i] = w / 2 + sx + l * k;
+            hw[i] = dp(15) * k;
+            sxL[i] = sxC[i] - hw[i];
+            sxR[i] = sxC[i] + hw[i];
+            sy2[i] = horizon + camH * k;
+            dist[i] = at + d;
+            got = i + 1;
+        }
+        Path q = new Path();
+        for (int i = got - 2; i >= 0; i--) {
+            int band = (int) (dist[i] / dp(28)) % 2;
+            // Grass band.
+            p.setColor(band == 0 ? 0xFF2E7D32 : 0xFF38913C);
+            c.drawRect(-w, sy2[i + 1], 2 * w, sy2[i] + 1, p);
+            // Kerbs.
+            p.setColor(band == 0 ? 0xFFE8231A : 0xFFF4F2EC);
+            quad(c, q, sxL[i] - hw[i] * 0.18f, sxL[i], sy2[i], sxL[i + 1] - hw[i + 1] * 0.18f, sxL[i + 1], sy2[i + 1]);
+            quad(c, q, sxR[i], sxR[i] + hw[i] * 0.18f, sy2[i], sxR[i + 1], sxR[i + 1] + hw[i + 1] * 0.18f, sy2[i + 1]);
+            // Tarmac and the centre dashes.
+            p.setColor(band == 0 ? 0xFF4A4A48 : 0xFF525250);
+            quad(c, q, sxL[i], sxR[i], sy2[i], sxL[i + 1], sxR[i + 1], sy2[i + 1]);
+            if (band == 0) {
+                p.setColor(0xCCF4F2EC);
+                quad(c, q, sxC[i] - hw[i] * 0.03f, sxC[i] + hw[i] * 0.03f, sy2[i], sxC[i + 1] - hw[i + 1] * 0.03f, sxC[i + 1] + hw[i + 1] * 0.03f, sy2[i + 1]);
+            }
+        }
+        // Brake boards on the right before each corner.
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextAlign(Paint.Align.CENTER);
+        for (float corner : corners) {
+            for (int b = 3; b >= 1; b--) {
+                float sAt = corner - b * dp(50);
+                float ahead = ((sAt - at) % length + length) % length;
+                if (ahead > dp(700)) continue;
+                measure.getPosTan(((sAt % length) + length) % length, pos, tan);
+                float bx = pos[0] - tan[1] * dp(24), by = pos[1] + tan[0] * dp(24);
+                float dx = bx - ox, dy = by - oy;
+                float f = dx * hx + dy * hy, l = -dx * hy + dy * hx;
+                if (f < dp(6)) continue;
+                float k = focal / f;
+                float x = w / 2 + sx + l * k, y = horizon + camH * k;
+                float bw = dp(7) * k, bhh = dp(9) * k;
+                p.setColor(0xFF111110);
+                c.drawRect(x - bw * 0.06f, y - bhh * 1.6f, x + bw * 0.06f, y, p);
+                p.setColor(0xFFF4F2EC);
+                c.drawRect(x - bw / 2, y - bhh * 2.4f, x + bw / 2, y - bhh * 1.4f, p);
+                p.setColor(0xFF111110);
+                p.setTextSize(Math.max(1, bhh * 0.7f));
+                c.drawText(String.valueOf(b * 50), x, y - bhh * 1.65f, p);
+            }
+        }
+        // The other cars ahead, from behind.
+        for (Car o : cars) {
+            if (o == me) continue;
+            float dx = o.x - ox, dy = o.y - oy;
+            float f = dx * hx + dy * hy, l = -dx * hy + dy * hx;
+            if (f < dp(8) || f > dp(600)) continue;
+            float k = focal / f;
+            float x = w / 2 + sx + l * k, y = horizon + camH * k;
+            float cw = dp(11) * k;
+            p.setColor(0xFF111110);
+            c.drawRect(x - cw * 0.62f, y - cw * 0.35f, x - cw * 0.38f, y, p);
+            c.drawRect(x + cw * 0.38f, y - cw * 0.35f, x + cw * 0.62f, y, p);
+            p.setColor(LIVERY[o.livery][0]);
+            c.drawRect(x - cw * 0.36f, y - cw * 0.42f, x + cw * 0.36f, y - cw * 0.05f, p);
+            p.setColor(LIVERY[o.livery][1]);
+            c.drawRect(x - cw * 0.55f, y - cw * 0.62f, x + cw * 0.55f, y - cw * 0.5f, p);
+            p.setColor(0xFFE8231A);
+            c.drawCircle(x, y - cw * 0.12f, Math.max(1, cw * 0.05f), p);
+            if (cw > dp(14)) {
+                p.setColor(0xFFF4F2EC);
+                p.setTextSize(cw * 0.22f);
+                c.drawText(TAG[o.livery], x, y - cw * 0.7f, p);
+            }
+        }
+        p.setTextAlign(Paint.Align.LEFT);
+        // Your nose and the halo.
+        p.setColor(LIVERY[0][0]);
+        Path nose = new Path();
+        nose.moveTo(w / 2 - w * 0.07f, h);
+        nose.lineTo(w / 2 - w * 0.025f, h * 0.7f);
+        nose.lineTo(w / 2 + w * 0.025f, h * 0.7f);
+        nose.lineTo(w / 2 + w * 0.07f, h);
+        nose.close();
+        c.drawPath(nose, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeWidth(dp(14));
+        p.setColor(0xFF161615);
+        Path halo = new Path();
+        halo.moveTo(-dp(10), h * 0.34f);
+        halo.quadTo(w / 2, h * 0.22f, w + dp(10), h * 0.34f);
+        c.drawPath(halo, p);
+        c.drawLine(w / 2, h * 0.27f, w / 2, h * 0.62f, p);
+        p.setStyle(Paint.Style.FILL);
+        if (braking) {          // brake light glow round the edge
+            p.setColor(0x33E8231A);
+            c.drawRect(-w, -h, 2 * w, 2 * h, p);
+        }
+        c.restore();
+    }
+
+    private void quad(Canvas c, Path q, float l0, float r0, float y0, float l1, float r1, float y1) {
+        q.reset();
+        q.moveTo(l0, y0);
+        q.lineTo(r0, y0);
+        q.lineTo(r1, y1);
+        q.lineTo(l1, y1);
+        q.close();
+        c.drawPath(q, p);
     }
 
     /** The hello: a speech bubble next to him, then the five red lights. */
