@@ -6723,7 +6723,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         say("Alles wieder da. Volles Programm! 🎉", 2500);
     }
 
-    private static final float COFFEE = 2.8f;
+    private static final float COFFEE = 7f;        // walk in, pour slowly, a sip – then the broom
 
     /** The sweep itself: first a coffee, then buddy + broom along the bottom, dust behind, clutter fading as the broom passes. */
     private final class SweepView extends View {
@@ -6759,18 +6759,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setStrokeWidth(dp(5));
             p.setColor(0xFFF4F2EC);
             c.drawArc(mx + mw / 2 - dp(10), my - mh * 0.8f, mx + mw / 2 + dp(18), my - mh * 0.25f, -90, 180, false, p);
-            // Coffee level rises while pouring (0.5 … 2.1 s).
-            float lvl = Math.max(0, Math.min(1, (t - 0.5f) / 1.6f));
+            // Coffee level rises while pouring (1.3 … 4.8 s).
+            float lvl = Math.max(0, Math.min(1, (t - 1.3f) / 3.5f));
             p.setStyle(Paint.Style.FILL);
             p.setColor(0xFF5A3B24);
             c.drawRect(mx - mw / 2 + dp(4), my - dp(4) - (mh - dp(12)) * lvl, mx + mw / 2 - dp(4), my - dp(4), p);
             p.setColor(rust);
             c.drawRect(mx - mw / 2, my - mh * 0.55f, mx + mw / 2, my - mh * 0.45f, p);
             // Pot, tilted, with the stream.
-            float tilt = t < 0.4f ? t / 0.4f : t < 2.2f ? 1 : Math.max(0, 1 - (t - 2.2f) / 0.4f);
+            // Tilts towards the mug (clockwise: the spout on its right dips down over the mug).
+            float tilt = t < 0.6f ? 0 : t < 1.2f ? (t - 0.6f) / 0.6f : t < 4.8f ? 1 : Math.max(0, 1 - (t - 4.8f) / 0.6f);
+            tilt = tilt * tilt * (3 - 2 * tilt);
+            float pvx = mx - dp(46), pvy = my - mh - dp(58), ang = 60 * tilt;
             c.save();
-            c.translate(mx - dp(34), my - mh - dp(70));
-            c.rotate(-35 * tilt);
+            c.translate(pvx, pvy);
+            c.rotate(ang);
             p.setColor(0xFF1A1A1A);
             c.drawRoundRect(-dp(30), -dp(28), dp(20), dp(26), dp(10), dp(10), p);
             p.setColor(0xFF3A3A38);
@@ -6782,13 +6785,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             sp.close();
             c.drawPath(sp, p);
             c.restore();
-            if (t > 0.4f && t < 2.2f) {
+            if (t > 1.15f && t < 4.9f) {
+                // The stream leaves the spout's tip and falls into the mug.
+                double ar = Math.toRadians(ang);
+                float lx = dp(34), ly = -dp(18);
+                float tipX = pvx + (float) (lx * Math.cos(ar) - ly * Math.sin(ar));
+                float tipY = pvy + (float) (lx * Math.sin(ar) + ly * Math.cos(ar));
+                float endX = mx - dp(6), endY = my - dp(6) - (mh - dp(12)) * lvl, wob = (float) Math.sin(t * 30) * dp(1.2f);
+                android.graphics.Path st = new android.graphics.Path();
+                st.moveTo(tipX, tipY);
+                st.quadTo(tipX + dp(6) + wob, (tipY + endY) / 2, endX, endY);
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeCap(Paint.Cap.ROUND);
                 p.setStrokeWidth(dp(5));
                 p.setColor(0xFF6B4528);
-                float sx = mx - dp(4), wob = (float) Math.sin(t * 30) * dp(1.5f);
-                c.drawLine(sx + wob, my - mh - dp(50), sx, my - dp(6) - (mh - dp(12)) * lvl, p);
+                c.drawPath(st, p);
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0x88C08A5A);
+                c.drawCircle(endX + wob, endY, dp(4), p);       // little splash
             }
             // Steam.
             if (lvl > 0.3f) {
@@ -6808,7 +6822,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setTextSize(dp(15));
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextAlign(Paint.Align.CENTER);
-            String line = t < 1.5f ? "Erst mal Kaffee ☕" : "So. Und jetzt: aufräumen!";
+            String line = t < 5.2f ? "Erst mal Kaffee ☕" : "Ahh. So – jetzt wird aufgeräumt! 🧹";
             float tw = p.measureText(line) + dp(24), tx = w * 0.32f, ty = ground - size * 1.2f - dp(14);
             tx = Math.max(tw / 2 + dp(8), Math.min(w - tw / 2 - dp(8), tx));
             p.setColor(0xF2FFFFFF);
