@@ -1,6 +1,7 @@
 package ch.architectdna.home;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -47,6 +48,104 @@ final class HeadDebugView extends View {
         this.d = d;
         this.decision = decision;
         invalidate();
+        record(d, decision);
+    }
+
+    /* ---------- Recording: while the debug corner runs, the last ~20 s are kept to share ---------- */
+
+    private static final int KEEP = 48;                 // snapshots, one every 0.4 s
+    private static final java.util.ArrayDeque<Bitmap> SHOTS = new java.util.ArrayDeque<>();
+    private static final java.util.ArrayDeque<String> ROWS = new java.util.ArrayDeque<>();
+    private static long recStart, lastShot;
+
+    private void record(HeadTracker.Debug d, String decision) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (recStart == 0) recStart = now;
+        float t = (now - recStart) / 1000f;
+        ROWS.addLast(String.format(java.util.Locale.ROOT, "%.2f,%d,%.1f,%.1f,%.3f,%.3f,\"%s\"", t, d.face ? 1 : 0, d.pitch, d.yaw,
+            d.gazeV, d.gazeH, decision == null ? "" : decision.replace("\"", "'")));
+        while (ROWS.size() > 3000) ROWS.removeFirst();
+        if (now - lastShot < 400 || getWidth() == 0) return;
+        lastShot = now;
+        post(() -> {
+            if (getWidth() == 0) return;
+            Bitmap b = Bitmap.createBitmap(getWidth() / 2, getHeight() / 2, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(b);
+            c.drawColor(0xFF121211);
+            c.scale(0.5f, 0.5f);
+            draw(c);
+            Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
+            tp.setColor(0xFFFFFFFF);
+            tp.setTextSize(dp(9));
+            tp.setTypeface(Typeface.MONOSPACE);
+            c.drawText(String.format(java.util.Locale.ROOT, "%.1fs", t), dp(6), dp(12), tp);
+            SHOTS.addLast(b);
+            while (SHOTS.size() > KEEP) SHOTS.removeFirst().recycle();
+        });
+    }
+
+    static boolean hasRecording() {
+        return !SHOTS.isEmpty();
+    }
+
+    /**
+     * Saves the recording – a contact sheet (snapshots in a grid, time-stamped) to Pictures/ARC-DNA
+     * and every reading as CSV to Download – and opens the share sheet, e.g. to send to Claude.
+     */
+    static void saveAndShare(android.app.Activity a) {
+        if (SHOTS.isEmpty()) {
+            android.widget.Toast.makeText(a, "Noch keine Aufnahme – Kamera-Debug in der Mediathek laufen lassen.", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        java.util.List<Bitmap> shots = new java.util.ArrayList<>(SHOTS);
+        String csv = "t_s,face,pitch_deg,yaw_deg,gaze_v,gaze_h,decision\n" + String.join("\n", ROWS) + "\n";
+        int cols = 6, rows = (shots.size() + cols - 1) / cols, tw = shots.get(0).getWidth(), th = shots.get(0).getHeight();
+        Bitmap sheet = Bitmap.createBitmap(cols * tw, rows * th, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(sheet);
+        c.drawColor(0xFF000000);
+        for (int i = 0; i < shots.size(); i++) c.drawBitmap(shots.get(i), (i % cols) * tw, (i / cols) * th, null);
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(new java.util.Date());
+        java.util.ArrayList<android.net.Uri> out = new java.util.ArrayList<>();
+        try {
+            android.content.ContentResolver cr = a.getContentResolver();
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "arc-tracking-" + stamp + ".png");
+            v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png");
+            v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/ARC-DNA");
+            android.net.Uri img = cr.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+            if (img != null) {
+                try (java.io.OutputStream os = cr.openOutputStream(img)) {
+                    sheet.compress(Bitmap.CompressFormat.PNG, 100, os);
+                }
+                out.add(img);
+            }
+            android.content.ContentValues t = new android.content.ContentValues();
+            t.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, "arc-tracking-" + stamp + ".csv");
+            t.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/csv");
+            t.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Download");
+            android.net.Uri doc = cr.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, t);
+            if (doc != null) {
+                try (java.io.OutputStream os = cr.openOutputStream(doc)) {
+                    os.write(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                out.add(doc);
+            }
+        } catch (Exception e) {
+            android.widget.Toast.makeText(a, "Speichern fehlgeschlagen: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+            return;
+        } finally {
+            sheet.recycle();
+        }
+        for (Bitmap b : SHOTS) b.recycle();
+        SHOTS.clear();
+        ROWS.clear();
+        recStart = 0;
+        android.content.Intent send = new android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE)
+            .setType("*/*")
+            .putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, out)
+            .putExtra(android.content.Intent.EXTRA_TEXT, "ARC-DNA Kopf-Tracking Aufnahme " + stamp)
+            .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        a.startActivity(android.content.Intent.createChooser(send, "Tracking-Aufnahme teilen"));
     }
 
     private float dp(float v) {
@@ -68,6 +167,13 @@ final class HeadDebugView extends View {
         r.inset(dp(0.75f), dp(0.75f));
         c.drawRoundRect(r, dp(14), dp(14), line);
         postInvalidateDelayed(50);
+        // ● REC: what you see here is being kept to share (Kamera-Debug off = save & share).
+        if (((android.os.SystemClock.uptimeMillis() / 600) % 2) == 0) {
+            line.setStyle(Paint.Style.FILL);
+            line.setColor(0xFFE5482C);
+            c.drawCircle(w - dp(14), dp(14), dp(4), line);
+            line.setStyle(Paint.Style.STROKE);
+        }
         android.graphics.Path clip = new android.graphics.Path();
         clip.addRoundRect(0, 0, w, getHeight(), dp(14), dp(14), android.graphics.Path.Direction.CW);
         c.clipPath(clip);

@@ -629,6 +629,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         gameButton.setContentDescription("Fuchsjagd starten");
         gameButton.setOnClickListener(v -> startGame());
         root.addView(gameButton, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM | Gravity.START));
+        gameButton.setVisibility(View.GONE);
 
         // Claude, always one tap away: floating bottom right.
         claudeFab = new ImageView(this);
@@ -670,16 +671,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         applyBuddy();
+        // Tap the buddy: into its own world (the game, the hunt). Hold it: the Gemini-style chat.
         fox.setOnClickListener(v -> {
             if (pro()) return;
             if (buddy() == 4) duckRipples();
+            if (chat != null) {
+                hop();
+                return;
+            }
             hop();
-            openChat();
+            handler.postDelayed(this::startGame, 220);
         });
-        // Hold the fox: it kicks the glass, which cracks somewhere new every time.
         fox.setOnLongClickListener(v -> {
-            if (chat != null) return true;          // no glass cracks over the chat
-            foxKick();
+            if (pro() || chat != null) return true;
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            openChat();
             return true;
         });
         root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
@@ -1160,8 +1166,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showTokenDialog();
             return true;
         });
-        settingsRow(sys, "Kamera-Debug", () -> prefs.getBoolean("camDebug", false) ? "an · Ecke in der Mediathek" : "aus", v -> {
-            prefs.edit().putBoolean("camDebug", !prefs.getBoolean("camDebug", false)).apply();
+        settingsRow(sys, "Kamera-Debug", () -> prefs.getBoolean("camDebug", false) ? "an · ● nimmt auf · aus = teilen" : "aus · an = aufnehmen", v -> {
+            boolean off = prefs.getBoolean("camDebug", false);
+            prefs.edit().putBoolean("camDebug", !off).apply();
+            if (off && HeadDebugView.hasRecording()) handler.postDelayed(() -> HeadDebugView.saveAndShare(this), 300);
             if (libraryOpen && !headMode().equals("off")) {
                 stopHead();
                 startHead();
@@ -1363,7 +1371,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Fox, rabbit button, speech bubble and seismograph float over the page: out of the way in the Mediathek. */
     private void floaters(boolean show) {
-        for (View v : new View[]{fox, gameButton, bubble, seismo}) {
+        for (View v : new View[]{fox, bubble, seismo}) {
             if (v == null) continue;
             v.animate().cancel();
             if (show) {
@@ -1661,7 +1669,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean on = pro();
         int vis = on ? View.GONE : View.VISIBLE;
         if (fox != null) fox.setVisibility(vis);
-        if (gameButton != null) gameButton.setVisibility(vis);
+        if (gameButton != null) gameButton.setVisibility(View.GONE);      // the bunny button is gone: tap the buddy for its game
         if (seismo != null) seismo.setVisibility(vis);
         if (on && bubble != null) bubble.setVisibility(View.GONE);
         if (on && edgeLight != null) edgeLight.watch(false);
@@ -5546,10 +5554,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         void findClocks(View root) {
             int[] end = {0};
+            dials.clear();
             walk(root, end);
             clocksEnd = end[0];
             follow(scroll.getScrollY());
         }
+
+        /** The analog clock cards (content y from … to): while one is up top, the dial steps aside. */
+        private final java.util.List<int[]> dials = new java.util.ArrayList<>();
 
         private void walk(View v, int[] end) {
             if (v.getVisibility() != View.VISIBLE) return;
@@ -5558,6 +5570,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 v.getLocationInWindow(a);
                 content.getLocationInWindow(b);
                 end[0] = Math.max(end[0], a[1] - b[1] + v.getHeight());
+                if (v != clock) dials.add(new int[]{a[1] - b[1], a[1] - b[1] + v.getHeight()});
             }
             if (v instanceof android.view.ViewGroup) {
                 android.view.ViewGroup g = (android.view.ViewGroup) v;
@@ -5610,11 +5623,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         void follow(int y) {
             // Always there (asked for); at the top it hangs small above the big clock, full size once scrolled.
             boolean big = y > Math.max(dp(300), clocksEnd - dp(8));
-            float sc = big ? 1f : 0.7f;
+            float sc = big ? 1f : 0.55f;            // small at the top: clears the ARCHITECT · DNA line
             setPivotX(getWidth() / 2f);
-            setPivotY(0);
+            setPivotY(statusTop() * 0.9f);          // shrinks around its own centre, stays out of the status bar
             if (Math.abs(getScaleX() - sc) > 0.01f) animate().scaleX(sc).scaleY(sc).setDuration(260).start();
-            boolean want = chat == null;
+            // An analog clock card under it: two dials on top of each other looked messy – step aside.
+            int reach = (int) (statusTop() * 0.9f + radius() * sc);
+            boolean clash = false;
+            for (int[] d : dials) if (d[0] - y < reach && d[1] - y > 0) clash = true;
+            boolean want = chat == null && !clash;
             if (want == shown) return;
             shown = want;
             animate().cancel();
