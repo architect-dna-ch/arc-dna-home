@@ -4949,6 +4949,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         applyPro();
         applySwept();
+        if (!sweeping && fox != null) fox.setAlpha(1f);
         if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
@@ -5028,6 +5029,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (dashboard != null) dashboard.pause();
         if (phoneWidgets != null) phoneWidgets.pause();
         if (folderClose != null && folderPanel != null) folderClose.run();      // an app was started from a folder
+        if (sweepView != null) sweepDone(sweepView);      // left mid-sweep: finish it, don't leave the buddy invisible
+        closeFabMenu();
         pausedAt = System.currentTimeMillis();
         handler.removeCallbacks(clockFlip);
         flipArmed = false;
@@ -5591,7 +5594,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         /** Appears once the top cards have scrolled away, slides back up at the top. */
         void follow(int y) {
-            boolean want = y > Math.max(dp(300), clocksEnd - dp(8)) && chat == null;
+            // Always there (asked for); at the top it hangs small above the big clock, full size once scrolled.
+            boolean big = y > Math.max(dp(300), clocksEnd - dp(8));
+            float sc = big ? 1f : 0.7f;
+            setPivotX(getWidth() / 2f);
+            setPivotY(0);
+            if (Math.abs(getScaleX() - sc) > 0.01f) animate().scaleX(sc).scaleY(sc).setDuration(260).start();
+            boolean want = chat == null;
             if (want == shown) return;
             shown = want;
             animate().cancel();
@@ -5763,7 +5772,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setLetterSpacing(0);
             // Pointer on the rim (no centre needle: it ran through the readout).
             double a = Math.toRadians(180 - 180 * Math.min(1f, shownV + rev));
-            float n1 = R - dp(44), n2 = R - dp(6);
+            float n1 = R - dp(46), n2 = R - dp(14);          // stays inside the face
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeWidth(dp(3));
@@ -6317,6 +6326,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             navBottom = rootFrame.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).bottom;
         }
         col.setPadding(dp(16), 0, dp(16), dp(16) + navBottom);
+        // The keyboard pushes the whole chat up (it used to cover pill, chips and bubbles).
+        int navB = navBottom;
+        col.setOnApplyWindowInsetsListener((v, in) -> {
+            int ime = Build.VERSION.SDK_INT >= 30 ? in.getInsets(WindowInsets.Type.ime()).bottom : 0;
+            v.setPadding(dp(16), 0, dp(16), dp(16) + Math.max(navB, ime));
+            return in;
+        });
         chatScroll = new ScrollView(this);
         chatScroll.setVerticalFadingEdgeEnabled(true);          // older bubbles fade out instead of a hard cut
         chatScroll.setFadingEdgeLength(dp(48));
@@ -6384,6 +6400,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fox.bringToFront();
         chatCol = col;
         blurHome(true);
+        fox.animate().cancel();
+        fox.setAlpha(1f);                  // the broom visit fades it out; an interrupted one left it invisible
         floatStart = android.os.SystemClock.uptimeMillis();
         handler.removeCallbacks(buddyFloat);
         handler.postDelayed(buddyFloat, 60);
@@ -6431,11 +6449,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (fox != null) fox.animate().alpha(0f).setDuration(200).start();
         if (bubble != null) bubble.setVisibility(View.GONE);
         SweepView sv = new SweepView();
+        sweepView = sv;
         rootFrame.addView(sv, new FrameLayout.LayoutParams(-1, -1));
         sv.setElevation(dp(14));
     }
 
+    private SweepView sweepView;
+
     private void sweepDone(SweepView sv) {
+        if (sweepView != sv) return;          // already finished (left the home mid-sweep)
+        sweepView = null;
         rootFrame.removeView(sv);
         sweeping = false;
         prefs.edit().putLong("sweptUntil", System.currentTimeMillis() + SWEEP_FOR).apply();

@@ -524,9 +524,11 @@ public class ArcWallpaper extends WallpaperService {
         private void musicFrame(Canvas c, float s, float t) {
             // A little in from the glass, with the corners rounder than the reported radius so the
             // whole curve stays visible on the physical corner.
-            float in = 8 * s;
+            // Right on the glass edge (it used to sit 8 px in, leaving a pale gap to the phone's edge):
+            // the line's outer side touches the screen edge, the corners follow the display's own radius.
+            float lw = (5 + 3 * beat) * s, in = lw / 2;
             box.set(in, in, width - in, height - in);
-            float r = screenCorner() * 1.2f - in;
+            float r = Math.max(0, screenCorner() / 1.1f - in);
             int[] hues = {0xFFFF3B3B, 0xFFFF9A1F, 0xFFFFE31F, 0xFF2BD96B, 0xFF1FA8FF, 0xFF8A4BFF, 0xFFFF3BB0, 0xFFFF3B3B};
             android.graphics.LinearGradient flow = new android.graphics.LinearGradient(0, 0, width * 0.9f, height * 0.4f,
                 hues, null, android.graphics.Shader.TileMode.REPEAT);
@@ -538,7 +540,7 @@ public class ArcWallpaper extends WallpaperService {
             paint.setStrokeWidth((18 + 10 * beat) * s);
             paint.setAlpha(55);
             c.drawRoundRect(box, r, r, paint);
-            paint.setStrokeWidth((5 + 3 * beat) * s);
+            paint.setStrokeWidth(lw);
             paint.setAlpha(235);
             c.drawRoundRect(box, r, r, paint);
             paint.setAlpha(255);
