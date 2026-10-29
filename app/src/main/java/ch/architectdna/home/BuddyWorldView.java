@@ -251,6 +251,7 @@ final class BuddyWorldView extends View {
 
     private void end() {
         over = true;
+        prefs.edit().putInt("buddyXp", prefs.getInt("buddyXp", 0) + Math.max(2, Math.min(30, score / 3))).apply();     // play together = friendship
         if (score > prefs.getInt(bestKey(), 0)) prefs.edit().putInt(bestKey(), score).apply();
     }
 

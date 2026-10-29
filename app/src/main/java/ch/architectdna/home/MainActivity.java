@@ -1119,12 +1119,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(head);
 
         LinearLayout home = settingsGroup(col, "Startseite");
-        settingsRow(home, "Buddy unten links", () -> BUDDIES[buddy()][0], v -> {
-            prefs.edit().putInt("buddy", (buddy() + 1) % BUDDIES.length).apply();
-            applyBuddy();
-            hop();
-            say("Hi, ich bin " + BUDDIES[buddy()][1] + ".", 1600);
-        }, null);
+        settingsRow(home, "Buddy unten links", () -> BUDDIES[buddy()][0] + " · Galerie · ♥ " + friendship(), v -> showBuddyGallery(), null);
         if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             settingsRow(home, "Tablet-Dashboard", () -> prefs.getBoolean("dashboard", true) ? "AN · Wetter, Uhr, Garten, Ordner" : "AUS · Listen", v -> {
                 prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
@@ -4132,6 +4127,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Double-tap the buddy: its own world – fox hunt, bunny run, bear river, duck pond, F1 race. */
     private void startBuddyWorld() {
         int b = buddy();
+        befriend(2);
         if (b == 0 || b == 2) {
             startGame();
             return;
@@ -5083,7 +5079,131 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** One tap on the buddy: a line of its own – a call, a duck trait, a tip about your phone. */
+    /* ---- Buddy gallery: the first five are yours, the others are earned (friendship) or bought (coins) ---- */
+
+    private static final int STARTERS = 5;
+    /** Per buddy: friendship ♥ that unlocks it, or coins (Nexus Breach bank) to buy it now. */
+    private static final int[][] UNLOCK = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {60, 600}, {150, 1000}, {260, 1500}, {400, 2200}};
+
+    private boolean buddyOwned(int b) {
+        return b < STARTERS || prefs.getBoolean("buddyOwned" + b, false);
+    }
+
+    private int friendship() {
+        return prefs.getInt("buddyXp", 0);
+    }
+
+    private android.content.SharedPreferences bankPrefs() {
+        return getSharedPreferences("nexus", MODE_PRIVATE);
+    }
+
+    private int coins() {
+        return bankPrefs().getInt("bank", 0);
+    }
+
+    /** Time together, a tap, a game, a chat: friendship grows; enough of it unlocks the next buddy. */
+    private void befriend(int hearts) {
+        prefs.edit().putInt("buddyXp", friendship() + hearts).apply();
+        checkUnlocks();
+    }
+
+    private void checkUnlocks() {
+        int xp = friendship();
+        for (int b = STARTERS; b < BUDDIES.length; b++) {
+            if (buddyOwned(b) || xp < UNLOCK[b][0]) continue;
+            prefs.edit().putBoolean("buddyOwned" + b, true).apply();
+            pop("🎉 Neuer Buddy: " + BUDDIES[b][0] + " – Einstellungen → Buddy-Galerie");
+            DiagLog.log("buddy unlocked: " + BUDDIES[b][0] + " at " + xp + " friendship");
+            if (fox != null) hop();
+        }
+    }
+
+    /** Every 5 minutes with the home open counts as time together. */
+    private final Runnable friendTick = new Runnable() {
+        @Override
+        public void run() {
+            befriend(1);
+            handler.postDelayed(this, 5 * 60_000);
+        }
+    };
+
+    /** All buddies as cards: yours in colour, the others as silhouettes with what it takes. */
+    private void showBuddyGallery() {
+        checkUnlocks();
+        android.widget.GridLayout grid = new android.widget.GridLayout(this);
+        grid.setColumnCount(3);
+        int cellW = (Math.min(rootFrame.getWidth(), dp(460)) - dp(40) - dp(16)) / 3 - dp(8);
+        for (int b = 0; b < BUDDIES.length; b++) {
+            boolean owned = buddyOwned(b), active = b == buddy();
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setPadding(dp(6), dp(8), dp(6), dp(8));
+            cell.setBackground(box(active ? (rust & 0x00FFFFFF) | 0x22000000 : paper(), active ? rust : line, 14));
+            ImageView art = new ImageView(this);
+            art.setImageResource(BUDDY_ART[b]);
+            art.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            if (!owned) {
+                art.setColorFilter(isNight() ? 0xFF3A3A38 : 0xFF2A2A28, android.graphics.PorterDuff.Mode.SRC_IN);
+                art.setAlpha(0.55f);
+            }
+            cell.addView(art, new LinearLayout.LayoutParams(-1, dp(46)));
+            TextView name = text(13, owned ? ink : ink3, true);
+            name.setText(owned ? BUDDIES[b][0] : "🔒 " + BUDDIES[b][0]);
+            name.setGravity(Gravity.CENTER);
+            cell.addView(name, margins(-1, -2, 0, dp(4), 0, 0));
+            TextView st = monoText(9, active ? rust : ink3);
+            st.setGravity(Gravity.CENTER);
+            st.setLetterSpacing(0.04f);
+            if (active) st.setText("● DEIN BUDDY");
+            else if (owned) st.setText("TIPPEN = WÄHLEN");
+            else st.setText("♥ " + friendship() + "/" + UNLOCK[b][0] + "\noder 🪙 " + UNLOCK[b][1]);
+            cell.addView(st, margins(-1, -2, 0, dp(2), 0, 0));
+            if (!owned) {
+                // How close: a little friendship bar.
+                FrameLayout bar = new FrameLayout(this);
+                bar.setBackground(box(line, line, 3));
+                View fill = new View(this);
+                fill.setBackground(box(rust, rust, 3));
+                float f = Math.min(1f, friendship() / (float) UNLOCK[b][0]);
+                bar.addView(fill, new FrameLayout.LayoutParams(Math.max(dp(4), Math.round((cellW - dp(12)) * f)), -1));
+                cell.addView(bar, margins(-1, dp(5), 0, dp(5), 0, 0));
+            }
+            int which = b;
+            cell.setOnClickListener(v -> pickBuddy(which));
+            android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
+            lp.width = cellW;
+            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+            grid.addView(cell, lp);
+        }
+        arcSheet("Buddy-Galerie", "♥ " + friendship() + " Freundschaft · 🪙 " + coins() + " Münzen",
+            "Freundschaft wächst mit Antippen, Spielen, Chatten und Zeit zusammen. Oder kauf einen frei – mit Münzen aus Nexus Breach.",
+            grid, new String[]{"Fertig"}, pick -> { });
+    }
+
+    private void pickBuddy(int b) {
+        if (buddyOwned(b)) {
+            closeArcSheet();
+            prefs.edit().putInt("buddy", b).apply();
+            applyBuddy();
+            hop();
+            say("Hi, ich bin " + BUDDIES[b][1] + ".", 1600);
+            return;
+        }
+        int price = UNLOCK[b][1];
+        if (coins() >= price) {
+            bankPrefs().edit().putInt("bank", coins() - price).apply();
+            prefs.edit().putBoolean("buddyOwned" + b, true).apply();
+            DiagLog.log("buddy bought: " + BUDDIES[b][0] + " for " + price);
+            pop("🪙 " + price + " → " + BUDDIES[b][0] + " ist frei!");
+            showBuddyGallery();
+            return;
+        }
+        pop("Noch " + Math.max(0, UNLOCK[b][0] - friendship()) + " ♥ – oder " + (price - coins()) + " 🪙 mehr");
+    }
+
     private void buddyComment() {
+        befriend(1);
         String[] calls = BUDDY_CALLS[buddy()];
         java.util.List<String> tips = buddyTips();
         String line;
@@ -5242,6 +5362,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onResume() {
         super.onResume();
+        checkUnlocks();                      // games and scenes add friendship too
+        handler.removeCallbacks(friendTick);
+        handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         applyPro();
@@ -5324,6 +5447,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onPause() {
         super.onPause();
+        handler.removeCallbacks(friendTick);
         if (dashboard != null) dashboard.pause();
         if (phoneWidgets != null) phoneWidgets.pause();
         if (folderClose != null && folderPanel != null) folderClose.run();      // an app was started from a folder
@@ -6783,6 +6907,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         chatInput.setSingleLine(true);
         chatInput.setImeOptions(EditorInfo.IME_ACTION_SEND);
         chatInput.setOnEditorActionListener((v, id, ev) -> {
+            befriend(2);
             ask(chatInput.getText().toString());
             return true;
         });
