@@ -281,7 +281,10 @@ public class ArcWallpaper extends WallpaperService {
             boolean panic = lock && noService;
             if (!panic) {
                 drawScene(c, lock);
-                if (lock) drawHeart(c);
+                if (lock) {
+                    drawStealMe(c);
+                    drawHeart(c);
+                }
                 return;
             }
             float t = SystemClock.uptimeMillis() / 1000f, s = Math.min(width, height) / 1080f;
@@ -322,6 +325,43 @@ public class ArcWallpaper extends WallpaperService {
             }
         }
 
+        /**
+         * "STEAL ME. YES, FINALLY." big on the lock screen (switch in the wallpaper menu): a thief's
+         * welcome from an IT guy who'll hack himself back. Slightly tilted, rust, a glitch now and then.
+         */
+        private void drawStealMe(Canvas c) {
+            if (!getSharedPreferences("home", MODE_PRIVATE).getBoolean("stealMe", true)) return;
+            boolean dark = night();
+            float s = Math.min(width, height) / 1080f, t = SystemClock.uptimeMillis() / 1000f;
+            float cx = width / 2f, cy = height * 0.53f;
+            boolean glitch = (t % 4.2f) < 0.12f;
+            c.save();
+            c.rotate(-4, cx, cy);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL));
+            paint.setLetterSpacing(-0.03f);
+            float big = 118 * s;
+            paint.setTextSize(big);
+            String l1 = "STEAL ME.", l2 = "YES, FINALLY.";
+            // Shadow for contrast on any wallpaper, then the line; a short RGB split as the glitch.
+            for (int pass = 0; pass < (glitch ? 3 : 2); pass++) {
+                float dx = pass == 0 ? 5 * s : pass == 2 ? -9 * s : 0, dy = pass == 0 ? 6 * s : 0;
+                paint.setColor(pass == 0 ? (dark ? 0xCC000000 : 0x55000000) : pass == 2 ? 0xAA1FA8FF : (dark ? 0xFFE5482C : 0xFFB5271E));
+                c.drawText(l1, cx + dx, cy + dy, paint);
+                c.drawText(l2, cx + dx, cy + big * 0.98f + dy, paint);
+            }
+            paint.setLetterSpacing(0.02f);
+            paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
+            paint.setTextSize(34 * s);
+            paint.setColor(dark ? 0xFFF4F2EC : 0xFF1A1A1A);
+            c.drawText("I'm an IT guy. I'll hack myself back", cx, cy + big * 0.98f + 70 * s, paint);
+            c.drawText("– and find you. 👹😈🥸", cx, cy + big * 0.98f + 116 * s, paint);
+            paint.setLetterSpacing(0);
+            paint.setTextAlign(Paint.Align.LEFT);
+            c.restore();
+        }
+
         /** Your heart line (pinned in "Gelassen") on the lock screen: a calm card in the lower third. */
         private void drawHeart(Canvas c) {
             String q = getSharedPreferences("home", MODE_PRIVATE).getString("heartQuote", "");
@@ -336,7 +376,8 @@ public class ArcWallpaper extends WallpaperService {
                 .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER).setLineSpacing(0, 1.12f).setMaxLines(4)
                 .setEllipsize(android.text.TextUtils.TruncateAt.END).build();
             float pad = 40 * s, head = 56 * s, h = lay.getHeight() + head + pad * 2, w = maxW + pad * 2;
-            float left = (width - w) / 2, top = height * 0.68f - h / 2;
+            boolean steal = getSharedPreferences("home", MODE_PRIVATE).getBoolean("stealMe", true);
+            float left = (width - w) / 2, top = height * (steal ? 0.80f : 0.68f) - h / 2;
             // A soft breathing glow: the card pulses very slowly, like a heartbeat at rest.
             float beat = 0.5f + 0.5f * (float) Math.sin(SystemClock.uptimeMillis() / 1000f * 1.1f);
             paint.setStyle(Paint.Style.FILL);

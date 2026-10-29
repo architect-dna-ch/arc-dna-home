@@ -3445,6 +3445,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "Statisch – hell/dunkel automatisch",
             "Aus – eigenes Wallpaper behalten",
             "Hell/Dunkel wieder dem System folgen",
+            prefs.getBoolean("stealMe", true) ? "Sperrbildschirm-Spruch „STEAL ME.“ ausblenden" : "Sperrbildschirm-Spruch „STEAL ME.“ zeigen",
         };
         arcSheet("Wallpaper & Farben", wallpaperStatus(), items, pick -> {
                 if (pick == 0) {
@@ -3477,9 +3478,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 } else if (which == 2) {
                     prefs.edit().putBoolean("autoWallpaper", false).apply();
                     pop("Wallpaper bleibt, wie es ist");
-                } else {
+                } else if (which == 3) {
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
                     pop("Hell/Dunkel folgt wieder dem System");
+                } else {
+                    boolean on = !prefs.getBoolean("stealMe", true);
+                    prefs.edit().putBoolean("stealMe", on).apply();
+                    pop(on ? "😈 STEAL ME. YES, FINALLY. – auf dem Sperrbildschirm" : "Spruch weg vom Sperrbildschirm");
                 }
         });
     }
