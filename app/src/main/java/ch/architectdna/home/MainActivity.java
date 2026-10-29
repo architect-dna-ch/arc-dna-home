@@ -632,7 +632,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         // Claude, always one tap away: floating bottom right.
         claudeFab = new ImageView(this);
-        claudeFab.setImageResource(R.drawable.ic_claude);
+        claudeFab.setImageResource(R.drawable.ic_fab_cube);      // the ARC-DNA cube: the menu (Claude is one of its bubbles)
         claudeFab.setScaleType(ImageView.ScaleType.FIT_CENTER);
         claudeFab.setPadding(dp(13), dp(13), dp(13), dp(13));
         GradientDrawable cr = new GradientDrawable();
@@ -4798,6 +4798,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         DiagLog.log("dino visit");
     }
 
+    /** Nothing going on (no dino, chat or sweep): the buddy is visible, full size, in its place. */
+    private void reviveBuddy() {
+        if (fox == null || dino != null || chat != null || sweeping || pro()) return;
+        fox.animate().cancel();
+        fox.setVisibility(View.VISIBLE);
+        fox.setAlpha(1f);
+        fox.setScaleX(1f);
+        fox.setScaleY(1f);
+        fox.setRotation(0f);
+        fox.setTranslationX(0f);
+        fox.setTranslationY(0f);
+        fox.setElevation(0);
+    }
+
     private void endDino() {
         if (dino == null) return;
         rootFrame.removeView(dino);
@@ -4949,7 +4963,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         applyPro();
         applySwept();
-        if (!sweeping && fox != null) fox.setAlpha(1f);
+        reviveBuddy();
         if (pixelLayer != null) pixelLayer.refresh();
         if (dashboard != null) dashboard.resume();
         if (phoneWidgets != null) phoneWidgets.resume();
