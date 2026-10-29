@@ -671,23 +671,34 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         fox = new FoxView(this, ink, isNight() ? 0xFF121211 : 0xFFFAFAF8);
         applyBuddy();
-        // Tap the buddy: into its own world (the game, the hunt). Hold it: the Gemini-style chat.
-        fox.setOnClickListener(v -> {
-            if (pro()) return;
-            if (buddy() == 4) duckRipples();
-            if (chat != null) {
-                hop();
-                return;
+        // Tap the buddy: it says something. Double-tap: its own world (game). Hold: the Gemini-style chat.
+        android.view.GestureDetector buddyTaps = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onDown(android.view.MotionEvent e) {
+                return true;
             }
-            hop();
-            handler.postDelayed(this::startGame, 220);
+
+            @Override public boolean onSingleTapConfirmed(android.view.MotionEvent e) {
+                if (pro()) return true;
+                if (buddy() == 4) duckRipples();
+                hop();
+                if (chat == null) buddyComment();
+                return true;
+            }
+
+            @Override public boolean onDoubleTap(android.view.MotionEvent e) {
+                if (pro() || chat != null) return true;
+                hop();
+                handler.postDelayed(MainActivity.this::startBuddyWorld, 220);
+                return true;
+            }
+
+            @Override public void onLongPress(android.view.MotionEvent e) {
+                if (pro() || chat != null) return;
+                fox.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                openChat();
+            }
         });
-        fox.setOnLongClickListener(v -> {
-            if (pro() || chat != null) return true;
-            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-            openChat();
-            return true;
-        });
+        fox.setOnTouchListener((v, e) -> buddyTaps.onTouchEvent(e));
         root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
 
         bubble = text(13, ink, true);
@@ -3836,11 +3847,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** With the F1 board open and the racer as buddy: the race track over the whole home. */
     private void race(boolean on) {
-        boolean want = on && buddy() == 3 && raceFree && rootFrame != null && !calm();
+        boolean want = on && buddy() == 3 && raceFree && rootFrame != null && (!calm() || askedRace);
         if (want) {
             if (raceOverlay == null) {
                 raceOverlay = new RaceOverlay(this);
                 raceOverlay.onFinished = () -> {
+                    askedRace = false;
                     if (f1) setF1(false);          // one race, then the hyper-seconds board closes too
                 };
                 rootFrame.addView(raceOverlay, new FrameLayout.LayoutParams(-1, -1));
@@ -3971,6 +3983,41 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ================= Fuchsjagd ================= */
 
     /** Tap on empty space: the screen turns to landscape and the fox chases the rabbit. */
+    private BuddyWorldView world;
+    private boolean askedRace;
+
+    /** Double-tap the buddy: its own world – fox hunt, bunny run, bear river, duck pond, F1 race. */
+    private void startBuddyWorld() {
+        int b = buddy();
+        if (b == 0 || b == 2) {
+            startGame();
+            return;
+        }
+        if (b == 3) {                                      // the racer: straight onto the track
+            raceFree = true;
+            askedRace = true;                              // asked for: also in the quiet / tidied home
+            if (f1) race(true);
+            else setF1(true);
+            return;
+        }
+        if (world != null || game != null) return;
+        exitGhosts();
+        hideKeyboard();
+        world = new BuddyWorldView(this, b == 4 ? BuddyWorldView.DUCK : BuddyWorldView.BEAR, getDrawable(BUDDY_ART[b]), prefs, this::exitWorld);
+        world.setElevation(dp(30));
+        rootFrame.addView(world, new FrameLayout.LayoutParams(-1, -1));
+        world.setAlpha(0f);
+        world.animate().alpha(1f).setDuration(300).start();
+        voice.say(BUDDY_CALLS[b][0]);
+    }
+
+    private void exitWorld() {
+        BuddyWorldView w = world;
+        world = null;
+        if (w == null) return;
+        w.animate().alpha(0f).setDuration(200).withEndAction(() -> rootFrame.removeView(w)).start();
+    }
+
     private void startGame() {
         if (game != null) return;
         exitGhosts();
@@ -4821,6 +4868,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fox.setElevation(0);
     }
 
+    /** One tap on the buddy: a line of its own – a call, a duck trait, a tip about your phone. */
+    private void buddyComment() {
+        String[] calls = BUDDY_CALLS[buddy()];
+        java.util.List<String> tips = buddyTips();
+        String line;
+        int pick = random.nextInt(3);
+        if (buddy() == 4 && pick == 0) line = DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)];
+        else if (pick == 1 && !tips.isEmpty()) line = tips.get(tipIndex++ % tips.size());
+        else line = calls[random.nextInt(calls.length)] + " Doppeltipp = Spiel · halten = Chat.";
+        voice.say(calls[random.nextInt(calls.length)]);
+        say(line, 3800);
+    }
+
     private void endDino() {
         if (dino == null) return;
         rootFrame.removeView(dino);
@@ -5269,6 +5329,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (world != null) {
+            exitWorld();
+            return;
+        }
         if (fabMenu != null) {
             closeFabMenu();
             return;
