@@ -4148,6 +4148,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return null;
     }
 
+    /** Clears the frosted-fold blur on a view and its rows (a few levels down). */
+    private void unfrost(View v, int depth) {
+        if (foldState.remove(v) != null) {          // only what the fold effect touched (faded tiles keep their look)
+            v.setAlpha(1f);
+            if (Build.VERSION.SDK_INT >= 31) v.setRenderEffect(null);
+        }
+        if (depth > 0 && v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) unfrost(g.getChildAt(i), depth - 1);
+        }
+    }
+
     private void frost(View v, float hidden) {
         if (v == musicView || v == dashboardView || v == widgetStrip) hidden = 0;     // widgets stay sharp
         Float last = foldState.get(v);
@@ -5985,6 +5997,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int index = content.indexOfChild(block);
         int wasVis = block.getVisibility();
         content.removeView(block);
+        unfrost(block, 4);          // rows blurred by the home's fold effect would open blurred in the folder
         block.setVisibility(View.VISIBLE);
         block.setAlpha(1f);
         block.setTranslationY(0);
@@ -6435,7 +6448,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
         }
         scroll.smoothScrollTo(0, 0);
-        say("☕ Aufgeräumt! Vier Stunden nur das Nötigste: 3 Apps, Ordner, Wetter, Musik. Unten ↺ holt alles zurück.", 5000);
+        say("☕ Aufgeräumt! ↺ unten holt alles zurück.", 5000);
     }
 
     /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */
