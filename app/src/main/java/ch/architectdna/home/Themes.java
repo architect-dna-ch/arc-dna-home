@@ -44,6 +44,9 @@ final class Themes {
         new Theme("matcha", "Matcha", "Creme, Matcha & Terrakotta · ruhig", true,
             new int[]{0xFFF4F1E6, 0xFF2B3A1F, 0xFF5B6B4B, 0xFF9AA38C, 0xFFC8643B, 0xE6FFFDF4, 0xF2FFFDF4, 0xFFDCD6C2, 0xFFA8C686, 0xFFE8B98A, 0xFFD6E5B8},
             new int[]{0xFF161B12, 0xFFEEF0E2, 0xFFB8BFA6, 0xFF707A60, 0xFFE08A5C, 0xE01E2618, 0xF21E2618, 0xFF2E3A24, 0xFF5E7E3A, 0xFFA0603A, 0xFF3A4A2A}),
+        new Theme("sunset", "Sonnenuntergang", "Pfirsich, Koralle & Violett · warm", true,
+            new int[]{0xFFFFF1E6, 0xFF3A1E2E, 0xFF7A4258, 0xFFB08A98, 0xFFF2563B, 0xFFFFF8F0, 0xF2FFF8F0, 0xFFF3D9C8, 0xFFFF7A45, 0xFFB0439B, 0xFFFFC27A},
+            new int[]{0xFF1C1018, 0xFFFFE8DC, 0xFFCFA6B4, 0xFF8A6472, 0xFFFF7A5C, 0xE02A1522, 0xF22A1522, 0xFF462432, 0xFFFF7A45, 0xFFC055A8, 0xFFB85A2E}),
     };
 
     static Theme current(SharedPreferences prefs) {

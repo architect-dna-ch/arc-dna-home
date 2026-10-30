@@ -35,7 +35,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // R8: shrink + rename our own code so the shipped APK/AAB is hard to reverse-engineer.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
