@@ -45,7 +45,7 @@ final class BackgroundPhases {
     /** Called on every playback / track change from the media listener. */
     void follow(MediaController playing) {
         controller = playing;
-        boolean want = playing != null && SystemClock.uptimeMillis() - cardLiveAt > 3000
+        boolean want = playing != null && SystemClock.uptimeMillis() - cardLiveAt > 3000 && !LowPower.active(ctx)
             && ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         main.removeCallbacks(recheck);
         if (want) start();

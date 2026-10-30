@@ -44,6 +44,17 @@ import java.util.Locale;
 public class EnergyActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
+    private int glowA, glowB;
+
+    private GradientDrawable glow(int colour, float cx, float cy) {
+        GradientDrawable g = new GradientDrawable();
+        g.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        g.setGradientCenter(cx, cy);
+        g.setGradientRadius(getResources().getDisplayMetrics().widthPixels * 0.75f);
+        g.setColors(new int[]{(colour & 0x00FFFFFF) | 0x66000000, colour & 0x00FFFFFF});
+        return g;
+    }
+
     private int bg = 0xFF141413, card = 0xFF1E1E1C, line = 0xFF2E2E2B, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0,
         ink3 = 0xFF6F6E69, rust = 0xFFD9472F, green = 0xFF2BD96B, amber = 0xFFE8B931;
     private FrameLayout root;
@@ -74,7 +85,15 @@ public class EnergyActivity extends Activity {
         pb.setColor(bg);
         float r = dp(28);
         pb.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
-        panel.setBackground(pb);
+        if (glowA != 0) {
+            // The theme's glows in the sheet too: one top right, one lower left.
+            GradientDrawable g1 = glow(glowA, 0.9f, 0.08f), g2 = glow(glowB, 0.05f, 0.55f);
+            g1.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
+            g2.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
+            panel.setBackground(new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{pb, g1, g2}));
+        } else {
+            panel.setBackground(pb);
+        }
         panel.setPadding(dp(20), dp(44), dp(20), dp(18));
         // Below the status bar (and the camera cut-out), whatever its height.
         panel.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -667,10 +686,25 @@ public class EnergyActivity extends Activity {
         g.setCornerRadius(dp(radiusDp));
         return g;
     }
-    /** Day or night like the system (they were always dark). */
+    /** Day or night like the system (they were always dark), in the theme picked in the home. */
     private void themeColours() {
         boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
             == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        Themes.Theme th = Themes.current(getSharedPreferences("home", MODE_PRIVATE));
+        if (!"classic".equals(th.id)) {
+            int[] p = th.pal(night);
+            bg = p[Themes.BG];
+            card = p[Themes.PANEL] | 0xFF000000;
+            line = p[Themes.LINE];
+            ink = p[Themes.INK];
+            ink2 = p[Themes.INK2];
+            ink3 = p[Themes.INK3];
+            rust = p[Themes.ACCENT];
+            green = p[Themes.GLOW_B] != 0 ? p[Themes.GLOW_B] : green;
+            glowA = p[Themes.GLOW_A];
+            glowB = p[Themes.GLOW_B];
+            return;
+        }
         if (!night) {
             bg = 0xFFFAFAF8;
             card = 0xFFFFFFFF;
@@ -687,7 +721,7 @@ public class EnergyActivity extends Activity {
     /** Dark bar icons on the light day background (after setContentView). */
     private void barIcons() {
         if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
-        boolean light = bg != 0xFF0E0E0D && bg != 0xFF141413;
+        boolean light = android.graphics.Color.luminance(bg) > 0.5f;
         int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
             | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
         getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);

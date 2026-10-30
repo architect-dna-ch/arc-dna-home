@@ -98,6 +98,7 @@ public class MediaListener extends NotificationListenerService {
             android.content.Intent b = android.content.Intent.ACTION_BATTERY_CHANGED.equals(i.getAction()) ? i : null;
             android.content.Context app = c.getApplicationContext();
             new Thread(() -> BatteryLog.sample(app, b), "arc-battery-log").start();
+            LowPower.stale();
         }
     };
 
@@ -154,7 +155,7 @@ public class MediaListener extends NotificationListenerService {
         MusicStats.update(this, playing != null, title, artist, playing != null ? playing.getPackageName() : null);
         MusicMood.onUpdate(this, playing != null, title, artist);
         if (bgPhases == null) bgPhases = new BackgroundPhases(this);
-        bgPhases.follow(playing);                  // phases + beats also while ARC-DNA is in the background
+        bgPhases.follow(LowPower.active(this) ? null : playing);     // paused under 15 %                  // phases + beats also while ARC-DNA is in the background
         // The ARC Player notice: the playing session, else a paused one; none = gone.
         MediaController shown = playing;
         if (shown == null) {

@@ -410,6 +410,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (torch != null) torch.set(false);
         });
         top.addView(torchChip);
+        // Under 15 %: what's paused, and that it comes back by itself.
+        lowChip = monoText(11, rust);
+        lowChip.setText("🔋 SPART  ");
+        lowChip.setVisibility(View.GONE);
+        lowChip.setOnClickListener(v -> arcSheet("Akku-Schutz", "Unter " + LowPower.LIMIT + " % ohne Ladekabel",
+            "Pausiert: Kopf-Scroll und Gesichts-Wache (Kamera), Diebstahl-Wache (Kamera, Mikro, GPS), "
+                + "Musik-Analyse im Hintergrund und das Glühen. Alles kommt von selbst zurück, sobald du lädst.",
+            null, new String[]{"Okay"}, k -> { }));
+        top.addView(lowChip);
         net = monoText(11, ink3);
         top.addView(net);
         top.addView(gearButton());
@@ -2269,6 +2278,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private float boxL, boxR, boxT, boxB;
+    private TextView lowChip;
+    private final android.content.BroadcastReceiver lowWatch = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            LowPower.stale();
+            boolean low = LowPower.active(MainActivity.this);
+            if (lowChip != null) lowChip.setVisibility(low ? View.VISIBLE : View.GONE);
+            if (low && head != null && libraryOpen) stopHead();
+        }
+    };
 
     /** Adds a point (≥ 8 dp from the last, which smooths finger jitter) and adds up how far the path's direction has turned. */
     private void addPoint(float x, float y) {
@@ -2702,6 +2721,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void startHead() {
         String m = headMode();
         if (m.equals("off")) return;
+        if (LowPower.active(this)) {
+            pop("🔋 Unter " + LowPower.LIMIT + " % – Kopf-Scroll pausiert, bis du lädst");
+            return;
+        }
         faceWatch = false;          // head scroll takes the camera over
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
@@ -5246,6 +5269,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void startFaceWatch() {
         handler.removeCallbacks(faceWatchdog);
+        if (LowPower.active(this)) return;             // under 15 %: no camera just for the dino
         if (!homeInFront || libraryOpen || game != null || !prefs.getBoolean("dinoLock", true)) return;
         handler.postDelayed(faceWatchdog, 3000);
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -5363,6 +5387,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onResume() {
         super.onResume();
         checkUnlocks();                      // games and scenes add friendship too
+        registerReceiver(lowWatch, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         handler.removeCallbacks(friendTick);
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
@@ -5448,6 +5473,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(friendTick);
+        try {
+            unregisterReceiver(lowWatch);
+        } catch (RuntimeException ignored) {
+        }
         if (dashboard != null) dashboard.pause();
         if (phoneWidgets != null) phoneWidgets.pause();
         if (folderClose != null && folderPanel != null) folderClose.run();      // an app was started from a folder

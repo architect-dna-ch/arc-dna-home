@@ -77,7 +77,7 @@ final class SpicyBackdrop extends View {
         super.onWindowVisibilityChanged(visibility);
         boolean want = visibility == VISIBLE && getContext().checkSelfPermission(Manifest.permission.RECORD_AUDIO)
             == PackageManager.PERMISSION_GRANTED;
-        if (quiet) want = false;
+        if (quiet || LowPower.active(getContext())) want = false;          // no beat under 15 %
         if (want && !tapped) AudioTap.add(sink);
         else if (!want && tapped) AudioTap.remove(sink);
         tapped = want;
@@ -136,6 +136,11 @@ final class SpicyBackdrop extends View {
         fill.setShader(null);
 
         // A flick shoots pink and green speed lines across, against the scroll direction.
+        if (LowPower.active(getContext())) {             // low battery: the glows stand still
+            speed = 0;
+            bass = 0;
+            flare = 0;
+        }
         if (flare > 0.05f && !quiet) {
             streak.setStrokeWidth(getResources().getDisplayMetrics().density * 3);
             for (int i = 0; i < 9; i++) {

@@ -285,6 +285,16 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private void apply(String m) {
         if (m.equals(mode)) return;
         if (theftOn && !m.equals("off")) return;       // locked: the watch has the camera
+        if (!m.equals("off") && LowPower.active(this)) {
+            // Under 15 %: no camera. Next app switch checks again (so it's back once charging).
+            stopTracking();
+            mode = "off";
+            showPill("🔋 UNTER " + LowPower.LIMIT + " % · KOPF-SCROLL PAUSIERT");
+            main.postDelayed(() -> {
+                if (mode.equals("off") && !theftOn) hidePill();
+            }, 3000);
+            return;
+        }
         stopTracking();
         mode = m;
         if (m.equals("off")) {
@@ -330,6 +340,11 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
 
     private void setTheft(boolean on) {
         if (on == theftOn) return;
+        if (on && LowPower.active(this)) {
+            TheftWatch.status = "Akku unter " + LowPower.LIMIT + " % – pausiert";
+            DiagLog.log("theft watch: paused, battery under " + LowPower.LIMIT + " %");
+            return;
+        }
         if (on) apply("off");          // the camera is the watch's now (head scroll picks up again after unlocking)
         theftOn = on;
         if (on) {
