@@ -1248,6 +1248,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 startHead();
             }
         }, null);
+        settingsRow(sys, "Tipps", () -> Coach.seenCount(this) + "/" + Coach.TIPS.length + (Coach.isOff(this) ? " · pausiert" : " · wächst mit der Zeit"), v -> showTipsList(), null);
         settingsRow(sys, "Diagnose an Claude senden", () -> "anonym · halten = teilen", v -> uploadDiagnostics(), v -> {
             shareDiagnostics();
             return true;
@@ -3267,6 +3268,94 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Our own toast: the system one cuts text after two lines. Wraps the whole message, stays
      * longer for longer text, tap = away. Falls back to a toast while the home isn't on screen.
      */
+    /** The growing tutorial: at most one new tip, a few seconds after the home settles. */
+    private void maybeCoach() {
+        if (!homeInFront || coachCard != null || settingsSheet != null || arcSheetOpen != null
+            || libraryOpen || game != null || world != null || scene != null || dino != null || sweepView != null) {
+            return;
+        }
+        Coach.Tip tip = Coach.next(this);
+        if (tip != null) showCoachCard(tip);
+    }
+
+    private FrameLayout coachCard;
+
+    private void showCoachCard(Coach.Tip tip) {
+        Coach.markSeen(this, tip.id);
+        FrameLayout wrap = new FrameLayout(this);
+        coachCard = wrap;
+        wrap.setElevation(dp(10));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(box(isNight() ? 0xF21C1C1A : 0xF2FFFFFF, rust, 20));
+        box.setPadding(dp(18), dp(16), dp(18), dp(14));
+        box.setClickable(true);
+        TextView tag = monoText(10, rust);
+        tag.setLetterSpacing(0.18f);
+        tag.setText("— TIPP " + Coach.seenCount(this) + "/" + Coach.TIPS.length);
+        box.addView(tag);
+        TextView title = text(18, ink, true);
+        title.setText(tip.title);
+        box.addView(title, margins(-1, -2, 0, dp(4), 0, 0));
+        TextView body = text(14, ink2, false);
+        body.setText(tip.body);
+        body.setLineSpacing(0, 1.2f);
+        box.addView(body, margins(-1, -2, 0, dp(6), 0, dp(10)));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.END);
+        TextView stop = text(13, ink3, false);
+        stop.setText("Tipps aus");
+        stop.setPadding(dp(14), dp(8), dp(14), dp(8));
+        stop.setOnClickListener(v -> {
+            Coach.setOff(this, true);
+            closeCoachCard();
+            pop("Tipps aus · wieder an in Einstellungen → Tipps");
+        });
+        row.addView(stop);
+        TextView ok = text(14, 0xFFFFFFFF, true);
+        ok.setText("Verstanden");
+        ok.setPadding(dp(18), dp(8), dp(18), dp(8));
+        ok.setBackground(box(rust, rust, 14));
+        ok.setOnClickListener(v -> closeCoachCard());
+        row.addView(ok, margins(-2, -2, dp(8), 0, 0, 0));
+        box.addView(row);
+        wrap.addView(box, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.setMargins(dp(16), 0, dp(16), dp(96));
+        rootFrame.addView(wrap, lp);
+        box.setTranslationY(dp(30));
+        box.setAlpha(0f);
+        box.animate().translationY(0).alpha(1f).setDuration(300).setInterpolator(new android.view.animation.OvershootInterpolator(0.9f)).start();
+    }
+
+    private void closeCoachCard() {
+        FrameLayout c = coachCard;
+        coachCard = null;
+        if (c == null) return;
+        c.animate().alpha(0f).translationY(dp(20)).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
+    }
+
+    /** Einstellungen → Tipps: read any unlocked tip again, or start the tutorial over. */
+    private void showTipsList() {
+        java.util.List<Coach.Tip> ul = Coach.unlocked(this);
+        String[] rows = new String[ul.size() + 2];
+        for (int i = 0; i < ul.size(); i++) rows[i] = ul.get(i).title;
+        rows[ul.size()] = Coach.isOff(this) ? "▶︎ Tipps wieder einschalten" : "⏸ Tipps pausieren";
+        rows[ul.size() + 1] = "↺ Tutorial von vorn";
+        arcSheet("Tipps", Coach.seenCount(this) + " von " + Coach.TIPS.length + " entdeckt · der Rest kommt mit der Zeit", rows, pick -> {
+            if (pick < ul.size()) {
+                Coach.Tip t = ul.get(pick);
+                arcSheet(t.title, null, t.body, null, new String[]{"Okay"}, k -> { });
+            } else if (pick == ul.size()) {
+                Coach.setOff(this, !Coach.isOff(this));
+                pop(Coach.isOff(this) ? "Tipps pausiert" : "Tipps wieder an");
+            } else {
+                Coach.reset(this);
+                pop("Tutorial startet von vorn");
+            }
+        });
+    }
+
     private void pop(CharSequence text) {
         if (rootFrame == null || isFinishing()) {
             Toast.makeText(this, text, Toast.LENGTH_LONG).show();
@@ -5417,6 +5506,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         xiaomiGestures();
         ScrollAssistService.onAssistant = this::assistantArrived;
         handler.postDelayed(this::suggestArc, 2500);
+        handler.postDelayed(this::maybeCoach, 3200);
         handler.postDelayed(this::maybeSweep, 4200);
         if (crumplePending) {
             crumplePending = false;
@@ -5712,6 +5802,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (coachCard != null) {
+            closeCoachCard();
+            return;
+        }
         if (raceOverlay != null && raceOverlay.driving()) {
             raceOverlay.quitDriving();
             return;
