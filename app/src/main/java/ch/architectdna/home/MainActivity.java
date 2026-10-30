@@ -5993,11 +5993,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         t.setGravity(Gravity.CENTER_HORIZONTAL);
-        t.setPadding(dp(12), dp(12), dp(12), dp(10));     // the label stays clear of the slanted sides
+        t.setPadding(dp(6), dp(7), dp(6), dp(6));          // compact: the card hugs the icon + label
         allTiles.put(t, Boolean.TRUE);
-        // App cards are rounded hexagons, not rounded rectangles.
-        if (tileTint != 0 && !pro()) tint(t, tileTint);
-        else t.setBackground(new HexTile(card, line, dp(1), dp(14)));
+        // Plain, compact rounded rectangle – no coloured tint, no hexagon edges.
+        t.setBackground(box(card, line, 14));
 
         ImageView iv = new ImageView(this);
         if (icon != null) iv.setImageDrawable(icon);
@@ -6008,7 +6007,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         tv.setGravity(Gravity.CENTER);
         tv.setSingleLine(true);
         tv.setEllipsize(TextUtils.TruncateAt.END);
-        t.addView(tv, margins(-1, -2, 0, dp(6), 0, 0));
+        t.addView(tv, margins(-1, -2, 0, dp(3), 0, 0));
         return t;
     }
 

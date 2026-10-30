@@ -1010,11 +1010,36 @@ public class PlayerActivity extends Activity {
             p.setStyle(Paint.Style.FILL);
             p.setColor(shell);
             c.drawPath(path, p);
-            // Shutter with its window.
-            p.setColor(0xFFC4C4BE);
-            c.drawRect(r.left + 24 * u, r.top, r.right - 20 * u, r.top + 28 * u, p);
-            p.setColor(0xFF2A2A28);
-            c.drawRect(r.left + 56 * u, r.top + 4 * u, r.left + 68 * u, r.top + 24 * u, p);
+            // Window + sliding shutter: while it plays, the metal shutter slides open and the magnetic
+            // disk spins inside, caught by the light – like a drive reading it.
+            float open = arm;                                   // 0 closed … 1 open while playing
+            RectF win = new RectF(r.left + 26 * u, r.top + 2 * u, r.right - 22 * u, r.top + 27 * u);
+            c.save();
+            Path wc = new Path();
+            wc.addRoundRect(win, 2 * u, 2 * u, Path.Direction.CW);
+            c.clipPath(wc);
+            p.setColor(0xFF15110E);
+            c.drawRect(win, p);
+            // The brown mylar cookie: a big disk centred below, spinning.
+            float ckx = win.centerX(), cky = r.top + 60 * u, ckR = 44 * u;
+            c.save();
+            c.rotate(spin, ckx, cky);
+            p.setColor(0xFF4A2F1E);
+            c.drawCircle(ckx, cky, ckR, p);
+            p.setColor(0x33000000);
+            for (float rr = ckR * 0.3f; rr < ckR; rr += 4 * u) c.drawCircle(ckx, cky, rr, p);
+            p.setColor(0x55FFC98A);                              // a light glint that turns with it
+            c.drawCircle(ckx + ckR * 0.4f, cky - ckR * 0.4f, 4 * u, p);
+            c.restore();
+            c.restore();
+            // The shutter: metal, slides right as it opens; a notch line down the middle.
+            float shw = win.width() * 0.62f, sx = win.left - shw * 0.02f + open * (win.width() - shw);
+            p.setColor(0xFFBFBFB8);
+            c.drawRect(sx, r.top, sx + shw, r.top + 28 * u, p);
+            p.setColor(0xFF8E8E88);
+            c.drawRect(sx + shw * 0.46f, r.top + 2 * u, sx + shw * 0.5f, r.top + 26 * u, p);
+            p.setColor(0x33000000);
+            c.drawRect(sx, r.top + 26 * u, sx + shw, r.top + 28 * u, p);
             // Write-protect hole, bottom corners.
             c.drawRect(r.left + 4 * u, r.bottom - 9 * u, r.left + 9 * u, r.bottom - 4 * u, p);
             // Label: the cover, with the title written along the bottom.
@@ -1040,6 +1065,7 @@ public class PlayerActivity extends Activity {
             }
             c.drawText(t, lab.left + 3 * u, lab.bottom - 4 * u, p);
             c.restore();
+            if (isPlaying() || in < 1 || arm > 0.02f) postInvalidateOnAnimation();
         }
     }
 
