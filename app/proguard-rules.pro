@@ -1,10 +1,16 @@
 # ARC-DNA Home release rules: R8 shrinks, optimises and renames our own code so the shipped
 # APK/AAB is hard to read, while keeping the parts the libraries reach by reflection or JNI.
 
-# A little obfuscation dictionary noise and no line tables (no source insight from a stack trace).
+# Rename our code, but do NOT run the optimizer: its inlining removed the stack frames that
+# MediaPipe walks to find and load its native library ("no caller found on the stack").
+-dontoptimize
 -repackageclasses 'a'
--allowaccessmodification
 -renamesourcefileattribute SourceFile
+
+# The two classes that drive ML Kit / MediaPipe / CameraX keep their names and all members, so the
+# native loaders find their caller frame on the stack (the rest of our code is still obfuscated).
+-keep class ch.architectdna.home.HeadTracker { *; }
+-keep class ch.architectdna.home.CameraEngine { *; }
 
 # Keep native-method names and anything tagged @Keep (so JNI and keep-annotated code still binds).
 -keepclasseswithmembernames class * {
