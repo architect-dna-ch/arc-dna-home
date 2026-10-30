@@ -533,6 +533,11 @@ public class ArcWallpaper extends WallpaperService {
             return theme().pal(night())[Themes.ACCENT];
         }
 
+        /** Calm wallpaper: breathe with the beat, but no ring storm / glitter / confetti. Default on. */
+        private boolean calmWall() {
+            return getSharedPreferences("home", MODE_PRIVATE).getBoolean("wallpaperCalm", true);
+        }
+
         private void drawScene(Canvas c, boolean lock) {
             boolean dark = night();
             Themes.Theme th = theme();
@@ -687,12 +692,15 @@ public class ArcWallpaper extends WallpaperService {
 
         private void fingerprint(Canvas c, float s, float t) {
             float fx = width * FP_X, fy = height * FP_Y, r0 = width * 0.085f;
-            float pulse = r0 * (1.35f + 0.08f * (float) Math.sin(t * 3.9f) + 0.35f * beat);
-            rainbowRing(c, fx, fy, pulse, 9 * s, t * 120, 0.95f);
-            rainbowRing(c, fx, fy, pulse * 1.12f, 22 * s, t * 120, 0.22f);
+            boolean calm = calmWall();
+            float pulse = r0 * (1.35f + 0.06f * (float) Math.sin(t * 3.9f) + (calm ? 0.14f : 0.35f) * beat);
+            rainbowRing(c, fx, fy, pulse, 9 * s, t * 120, calm ? 0.6f : 0.95f);
+            if (!calm) rainbowRing(c, fx, fy, pulse * 1.12f, 22 * s, t * 120, 0.22f);
             paint.setShader(null);
             paint.setStyle(Paint.Style.FILL);
+            int gi = 0;
             for (float[] g : glitter) {
+                if (calm && (gi++ % 4 != 0)) continue;       // a quarter of the sparkles, gently
                 float a = (float) (0.5 + 0.5 * Math.sin(t * g[4] + g[3]));
                 float ang = g[0] + t * 0.25f, rr = r0 * g[1] * (1 + 0.15f * beat);
                 int col = Color.HSVToColor(new float[]{(g[2] + t * 60) % 360, 0.7f, 1f});
@@ -1650,13 +1658,15 @@ public class ArcWallpaper extends WallpaperService {
                 lastBeat = now;
                 beat = 1f;
                 boolean lock = locked();
-                if (rings.size() < 14) {
+                boolean calm = calmWall();
+                int cap = calm ? 3 : 14;
+                if (rings.size() < cap) {
                     float hue = random.nextFloat() * 360;
                     if (lock) {
-                        rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, 0.9f, hue, 1});
-                        if (pixelPortrait()) rings.add(new float[]{width * FP_X, height * FP_Y, width * 0.12f, 0.8f, hue + 120, 1});
+                        rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, calm ? 0.35f : 0.9f, hue, 1});
+                        if (pixelPortrait() && !calm) rings.add(new float[]{width * FP_X, height * FP_Y, width * 0.12f, 0.8f, hue + 120, 1});
                     } else {
-                        rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, 0.3f, 0, 0});
+                        rings.add(new float[]{width / 2f, height * 0.52f, width * 0.05f, calm ? 0.16f : 0.3f, 0, 0});
                     }
                 }
                 if (visible) {

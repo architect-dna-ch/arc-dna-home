@@ -3661,6 +3661,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             "Hell/Dunkel wieder dem System folgen",
             prefs.getBoolean("stealMe", true) ? "Sperrbildschirm-Spruch „STEAL ME.“ ausblenden" : "Sperrbildschirm-Spruch „STEAL ME.“ zeigen",
             prefs.getBoolean("theftCam", true) ? "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) aus" : "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) an",
+            prefs.getBoolean("wallpaperCalm", true) ? "Wallpaper-Energie: RUHIG · auf Rave umstellen" : "Wallpaper-Energie: RAVE · auf ruhig umstellen",
         };
         arcSheet("Wallpaper & Farben", wallpaperStatus(), items, pick -> {
                 if (pick == 0) {
@@ -3696,6 +3697,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 } else if (which == 3) {
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
                     pop("Hell/Dunkel folgt wieder dem System");
+                } else if (which == 6) {
+                    boolean calm = !prefs.getBoolean("wallpaperCalm", true);
+                    prefs.edit().putBoolean("wallpaperCalm", calm).apply();
+                    pop(calm ? "Ruhig: atmet mit dem Beat, kein Ring-Gewitter" : "Rave: volle Ringe, Glitzer & Konfetti");
                 } else if (which == 5) {
                     boolean on = !prefs.getBoolean("theftCam", true);
                     prefs.edit().putBoolean("theftCam", on).apply();
