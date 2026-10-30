@@ -903,7 +903,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout row = new LinearLayout(this);
         row.setPadding(0, 0, 0, dp(4));       // room for the field's lower edge (it was clipped)
         row.setClipToPadding(false);
-        webQuery = field("Suchen…");
+        webQuery = field("Apps suchen…");
         webQuery.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         webQuery.setOnEditorActionListener((v, actionId, event) -> {
             webSearch();
@@ -916,7 +916,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         go.setText("→");
         go.setGravity(Gravity.CENTER);
         go.setBackground(box(LIGHT_RED, LIGHT_RED, 16));
-        go.setContentDescription("Suchen");
+        go.setContentDescription("Apps suchen");
         go.setOnClickListener(v -> webSearch());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(50), dp(50));
         lp.leftMargin = dp(8);
@@ -924,14 +924,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return row;
     }
 
+    /** The home search bar now searches apps: it opens the Mediathek and carries the query into its app search. */
     private void webSearch() {
         String q = webQuery.getText().toString().trim();
-        if (q.isEmpty()) return;
-        hideKeyboard();
         webQuery.setText("");
-        Intent search = new Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q);
-        if (getPackageManager().resolveActivity(search, 0) != null) open(search);
-        else open(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(q))));
+        openLibrary();
+        if (libSearch != null) {
+            libSearch.setText(q);
+            libSearch.setSelection(q.length());
+            libSearch.post(() -> {
+                libSearch.requestFocus();
+                android.view.inputmethod.InputMethodManager im = getSystemService(android.view.inputmethod.InputMethodManager.class);
+                if (im != null) im.showSoftInput(libSearch, 0);
+            });
+        }
     }
 
     /** The eight tiles from architect-dna.ch/home, each opening the matching app on the phone. */
