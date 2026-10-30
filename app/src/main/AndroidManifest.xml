@@ -404,6 +404,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Ruheinsel: the calm crisis screen; own task, pins the screen while open. -->
+        <activity
+            android:name=".CrisisActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="ch.architectdna.home.crisis"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <service
             android:name=".RecorderService"
             android:exported="false"

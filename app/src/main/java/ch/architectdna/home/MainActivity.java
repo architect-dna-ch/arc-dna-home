@@ -421,6 +421,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.addView(lowChip);
         net = monoText(11, ink3);
         top.addView(net);
+        TextView calmBtn = monoText(16, rust);
+        calmBtn.setText("🆘 ");
+        calmBtn.setPadding(dp(8), dp(2), dp(8), dp(2));
+        calmBtn.setContentDescription("Ruheinsel – wenn alles zu viel ist");
+        calmBtn.setOnClickListener(v -> openCrisis());
+        top.addView(calmBtn);
         top.addView(gearButton());
         content.addView(top);
 
@@ -1680,6 +1686,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /** The floating button's bubbles: they rise one after another above it; tap outside = close. */
+    /** Ruheinsel: the calm crisis screen (header 🆘, the menu, or when things get heavy). */
+    private void openCrisis() {
+        try {
+            startActivity(new Intent(this, CrisisActivity.class));
+        } catch (RuntimeException ignored) {
+        }
+    }
+
     private void toggleFabMenu() {
         if (fabMenu != null) {
             closeFabMenu();
@@ -1698,6 +1712,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 else sweep();
             }},
             {"💬  " + name + " fragen", (Runnable) this::openChat},
+            {"🆘  Ruheinsel", (Runnable) this::openCrisis},
         };
         FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) claudeFab.getLayoutParams();
         for (int i = 0; i < items.length; i++) {
