@@ -62,18 +62,30 @@ public class CrisisActivity extends Activity {
     private long holdStart;
     private boolean pinned;
     private final android.os.Handler h = new android.os.Handler();
+    // ARC-DNA palette, from the picked theme.
+    private static int cBg, cInk, cInk2, cInk3, cAccent, cCard, cLine, cGreen = 0xFF2BBF6A, cAmber = 0xFFE8B931;
 
     @Override
     protected void onCreate(Bundle s) {
         super.onCreate(s);
         sos = getSharedPreferences("sos", MODE_PRIVATE);
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        int[] pl = Themes.current(getSharedPreferences("home", MODE_PRIVATE)).pal(night);
+        cBg = pl[Themes.BG] | 0xFF000000;
+        cInk = pl[Themes.INK];
+        cInk2 = pl[Themes.INK2];
+        cInk3 = pl[Themes.INK3];
+        cAccent = pl[Themes.ACCENT];
+        cCard = pl[Themes.PANEL] | 0xFF000000;
+        cLine = pl[Themes.LINE];
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        getWindow().setStatusBarColor(0xFF0B0F14);
-        getWindow().setNavigationBarColor(0xFF0B0F14);
+        getWindow().setStatusBarColor(cBg);
+        getWindow().setNavigationBarColor(cBg);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF0B0F14);
+        root.setBackgroundColor(cBg);
         ScrollView sv = new ScrollView(this);
         sv.setFillViewport(true);
         col = new LinearLayout(this);
@@ -106,17 +118,17 @@ public class CrisisActivity extends Activity {
         head("SOS · Zwang stoppen", "Welcher Gedanke dreht sich gerade?");
         int wins = sos.getInt("wins", 0);
         if (wins > 0) col.addView(small("Schon " + wins + "× nicht gehorcht. Jedes Mal zählt."));
-        for (String custom : customLoops()) col.addView(bigButton(custom, 0xFF14222E, 0xFF2A4A5A, () -> choose(custom)));
-        for (String sd : SEED) col.addView(bigButton(sd, 0xFF11202A, 0xFF24424F, () -> choose(sd)));
+        for (String custom : customLoops()) col.addView(bigButton(custom, cCard, cLine, () -> choose(custom)));
+        for (String sd : SEED) col.addView(bigButton(sd, cCard, cLine, () -> choose(sd)));
         EditText in = new EditText(this);
         in.setHint("Eigener Gedanke …");
-        in.setHintTextColor(0xFF5E7280);
-        in.setTextColor(0xFFEAF2F7);
+        in.setHintTextColor(cInk3);
+        in.setTextColor(cInk);
         in.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        in.setBackground(box(0xFF10151B, 0xFF2A3742, 14));
+        in.setBackground(box(cCard, cLine, 14));
         in.setPadding(dp(16), dp(14), dp(16), dp(14));
         col.addView(in, lp(dp(10)));
-        col.addView(bigButton("→ Diesen Gedanken stoppen", 0xFF2A1430, 0xFFB0439B, () -> {
+        col.addView(bigButton("→ Diesen Gedanken stoppen", cCard, cAccent, () -> {
             String t = in.getText().toString().trim();
             if (t.isEmpty()) return;
             saveCustom(t);
@@ -135,10 +147,10 @@ public class CrisisActivity extends Activity {
         head("Das ist der Zwang.", loop);
         col.addView(para("Nicht du. Nicht Gott. Der Zwang.\n\n"
             + "Er stellt eine Frage, auf die es keine sichere Antwort gibt, und tut so, als müsstest du sie "
-            + "JETZT lösen. Musst du nicht. Die Frage ist die Falle, nicht die Lösung.", 0xFFEAF2F7, 17));
+            + "JETZT lösen. Musst du nicht. Die Frage ist die Falle, nicht die Lösung.", cInk, 17));
         col.addView(para("Wenn dein einziger naher Mensch eine Frau ist, dann ist das ein Geschenk – kein Fall "
-            + "fürs Gericht. Der Zwang macht „weil Frau“ zum Problem. Du nicht.", 0xFF9FD8C0, 15));
-        col.addView(bigButton("Weiter – ich beantworte sie NICHT", 0xFF2A1430, 0xFFB0439B, () -> {
+            + "fürs Gericht. Der Zwang macht „weil Frau“ zum Problem. Du nicht.", cGreen, 15));
+        col.addView(bigButton("Weiter – ich beantworte sie NICHT", cCard, cAccent, () -> {
             state = EXPOSE;
             render();
         }));
@@ -147,7 +159,7 @@ public class CrisisActivity extends Activity {
     /* 3. Exposure: agree to the uncertainty, turn toward the forbidden-wanted thing. */
     private void renderExpose() {
         head("Unsicherheit stehen lassen", null);
-        col.addView(para(EXPO, 0xFFEAF2F7, 17));
+        col.addView(para(EXPO, cInk, 17));
         col.addView(small("Sag es einmal langsam – laut oder im Kopf."));
         TextView howLong = small("Wie lange hältst du durch, ohne zu checken? Die Welle sinkt meist in 20 Min.");
         col.addView(howLong);
@@ -162,7 +174,7 @@ public class CrisisActivity extends Activity {
             row.addView(b);
         }
         col.addView(row, lp(dp(10)));
-        col.addView(bigButton("Jetzt aushalten (" + minutes + " Min)", 0xFF143A2A, 0xFF2BBF6A, () -> {
+        col.addView(bigButton("Jetzt aushalten (" + minutes + " Min)", cCard, cGreen, () -> {
             rideEnd = SystemClock.uptimeMillis() + minutes * 60_000L;
             spikes = 0;
             state = RIDE;
@@ -178,25 +190,25 @@ public class CrisisActivity extends Activity {
     private void renderRide() {
         head("Nicht gehorchen. Nur warten.", loop);
         col.addView(para("Nicht googeln · nicht wegbeten · nicht nachfragen · nicht checken.\n"
-            + "Der Drang ist eine Welle. Du musst nichts tun. Sie sinkt von allein.", 0xFF9FD8C0, 15));
+            + "Der Drang ist eine Welle. Du musst nichts tun. Sie sinkt von allein.", cGreen, 15));
         wave = new UrgeWave(this);
         col.addView(wave, new LinearLayout.LayoutParams(-1, dp(120)));
-        clock = text(40, 0xFFEAF2F7, true);
+        clock = text(40, cInk, true);
         clock.setGravity(Gravity.CENTER);
         col.addView(clock, lp(dp(8)));
         waveNote = small("Jeder Drang, dem du nicht folgst, macht den Zwang kleiner.");
         col.addView(waveNote);
-        col.addView(bigButton("Ein Drang kam hoch", 0xFF2A2214, 0xFFE8B931, () -> {
+        col.addView(bigButton("Ein Drang kam hoch", cCard, cAmber, () -> {
             spikes++;
             if (wave != null) wave.spike();
             if (waveNote != null) waveNote.setText("Drang #" + spikes + ". Nicht reagiert = Welle bricht. Schau zu, wie sie sinkt.");
         }));
-        col.addView(bigButton("Ich halte durch – Film/Ruhe JETZT", 0xFF14222E, 0xFF2A4A5A, this::toward));
+        col.addView(bigButton("Ich halte durch – Film/Ruhe JETZT", cCard, cLine, this::toward));
     }
 
     private void toward() {
-        // Turn outward to the harmless thing the doubt forbids, while the timer keeps running in the pill.
-        startActivity(new Intent(this, CalmActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        // You decided to go do the harmless thing the doubt forbids: unpin and let you out.
+        leave.run();
     }
 
     private void tick() {
@@ -227,9 +239,9 @@ public class CrisisActivity extends Activity {
     private void renderDone() {
         head("Geschafft.", null);
         col.addView(para("Du hast dem Zwang nicht gehorcht. Die Frage ist noch offen – und du lebst trotzdem "
-            + "weiter. Genau das schwächt ihn, jedes Mal ein bisschen mehr.", 0xFFEAF2F7, 17));
+            + "weiter. Genau das schwächt ihn, jedes Mal ein bisschen mehr.", cInk, 17));
         col.addView(small(spikes > 0 ? spikes + " Drang-Wellen – alle vorbei." : "Ruhig geblieben."));
-        col.addView(bigButton("Nochmal einen Gedanken stoppen", 0xFF11202A, 0xFF24424F, () -> {
+        col.addView(bigButton("Nochmal einen Gedanken stoppen", cCard, cLine, () -> {
             state = PICK;
             loop = "";
             render();
@@ -288,11 +300,11 @@ public class CrisisActivity extends Activity {
     }
 
     private void addExit() {
-        TextView exit = text(14, 0xFF8FA3B0, false);
+        TextView exit = text(14, cInk2, false);
         exit.setText("Raus – 3 Sekunden halten");
         exit.setGravity(Gravity.CENTER);
         exit.setPadding(dp(16), dp(14), dp(16), dp(14));
-        exit.setBackground(box(0xFF0E1218, 0xFF212B33, 16));
+        exit.setBackground(box(cCard, cLine, 16));
         exit.setOnTouchListener((v, e) -> {
             int act = e.getActionMasked();
             if (act == MotionEvent.ACTION_DOWN) {
@@ -307,15 +319,22 @@ public class CrisisActivity extends Activity {
             return true;
         });
         col.addView(exit, lp(dp(22)));
-        TextView line = text(12, 0xFF4E6270, false);
+        TextView line = text(12, cInk3, false);
         line.setGravity(Gravity.CENTER);
         line.setText("In echter Gefahr für dich oder andere: 143 halten.");
-        line.setOnLongClickListener(v -> {
+        line.setOnClickListener(v -> {
+            if (pinned && Build.VERSION.SDK_INT >= 21) {
+                try {
+                    stopLockTask();
+                } catch (RuntimeException ignored) {
+                }
+                pinned = false;
+            }
             try {
-                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:143")));
+                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:143")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (RuntimeException ignored) {
             }
-            return true;
+            finish();
         });
         col.addView(line, lp(dp(8)));
     }
@@ -334,12 +353,12 @@ public class CrisisActivity extends Activity {
     /* ---- view helpers ---- */
 
     private void head(String title, String sub) {
-        TextView t = text(25, 0xFFEAF2F7, true);
+        TextView t = text(25, cInk, true);
         t.setText(title);
         t.setGravity(Gravity.CENTER);
         col.addView(t);
         if (sub != null && !sub.isEmpty()) {
-            TextView s = text(16, 0xFF9FB3C0, false);
+            TextView s = text(16, cInk2, false);
             s.setText(sub);
             s.setGravity(Gravity.CENTER);
             s.setLineSpacing(0, 1.15f);
@@ -358,7 +377,7 @@ public class CrisisActivity extends Activity {
     }
 
     private TextView small(String txt) {
-        TextView t = text(13, 0xFF8FA3B0, false);
+        TextView t = text(13, cInk2, false);
         t.setText(txt);
         t.setGravity(Gravity.CENTER);
         t.setLineSpacing(0, 1.2f);
@@ -367,7 +386,7 @@ public class CrisisActivity extends Activity {
     }
 
     private TextView bigButton(String label, int fill, int stroke, Runnable act) {
-        TextView t = text(16, 0xFFEAF2F7, true);
+        TextView t = text(16, cInk, true);
         t.setText(label);
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(18), dp(16), dp(18), dp(16));
@@ -378,10 +397,10 @@ public class CrisisActivity extends Activity {
     }
 
     private TextView chip(String label, boolean on) {
-        TextView t = text(14, on ? 0xFF0B0F14 : 0xFFCFE0EA, true);
+        TextView t = text(14, on ? cBg : cInk, true);
         t.setText(label);
         t.setPadding(dp(18), dp(10), dp(18), dp(10));
-        t.setBackground(box(on ? 0xFF2BBF6A : 0xFF14222E, on ? 0xFF2BBF6A : 0xFF2A4A5A, 20));
+        t.setBackground(box(on ? cGreen : cCard, on ? cGreen : cLine, 20));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
         p.setMargins(dp(5), 0, dp(5), 0);
         t.setLayoutParams(p);
@@ -458,7 +477,7 @@ public class CrisisActivity extends Activity {
             target *= Math.pow(0.4, dt);              // the urge always decays
             level += (target - level) * Math.min(1, dt * 6);
             // baseline + wave
-            p.setColor(0xFF24424F);
+            p.setColor(cLine);
             p.setStrokeWidth(2 * dp);
             c.drawLine(0, h * 0.5f, w, h * 0.5f, p);
             android.graphics.Path path = new android.graphics.Path();
@@ -469,10 +488,10 @@ public class CrisisActivity extends Activity {
                 float y = h * 0.85f - level * env * h * 0.62f * (0.85f + 0.15f * (float) Math.sin(now / 160.0 + ph * 10));
                 path.lineTo(x, y);
             }
-            p.setColor(level > 0.55f ? 0xFFE8B931 : 0xFF2BBF6A);
+            p.setColor(level > 0.55f ? cAmber : cGreen);
             p.setStrokeWidth(3 * dp);
             c.drawPath(path, p);
-            t.setColor(0xFF8FA3B0);
+            t.setColor(cInk2);
             t.setTextSize(13 * dp);
             c.drawText(level > 0.55f ? "Drang hoch – nichts tun, zuschauen" : level > 0.12f ? "sinkt …" : "ruhig", w / 2, h - 6 * dp, t);
             if (running) postInvalidateOnAnimation();
