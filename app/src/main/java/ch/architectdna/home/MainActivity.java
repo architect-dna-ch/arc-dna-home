@@ -306,16 +306,63 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Pick a look: the home rebuilds, the live wallpaper follows on its next frame. */
     private void showThemePicker() {
-        String[] rows = new String[Themes.ALL.length];
         Themes.Theme now = theme();
-        for (int i = 0; i < rows.length; i++) {
-            Themes.Theme t = Themes.ALL[i];
-            rows[i] = (t == now ? "● " : "○ ") + t.name + " – " + t.desc;
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        for (Themes.Theme t : Themes.ALL) {
+            // A row with a live colour preview: background, text, accent and (glow themes) the two glows.
+            LinearLayout rowv = new LinearLayout(this);
+            rowv.setGravity(Gravity.CENTER_VERTICAL);
+            rowv.setPadding(dp(12), dp(10), dp(14), dp(10));
+            rowv.setBackground(box(t == now ? ((rust & 0x00FFFFFF) | 0x22000000) : paper(), t == now ? rust : line, 16));
+            int[] dp2 = t.day;
+            FrameLayout sw = new FrameLayout(this);
+            View chip = new View(this);
+            chip.setBackground(box(dp2[Themes.BG] | 0xFF000000, dp2[Themes.LINE], 10));
+            sw.addView(chip, new FrameLayout.LayoutParams(dp(46), dp(46)));
+            View dot = new View(this);          // the accent, a filled circle
+            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+            g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            g.setColor(dp2[Themes.ACCENT]);
+            dot.setBackground(g);
+            FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(dp(18), dp(18));
+            dl.leftMargin = dp(7);
+            dl.topMargin = dp(7);
+            sw.addView(dot, dl);
+            if (t.glow) {                        // two glow dabs, bottom-right
+                for (int gi = 0; gi < 2; gi++) {
+                    View gv = new View(this);
+                    android.graphics.drawable.GradientDrawable gg = new android.graphics.drawable.GradientDrawable();
+                    gg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                    gg.setColor(dp2[gi == 0 ? Themes.GLOW_A : Themes.GLOW_B]);
+                    gv.setBackground(gg);
+                    FrameLayout.LayoutParams gl = new FrameLayout.LayoutParams(dp(13), dp(13));
+                    gl.leftMargin = dp(10 + gi * 11);
+                    gl.topMargin = dp(27);
+                    sw.addView(gv, gl);
+                }
+            }
+            rowv.addView(sw, new LinearLayout.LayoutParams(dp(46), dp(46)));
+            LinearLayout txt = new LinearLayout(this);
+            txt.setOrientation(LinearLayout.VERTICAL);
+            TextView name = text(15, ink, true);
+            name.setText((t == now ? "● " : "○ ") + t.name);
+            txt.addView(name);
+            TextView desc = monoText(10, ink3);
+            desc.setText(t.desc.toUpperCase(Locale.GERMAN));
+            desc.setLetterSpacing(0.04f);
+            txt.addView(desc, margins(-1, -2, 0, dp(2), 0, 0));
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
+            tl.leftMargin = dp(14);
+            rowv.addView(txt, tl);
+            rowv.setOnClickListener(v -> {
+                prefs.edit().putString("theme", t.id).apply();
+                closeArcSheet();
+                recreate();
+            });
+            list.addView(rowv, margins(-1, -2, 0, dp(8), 0, 0));
         }
-        arcSheet("Theme", "Home + Sperrbildschirm · mehr kommen dazu", rows, pick -> {
-            prefs.edit().putString("theme", Themes.ALL[pick].id).apply();
-            recreate();
-        });
+        arcSheet("Theme", "Home + Sperrbildschirm · mehr kommen dazu", null, list, new String[]{"Schliessen"}, k -> { });
     }
 
     private void pickColours() {
