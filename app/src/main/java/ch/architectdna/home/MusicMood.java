@@ -51,6 +51,8 @@ final class MusicMood {
     private static long firstBeat, lastBeat;
     private static float levelSum;
     private static int levelN;
+    private static float briSum;        // treble share (hi / total): bright vs. bass-heavy
+    private static int briN;
 
     static synchronized void beat() {
         long now = System.currentTimeMillis();
@@ -63,6 +65,14 @@ final class MusicMood {
         if (l < 0.02f) return;
         levelSum += l;
         levelN++;
+    }
+
+    /** Low / mid / high band energy from the spectrum: how bright the track is. */
+    static synchronized void timbre(float lo, float mid, float hi) {
+        float t = lo + mid + hi;
+        if (t < 0.05f) return;
+        briSum += hi / t;
+        briN++;
     }
 
     /* ---------- track changes (from the media listener, always running) ---------- */
@@ -84,6 +94,8 @@ final class MusicMood {
         firstBeat = lastBeat = 0;
         levelSum = 0;
         levelN = 0;
+        briSum = 0;
+        briN = 0;
         maybeGuess(c);
     }
 
@@ -100,18 +112,24 @@ final class MusicMood {
         if (stars > 0) valence += (stars - 3) * 0.15f;
         if (MusicStats.isFavourite(c, title, artist)) valence += 0.1f;
         float energy = 0.5f + hits(s, HYPE) * 0.18f - hits(s, CALM) * 0.25f;
-        boolean audio = beats >= 8 && lastBeat > firstBeat;
+        boolean audio = beats >= 6 && lastBeat > firstBeat;
+        float brightness = briN > 0 ? briSum / briN : -1;
         if (audio) {
             float bpm = (beats - 1) * 60000f / (lastBeat - firstBeat);
             float lvl = levelN > 0 ? levelSum / levelN : 0.3f;
-            energy = 0.35f * energy + 0.65f * Math.max(0, Math.min(1, (bpm - 70) / 100f * 0.6f + lvl * 0.8f));
+            // Louder and faster = more energetic; spread wider than before so it isn't stuck mid.
+            float a = Math.max(0, Math.min(1, (bpm - 80) / 90f * 0.55f + lvl * 1.1f - 0.1f));
+            energy = 0.25f * energy + 0.75f * a;
         }
         energy = Math.max(0, Math.min(1, energy));
+        // Brightness is a real second axis: bright, trebly music reads lighter, bass-only darker.
+        if (brightness >= 0) valence += (brightness - 0.33f) * 1.4f;
+        valence = Math.max(-1, Math.min(1, valence));
         boolean skipped = heardMs < 30_000;
         try {
             JSONArray a = new JSONArray(prefs(c).getString("tracks", "[]"));
             a.put(new JSONObject().put("at", System.currentTimeMillis()).put("e", energy).put("v", valence).put("skip", skipped)
-                .put("audio", audio).put("t", title));
+                .put("audio", audio).put("bri", brightness).put("t", title));
             while (a.length() > 200) a.remove(0);
             prefs(c).edit().putString("tracks", a.toString()).apply();
         } catch (Exception ignored) {
@@ -141,10 +159,17 @@ final class MusicMood {
             v /= n;
             float skipRate = skips / count;
             int label;
-            if (skipRate > 0.5f) label = 2;
-            else if (v < -0.15f) label = e > 0.6f ? 0 : 1;
-            else if (v > 0.15f) label = e > 0.6f ? 5 : 4;
-            else label = e < 0.42f ? 3 : e > 0.7f ? 5 : 6;
+            if (skipRate > 0.55f) label = 2;                         // restless, searching
+            else if (v > 0.22f) label = e > 0.58f ? 5 : 4;           // bright: hyped / content
+            else if (v < -0.22f) label = e > 0.58f ? 0 : 1;          // dark: agitated / melancholic
+            else {
+                // Weak brightness signal: let energy alone decide, leaving only a thin neutral band.
+                if (e > 0.64f) label = 5;                            // aufgedreht
+                else if (e > 0.52f) label = 4;                       // zufrieden / lebendig
+                else if (e < 0.34f) label = 3;                       // ruhig, fokussiert
+                else if (e < 0.46f) label = v < 0 ? 1 : 3;           // low + a little dark = melancholic
+                else label = 6;                                      // genuinely flat
+            }
             return new float[]{label, e, v, count, skipRate};
         } catch (Exception ex) {
             return null;

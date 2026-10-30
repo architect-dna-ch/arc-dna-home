@@ -155,6 +155,7 @@ final class BackgroundPhases {
         }
         fluxAvg = fluxAvg * 0.93f + flux * 0.07f;
         MusicMood.level((lo + mid + hi) / 3f);
+        MusicMood.timbre(lo, mid, hi);
         read(lo, mid, hi, now);
         if (controller != null) {
             PlaybackState st = controller.getPlaybackState();

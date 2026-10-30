@@ -1518,7 +1518,7 @@ final class MusicCard {
                 MusicMood.beat();                // tempo for the music-mood guess
             }
             fluxAvg = fluxAvg * 0.93f + flux * 0.07f;
-            float total = 0;
+            float total = 0, lo3 = 0, mid3 = 0, hi3 = 0;
             for (int b = 0; b < BARS; b++) {
                 int lo = (int) Math.max(1, Math.pow(bins, (double) b / BARS));
                 int hi = (int) Math.max(lo + 1, Math.pow(bins, (double) (b + 1) / BARS));
@@ -1530,11 +1530,15 @@ final class MusicCard {
                 float v = (float) Math.min(1, Math.log1p(peak) / Math.log1p(90));
                 target[b] = Math.max(target[b], v);
                 total += v;
+                if (b < BARS / 3) lo3 += v;
+                else if (b < 2 * BARS / 3) mid3 += v;
+                else hi3 += v;
             }
             float level = total / BARS;
             if (level > 0.03f) lastSignal = System.currentTimeMillis();
             host.onLevel(level);
             MusicMood.level(level);
+            MusicMood.timbre(lo3, mid3, hi3);     // brightness (treble vs bass) for the mood guess
         }
 
         /**
