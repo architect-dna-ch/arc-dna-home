@@ -247,6 +247,9 @@ final class PlanStore {
         return s;
     }
 
+    /** Busy intervals from the phone calendar ({start,end}); Flexplan won't plan over them. */
+    java.util.List<long[]> busy = new java.util.ArrayList<>();
+
     boolean free(long at, int min, Block except) {
         long end = at + min * 60_000L;
         for (Block b : blocks) {
@@ -254,6 +257,7 @@ final class PlanStore {
             long be = b.at + b.min * 60_000L;
             if (at < be + 10 * 60_000L && end + 10 * 60_000L > b.at) return false;
         }
+        for (long[] iv : busy) if (at < iv[1] && end > iv[0]) return false;      // a calendar event here
         return true;
     }
 

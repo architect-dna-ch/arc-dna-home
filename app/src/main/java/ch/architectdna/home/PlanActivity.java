@@ -1,6 +1,8 @@
 package ch.architectdna.home;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -83,6 +85,8 @@ public class PlanActivity extends Activity {
         }
         feel = st.prefs.getInt("feel", -1);
         feelAt = st.prefs.getLong("feelAt", 0);
+        if (!CalendarBusy.allowed(this)) requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, 91);
+        else loadBusy();
 
         sv = new ScrollView(this);
         sv.setBackgroundColor(bg);
@@ -216,6 +220,7 @@ public class PlanActivity extends Activity {
         st.load();                        // a notification answer may have moved things
         st.forgetMood();
         st.arm();
+        if (CalendarBusy.allowed(this)) loadBusy();
         paint();
     }
 
@@ -277,7 +282,30 @@ public class PlanActivity extends Activity {
         return "vielleicht jetzt was von den Aufgaben?";
     }
 
+    /** Pull this week's busy times from the phone calendar so planning avoids them. */
+    private java.util.List<CalendarBusy.Event> busyEvents = new java.util.ArrayList<>();
+
+    private void loadBusy() {
+        long from = PlanStore.weekStart(System.currentTimeMillis());
+        long to = from + 8L * 24 * 3600_000L;
+        busyEvents = CalendarBusy.between(this, from, to);
+        st.busy.clear();
+        for (CalendarBusy.Event e : busyEvents) st.busy.add(new long[]{e.start, e.end});
+        if (day != null) day.invalidate();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == 91 && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) {
+            loadBusy();
+            paint();
+            say("Kalender verbunden – ich plane um deine Termine herum.");
+        }
+    }
+
     private void autoPlan() {
+        loadBusy();
         int added = st.autoPlan();
         paint();
         say(added == 0 ? "Alles steht schon – Ziele und Aufgaben sind eingeplant."
@@ -720,6 +748,31 @@ public class PlanActivity extends Activity {
                 p.setTypeface(Typeface.MONOSPACE);
                 p.setTextSize(dp(10));
                 c.drawText(String.format(Locale.ROOT, "%02d", h), 0, y + dp(12), p);
+            }
+            // Busy times from the phone calendar: grey bands behind the blocks, so you plan around them.
+            for (CalendarBusy.Event ev : busyEvents) {
+                long es = Math.max(ev.start, d0), ee = Math.min(ev.end, d0 + 24 * 3600_000L);
+                if (ee <= d0 || es >= d0 + 24 * 3600_000L) continue;
+                Calendar ce = Calendar.getInstance();
+                ce.setTimeInMillis(es);
+                float sh = ev.allDay ? DAY_FROM : ce.get(Calendar.HOUR_OF_DAY) + ce.get(Calendar.MINUTE) / 60f;
+                float eh = ev.allDay ? DAY_TO : sh + (ee - es) / 3600_000f;
+                sh = Math.max(DAY_FROM, sh);
+                eh = Math.min(DAY_TO, eh);
+                if (eh <= sh) continue;
+                float y = top + (sh - DAY_FROM) * hourH(), bh = Math.max(dp(20), (eh - sh) * hourH());
+                RectF r = new RectF(left + dp(4), y + dp(1), w - dp(2), y + bh - dp(1));
+                p.setColor((ink3 & 0x00FFFFFF) | 0x24000000);
+                c.drawRoundRect(r, dp(8), dp(8), p);
+                p.setColor(ink3);
+                p.setTypeface(Typeface.MONOSPACE);
+                p.setTextSize(dp(10));
+                String t = "📅 " + ev.title;
+                if (p.measureText(t) > r.width() - dp(16)) {
+                    while (t.length() > 4 && p.measureText(t + "…") > r.width() - dp(16)) t = t.substring(0, t.length() - 1);
+                    t += "…";
+                }
+                c.drawText(t, r.left + dp(10), r.top + dp(14), p);
             }
             for (PlanStore.Block b : st.blocks) {
                 if (b.state == 2 || PlanStore.dayStart(b.at) != d0) continue;
