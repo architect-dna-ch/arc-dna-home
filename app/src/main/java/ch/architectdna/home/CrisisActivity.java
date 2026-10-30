@@ -118,6 +118,27 @@ public class CrisisActivity extends Activity {
         head("SOS · Zwang stoppen", "Welcher Gedanke dreht sich gerade?");
         int wins = sos.getInt("wins", 0);
         if (wins > 0) col.addView(small("Schon " + wins + "× nicht gehorcht. Jedes Mal zählt."));
+        boolean pin = sos.getBoolean("pin", false);
+        TextView pinToggle = small((pin ? "🔒 Ablenkung gesperrt" : "🔓 Ablenkung frei") + " · antippen zum Umschalten");
+        pinToggle.setOnClickListener(v -> {
+            boolean now = !sos.getBoolean("pin", false);
+            sos.edit().putBoolean("pin", now).apply();
+            if (now && Build.VERSION.SDK_INT >= 21 && !pinned) {
+                try {
+                    startLockTask();
+                    pinned = true;
+                } catch (RuntimeException ignored) {
+                }
+            } else if (!now && pinned && Build.VERSION.SDK_INT >= 21) {
+                try {
+                    stopLockTask();
+                } catch (RuntimeException ignored) {
+                }
+                pinned = false;
+            }
+            render();
+        });
+        col.addView(pinToggle);
         for (String custom : customLoops()) col.addView(bigButton(custom, cCard, cLine, () -> choose(custom)));
         for (String sd : SEED) col.addView(bigButton(sd, cCard, cLine, () -> choose(sd)));
         EditText in = new EditText(this);
@@ -279,7 +300,8 @@ public class CrisisActivity extends Activity {
         super.onResume();
         if (wave != null) wave.start();
         if (state == RIDE) tick();
-        if (Build.VERSION.SDK_INT >= 21 && !pinned) {
+        // Pin only if the user asked for it (otherwise Android pops its scary "App is pinned" dialog).
+        if (sos.getBoolean("pin", false) && Build.VERSION.SDK_INT >= 21 && !pinned) {
             try {
                 startLockTask();
                 pinned = true;
