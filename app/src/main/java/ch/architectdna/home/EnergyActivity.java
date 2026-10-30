@@ -73,6 +73,13 @@ public class EnergyActivity extends Activity {
         themeColours();
         overridePendingTransition(0, 0);
         getWindow().setBackgroundDrawable(new ColorDrawable(0));
+        // The old translucent theme drew black status and navigation bars (no contrast with the
+        // sheet): draw behind them instead, the sheet's colour runs up to the top edge.
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        getWindow().setStatusBarColor(0);
+        getWindow().setNavigationBarColor(0);
+        if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
+        if (Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
         root = new FrameLayout(this);
         root.setBackgroundColor(0x99000000);
         root.setOnClickListener(v -> close());
