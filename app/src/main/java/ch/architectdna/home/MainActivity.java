@@ -285,6 +285,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return Themes.current(prefs);
     }
 
+    /** Clean home: content on a solid themed surface, sleek like the ARC apps. Default on. */
+    private boolean cleanHome() {
+        return prefs.getBoolean("cleanHome", true);
+    }
+
     /** Glow themes get the drawn backdrop, the flip-in scroll and the bolder outlines. */
     private boolean spicy() {
         return theme().glow;
@@ -363,6 +368,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipToPadding(false);
+        // Clean home: the content sits on a near-solid themed surface (like the ARC Player sheet),
+        // so the wallpaper, cube and pixel art stop bleeding through the text. Just a whisper shows.
+        if (cleanHome()) scroll.setBackgroundColor((paper() & 0x00FFFFFF) | 0xF4000000);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
         content = new LinearLayout(this);
@@ -1142,6 +1150,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }, null);
         }
         settingsRow(home, "Theme", () -> theme().name.toUpperCase(Locale.GERMAN) + " · " + theme().desc, v -> showThemePicker(), null);
+        settingsRow(home, "Startseite: clean", () -> cleanHome() ? "AN · ruhige Fläche wie die Apps" : "AUS · Wallpaper scheint durch", v -> {
+            prefs.edit().putBoolean("cleanHome", !cleanHome()).apply();
+            recreate();
+        }, null);
         settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
             prefs.edit().putBoolean("pro", !pro()).apply();
             if (pro()) {
