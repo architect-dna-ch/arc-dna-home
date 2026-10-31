@@ -6047,11 +6047,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private android.graphics.drawable.Drawable tinted(int colour) {
-        if (!vibrant()) return new HexTile(card, line, dp(1), dp(14));
+        // Plain compact rounded rectangle everywhere – no angled hexagon corner.
+        if (!vibrant()) return box(card, line, 14);
         boolean night = isNight();
         int fill = (colour & 0x00FFFFFF) | ((night ? 0x2E : 0x3D) << 24);
         int edge = (colour & 0x00FFFFFF) | ((night ? 0x99 : 0xB3) << 24);
-        return new HexTile(fill, edge, dp(1.5f), dp(14));
+        return box(fill, edge, 14);
     }
 
     private View tile(String name, Drawable icon, int iconDp) {
