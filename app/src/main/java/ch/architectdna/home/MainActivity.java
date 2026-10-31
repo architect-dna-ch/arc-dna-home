@@ -5970,6 +5970,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static Object[][] arcList() {
         return new Object[][]{{"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
+            {"Sonne & Welt", SunActivity.class, R.drawable.ic_line_sonne, R.drawable.ic_line_sonne},
             {"Nexus Breach", NexusActivity.class, R.drawable.ic_line_nexus, R.drawable.ic_nexus},
             {"Dr. Overloaded", BoardActivity.class, R.drawable.ic_line_board, R.drawable.ic_board},
             {"Rekorder", RecorderActivity.class, R.drawable.ic_line_recorder, R.drawable.ic_recorder},
