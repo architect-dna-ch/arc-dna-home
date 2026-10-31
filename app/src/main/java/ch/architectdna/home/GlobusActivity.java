@@ -145,16 +145,27 @@ public class GlobusActivity extends Activity {
         ink2 = night ? 0xFFA5A5A0 : 0xFF5A5A58;
         ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
         rust = night ? 0xFFD9472F : 0xFFB5271E;
-        getWindow().setStatusBarColor(bg);
-        getWindow().setNavigationBarColor(bg);
+        // Full screen: draw behind the status / nav bars (the globe fills the whole screen),
+        // the bars transparent over the light background instead of solid black.
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        getWindow().setStatusBarColor(0);
+        getWindow().setNavigationBarColor(0);
+        if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
+        if (Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
         load();
 
         FrameLayout root = new FrameLayout(this);
-        root.setFitsSystemWindows(true);
         root.setBackgroundColor(bg);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(dp(22), dp(18), dp(22), dp(16));
+        col.setOnApplyWindowInsetsListener((v, in) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout() | android.view.WindowInsets.Type.ime());
+                v.setPadding(dp(22) + i.left, dp(18) + i.top, dp(22) + i.right, dp(16) + i.bottom);
+            }
+            return in;
+        });
         root.addView(col, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout head = new LinearLayout(this);
