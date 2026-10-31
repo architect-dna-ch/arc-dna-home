@@ -414,7 +414,7 @@ public class GlobusActivity extends Activity {
             if (c == null) continue;
             int i = count.getOrDefault(k.region, 0);
             count.put(k.region, i + 1);
-            double step = Math.min(9, 30 / Math.sqrt(Math.max(1, size.get(k.region))));
+            double step = Math.min(15, 46 / Math.sqrt(Math.max(1, size.get(k.region))));     // more air between icons
             double rad = step * Math.sqrt(i), ang = Math.toRadians(i * 137.5), lat0 = Math.toDegrees(c[0]);
             k.lat = Math.toRadians(Math.max(-80, Math.min(80, lat0 + rad * Math.sin(ang))));
             k.lon = c[1] + Math.toRadians(rad * Math.cos(ang) / Math.max(0.3, Math.cos(c[0])));
@@ -459,7 +459,7 @@ public class GlobusActivity extends Activity {
         private final android.graphics.Path path = new android.graphics.Path();
         private final android.graphics.RectF iconDst = new android.graphics.RectF();
         private double yaw = 0.6, pitch = -0.35, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
-        private float zoom = 1.3f, lastX, lastY, downX, downY;     // default a touch zoomed in
+        private float zoom = 1.15f, lastX, lastY, downX, downY;    // default a touch zoomed in
         private boolean pinched;
         private long lastFrame;
         private final ScaleGestureDetector scaler = new ScaleGestureDetector(GlobusActivity.this,
