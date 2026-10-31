@@ -6250,11 +6250,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         private float touchX, touchY, startAngle, startBezel, bezel;
 
         private float angleAt(float x, float y) {
-            return (float) Math.toDegrees(Math.atan2(y - statusTop() * 0.9f, x - getWidth() / 2f));
+            return (float) Math.toDegrees(Math.atan2(y - peekCy(), x - getWidth() / 2f));
         }
 
         private int mode() {
             return Math.floorMod(prefs.getInt("peekMode", 0), modes.length);
+        }
+
+        /** The gauge hangs from the very top edge: its centre sits just below it, so the flat side docks. */
+        private float peekCy() {
+            return dp(2);
         }
 
         private int statusTop() {
@@ -6268,7 +6273,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
 
         @Override protected void onMeasure(int w, int h) {
-            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(statusTop() * 0.9f + radius() + dp(6)));
+            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(peekCy() + radius() + dp(6)));
         }
 
         /** Appears once the top cards have scrolled away, slides back up at the top. */
@@ -6277,10 +6282,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             boolean big = y > Math.max(dp(300), clocksEnd - dp(8));
             float sc = big ? 1f : 0.55f;            // small at the top: clears the ARCHITECT · DNA line
             setPivotX(getWidth() / 2f);
-            setPivotY(statusTop() * 0.9f);          // shrinks around its own centre, stays out of the status bar
+            setPivotY(peekCy());                     // scales from the top edge it hangs from
             if (Math.abs(getScaleX() - sc) > 0.01f) animate().scaleX(sc).scaleY(sc).setDuration(260).start();
             // An analog clock card under it: two dials on top of each other looked messy – step aside.
-            int reach = (int) (statusTop() * 0.9f + radius() * sc);
+            int reach = (int) (peekCy() + radius() * sc);
             boolean clash = false;
             for (int[] d : dials) if (d[0] - y < reach && d[1] - y > 0) clash = true;
             boolean want = chat == null && !clash;
@@ -6305,7 +6310,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         @Override public boolean onTouchEvent(android.view.MotionEvent e) {
             int act = e.getActionMasked();
             if (act == android.view.MotionEvent.ACTION_DOWN && (dino != null
-                || Math.hypot(e.getX() - getWidth() / 2f, e.getY() - statusTop() * 0.9f) > radius())) return false;
+                || Math.hypot(e.getX() - getWidth() / 2f, e.getY() - peekCy()) > radius())) return false;
             touchX = e.getX();
             touchY = e.getY();
             // A drag that starts on the dial is a scroll of the page, not a press on the dial: hand it
@@ -6418,7 +6423,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 ink3 = MainActivity.this.ink3;
                 rust = MainActivity.this.rust;
             }
-            float R = radius(), cx = getWidth() / 2f, cy = statusTop() * 0.9f;
+            float R = radius(), cx = getWidth() / 2f, cy = peekCy();
             p.setStyle(Paint.Style.FILL);
             p.setColor(face);
             cv.drawCircle(cx, cy, R, p);

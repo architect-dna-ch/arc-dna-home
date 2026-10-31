@@ -171,7 +171,7 @@ public class ArcWallpaper extends WallpaperService {
             // sits on a dark wallpaper (battery saver turning off flipped the home light, but an old "dark"
             // from the service's lagging configuration kept the wallpaper dark).
             android.content.SharedPreferences hp = getSharedPreferences("home", MODE_PRIVATE);
-            if (hp.contains("uiNight") && System.currentTimeMillis() - hp.getLong("uiNightAt", 0) < 10 * 60_000L)
+            if (hp.contains("uiNight") && System.currentTimeMillis() - hp.getLong("uiNightAt", 0) < 12 * 3600_000L)
                 return hp.getBoolean("uiNight", false);
             int mask = Configuration.UI_MODE_NIGHT_MASK, yes = Configuration.UI_MODE_NIGHT_YES;
             return (android.content.res.Resources.getSystem().getConfiguration().uiMode & mask) == yes;
