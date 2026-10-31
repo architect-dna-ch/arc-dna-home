@@ -2330,7 +2330,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (gestures && !strokeMulti && !strokeOnSlider && !strokeOnCard && !strokeOnCarousel
                 && Math.abs(dx) > rootFrame.getWidth() * 0.4f && Math.abs(dy) < Math.abs(dx) * 0.4f
                 && ev.getEventTime() - downTime < 800) {
-                switchNight(dx < 0, ev.getX(), ev.getY());
+                // Horizontal swipe opens an app (the old dark/light toggle is gone):
+                // right → left = Mediathek, left → right = Globus.
+                if (dx < 0) openLibrary();
+                else startActivity(new Intent(this, GlobusActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }
             // Down from the top-right corner: Energie drops in like a control centre.
             if (gestures && !strokeMulti && !strokeOnLever && downX > rootFrame.getWidth() * 0.6f && downY < rootFrame.getHeight() * 0.2f
