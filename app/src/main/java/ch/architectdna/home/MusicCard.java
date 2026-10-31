@@ -350,15 +350,24 @@ final class MusicCard {
         art.setOnClickListener(v -> openArc());
         art.setContentDescription("Player-App öffnen");
         root.setOnTouchListener((v, e) -> {
-            // Only a band around the slider itself counts as sliding, not the rest of the card.
+            // Only the slider's own rectangle (a hair of margin) counts as sliding – not the output/
+            // YouTube-Music link above it, nor the A/B chips beside it.
             if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                sliding = !onStats && volume.isShown()
-                    && e.getY() >= volume.getTop() - dp(14) && e.getY() <= volume.getBottom() + dp(14);
+                sliding = false;
+                if (!onStats && volume.isShown()) {
+                    int[] vp = new int[2];
+                    volume.getLocationOnScreen(vp);
+                    float x = e.getRawX(), y = e.getRawY();
+                    sliding = x >= vp[0] - dp(6) && x <= vp[0] + volume.getWidth() + dp(6)
+                        && y >= vp[1] - dp(8) && y <= vp[1] + volume.getHeight() + dp(8);
+                }
             }
             if (!sliding) return false;
             // Hand the touch to the slider in its own coordinates, so the thumb lands under the finger.
+            int[] vp = new int[2];
+            volume.getLocationOnScreen(vp);
             MotionEvent m = MotionEvent.obtain(e);
-            m.setLocation(e.getX() - volume.getLeft(), volume.getHeight() / 2f);
+            m.setLocation(e.getRawX() - vp[0], volume.getHeight() / 2f);
             volume.dispatchTouchEvent(m);
             m.recycle();
             return true;

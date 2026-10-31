@@ -6258,9 +6258,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return Math.floorMod(prefs.getInt("peekMode", 0), modes.length);
         }
 
-        /** The gauge hangs from the very top edge: its centre sits just below it, so the flat side docks. */
+        /** The gauge hangs from just below the status bar / camera cut-out, so it never covers the lens. */
         private float peekCy() {
-            return dp(2);
+            int top = dp(30);
+            if (Build.VERSION.SDK_INT >= 30 && getRootWindowInsets() != null) {
+                top = getRootWindowInsets().getInsets(WindowInsets.Type.statusBars()).top;
+                if (getRootWindowInsets().getDisplayCutout() != null)
+                    top = Math.max(top, getRootWindowInsets().getDisplayCutout().getSafeInsetTop());
+            }
+            return top + dp(4);
         }
 
         private int statusTop() {
@@ -6425,6 +6431,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 rust = MainActivity.this.rust;
             }
             float R = radius(), cx = getWidth() / 2f, cy = peekCy();
+            cv.clipRect(0, cy, getWidth(), getHeight());        // a true half-dial: nothing draws above the flat edge (clears the camera)
             p.setStyle(Paint.Style.FILL);
             p.setColor(face);
             cv.drawCircle(cx, cy, R, p);
