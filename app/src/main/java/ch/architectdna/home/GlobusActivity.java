@@ -459,7 +459,7 @@ public class GlobusActivity extends Activity {
         private final android.graphics.Path path = new android.graphics.Path();
         private final android.graphics.RectF iconDst = new android.graphics.RectF();
         private double yaw = 0.6, pitch = -0.35, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
-        private float zoom = 1f, lastX, lastY, downX, downY;
+        private float zoom = 1.3f, lastX, lastY, downX, downY;     // default a touch zoomed in
         private boolean pinched;
         private long lastFrame;
         private final ScaleGestureDetector scaler = new ScaleGestureDetector(GlobusActivity.this,
