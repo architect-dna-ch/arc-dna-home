@@ -416,6 +416,20 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+        <activity
+            android:name=".FaktenActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="Faktencheck"
+            android:launchMode="singleTask"
+            android:taskAffinity="ch.architectdna.home.fakten"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter android:label="Globus">
