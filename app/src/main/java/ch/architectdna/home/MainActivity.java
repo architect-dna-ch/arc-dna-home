@@ -256,7 +256,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         }
 
-        setContentView(buildUi());
+        setContentView(minimal() ? buildMinimalUi() : buildUi());
         torch = new DarkTorch(this, (on, byUs) -> {
             if (!byUs) torchOurs = false;          // switched by hand (quick settings): leave it alone
             paintTorchChip();
@@ -391,6 +391,84 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /* ================= Main screen ================= */
+
+    /** Schlicht: a stock-simple home – clock, app search, favourites, nothing moving. Magic one tap away. */
+    private boolean minimal() {
+        return prefs.getBoolean("minimal", false);
+    }
+
+    /** The minimal home: a clean surface with the clock, a search bar, favourite apps and two buttons. */
+    private View buildMinimalUi() {
+        FrameLayout root = new FrameLayout(this);
+        rootFrame = root;
+        root.setBackgroundColor(paper());
+        ScrollView sv = new ScrollView(this);
+        sv.setFillViewport(true);
+        sv.setVerticalScrollBarEnabled(false);
+        scroll = sv;
+        root.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        content = col;
+        col.setPadding(dp(22), dp(28), dp(22), dp(40));
+        col.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top0, bottom, left, right;
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+                top0 = bars.top; bottom = bars.bottom; left = bars.left; right = bars.right;
+            } else {
+                top0 = insets.getSystemWindowInsetTop(); bottom = insets.getSystemWindowInsetBottom();
+                left = insets.getSystemWindowInsetLeft(); right = insets.getSystemWindowInsetRight();
+            }
+            v.setPadding(dp(22) + left, dp(24) + top0, dp(22) + right, dp(40) + bottom);
+            return insets;
+        });
+        sv.addView(col, new FrameLayout.LayoutParams(-1, -2));
+
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(label("Architect · DNA"), new LinearLayout.LayoutParams(0, -2, 1f));
+        net = monoText(11, ink3);
+        top.addView(net);
+        TextView full = monoText(12, rust);
+        full.setText("✨ ARC  ");
+        full.setContentDescription("Volle ARC-DNA einschalten");
+        full.setOnClickListener(v -> {
+            prefs.edit().putBoolean("minimal", false).apply();
+            recreate();
+        });
+        top.addView(full);
+        top.addView(gearButton());
+        col.addView(top);
+
+        clock = new TextView(this);
+        clock.setTextColor(ink);
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 92);
+        clock.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
+        clock.setLetterSpacing(-0.06f);
+        clock.setIncludeFontPadding(false);
+        clock.setPadding(0, dp(24), 0, 0);
+        col.addView(clock);
+        date = text(15, ink2, false);
+        col.addView(date, margins(-1, -2, 0, dp(10), 0, 0));
+        greet = text(18, ink, true);
+        col.addView(greet, margins(-1, -2, 0, dp(2), 0, 0));
+
+        col.addView(searchRow(), margins(-1, -2, 0, dp(24), 0, dp(6)));
+        col.addView(appTiles(), margins(-1, -2, 0, dp(14), 0, 0));
+
+        TextView all = text(15, ink, true);
+        all.setText("▦   Alle Apps");
+        all.setGravity(Gravity.CENTER);
+        all.setPadding(dp(16), dp(15), dp(16), dp(15));
+        all.setBackground(box(card, line, 16));
+        all.setOnClickListener(v -> openLibrary());
+        col.addView(all, margins(-1, -2, 0, dp(12), 0, 0));
+
+        watchNetwork();
+        updateClock();
+        return root;
+    }
 
     private View buildUi() {
         FrameLayout root = new FrameLayout(this);
@@ -1205,6 +1283,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         settingsRow(home, "Theme", () -> theme().name.toUpperCase(Locale.GERMAN) + " · " + theme().desc, v -> showThemePicker(), null);
         settingsRow(home, "Startseite: clean", () -> cleanHome() ? "AN · ruhige Fläche wie die Apps" : "AUS · Wallpaper scheint durch", v -> {
             prefs.edit().putBoolean("cleanHome", !cleanHome()).apply();
+            recreate();
+        }, null);
+        settingsRow(home, "Schlicht (wie Standard-Launcher)", () -> minimal() ? "AN · nur Uhr, Suche, Apps" : "AUS · volle ARC-DNA", v -> {
+            prefs.edit().putBoolean("minimal", !minimal()).apply();
             recreate();
         }, null);
         settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
@@ -3865,6 +3947,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * time ("SOMMERZEIT 21:12 · UMGESTELLT SO 25.10. 03:00 → 02:00"), so you can adjust.
      */
     private void paintOldTime(Calendar c) {
+        if (oldTime == null) { dstOldOffset = Integer.MIN_VALUE; return; }
         java.util.TimeZone tz = c.getTimeZone();
         long now = c.getTimeInMillis(), weekAgo = now - 3L * 24 * 3600 * 1000;      // 3 days is plenty to get used to it
         int offNow = tz.getOffset(now), offBefore = tz.getOffset(weekAgo);
@@ -3943,6 +4026,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     };
 
     private void updateClock() {
+        if (clock == null) return;
         Calendar c = Calendar.getInstance();
         paintOldTime(c);
         boolean old = clockShowsOld && dstOldOffset != Integer.MIN_VALUE;
@@ -3963,8 +4047,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         greet.setText(hello + ", Muharrem.");
 
         // Today's focus resets at midnight.
-        String saved = today().equals(prefs.getString("focusDay", "")) ? prefs.getString("focus", "") : "";
-        if (!focus.hasFocus() && !saved.equals(focus.getText().toString())) focus.setText(saved);
+        if (focus != null) {
+            String saved = today().equals(prefs.getString("focusDay", "")) ? prefs.getString("focus", "") : "";
+            if (!focus.hasFocus() && !saved.equals(focus.getText().toString())) focus.setText(saved);
+        }
     }
 
     private static String today() {
@@ -5569,6 +5655,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
+        if (minimal()) {               // schlicht: no decorations, buddies or widgets to resume
+            handler.removeCallbacks(ticker);
+            ticker.run();
+            hideNavBar();
+            return;
+        }
         applyPro();
         applySwept();
         reviveBuddy();
@@ -5631,7 +5723,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             startGameNod();
         }
         refreshRecents();
-        music.start();
+        if (music != null) music.start();
         updater.check(false);
         Sensor acc = sensors == null ? null : sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acc != null) sensors.registerListener(this, acc, SensorManager.SENSOR_DELAY_UI);
@@ -5678,7 +5770,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         f1Panel.pause();
         if (raceOverlay != null) raceOverlay.stop();
         if (game != null) game.pause();
-        music.stop();
+        if (music != null) music.stop();
         if (sensors != null) sensors.unregisterListener(this);
         // The automatic torch belongs to the home screen: leaving home switches it off.
         if (torch != null && torch.isOn() && torchOurs) torch.set(false);
