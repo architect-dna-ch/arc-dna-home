@@ -256,7 +256,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         }
 
-        setContentView(minimal() ? buildMinimalUi() : buildUi());
+        setContentView(buildUi());
         torch = new DarkTorch(this, (on, byUs) -> {
             if (!byUs) torchOurs = false;          // switched by hand (quick settings): leave it alone
             paintTorchChip();
@@ -394,9 +394,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Schlicht: a stock-simple home – clock, app search, favourites, nothing moving. Magic one tap away. */
     private boolean minimal() {
-        // Temporarily off: Schlicht crashed on some launcher callback. Always load the full (stable)
-        // home, even if the pref is still set, so nobody gets locked out. Re-enabled once fixed.
-        return false;
+        return prefs.getBoolean("minimal", false);
     }
 
     /** The minimal home: a clean surface with the clock, a search bar, favourite apps and two buttons. */
@@ -470,6 +468,78 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         watchNetwork();
         updateClock();
         return root;
+    }
+
+    private FrameLayout minimalOverlay;
+    private TextView minimalClock, minimalDate, minimalGreet;
+
+    /** Schlicht: a clean stock-simple screen laid over the (fully built, intact) home. */
+    private void addMinimalOverlay(FrameLayout root) {
+        FrameLayout ov = new FrameLayout(this);
+        minimalOverlay = ov;
+        ov.setBackgroundColor(paper());
+        ov.setClickable(true);
+        ov.setElevation(dp(24));
+        ScrollView sv = new ScrollView(this);
+        sv.setFillViewport(true);
+        sv.setVerticalScrollBarEnabled(false);
+        ov.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(22), dp(28), dp(22), dp(40));
+        c.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(dp(22) + i.left, dp(24) + i.top, dp(22) + i.right, dp(40) + i.bottom);
+            }
+            return insets;
+        });
+        sv.addView(c, new FrameLayout.LayoutParams(-1, -2));
+
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(label("Architect · DNA"), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView sos = monoText(12, rust);
+        sos.setText("🆘 ");
+        sos.setOnClickListener(v -> openCrisis());
+        top.addView(sos);
+        TextView full = monoText(12, rust);
+        full.setText("✨ ARC  ");
+        full.setContentDescription("Volle ARC-DNA");
+        full.setOnClickListener(v -> {
+            prefs.edit().putBoolean("minimal", false).apply();
+            recreate();
+        });
+        top.addView(full);
+        top.addView(gearButton());
+        c.addView(top);
+
+        minimalClock = new TextView(this);
+        minimalClock.setTextColor(ink);
+        minimalClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 92);
+        minimalClock.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
+        minimalClock.setLetterSpacing(-0.06f);
+        minimalClock.setIncludeFontPadding(false);
+        minimalClock.setPadding(0, dp(24), 0, 0);
+        c.addView(minimalClock);
+        minimalDate = text(15, ink2, false);
+        c.addView(minimalDate, margins(-1, -2, 0, dp(10), 0, 0));
+        minimalGreet = text(18, ink, true);
+        c.addView(minimalGreet, margins(-1, -2, 0, dp(2), 0, 0));
+
+        c.addView(searchRow(), margins(-1, -2, 0, dp(24), 0, dp(6)));
+        c.addView(appTiles(), margins(-1, -2, 0, dp(14), 0, 0));
+
+        TextView all = text(15, ink, true);
+        all.setText("▦   Alle Apps");
+        all.setGravity(Gravity.CENTER);
+        all.setPadding(dp(16), dp(15), dp(16), dp(15));
+        all.setBackground(box(card, line, 16));
+        all.setOnClickListener(v -> openLibrary());
+        c.addView(all, margins(-1, -2, 0, dp(12), 0, 0));
+
+        root.addView(ov, new FrameLayout.LayoutParams(-1, -1));
+        updateClock();
     }
 
     private View buildUi() {
@@ -955,6 +1025,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         else registerReceiver(unlockReceiver, uf);
         if (CALIBRATE_NOD.equals(getIntent().getAction())) handler.postDelayed(() -> calibrate("nod"), 600);
         root.addView(edgeLight, new FrameLayout.LayoutParams(-1, -1));
+        if (minimal()) addMinimalOverlay(root);
         return root;
     }
 
@@ -1558,6 +1629,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         libraryOpen = true;
         hideKeyboard();
         // One smooth move: the home page sinks back and fades while the Mediathek slides up over it.
+        library.setElevation(dp(28));      // above the Schlicht overlay (elevation 24) when it's on
+        library.bringToFront();
         library.setVisibility(View.VISIBLE);
         library.setAlpha(0f);
         library.setTranslationY(dp(48));
@@ -4047,6 +4120,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // (The big clock no longer flips to the old summer time – it read like a wrong clock.)
         String hello = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : h < 22 ? "Guten Abend" : "Gute Nacht";
         greet.setText(hello + ", Muharrem.");
+        if (minimalClock != null) { minimalClock.setText(s); minimalDate.setText(date.getText()); minimalGreet.setText(greet.getText()); }
 
         // Today's focus resets at midnight.
         if (focus != null) {
@@ -5534,6 +5608,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void startFaceWatch() {
         handler.removeCallbacks(faceWatchdog);
+        if (minimal()) return;                         // schlicht: no camera behind the overlay
         if (LowPower.active(this)) return;             // under 15 %: no camera just for the dino
         if (!homeInFront || libraryOpen || game != null || !prefs.getBoolean("dinoLock", true)) return;
         handler.postDelayed(faceWatchdog, 3000);
@@ -5657,12 +5732,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
-        if (minimal()) {               // schlicht: no decorations, buddies or widgets to resume
-            handler.removeCallbacks(ticker);
-            ticker.run();
-            hideNavBar();
-            return;
-        }
         applyPro();
         applySwept();
         reviveBuddy();
