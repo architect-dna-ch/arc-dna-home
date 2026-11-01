@@ -394,7 +394,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Schlicht: a stock-simple home – clock, app search, favourites, nothing moving. Magic one tap away. */
     private boolean minimal() {
-        return prefs.getBoolean("minimal", false);
+        // Temporarily off: Schlicht crashed on some launcher callback. Always load the full (stable)
+        // home, even if the pref is still set, so nobody gets locked out. Re-enabled once fixed.
+        return false;
     }
 
     /** The minimal home: a clean surface with the clock, a search bar, favourite apps and two buttons. */
