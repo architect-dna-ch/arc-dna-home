@@ -74,6 +74,7 @@ public class KompassActivity extends Activity {
         rust = night ? 0xFFD9472F : 0xFFB5271E;
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
+        getWindow().getDecorView();  // decor must exist or getInsetsController() NPEs here on Android 16 (SDK 36)
         if (!night && Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
             int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
             getWindow().getInsetsController().setSystemBarsAppearance(bits, bits);

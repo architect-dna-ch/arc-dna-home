@@ -52,6 +52,7 @@ public class SunActivity extends Activity {
         line = pl[Themes.LINE];
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
+        getWindow().getDecorView();  // decor must exist or getInsetsController() NPEs here on Android 16 (SDK 36)
         if (android.graphics.Color.luminance(bg) > 0.5f && android.os.Build.VERSION.SDK_INT >= 30 && getWindow().getInsetsController() != null) {
             int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
             getWindow().getInsetsController().setSystemBarsAppearance(bits, bits);
