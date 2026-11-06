@@ -32,6 +32,12 @@ final class Themes {
     }
 
     static final Theme[] ALL = {
+        // The single artistic ARC-DNA look: warm paper, deep ink, one terracotta accent. No glow,
+        // no rainbows — editorial and quiet, like the studio's own identity. This is the only look
+        // the launcher now shows; the colourful/playful themes below are kept for the kids product.
+        new Theme("arc", "ARC·DNA", "Papier, Tinte & Terrakotta · artistisch", false,
+            new int[]{0xFFF5F1E8, 0xFF1B1613, 0xFF6A5F54, 0xFFA99E8E, 0xFFB24A2E, 0xF0FBF8F1, 0xF5F5F1E8, 0xFFE2D9C8, 0, 0, 0},
+            new int[]{0xFF14110E, 0xFFEDE7DA, 0xFFADA293, 0xFF6E6456, 0xFFC85E3E, 0xF01E1A16, 0xF5181511, 0xFF2E2820, 0, 0, 0}),
         new Theme("spicy", "Spicy", "Beige, Pink, Grün · Glühen beim Scrollen", true,
             new int[]{0xFFF2E8D5, 0xFF13261D, 0xFF46594D, 0xFF8F9A8A, 0xFFFF3D7F, 0xE6FFF8EC, 0xF2FFF8EC, 0xFFE3D3B6, 0xFFFF3D7F, 0xFF1FB86E, 0xFFFFB3CB},
             new int[]{0xFF0E1A14, 0xFFF2E8D5, 0xFFBFC9BA, 0xFF718273, 0xFFFF5C93, 0xE0152A20, 0xF2152A20, 0xFF2A4535, 0xFFFF5C93, 0xFF3DDC8F, 0xFF7A2E4C}),
@@ -50,8 +56,8 @@ final class Themes {
     };
 
     static Theme current(SharedPreferences prefs) {
-        String id = prefs.getString("theme", "spicy");
-        for (Theme t : ALL) if (t.id.equals(id)) return t;
+        // Locked to the one artistic ARC-DNA look. The other themes move to the kids web product;
+        // the launcher no longer lets you pick, so the home and wallpaper share one identity.
         return ALL[0];
     }
 

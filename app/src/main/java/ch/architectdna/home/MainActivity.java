@@ -1346,37 +1346,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(head);
 
         LinearLayout home = settingsGroup(col, "Startseite");
-        settingsRow(home, "Buddy unten links", () -> BUDDIES[buddy()][0] + " · Galerie · ♥ " + friendship(), v -> showBuddyGallery(), null);
         if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             settingsRow(home, "Tablet-Dashboard", () -> prefs.getBoolean("dashboard", true) ? "AN · Wetter, Uhr, Garten, Ordner" : "AUS · Listen", v -> {
                 prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
                 recreate();
             }, null);
         }
-        settingsRow(home, "Theme", () -> theme().name.toUpperCase(Locale.GERMAN) + " · " + theme().desc, v -> showThemePicker(), null);
-        settingsRow(home, "Startseite: clean", () -> cleanHome() ? "AN · ruhige Fläche wie die Apps" : "AUS · Wallpaper scheint durch", v -> {
-            prefs.edit().putBoolean("cleanHome", !cleanHome()).apply();
-            recreate();
-        }, null);
-        settingsRow(home, "Schlicht (wie Standard-Launcher)", () -> minimal() ? "AN · nur Uhr, Suche, Apps" : "AUS · volle ARC-DNA", v -> {
-            prefs.edit().putBoolean("minimal", !minimal()).apply();
-            recreate();
-        }, null);
-        settingsRow(home, "Professionell (schlicht)", () -> pro() ? "AN · kein Buddy, keine Regenbogen, ruhig" : "AUS · mit Effekten", v -> {
-            prefs.edit().putBoolean("pro", !pro()).apply();
-            if (pro()) {
-                if (f1) setF1(false);
-                if (dino != null) endDino();
-            }
-            recreate();
-        }, null);
-        settingsRow(home, "Ruhig: nur Werkzeuge", () -> calm() ? "AN · selten Überraschungen" : "AUS · volles Programm", v -> {
-            prefs.edit().putBoolean("calm", !calm()).apply();
-            if (calm()) {
-                if (f1) setF1(false);
-                if (dino != null) endDino();
-            }
-        }, null);
         settingsRow(home, "Zuletzt-Karussell", () -> prefs.getInt("recentCount", 8) + " Apps", v -> {
             int[] steps = {4, 8, 12, 16, 24};
             int now = prefs.getInt("recentCount", 8), next = steps[0];
@@ -1392,27 +1367,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
-        settingsRow(home, "Dino-Sperre · halten = testen", () -> prefs.getBoolean("dinoLock", true) ? "Wegschauen 5 s" : "Aus",
-            v -> prefs.edit().putBoolean("dinoLock", !prefs.getBoolean("dinoLock", true)).apply(), v -> {
-                closeSettings();
-                handler.postDelayed(() -> {
-                    startDino(true);
-                    if (dino != null) dino.test = true;
-                }, 450);
-                return true;
-            });
-        settingsRow(home, "Dino-Level · tippen den Dino = Kampf", () -> "LV " + prefs.getInt("dinoLevel", 1) + " / 99",
-            v -> pop("Halten = zurück auf Level 1"), v -> {
-                prefs.edit().putInt("dinoLevel", 1).apply();
-                pop("Dino wieder auf Level 1");
-                return true;
-            });
-        settingsRow(home, "Dino-Besuch · halten = jetzt", () -> prefs.getBoolean("dino", true) ? "Jede 5. Rückkehr" : "Aus",
-            v -> prefs.edit().putBoolean("dino", !prefs.getBoolean("dino", true)).apply(), v -> {
-                closeSettings();
-                handler.postDelayed(this::startDino, 450);
-                return true;
-            });
         settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
@@ -1977,7 +1931,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private LinearLayout proDock;
 
     private boolean pro() {
-        return prefs.getBoolean("pro", false);
+        return prefs.getBoolean("pro", true);   // artistic ARC-DNA is quiet by default: no buddy, no games, no glows on home
     }
 
     private void applyPro() {
