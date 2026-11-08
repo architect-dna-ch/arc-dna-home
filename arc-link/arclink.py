@@ -33,7 +33,14 @@ try:
 except ImportError:
     sys.exit("Missing dependency. Run:  pip3 install pynput")
 
-ADB = shutil.which("adb")
+def _find_adb():
+    # launchd agents run with a bare PATH, so `which` alone fails — check the usual spots too.
+    return shutil.which("adb") or next(
+        (p for p in ("/opt/homebrew/bin/adb", "/usr/local/bin/adb",
+                     "/opt/homebrew/opt/android-platform-tools/bin/adb") if os.path.exists(p)),
+        None)
+
+ADB = _find_adb()
 if not ADB:
     sys.exit("`adb` not found. Install it:  brew install android-platform-tools")
 
