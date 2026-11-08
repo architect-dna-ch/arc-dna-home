@@ -46,6 +46,7 @@ if not ADB:
 
 MOUSE       = os.environ.get("ARCLINK_MOUSE") == "1"   # default: keyboard only, trackpad untouched
 MOUSE_SENS  = float(os.environ.get("ARCLINK_SENS", "1.6"))
+VNC_PORT    = os.environ.get("ARCLINK_VNC", "5900")    # re-applied on every reconnect; "0" to disable
 DRAG_THRESH = 14
 SCROLL_STEP = 90
 FLUSH_MS    = 45
@@ -132,8 +133,23 @@ class ArcLink:
             if c != self.connected:
                 self.connected = c
                 self.dev.center()
-                print("Pad", "connected — forwarding ON" if c else "unplugged — Mac is yours")
+                if c:
+                    self._tunnels()
+                    extra = f" · VNC tunnel 127.0.0.1:{VNC_PORT} ready" if VNC_PORT not in ("", "0") else ""
+                    print("Pad connected — keyboard ON" + extra)
+                else:
+                    print("Pad unplugged — Mac is yours")
             time.sleep(1.5)
+
+    def _tunnels(self):
+        # re-apply the VNC reverse tunnel so the Pad's 127.0.0.1:5900 works again after a replug
+        if VNC_PORT in ("", "0"):
+            return
+        try:
+            subprocess.run([ADB, "reverse", f"tcp:{VNC_PORT}", f"tcp:{VNC_PORT}"],
+                           capture_output=True, timeout=5)
+        except Exception:
+            pass
 
     # ── macOS capture: swallow events while active so they don't also hit the Mac ──
     def intercept(self, event_type, event):
