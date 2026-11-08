@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ch.architectdna.arclink</string>
+
+  <!-- EDIT the two paths: replace USERNAME with your Mac short name (echo $USER).
+       If `which python3` prints something else, use that path instead of /usr/bin/python3. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/USERNAME/arc-link/arclink.py</string>
+  </array>
+
+  <!-- Optional: force the tablet size if a tap lands off.
+  <key>EnvironmentVariables</key>
+  <dict><key>ARCLINK_SIZE</key><string>2560x1600</string></dict>
+  -->
+
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/arclink.out.log</string>
+  <key>StandardErrorPath</key><string>/tmp/arclink.err.log</string>
+</dict>
+</plist>

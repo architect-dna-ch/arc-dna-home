@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 """
-ARC Link — drive an Android tablet from this Mac's keyboard & trackpad, over the USB cable.
+ARC Link v1.1 — drive an Android tablet from this Mac's keyboard & trackpad, over the USB cable.
 
-v1 design goals: works the moment USB debugging is on, with NO root and NO app to install on
-the tablet. It holds one persistent `adb shell` and feeds it Android's `input` command, so there
-is no per-keystroke adb reconnection. Good enough for typing, navigation, tap, scroll and drag.
-For sub-10ms, pixel-perfect mouse, see server/ArcLinkServer.java (the v2 upgrade path).
+No root, no app on the tablet. One persistent `adb shell` fed Android's `input`.
 
-Setup (see README.md):
-    1. On the tablet: enable Developer options → USB debugging. Plug into the Mac.
-    2. On the Mac:  brew install android-platform-tools   (gives `adb`)
-                    pip3 install pynput
-                    python3 arclink.py
-    macOS will ask for Accessibility + Input Monitoring permission the first time — grant both
-    (System Settings → Privacy & Security). Then this program can read the keyboard/trackpad.
+What's new in v1.1 (from on-device testing):
+  • CAPTURE: while forwarding, your keyboard/trackpad are consumed — they do NOT also act on macOS
+    (no more Finder getting clicks). Uses pynput's darwin_intercept to swallow the events.
+  • AUTO-ENGAGE: forwarding turns on only while the Pad is actually connected over USB, and off the
+    instant it's unplugged — so at login / autostart the Mac is never hijacked when the Pad is away.
+  • NO SPAM: key auto-repeat is de-duplicated (one character per physical press).
+  • ROTATION-AWARE size, plus an ARCLINK_SIZE override if a tap still lands off.
 
-Controls while running:
-    F10  — toggle forwarding on/off (so your Mac keyboard is yours again when you need it)
-    F1   — Android BACK        F2 — HOME        F3 — RECENTS
-    everything else            — typed / pointed straight onto the tablet
+Controls:
+  F10  — hard pause / resume (overrides auto-engage; when paused the Mac is fully yours)
+  F1 BACK · F2 HOME · F3 RECENTS
+  Ctrl-C to quit.
 
-Nothing here leaves the machine: it is Mac → USB cable → tablet only.
+Env overrides:  ARCLINK_SIZE=2560x1600   ARCLINK_SENS=1.6
 """
 
 import os
@@ -40,124 +37,139 @@ ADB = shutil.which("adb")
 if not ADB:
     sys.exit("`adb` not found. Install it:  brew install android-platform-tools")
 
-# ── tunables ────────────────────────────────────────────────────────────────
-MOUSE_SENS   = 1.6      # trackpad → tablet cursor speed
-DRAG_THRESH  = 14       # px of movement that turns a click into a drag
-SCROLL_STEP  = 90       # px per scroll notch
-FLUSH_MS     = 45       # how often buffered text is sent (lower = snappier, more commands)
+MOUSE_SENS  = float(os.environ.get("ARCLINK_SENS", "1.6"))
+DRAG_THRESH = 14
+SCROLL_STEP = 90
+FLUSH_MS    = 45
 
-# ── Android keycodes we map explicitly (everything printable goes via `input text`) ──
 KEYEVENT = {
     keyboard.Key.enter: 66, keyboard.Key.backspace: 67, keyboard.Key.tab: 61,
     keyboard.Key.esc: 111, keyboard.Key.delete: 112,
     keyboard.Key.up: 19, keyboard.Key.down: 20, keyboard.Key.left: 21, keyboard.Key.right: 22,
     keyboard.Key.home: 122, keyboard.Key.end: 123, keyboard.Key.page_up: 92, keyboard.Key.page_down: 93,
     keyboard.Key.space: 62,
-    # function keys do double duty as Android navigation
-    keyboard.Key.f1: 4,    # BACK
-    keyboard.Key.f2: 3,    # HOME
-    keyboard.Key.f3: 187,  # APP_SWITCH (recents)
+    keyboard.Key.f1: 4, keyboard.Key.f2: 3, keyboard.Key.f3: 187,   # BACK / HOME / RECENTS
 }
 
 
-class Device:
-    """One persistent adb shell; we write `input ...` lines to its stdin."""
+def adb_state():
+    try:
+        return subprocess.run([ADB, "get-state"], capture_output=True, text=True, timeout=3).stdout.strip()
+    except Exception:
+        return ""
 
+
+class Device:
     def __init__(self):
         self.lock = threading.Lock()
-        self.proc = subprocess.Popen(
-            [ADB, "shell"], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, bufsize=0,
-        )
-        self.w, self.h = self._screen_size()
-        self.cx, self.cy = self.w / 2, self.h / 2  # virtual cursor
+        self.proc = subprocess.Popen([ADB, "shell"], stdin=subprocess.PIPE,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, bufsize=0)
+        self.w, self.h = self._size()
+        self.cx, self.cy = self.w / 2, self.h / 2
 
-    def _screen_size(self):
+    def _size(self):
+        ov = os.environ.get("ARCLINK_SIZE")
+        if ov and "x" in ov:
+            w, h = ov.lower().split("x"); return int(w), int(h)
         try:
             out = subprocess.check_output([ADB, "shell", "wm", "size"], text=True, timeout=5)
-            # "Override size: 1600x2560" wins over "Physical size: ..."
             line = [l for l in out.splitlines() if l.strip()][-1]
-            w, h = line.split(":")[1].strip().split("x")
-            return int(w), int(h)
+            w, h = (int(v) for v in line.split(":")[1].strip().split("x"))
+            rot = subprocess.check_output([ADB, "shell", "settings", "get", "system", "user_rotation"],
+                                          text=True, timeout=5).strip()
+            if rot in ("1", "3") and h > w:      # landscape: physical is reported portrait
+                w, h = h, w
+            return w, h
         except Exception:
-            return 1600, 2560  # a sane tablet default; adjust in tunables if cursor feels off
+            return 2560, 1600
 
     def send(self, cmd):
         with self.lock:
             try:
-                self.proc.stdin.write((cmd + "\n").encode())
-                self.proc.stdin.flush()
+                self.proc.stdin.write((cmd + "\n").encode()); self.proc.stdin.flush()
             except (BrokenPipeError, ValueError):
                 pass
 
-    # input helpers
-    def tap(self, x, y):              self.send(f"input tap {int(x)} {int(y)}")
-    def swipe(self, x1, y1, x2, y2, ms=90):
-        self.send(f"input swipe {int(x1)} {int(y1)} {int(x2)} {int(y2)} {ms}")
-    def keyevent(self, code):         self.send(f"input keyevent {code}")
-    def text(self, s):
-        # single-quote for the shell; escape embedded quotes the POSIX way
-        self.send("input text " + shlex.quote(s))
-
-    def clamp(self, x, y):
-        return max(0, min(self.w - 1, x)), max(0, min(self.h - 1, y))
+    def tap(self, x, y):            self.send(f"input tap {int(x)} {int(y)}")
+    def swipe(self, x1, y1, x2, y2, ms=90): self.send(f"input swipe {int(x1)} {int(y1)} {int(x2)} {int(y2)} {ms}")
+    def keyevent(self, c):         self.send(f"input keyevent {c}")
+    def text(self, s):             self.send("input text " + shlex.quote(s))
+    def clamp(self, x, y):         return max(0, min(self.w - 1, x)), max(0, min(self.h - 1, y))
+    def center(self):             self.cx, self.cy = self.w / 2, self.h / 2
 
 
 class ArcLink:
     def __init__(self):
         self.dev = Device()
-        self.on = True
-        self.buf = []                  # pending printable characters
-        self.buf_lock = threading.Lock()
-        self.down_pos = None           # where the mouse button went down (for drag vs tap)
-        self.last_move = None          # last absolute trackpad position, to get deltas
+        self.paused = False          # F10 hard pause
+        self.connected = True        # updated by the USB poller
+        self.buf, self.buf_lock = [], threading.Lock()
+        self.down = set()            # keys currently held (de-dupe auto-repeat)
+        self.down_pos = None
+        self.last_move = None
         threading.Thread(target=self._flusher, daemon=True).start()
-        print(f"ARC Link ready · tablet {self.dev.w}x{self.dev.h} · forwarding ON")
-        print("F10 toggle · F1 back · F2 home · F3 recents")
+        threading.Thread(target=self._usb_poll, daemon=True).start()
+        print(f"ARC Link v1.1 · tablet {self.dev.w}x{self.dev.h} · auto-engages when the Pad is plugged in")
+        print("F10 pause/resume · F1 back · F2 home · F3 recents · Ctrl-C quit")
 
-    # ── text buffering: coalesce fast typing into one `input text` ──
+    def active(self):
+        return self.connected and not self.paused
+
+    # forwarding follows the USB cable
+    def _usb_poll(self):
+        while True:
+            c = (adb_state() == "device")
+            if c != self.connected:
+                self.connected = c
+                self.dev.center()
+                print("Pad", "connected — forwarding ON" if c else "unplugged — Mac is yours")
+            time.sleep(1.5)
+
+    # ── macOS capture: swallow events while active so they don't also hit the Mac ──
+    def intercept(self, event_type, event):
+        return None if self.active() else event
+
+    # ── text buffering ──
     def _flusher(self):
         while True:
-            time.sleep(FLUSH_MS / 1000)
-            self.flush()
+            time.sleep(FLUSH_MS / 1000); self.flush()
 
     def flush(self):
         with self.buf_lock:
-            if not self.buf:
-                return
-            s = "".join(self.buf)
-            self.buf.clear()
+            if not self.buf: return
+            s = "".join(self.buf); self.buf.clear()
         self.dev.text(s)
-
-    def push_char(self, ch):
-        with self.buf_lock:
-            self.buf.append(ch)
 
     # ── keyboard ──
     def on_press(self, key):
         if key == keyboard.Key.f10:
-            self.on = not self.on
+            if key in self.down: return
+            self.down.add(key)
+            self.paused = not self.paused
             self.flush()
-            print("forwarding", "ON" if self.on else "OFF")
+            print("PAUSED (Mac is yours)" if self.paused else "RESUMED")
             return
-        if not self.on:
-            return
-        # a printable character?
+        if not self.active(): return
+        if key in self.down: return      # auto-repeat → ignore (no spam)
+        self.down.add(key)
         ch = getattr(key, "char", None)
-        if ch is not None and ch != "" and ch not in ("\t", "\n", "\r"):
-            if ch == " ":
-                self.flush(); self.dev.keyevent(62)       # space is reliable as a keyevent
-            else:
-                self.push_char(ch)
+        if ch and ch not in ("\t", "\n", "\r"):
+            if ch == " ": self.flush(); self.dev.keyevent(62)
+            else: self.buf_append(ch)
             return
-        # a mapped special key?
         code = KEYEVENT.get(key)
         if code is not None:
             self.flush(); self.dev.keyevent(code)
 
-    # ── mouse / trackpad ──
+    def on_release(self, key):
+        self.down.discard(key)
+
+    def buf_append(self, ch):
+        with self.buf_lock: self.buf.append(ch)
+
+    # ── trackpad ──
     def on_move(self, x, y):
-        if not self.on:
+        if not self.active():
             self.last_move = (x, y); return
         if self.last_move is not None:
             dx = (x - self.last_move[0]) * MOUSE_SENS
@@ -166,49 +178,34 @@ class ArcLink:
         self.last_move = (x, y)
 
     def on_click(self, x, y, button, pressed):
-        if not self.on:
-            return
+        if not self.active(): return
         if pressed:
             self.down_pos = (self.dev.cx, self.dev.cy, time.time())
-        elif self.down_pos is not None:
-            sx, sy, t0 = self.down_pos
-            ex, ey = self.dev.cx, self.dev.cy
-            self.down_pos = None
-            moved = abs(ex - sx) + abs(ey - sy)
-            if moved > DRAG_THRESH:
+        elif self.down_pos:
+            sx, sy, t0 = self.down_pos; ex, ey = self.dev.cx, self.dev.cy; self.down_pos = None
+            if abs(ex - sx) + abs(ey - sy) > DRAG_THRESH:
                 self.dev.swipe(sx, sy, ex, ey, max(60, int((time.time() - t0) * 1000)))
             else:
                 self.dev.tap(ex, ey)
 
     def on_scroll(self, x, y, dx, dy):
-        if not self.on:
-            return
-        ex = self.dev.cx
-        ey1 = self.dev.cy
-        ey2 = self.dev.clamp(ex, self.dev.cy + dy * SCROLL_STEP)[1]
-        # horizontal if that dominates
+        if not self.active(): return
+        ex, ey = self.dev.cx, self.dev.cy
         if abs(dx) > abs(dy):
-            ex2 = self.dev.clamp(self.dev.cx + dx * SCROLL_STEP, ey1)[0]
-            self.dev.swipe(ex, ey1, ex2, ey1, 80)
+            self.dev.swipe(ex, ey, self.dev.clamp(ex + dx * SCROLL_STEP, ey)[0], ey, 80)
         else:
-            self.dev.swipe(ex, ey1, ex, ey2, 80)
+            self.dev.swipe(ex, ey, ex, self.dev.clamp(ex, ey + dy * SCROLL_STEP)[1], 80)
 
     def run(self):
-        ml = mouse.Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll)
-        kl = keyboard.Listener(on_press=self.on_press)
+        ml = mouse.Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll,
+                            darwin_intercept=self.intercept)
+        kl = keyboard.Listener(on_press=self.on_press, on_release=self.on_release,
+                               darwin_intercept=self.intercept)
         ml.start(); kl.start()
-        try:
-            kl.join()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.flush()
-            print("\nARC Link stopped.")
+        try: kl.join()
+        except KeyboardInterrupt: pass
+        finally: self.flush(); print("\nARC Link stopped.")
 
 
 if __name__ == "__main__":
-    # one device only, for now
-    n = subprocess.run([ADB, "get-state"], capture_output=True, text=True)
-    if "device" not in n.stdout:
-        sys.exit("No device. Plug in the tablet, enable USB debugging, accept the prompt, then: adb devices")
     ArcLink().run()

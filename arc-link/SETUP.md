@@ -71,6 +71,34 @@ You now see and drive macOS on the Pad (the Mac's own keyboard/trackpad control 
 
 ---
 
+## Pointing & the cursor (read this)
+
+v1 has **no visible cursor on the tablet** — `adb input` can only tap, it can't draw a pointer.
+So in Mode A: **use the Mac for the keyboard, and touch the Pad directly to point.** The trackpad
+is suppressed (so it won't mess up macOS) but it's "blind" — your finger on the Pad is the mouse.
+A real moving cursor + low latency arrives with the v2 server (next build).
+
+In Mode B the Mac's own cursor can be hidden until it moves — turn on "show remote cursor" in the
+VNC app, or just nudge it. Tablet-touch moving the Mac pointer confirms it's working.
+
+## C · Autostart (so you never type the command again)
+
+v1.1 only engages forwarding **while the Pad is plugged in**, so this is safe at login — if the
+Pad isn't connected, your Mac keyboard/trackpad stay completely normal.
+
+```bash
+# 1. Run it once interactively first and grant Accessibility + Input Monitoring to python3.
+# 2. Edit the plist: set USERNAME and (if needed) the python3 path.
+cp arc-link/ch.architectdna.arclink.plist ~/Library/LaunchAgents/
+nano ~/Library/LaunchAgents/ch.architectdna.arclink.plist    # replace USERNAME
+
+# 3. Load it (runs now + every login):
+launchctl load ~/Library/LaunchAgents/ch.architectdna.arclink.plist
+
+# logs: /tmp/arclink.out.log   stop: launchctl unload ~/Library/LaunchAgents/ch.architectdna.arclink.plist
+```
+Now: plug in the Pad → forwarding is live; unplug → Mac is yours. `F10` still hard-pauses.
+
 ## Quick fixes
 
 | Problem | Fix |
