@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# ARC Link — keep the VNC-over-USB tunnel alive. Re-applies `adb reverse` on every reconnect so the
-# Pad's 127.0.0.1:5900 (which rides the USB cable, not WiFi) always works. Needs NO macOS permission,
-# so unlike the keyboard client this autostarts cleanly via launchd.
+# ARC Link — keep the VNC-over-USB tunnel alive. Re-applies `adb reverse` every few seconds (cheap,
+# idempotent) so 127.0.0.1:5900 survives not just replugs but Mac sleep/wake and adb-server restarts,
+# which silently drop the rule without a disconnect. Needs NO macOS permission → autostarts cleanly.
 ADB="$(command -v adb || echo /opt/homebrew/bin/adb)"
 PORT="${ARCLINK_VNC:-5900}"
+last=""
 while true; do
-  "$ADB" wait-for-device 2>/dev/null
-  if "$ADB" reverse "tcp:$PORT" "tcp:$PORT" 2>/dev/null; then
-    echo "$(date '+%H:%M:%S') tunnel up — VNC to 127.0.0.1:$PORT (over USB)"
+  st="$("$ADB" get-state 2>/dev/null)"
+  if [ "$st" = "device" ]; then
+    "$ADB" reverse "tcp:$PORT" "tcp:$PORT" >/dev/null 2>&1
+    [ "$last" != "up" ] && echo "$(date '+%H:%M:%S') tunnel up — VNC 127.0.0.1:$PORT (over USB)" && last="up"
+  else
+    [ "$last" != "down" ] && echo "$(date '+%H:%M:%S') no Pad — waiting for connect" && last="down"
   fi
-  # hold until the Pad is unplugged, then loop to re-apply on the next connect
-  while [ "$("$ADB" get-state 2>/dev/null)" = "device" ]; do sleep 2; done
-  echo "$(date '+%H:%M:%S') Pad unplugged — waiting for reconnect"
+  sleep 3
 done
