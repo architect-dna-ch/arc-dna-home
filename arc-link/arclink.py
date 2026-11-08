@@ -44,6 +44,7 @@ ADB = _find_adb()
 if not ADB:
     sys.exit("`adb` not found. Install it:  brew install android-platform-tools")
 
+MOUSE       = os.environ.get("ARCLINK_MOUSE") == "1"   # default: keyboard only, trackpad untouched
 MOUSE_SENS  = float(os.environ.get("ARCLINK_SENS", "1.6"))
 DRAG_THRESH = 14
 SCROLL_STEP = 90
@@ -116,8 +117,10 @@ class ArcLink:
         self.last_move = None
         threading.Thread(target=self._flusher, daemon=True).start()
         threading.Thread(target=self._usb_poll, daemon=True).start()
-        print(f"ARC Link v1.1 · tablet {self.dev.w}x{self.dev.h} · auto-engages when the Pad is plugged in")
-        print("F10 pause/resume · F1 back · F2 home · F3 recents · Ctrl-C quit")
+        mode = "keyboard + trackpad" if MOUSE else "keyboard only (trackpad left alone)"
+        print(f"ARC Link v1.1 · tablet {self.dev.w}x{self.dev.h} · {mode} · engages when the Pad is plugged in")
+        print("F10 pause/resume · F1 back · F2 home · F3 recents · Ctrl-C quit"
+              + ("" if MOUSE else "  (set ARCLINK_MOUSE=1 to also forward the trackpad)"))
 
     def active(self):
         return self.connected and not self.paused
@@ -204,11 +207,13 @@ class ArcLink:
             self.dev.swipe(ex, ey, ex, self.dev.clamp(ex, ey + dy * SCROLL_STEP)[1], 80)
 
     def run(self):
-        ml = mouse.Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll,
-                            darwin_intercept=self.intercept)
+        # keyboard listener always; mouse only if explicitly enabled (so the trackpad stays normal)
+        if MOUSE:
+            mouse.Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll,
+                           darwin_intercept=self.intercept).start()
         kl = keyboard.Listener(on_press=self.on_press, on_release=self.on_release,
                                darwin_intercept=self.intercept)
-        ml.start(); kl.start()
+        kl.start()
         try: kl.join()
         except KeyboardInterrupt: pass
         finally: self.flush(); print("\nARC Link stopped.")
