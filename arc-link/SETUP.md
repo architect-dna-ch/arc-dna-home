@@ -92,10 +92,14 @@ Pad isn't connected, your Mac keyboard/trackpad stay completely normal.
 cp arc-link/ch.architectdna.arclink.plist ~/Library/LaunchAgents/
 nano ~/Library/LaunchAgents/ch.architectdna.arclink.plist    # replace USERNAME
 
-# 3. Load it (runs now + every login):
-launchctl load ~/Library/LaunchAgents/ch.architectdna.arclink.plist
+# 3. Lint, then load into YOUR session (NO sudo — it's a user agent, not a root daemon):
+plutil -lint ~/Library/LaunchAgents/ch.architectdna.arclink.plist           # must say OK
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ch.architectdna.arclink.plist
+launchctl kickstart -k gui/$(id -u)/ch.architectdna.arclink                 # start now
 
-# logs: /tmp/arclink.out.log   stop: launchctl unload ~/Library/LaunchAgents/ch.architectdna.arclink.plist
+# logs:  cat /tmp/arclink.err.log
+# stop:  launchctl bootout gui/$(id -u)/ch.architectdna.arclink
+# NOTE: never `sudo launchctl load` a LaunchAgent — that targets the root domain and fails (I/O error).
 ```
 Now: plug in the Pad → forwarding is live; unplug → Mac is yours. `F10` still hard-pauses.
 
