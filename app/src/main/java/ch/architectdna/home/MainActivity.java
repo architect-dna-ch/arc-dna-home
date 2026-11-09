@@ -178,6 +178,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private final List<AppEntry> apps = new ArrayList<>();
     private BroadcastReceiver packageReceiver;
+    private BroadcastReceiver kbdBattReceiver;
     private ConnectivityManager.NetworkCallback netCallback;
     private SensorManager sensors;
     private long lastShake;
@@ -273,6 +274,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         applyWallpaperIfNeeded();
         loadApps();
         registerPackageReceiver();
+        registerKbdBatt();
         watchNetwork();
     }
 
@@ -1793,6 +1795,33 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 refreshRecents();
             });
         }).start();
+    }
+
+    /** ARC Link (Mac) broadcasts the laptop keyboard's battery over USB; show it as a floating chip. */
+    private void registerKbdBatt() {
+        kbdBattReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int level = intent.getIntExtra("level", -1);
+                boolean charging = intent.getBooleanExtra("charging", false);
+                if (level < 0) return;
+                if (!KbdBatt.canShow(MainActivity.this)) { askOverlayOnce(); return; }
+                KbdBatt.show(MainActivity.this, level, charging);
+            }
+        };
+        IntentFilter f = new IntentFilter("ch.architectdna.home.KBD_BATT");
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(kbdBattReceiver, f, Context.RECEIVER_EXPORTED);
+        else registerReceiver(kbdBattReceiver, f);
+    }
+
+    private void askOverlayOnce() {
+        if (prefs.getBoolean("askedKbdOverlay", false)) return;
+        prefs.edit().putBoolean("askedKbdOverlay", true).apply();
+        pop("ARC Link: Overlay-Recht für Tastatur-Akku aktivieren");
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getPackageName())));
+        } catch (RuntimeException ignored) { }
     }
 
     private void registerPackageReceiver() {
@@ -6060,6 +6089,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onDestroy() {
         super.onDestroy();
         if (packageReceiver != null) unregisterReceiver(packageReceiver);
+        if (kbdBattReceiver != null) { try { unregisterReceiver(kbdBattReceiver); } catch (RuntimeException ignored) { } KbdBatt.hide(); }
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         if (cm != null && netCallback != null) cm.unregisterNetworkCallback(netCallback);
         try {
