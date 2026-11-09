@@ -12,12 +12,21 @@ What's new in v1.1 (from on-device testing):
   • Key auto-repeat passes through (hold backspace / spam !); only F10 is de-bounced.
   • ROTATION-AWARE size, plus an ARCLINK_SIZE override if a tap still lands off.
 
+What's new in v1.2:
+  • ⌥/⌘ + Backspace deletes the whole word (like macOS), not one letter at a time.
+  • Keyboard battery: this Mac's charge is pushed to the tablet, where the ARC-DNA launcher
+    floats a small "⌨ xx%" chip — so you can see how much "keyboard" is left over USB.
+
 Controls:
   F10  — hard pause / resume (overrides auto-engage; when paused the Mac is fully yours)
-  F1 BACK · F2 HOME · F3 RECENTS
+  F1 BACK · F2 HOME · F3 RECENTS · ⌥/⌘-Backspace delete word
   Ctrl-C to quit.
 
 Env overrides:  ARCLINK_SIZE=2560x1600   ARCLINK_SENS=1.6
+
+Note on autocomplete: typing goes through `adb input`, which bypasses the tablet's keyboard,
+so Gboard's word-prediction does NOT light up here. Native prediction needs the Mac to act as a
+real USB-HID keyboard — that's `scrcpy --keyboard=uhid --otg` (a separate tool). See SETUP.md.
 """
 
 import os
@@ -58,6 +67,10 @@ KEYEVENT = {
     keyboard.Key.space: 62,
     keyboard.Key.f1: 4, keyboard.Key.f2: 3, keyboard.Key.f3: 187,   # BACK / HOME / RECENTS
 }
+
+# Option or Command held + Backspace = delete the whole word (like macOS).
+MODS = {keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
+        keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
 
 
 def adb_state():
@@ -113,14 +126,18 @@ class ArcLink:
         self.connected = True        # updated by the USB poller
         self.buf, self.buf_lock = [], threading.Lock()
         self.down = set()            # keys currently held (de-dupe auto-repeat)
+        self.mods = set()            # alt/cmd currently held → word ops
+        self.word = ""               # the word being typed, for ⌥/⌘-backspace
         self.down_pos = None
         self.last_move = None
         threading.Thread(target=self._flusher, daemon=True).start()
         threading.Thread(target=self._usb_poll, daemon=True).start()
+        threading.Thread(target=self._batt_poll, daemon=True).start()
         mode = "keyboard + trackpad" if MOUSE else "keyboard only"
         print(f"ARC Link · tablet {self.dev.w}x{self.dev.h} · {mode} · engages when the Pad is plugged in")
-        print("F10 pause · F1 back · F2 home · F3 recents · 3-finger swipe = recents · Ctrl-C quit"
+        print("F10 pause · F1 back · F2 home · F3 recents · 3-finger swipe = recents · ⌥/⌘-⌫ delete word · Ctrl-C quit"
               + ("" if MOUSE else "  (ARCLINK_MOUSE=0 disables the trackpad)"))
+        print("keyboard battery → tablet chip · every 60 s while plugged in")
 
     def active(self):
         return self.connected and not self.paused
@@ -134,6 +151,25 @@ class ArcLink:
                 self.dev.center()
                 print("Pad connected — keyboard ON" if c else "Pad unplugged — Mac is yours")
             time.sleep(1.5)
+
+    # Push this Mac's battery to the tablet, so a little chip there shows the "keyboard" charge.
+    # The ARC-DNA launcher listens for this broadcast and floats a ⌨ xx% overlay.
+    def _batt_poll(self):
+        import re
+        while True:
+            if self.connected:
+                try:
+                    out = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True, timeout=4).stdout
+                    m = re.search(r"(\d+)%", out)
+                    if m:
+                        pct = int(m.group(1))
+                        charging = ("AC Power" in out) or (" charging" in out and "discharging" not in out)
+                        subprocess.run([ADB, "shell", "am", "broadcast", "-a", "ch.architectdna.home.KBD_BATT",
+                                        "--ei", "level", str(pct), "--ez", "charging", "true" if charging else "false"],
+                                       capture_output=True, timeout=5)
+                except Exception:
+                    pass
+            time.sleep(60)
 
     # The VNC tunnel is NOT managed here — arclink-tunnel.sh (its own LaunchAgent) owns it, so
     # updating or restarting the keyboard never drops 127.0.0.1:5900.
@@ -162,20 +198,31 @@ class ArcLink:
             self.flush()
             print("PAUSED (Mac is yours)" if self.paused else "RESUMED")
             return
+        if key in MODS: self.mods.add(key)
         if not self.active(): return
         # auto-repeat IS allowed now (hold backspace = many deletes, spam ! = many !) —
         # the darwin_intercept suppression already stops the old double-typing.
         ch = getattr(key, "char", None)
         if ch and ch not in ("\t", "\n", "\r"):
-            if ch == " ": self.flush(); self.dev.keyevent(62)
-            else: self.buf_append(ch)
+            if ch == " ": self.flush(); self.dev.keyevent(62); self.word = ""
+            else: self.buf_append(ch); self.word += ch
             return
         code = KEYEVENT.get(key)
         if code is not None:
+            if key == keyboard.Key.backspace:
+                if self.mods:                       # ⌥/⌘ + backspace → delete the whole word
+                    n = max(1, len(self.word)); self.flush()
+                    for _ in range(n): self.dev.keyevent(67)
+                    self.word = ""
+                    return
+                self.word = self.word[:-1]
+            else:
+                self.word = ""                      # enter / tab / arrows end the word
             self.flush(); self.dev.keyevent(code)
 
     def on_release(self, key):
         self.down.discard(key)
+        self.mods.discard(key)
 
     def buf_append(self, ch):
         with self.buf_lock: self.buf.append(ch)
