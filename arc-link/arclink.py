@@ -44,7 +44,7 @@ ADB = _find_adb()
 if not ADB:
     sys.exit("`adb` not found. Install it:  brew install android-platform-tools")
 
-MOUSE       = os.environ.get("ARCLINK_MOUSE") == "1"   # default: keyboard only, trackpad untouched
+MOUSE       = os.environ.get("ARCLINK_MOUSE", "1") != "0"   # trackpad ON by default; ARCLINK_MOUSE=0 to disable
 MOUSE_SENS  = float(os.environ.get("ARCLINK_SENS", "1.6"))
 DRAG_THRESH = 14
 SCROLL_STEP = 90
@@ -117,10 +117,10 @@ class ArcLink:
         self.last_move = None
         threading.Thread(target=self._flusher, daemon=True).start()
         threading.Thread(target=self._usb_poll, daemon=True).start()
-        mode = "keyboard + trackpad" if MOUSE else "keyboard only (trackpad left alone)"
-        print(f"ARC Link v1.1 · tablet {self.dev.w}x{self.dev.h} · {mode} · engages when the Pad is plugged in")
-        print("F10 pause/resume · F1 back · F2 home · F3 recents · Ctrl-C quit"
-              + ("" if MOUSE else "  (set ARCLINK_MOUSE=1 to also forward the trackpad)"))
+        mode = "keyboard + trackpad" if MOUSE else "keyboard only"
+        print(f"ARC Link · tablet {self.dev.w}x{self.dev.h} · {mode} · engages when the Pad is plugged in")
+        print("F10 pause · F1 back · F2 home · F3 recents · 3-finger swipe = recents · Ctrl-C quit"
+              + ("" if MOUSE else "  (ARCLINK_MOUSE=0 disables the trackpad)"))
 
     def active(self):
         return self.connected and not self.paused
@@ -210,16 +210,44 @@ class ArcLink:
             self.dev.swipe(ex, ey, ex, self.dev.clamp(ex, ey + dy * SCROLL_STEP)[1], 80)
 
     def run(self):
-        # keyboard listener always; mouse only if explicitly enabled (so the trackpad stays normal)
         if MOUSE:
             mouse.Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll,
                            darwin_intercept=self.intercept).start()
         kl = keyboard.Listener(on_press=self.on_press, on_release=self.on_release,
                                darwin_intercept=self.intercept)
         kl.start()
-        try: kl.join()
-        except KeyboardInterrupt: pass
-        finally: self.flush(); print("\nARC Link stopped.")
+        try:
+            self._gestures(kl)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.flush(); print("\nARC Link stopped.")
+
+    def _gestures(self, kl):
+        # Trackpad swipe → recents. macOS reserves 4-finger (Mission Control) and never delivers it
+        # to a background monitor, so we use the 3-finger swipe, which it does deliver. Needs PyObjC;
+        # without it the keyboard/mouse still run, just no gesture. Global monitors can't be consumed,
+        # so the swipe also does its normal macOS thing — harmless.
+        try:
+            from AppKit import NSEvent, NSEventMaskSwipe
+            from PyObjCTools import AppHelper
+        except Exception:
+            print("(3-finger-swipe→recents needs PyObjC: pip3 install pyobjc-framework-Cocoa)")
+            kl.join()
+            return
+        last = [0.0]
+        def on_swipe(e):
+            if not self.active():
+                return
+            now = time.time()
+            if now - last[0] < 0.5:
+                return
+            last[0] = now
+            self.flush(); self.dev.keyevent(187)      # APP_SWITCH / recents
+            print("gesture → recents")
+        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskSwipe, on_swipe)
+        print("gestures on: 3-finger swipe → recents")
+        AppHelper.runEventLoop()
 
 
 if __name__ == "__main__":
