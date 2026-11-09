@@ -9,7 +9,7 @@ What's new in v1.1 (from on-device testing):
     (no more Finder getting clicks). Uses pynput's darwin_intercept to swallow the events.
   • AUTO-ENGAGE: forwarding turns on only while the Pad is actually connected over USB, and off the
     instant it's unplugged — so at login / autostart the Mac is never hijacked when the Pad is away.
-  • NO SPAM: key auto-repeat is de-duplicated (one character per physical press).
+  • Key auto-repeat passes through (hold backspace / spam !); only F10 is de-bounced.
   • ROTATION-AWARE size, plus an ARCLINK_SIZE override if a tap still lands off.
 
 Controls:
@@ -46,7 +46,6 @@ if not ADB:
 
 MOUSE       = os.environ.get("ARCLINK_MOUSE") == "1"   # default: keyboard only, trackpad untouched
 MOUSE_SENS  = float(os.environ.get("ARCLINK_SENS", "1.6"))
-VNC_PORT    = os.environ.get("ARCLINK_VNC", "5900")    # re-applied on every reconnect; "0" to disable
 DRAG_THRESH = 14
 SCROLL_STEP = 90
 FLUSH_MS    = 45
@@ -133,23 +132,11 @@ class ArcLink:
             if c != self.connected:
                 self.connected = c
                 self.dev.center()
-                if c:
-                    self._tunnels()
-                    extra = f" · VNC tunnel 127.0.0.1:{VNC_PORT} ready" if VNC_PORT not in ("", "0") else ""
-                    print("Pad connected — keyboard ON" + extra)
-                else:
-                    print("Pad unplugged — Mac is yours")
+                print("Pad connected — keyboard ON" if c else "Pad unplugged — Mac is yours")
             time.sleep(1.5)
 
-    def _tunnels(self):
-        # re-apply the VNC reverse tunnel so the Pad's 127.0.0.1:5900 works again after a replug
-        if VNC_PORT in ("", "0"):
-            return
-        try:
-            subprocess.run([ADB, "reverse", f"tcp:{VNC_PORT}", f"tcp:{VNC_PORT}"],
-                           capture_output=True, timeout=5)
-        except Exception:
-            pass
+    # The VNC tunnel is NOT managed here — arclink-tunnel.sh (its own LaunchAgent) owns it, so
+    # updating or restarting the keyboard never drops 127.0.0.1:5900.
 
     # ── macOS capture: swallow events while active so they don't also hit the Mac ──
     def intercept(self, event_type, event):
@@ -176,8 +163,8 @@ class ArcLink:
             print("PAUSED (Mac is yours)" if self.paused else "RESUMED")
             return
         if not self.active(): return
-        if key in self.down: return      # auto-repeat → ignore (no spam)
-        self.down.add(key)
+        # auto-repeat IS allowed now (hold backspace = many deletes, spam ! = many !) —
+        # the darwin_intercept suppression already stops the old double-typing.
         ch = getattr(key, "char", None)
         if ch and ch not in ("\t", "\n", "\r"):
             if ch == " ": self.flush(); self.dev.keyevent(62)
