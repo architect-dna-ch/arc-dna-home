@@ -38,6 +38,13 @@ final class BtSync {
     /** One line for the diagnosis header: what the sync is doing / last did. */
     static volatile String status = "noch nicht gestartet";
 
+    /** ARC·Tap: a theme id and/or buddy index to hand the partner on the next exchange (one-shot). */
+    private static volatile String pendingShare;
+
+    static void queueShare(String themeId, int buddyIdx) {
+        pendingShare = (themeId == null ? "" : themeId) + "|" + buddyIdx;
+    }
+
     private static void log(String s) {
         status = s;
         DiagLog.log("bt sync: " + s);
@@ -246,6 +253,11 @@ final class BtSync {
             }
             b.append("H\t").append(String.join("\t", h)).append('\n');
         }
+        String share = pendingShare;
+        if (share != null) {               // ARC·Tap payload, sent once then cleared
+            b.append("S\t").append(share.replace('\t', ' ').replace('\n', ' ')).append('\n');
+            pendingShare = null;
+        }
         return b.toString();
     }
 
@@ -265,6 +277,9 @@ final class BtSync {
                     artists.computeIfAbsent(f[1], k -> new StringBuilder()).append(f[2]).append('\t').append(f[3]).append('\n');
                 } else if (f[0].equals("H") && f.length >= 5) {
                     hist.append(f[1]).append('\t').append(f[2]).append('\t').append(f[3]).append('\t').append(f[4]).append('\n');
+                } else if (f[0].equals("S") && f.length >= 2) {        // ARC·Tap: partner shared a theme/buddy
+                    c.getSharedPreferences("home", Context.MODE_PRIVATE).edit()
+                        .putString("arctapIn", f[1]).putLong("arctapInAt", System.currentTimeMillis()).apply();
                 }
             } catch (NumberFormatException ignored) {
             }

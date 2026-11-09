@@ -56,8 +56,13 @@ final class Themes {
     };
 
     static Theme current(SharedPreferences prefs) {
-        // Locked to the one artistic ARC-DNA look. The other themes move to the kids web product;
-        // the launcher no longer lets you pick, so the home and wallpaper share one identity.
+        // Default look is the artistic ARC·DNA (ALL[0]); a theme received via ARC·Tap sets "theme".
+        // One-time migration pins existing installs to "arc" so unlocking doesn't revert an old pick.
+        if (!prefs.getBoolean("arctapMig", false)) {
+            prefs.edit().putString("theme", "arc").putBoolean("arctapMig", true).apply();
+        }
+        String id = prefs.getString("theme", "arc");
+        for (Theme t : ALL) if (t.id.equals(id)) return t;
         return ALL[0];
     }
 

@@ -1346,6 +1346,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(head);
 
         LinearLayout home = settingsGroup(col, "Startseite");
+        settingsRow(home, "ARC·Tap · Theme/Buddy teilen", () -> "An dein Partner-Gerät senden (Bluetooth)", v -> showArcTap(), null);
         if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             settingsRow(home, "Tablet-Dashboard", () -> prefs.getBoolean("dashboard", true) ? "AN · Wetter, Uhr, Garten, Ordner" : "AUS · Listen", v -> {
                 prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
@@ -3535,6 +3536,70 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
     }
 
+    /* ───────── ARC·Tap: share a theme or buddy to the paired device over Bluetooth ───────── */
+    private void showArcTap() {
+        final java.util.List<CharSequence> labels = new java.util.ArrayList<>();
+        final java.util.List<Runnable> acts = new java.util.ArrayList<>();
+        for (Themes.Theme t : Themes.ALL) {
+            final String id = t.id, nm = t.name;
+            labels.add("Theme · " + nm);
+            acts.add(() -> arcTapSend(id, -1, "Theme " + nm));
+        }
+        for (int i = 0; i < BUDDIES.length; i++) {
+            final int idx = i;
+            labels.add("Buddy · " + BUDDIES[i][0]);
+            acts.add(() -> arcTapSend(null, idx, "Buddy " + BUDDIES[idx][0]));
+        }
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("ARC·Tap · teilen")
+            .setItems(labels.toArray(new CharSequence[0]), (d, w) -> acts.get(w).run())
+            .setNegativeButton("Abbrechen", null)
+            .show();
+    }
+
+    private void arcTapSend(String themeId, int buddyIdx, String what) {
+        BtSync.queueShare(themeId, buddyIdx);
+        pop("ARC·Tap: " + what + " senden …");
+        BtSync.syncSoon(this, 0, name -> pop(name != null ? "Geteilt mit " + name
+            : "Sende beim nächsten Abgleich – ist ARC-DNA auf dem Partner-Gerät offen?"));
+    }
+
+    /** A theme/buddy the partner shared arrived via BtSync — offer to apply it. */
+    private void checkArcTapIncoming() {
+        String in = prefs.getString("arctapIn", null);
+        long at = prefs.getLong("arctapInAt", 0);
+        if (in == null || at <= prefs.getLong("arctapShown", 0)) return;
+        prefs.edit().putLong("arctapShown", at).apply();
+        String[] f = in.split("\\|", -1);
+        final String themeId = f.length > 0 ? f[0] : "";
+        int bi = -1;
+        try { if (f.length > 1) bi = Integer.parseInt(f[1].trim()); } catch (NumberFormatException ignored) {}
+        final int buddyIdx = (bi >= 0 && bi < BUDDIES.length) ? bi : -1;
+        StringBuilder what = new StringBuilder();
+        if (!themeId.isEmpty()) {
+            String tn = themeId;
+            for (Themes.Theme t : Themes.ALL) if (t.id.equals(themeId)) tn = t.name;
+            what.append("Theme ").append(tn);
+        }
+        if (buddyIdx >= 0) {
+            if (what.length() > 0) what.append(" + ");
+            what.append("Buddy ").append(BUDDIES[buddyIdx][0]);
+        }
+        if (what.length() == 0) return;
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("ARC·Tap")
+            .setMessage("Dein Partner teilt:\n" + what + "\n\nÜbernehmen?")
+            .setPositiveButton("Übernehmen", (d, w) -> {
+                SharedPreferences.Editor e = prefs.edit();
+                if (!themeId.isEmpty()) e.putString("theme", themeId);
+                if (buddyIdx >= 0) { e.putInt("buddy", buddyIdx); e.putBoolean("pro", false); }
+                e.apply();
+                recreate();
+            })
+            .setNegativeButton("Nein", null)
+            .show();
+    }
+
     private void pop(CharSequence text) {
         if (rootFrame == null || isFinishing()) {
             Toast.makeText(this, text, Toast.LENGTH_LONG).show();
@@ -5686,6 +5751,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
+        checkArcTapIncoming();
         applyPro();
         applySwept();
         reviveBuddy();
