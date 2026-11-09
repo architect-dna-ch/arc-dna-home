@@ -307,6 +307,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Fokus: the decision funnel — two choices at a time until only the right apps remain. -->
+        <activity
+            android:name=".FokusActivity"
+            android:exported="false"
+            android:label="Fokus"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Bücher: all e-books across edubase / RW-Lehrmittel / kv-edupool, with activation codes. -->
         <activity
             android:name=".BuecherActivity"

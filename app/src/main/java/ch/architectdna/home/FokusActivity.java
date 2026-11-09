@@ -1,0 +1,314 @@
+package ch.architectdna.home;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+/**
+ * Fokus — the decision funnel. Instead of a wall of 10+ apps, two choices at a time trim the
+ * situation down (Freizeit/Fokus → Planen/Machen → Schule/Arbeit …) until only the 2–3 apps that
+ * actually fit right now are left. Self-contained: never touches the home screen's own code.
+ */
+public class FokusActivity extends Activity {
+
+    // ---- the tree ----
+    private static final class Node {
+        String la, ha, lb, hb;   // split: two labels + hints
+        Node a, b;               // split children
+        String[] apps;           // leaf: app tokens
+        String crumb;            // breadcrumb word
+        boolean leaf() { return apps != null; }
+    }
+    private static Node split(String crumb, String la, String ha, Node a, String lb, String hb, Node b) {
+        Node n = new Node(); n.crumb = crumb; n.la = la; n.ha = ha; n.a = a; n.lb = lb; n.hb = hb; n.b = b; return n;
+    }
+    private static Node leaf(String crumb, String... apps) { Node n = new Node(); n.crumb = crumb; n.apps = apps; return n; }
+
+    private Node root() {
+        return split("Start",
+            "Freizeit", "abschalten, geniessen",
+                split("Freizeit",
+                    "Ruhe", "runterkommen", leaf("Ruhe", "player", "globus", "freq"),
+                    "Spiel", "Spass, Wettkampf", leaf("Spiel", "race", "nexus", "board")),
+            "Fokus", "etwas schaffen",
+                split("Fokus",
+                    "Planen", "ordnen, vorbereiten",
+                        split("Planen",
+                            "Schule", "", leaf("Schule", "wecker", "buecher", "lern"),
+                            "Arbeit", "", leaf("Arbeit", "board", "wecker", "recorder")),
+                    "Machen", "jetzt umsetzen",
+                        split("Machen",
+                            "Schule", "", leaf("Schule", "lern", "buecher", "recorder"),
+                            "Arbeit", "", leaf("Arbeit", "board", "recorder", "vpn"))));
+    }
+
+    private final Deque<Node> stack = new ArrayDeque<>();
+    private final Deque<String> trail = new ArrayDeque<>();
+    private Node cur;
+    private int bg, card, line, ink, ink2, ink3, rust;
+    private LinearLayout rootView;
+
+    @Override
+    protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        getWindow().getDecorView();
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        bg = night ? 0xFF14110E : 0xFFF5F1E8;
+        card = night ? 0xFF1C1915 : 0xFFFBF8F1;
+        line = night ? 0xFF2E2820 : 0xFFE2D9C8;
+        ink = night ? 0xFFEDE7DA : 0xFF1B1613;
+        ink2 = night ? 0xFFADA293 : 0xFF6A5F54;
+        ink3 = night ? 0xFF6E6456 : 0xFFA99E8E;
+        rust = night ? 0xFFD1472E : 0xFFB5271E;
+        getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
+
+        rootView = new LinearLayout(this);
+        rootView.setOrientation(LinearLayout.VERTICAL);
+        rootView.setBackgroundColor(bg);
+        if (Build.VERSION.SDK_INT >= 30) {
+            rootView.setOnApplyWindowInsetsListener((v, in) -> {
+                android.graphics.Insets i = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+                rootView.setPadding(i.left, i.top, i.right, i.bottom);
+                return in;
+            });
+        }
+        setContentView(rootView);
+        cur = root();
+        show();
+    }
+
+    private void go(Node next, String crumb) {
+        stack.push(cur);
+        if (crumb != null) trail.push(crumb);
+        cur = next;
+        show();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (!stack.isEmpty()) { cur = stack.pop(); if (!trail.isEmpty()) trail.pop(); show(); }
+        else super.onBackPressed();
+    }
+
+    private void show() {
+        rootView.removeAllViews();
+        rootView.addView(header());
+        if (cur.leaf()) rootView.addView(leafView(), grow());
+        else rootView.addView(splitView(), grow());
+        AlphaAnimation a = new AlphaAnimation(0f, 1f); a.setDuration(220); rootView.startAnimation(a);
+    }
+
+    private LinearLayout.LayoutParams grow() { return new LinearLayout.LayoutParams(-1, 0, 1f); }
+
+    // ---- header: cube mark + breadcrumb ----
+    private View header() {
+        LinearLayout h = new LinearLayout(this);
+        h.setGravity(Gravity.CENTER_VERTICAL);
+        h.setPadding(dp(22), dp(18), dp(22), dp(10));
+
+        // the ARC·DNA overlapping-square mark
+        View cube = new View(this);
+        GradientDrawable g = new GradientDrawable(); g.setStroke(dp(1.6f), rust); g.setColor(0);
+        cube.setBackground(g);
+        LinearLayout box = new LinearLayout(this);
+        box.addView(cube, new LinearLayout.LayoutParams(dp(14), dp(14)));
+        h.addView(box, new LinearLayout.LayoutParams(dp(18), dp(18)));
+
+        TextView crumb = new TextView(this);
+        StringBuilder sb = new StringBuilder("ARC·DNA");
+        java.util.Iterator<String> it = trail.descendingIterator();
+        while (it.hasNext()) sb.append("  ›  ").append(it.next());
+        crumb.setText(sb.toString());
+        crumb.setTypeface(Typeface.MONOSPACE);
+        crumb.setTextSize(11.5f);
+        crumb.setLetterSpacing(0.04f);
+        crumb.setTextColor(ink3);
+        crumb.setPadding(dp(10), 0, dp(10), 0);
+        h.addView(crumb, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        if (!stack.isEmpty()) {
+            TextView back = chip("↑ zurück");
+            back.setOnClickListener(v -> onBackPressed());
+            h.addView(back);
+        }
+        TextView all = chip("Alle Apps");
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-2, -2); alp.leftMargin = dp(8);
+        all.setOnClickListener(v -> finish()); // back to the full home
+        h.addView(all, alp);
+        return h;
+    }
+
+    // ---- a split: two big halves, tap to go deeper ----
+    private View splitView() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(dp(16), dp(6), dp(16), dp(20));
+        col.addView(half(cur.la, cur.ha, true), halfLp());
+        View gap = new View(this); col.addView(gap, new LinearLayout.LayoutParams(-1, dp(14)));
+        col.addView(half(cur.lb, cur.hb, false), halfLp());
+        return col;
+    }
+    private LinearLayout.LayoutParams halfLp() { return new LinearLayout.LayoutParams(-1, 0, 1f); }
+
+    private View half(String label, String hint, boolean first) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setGravity(Gravity.CENTER);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(first ? card : bg);
+        g.setStroke(dp(first ? 1.6f : 1.2f), first ? rust : line);
+        g.setCornerRadius(dp(20));
+        c.setBackground(g);
+        c.setClickable(true);
+
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextColor(ink);
+        t.setTextSize(34);
+        t.setLetterSpacing(-0.03f);
+        t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        c.addView(t);
+        if (hint != null && !hint.isEmpty()) {
+            TextView s = new TextView(this);
+            s.setText(hint);
+            s.setTextColor(ink2);
+            s.setTextSize(14);
+            s.setPadding(0, dp(4), 0, 0);
+            c.addView(s);
+        }
+        final Node target = first ? cur.a : cur.b;
+        final String crumb = label;
+        c.setOnClickListener(v -> go(target, crumb));
+        return c;
+    }
+
+    // ---- a leaf: the 2–3 apps that fit ----
+    private View leafView() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        col.setPadding(dp(22), dp(12), dp(22), dp(24));
+
+        TextView lead = new TextView(this);
+        lead.setText("Dafür brauchst du jetzt:");
+        lead.setTextColor(ink2);
+        lead.setTextSize(15);
+        lead.setPadding(0, dp(6), 0, dp(16));
+        lead.setGravity(Gravity.CENTER);
+        col.addView(lead);
+
+        for (String tok : cur.apps) col.addView(appCard(tok), cardLp());
+
+        TextView hint = new TextView(this);
+        hint.setText("Nicht dabei? → Alle Apps");
+        hint.setTextColor(ink3);
+        hint.setTextSize(12.5f);
+        hint.setPadding(0, dp(14), 0, 0);
+        hint.setGravity(Gravity.CENTER);
+        hint.setOnClickListener(v -> finish());
+        col.addView(hint);
+        return col;
+    }
+    private LinearLayout.LayoutParams cardLp() { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.bottomMargin = dp(12); return p; }
+
+    private View appCard(String tok) {
+        LinearLayout c = new LinearLayout(this);
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable g = new GradientDrawable(); g.setColor(card); g.setStroke(dp(1.4f), rust); g.setCornerRadius(dp(16));
+        c.setBackground(g);
+        c.setPadding(dp(20), dp(20), dp(20), dp(20));
+        c.setClickable(true);
+
+        TextView t = new TextView(this);
+        t.setText(appLabel(tok));
+        t.setTextColor(ink);
+        t.setTextSize(22);
+        t.setLetterSpacing(-0.02f);
+        t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        c.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView arr = new TextView(this);
+        arr.setText("→"); arr.setTextColor(rust); arr.setTextSize(22);
+        c.addView(arr);
+
+        c.setOnClickListener(v -> launch(tok));
+        return c;
+    }
+
+    // ---- launching ----
+    private void launch(String tok) {
+        try {
+            Intent i;
+            if ("lern".equals(tok)) {
+                i = new Intent(Intent.ACTION_VIEW, Uri.parse("https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY"));
+            } else {
+                Class<?> c = cls(tok);
+                if (c == null) return;
+                i = new Intent(this, c);
+            }
+            startActivity(i);
+        } catch (RuntimeException ignored) { }
+    }
+
+    private Class<?> cls(String t) {
+        switch (t) {
+            case "freq": return FreqActivity.class;
+            case "globus": return GlobusActivity.class;
+            case "nexus": return NexusActivity.class;
+            case "board": return BoardActivity.class;
+            case "recorder": return RecorderActivity.class;
+            case "player": return PlayerActivity.class;
+            case "wecker": return WeckerActivity.class;
+            case "buecher": return BuecherActivity.class;
+            case "race": return RaceActivity.class;
+            case "vpn": return VpnActivity.class;
+            default: return null;
+        }
+    }
+
+    private String appLabel(String t) {
+        switch (t) {
+            case "freq": return "VOID FREQ";
+            case "globus": return "Globus";
+            case "nexus": return "Nexus";
+            case "board": return "Board";
+            case "recorder": return "Aufnahme";
+            case "player": return "Musik";
+            case "wecker": return "Wecker";
+            case "buecher": return "Bücher";
+            case "race": return "Fuchsjagd";
+            case "vpn": return "VPN";
+            case "lern": return "Lernbegleiter";
+            default: return t;
+        }
+    }
+
+    private TextView chip(String s) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextColor(ink2);
+        t.setTextSize(12.5f);
+        t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        t.setPadding(dp(13), dp(8), dp(13), dp(8));
+        GradientDrawable g = new GradientDrawable(); g.setCornerRadius(dp(40)); g.setColor(0); g.setStroke(dp(1), line);
+        t.setBackground(g);
+        t.setClickable(true);
+        return t;
+    }
+
+    private int dp(float v) { return Math.round(getResources().getDisplayMetrics().density * v); }
+}
