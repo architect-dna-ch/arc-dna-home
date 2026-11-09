@@ -3462,10 +3462,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             || libraryOpen || game != null || world != null || scene != null || dino != null || sweepView != null) {
             return;
         }
+        if (prefs.getInt("whatsNewRev", 0) < WHATS_NEW_REV) { showWhatsNew(); return; }
         Coach.Tip tip = Coach.next(this);
         if (tip != null) showCoachCard(tip);
     }
 
+    private static final int WHATS_NEW_REV = 1;  // bump to show the "Was ist neu" overlay again
     private FrameLayout coachCard;
 
     private void showCoachCard(Coach.Tip tip) {
@@ -3521,6 +3523,67 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         coachCard = null;
         if (c == null) return;
         c.animate().alpha(0f).translationY(dp(20)).setDuration(180).withEndAction(() -> rootFrame.removeView(c)).start();
+    }
+
+    /** A one-time "Was ist neu" overlay after a big update: everything that now exists, one tap in. */
+    private void showWhatsNew() {
+        prefs.edit().putInt("whatsNewRev", WHATS_NEW_REV).apply();
+        FrameLayout wrap = new FrameLayout(this);
+        coachCard = wrap;
+        wrap.setElevation(dp(12));
+        wrap.setBackgroundColor(isNight() ? 0xF2141110 : 0xF7F5F1E8);
+        wrap.setClickable(true);
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(26), dp(46), dp(26), dp(34));
+
+        TextView eye = monoText(11, rust); eye.setLetterSpacing(0.2f); eye.setText("— WAS IST NEU"); box.addView(eye);
+        TextView h = text(30, ink, true); h.setText("Dein ARC·DNA wächst"); box.addView(h, margins(-1, -2, 0, dp(6), 0, dp(4)));
+        TextView sub = text(14, ink2, false); sub.setText("Das steckt jetzt drin. Tippen öffnet es."); box.addView(sub, margins(-1, -2, 0, 0, 0, dp(16)));
+
+        addNew(box, "Fokus", "Zwei Entscheidungen, bis nur noch 3 Apps bleiben — kein App-Wald mehr.", FokusActivity.class, null);
+        addNew(box, "Bücher", "Alle E-Books + Codes an einem Ort. Tippen kopiert den Code.", BuecherActivity.class, null);
+        addNew(box, "Globus", "Neig das Handy — peile Regionen, springt zurück wie ein Controller-Stick.", GlobusActivity.class, null);
+        addNew(box, "Lernbegleiter", "Übt mit dir. Theorie erst NACH dem Fehler — kein Volldump.", null, "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY");
+        addNew(box, "Antrieb", "Checkt aktiv bei dir ein und wirft dir Funken. Du pickst, was zieht.", null, "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ");
+        addNew(box, "Startbildschirm", "Nur noch ARC auf dem Home. Bunte Apps liegen in der Mediathek — Würfel-Knopf unten rechts.", null, null);
+
+        TextView go = text(15, 0xFFFFFFFF, true); go.setText("Los geht's"); go.setGravity(Gravity.CENTER);
+        go.setPadding(dp(18), dp(14), dp(18), dp(14)); go.setBackground(box(rust, rust, 40));
+        go.setOnClickListener(v -> closeCoachCard());
+        box.addView(go, margins(-1, -2, 0, dp(12), 0, 0));
+
+        sv.addView(box);
+        wrap.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        rootFrame.addView(wrap, new FrameLayout.LayoutParams(-1, -1));
+        wrap.setAlpha(0f);
+        wrap.animate().alpha(1f).setDuration(260).start();
+    }
+
+    private void addNew(LinearLayout box, String name, String desc, Class<?> cls, String url) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setBackground(box(isNight() ? 0xFF1C1915 : 0xFFFBF8F1, isNight() ? 0xFF2E2820 : 0xFFE2D9C8, 14));
+        c.setPadding(dp(16), dp(13), dp(16), dp(13));
+        boolean opens = cls != null || url != null;
+        c.setClickable(opens);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView t = text(16, ink, true); t.setText(name);
+        head.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        if (opens) { TextView a = monoText(11, rust); a.setText("ÖFFNEN ↗"); head.addView(a); }
+        c.addView(head);
+        TextView d = text(13, ink2, false); d.setText(desc); d.setLineSpacing(0, 1.15f);
+        c.addView(d, margins(-1, -2, 0, dp(3), 0, 0));
+        if (opens) c.setOnClickListener(v -> {
+            closeCoachCard();
+            try {
+                if (cls != null) startActivity(new Intent(this, cls));
+                else startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            } catch (RuntimeException ignored) { }
+        });
+        box.addView(c, margins(-1, -2, 0, 0, 0, dp(10)));
     }
 
     /** Einstellungen → Tipps: read any unlocked tip again, or start the tutorial over. */

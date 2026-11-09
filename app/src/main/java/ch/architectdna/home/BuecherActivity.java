@@ -139,13 +139,12 @@ public class BuecherActivity extends Activity {
             row.setBackground(box(card, line, dp(14)));
             row.setPadding(dp(13), dp(13), dp(15), dp(13));
             row.setClickable(true);
+            // Tap the book = copy its code (not just show it). "Öffnen" opens the platform.
             row.setOnClickListener(v -> {
-                if (!inBook) {
-                    ClipboardManager cm = getSystemService(ClipboardManager.class);
-                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
-                    toast("Code kopiert: " + code + " — auf der Seite einfügen");
-                }
-                open(openUrl);
+                if (inBook) { open(openUrl); return; }
+                ClipboardManager cm = getSystemService(ClipboardManager.class);
+                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
+                toast("✓ Code kopiert: " + code);
             });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
             clp.bottomMargin = dp(10);
@@ -153,7 +152,7 @@ public class BuecherActivity extends Activity {
 
             LinearLayout.LayoutParams cvp = new LinearLayout.LayoutParams(dp(54), dp(76));
             cvp.rightMargin = dp(13);
-            row.addView(makeCover(title, spine), cvp);
+            row.addView(makeCover(subject, spine), cvp);
 
             LinearLayout c = new LinearLayout(this);
             c.setOrientation(LinearLayout.VERTICAL);
@@ -211,7 +210,9 @@ public class BuecherActivity extends Activity {
             TextView openRow = mono("ÖFFNEN  ↗", rust);
             openRow.setTextSize(11f);
             openRow.setLetterSpacing(0.08f);
-            openRow.setPadding(0, dp(10), 0, 0);
+            openRow.setPadding(0, dp(10), dp(8), dp(4));
+            openRow.setClickable(true);
+            openRow.setOnClickListener(v -> open(openUrl));
             c.addView(openRow);
 
             col.addView(row);
@@ -226,31 +227,43 @@ public class BuecherActivity extends Activity {
         }
     }
 
-    /** A little book cover: coloured spine + light face with the title, like a shelf. */
-    private View makeCover(String title, int spine) {
+    /** A little book cover like the mockup: coloured spine + light face with a bar and the subject.
+     *  Kept graphic and short on purpose — the full title sits to the right of the cover. */
+    private View makeCover(String subject, int spine) {
         LinearLayout cov = new LinearLayout(this);
         cov.setOrientation(LinearLayout.HORIZONTAL);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(0xFFF0EEF4);
-        g.setCornerRadius(dp(6));
+        g.setColor(0xFFF1EFF4);
+        g.setCornerRadius(dp(5));
         g.setStroke(Math.round(getResources().getDisplayMetrics().density), 0x22000000);
         cov.setBackground(g);
         cov.setClipToOutline(true);
 
         View sp = new View(this);
         sp.setBackgroundColor(spine);
-        cov.addView(sp, new LinearLayout.LayoutParams(dp(7), -1));
+        cov.addView(sp, new LinearLayout.LayoutParams(dp(8), -1));
 
-        TextView ft = new TextView(this);
-        ft.setText(title);
-        ft.setTextColor(spine);
-        ft.setTextSize(8.5f);
-        ft.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        ft.setLineSpacing(0, 1.05f);
-        ft.setPadding(dp(5), dp(6), dp(4), dp(6));
-        ft.setMaxLines(6);
-        ft.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        cov.addView(ft, new LinearLayout.LayoutParams(0, -1, 1f));
+        LinearLayout face = new LinearLayout(this);
+        face.setOrientation(LinearLayout.VERTICAL);
+        face.setPadding(dp(6), dp(8), dp(5), dp(8));
+
+        View bar = new View(this);
+        bar.setBackgroundColor(0xFF1C1A1F);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(20), dp(5));
+        bp.bottomMargin = dp(6);
+        face.addView(bar, bp);
+
+        TextView subj = new TextView(this);
+        subj.setText(subject);
+        subj.setTextColor(spine);
+        subj.setTextSize(8.5f);
+        subj.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        subj.setLineSpacing(0, 1.0f);
+        subj.setMaxLines(3);
+        subj.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        face.addView(subj);
+
+        cov.addView(face, new LinearLayout.LayoutParams(0, -1, 1f));
         return cov;
     }
 
