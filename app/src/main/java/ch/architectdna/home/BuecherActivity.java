@@ -138,7 +138,14 @@ public class BuecherActivity extends Activity {
             c.setBackground(box(card, line, dp(14)));
             c.setPadding(dp(15), dp(13), dp(15), dp(13));
             c.setClickable(true);
-            c.setOnClickListener(v -> open(openUrl));
+            c.setOnClickListener(v -> {
+                if (!inBook) {
+                    ClipboardManager cm = getSystemService(ClipboardManager.class);
+                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
+                    toast("Code kopiert: " + code + " — auf der Seite einfügen");
+                }
+                open(openUrl);
+            });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
             clp.bottomMargin = dp(10);
             c.setLayoutParams(clp);
