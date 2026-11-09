@@ -50,6 +50,9 @@ public class GlobusActivity extends Activity {
     private boolean night;
     private int bg, card, line, ink, ink2, ink3, rust;
     private Globe globe;
+    private android.hardware.SensorManager sensors;
+    private android.hardware.Sensor tiltSensor;
+    volatile float tiltX, tiltY;      // normalised gravity across the screen (−1..1), low-passed
     private LinearLayout sheet;
     private TextView sheetTitle, sheetUrl, count;
     private Mark selected;
@@ -137,6 +140,11 @@ public class GlobusActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 34) overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.app_slide_up, R.anim.home_hold);
         else overridePendingTransition(R.anim.app_slide_up, R.anim.home_hold);
         prefs = getSharedPreferences("globus", MODE_PRIVATE);
+        sensors = getSystemService(android.hardware.SensorManager.class);
+        if (sensors != null) {
+            tiltSensor = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY);
+            if (tiltSensor == null) tiltSensor = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
+        }
         night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         bg = night ? 0xFF121211 : 0xFFFAFAF8;
         card = night ? 0xFF1C1C1A : 0xFFFFFFFF;
@@ -452,6 +460,29 @@ public class GlobusActivity extends Activity {
         sheet.setVisibility(View.VISIBLE);
     }
 
+    private final android.hardware.SensorEventListener tiltListener = new android.hardware.SensorEventListener() {
+        @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+            float nx = e.values[0] / 9.81f, ny = e.values[1] / 9.81f;
+            tiltX += (nx - tiltX) * 0.2f;      // low-pass to kill jitter
+            tiltY += (ny - tiltY) * 0.2f;
+            if (globe != null) globe.invalidate();
+        }
+        @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) { }
+    };
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (sensors != null && tiltSensor != null)
+            sensors.registerListener(tiltListener, tiltSensor, android.hardware.SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (sensors != null) sensors.unregisterListener(tiltListener);
+    }
+
     /* ---------------- The globe ---------------- */
 
     private final class Globe extends View {
@@ -459,6 +490,7 @@ public class GlobusActivity extends Activity {
         private final android.graphics.Path path = new android.graphics.Path();
         private final android.graphics.RectF iconDst = new android.graphics.RectF();
         private double yaw = 0.6, pitch = -0.35, vYaw, vPitch, targetYaw = Double.NaN, targetPitch;
+        private double tiltYaw, tiltPitch;   // joystick offset from phone tilt, springs back to 0 when level
         private float zoom = 1.15f, lastX, lastY, downX, downY;    // default a touch zoomed in
         private boolean pinched;
         private long lastFrame;
@@ -486,8 +518,9 @@ public class GlobusActivity extends Activity {
         }
 
         private float[] project(double lat, double lon, float cx, float cy, float r) {
-            double x = Math.cos(lat) * Math.sin(lon + yaw), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon + yaw);
-            double y2 = y * Math.cos(pitch) - z * Math.sin(pitch), z2 = y * Math.sin(pitch) + z * Math.cos(pitch);
+            double ey = yaw + tiltYaw, ep = Math.max(-1.4, Math.min(1.4, pitch + tiltPitch));
+            double x = Math.cos(lat) * Math.sin(lon + ey), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon + ey);
+            double y2 = y * Math.cos(ep) - z * Math.sin(ep), z2 = y * Math.sin(ep) + z * Math.cos(ep);
             return new float[]{(float) (cx + x * r), (float) (cy - y2 * r), (float) z2};
         }
 
@@ -509,8 +542,20 @@ public class GlobusActivity extends Activity {
                 vPitch *= 0.94;
                 moving = true;
             } else {
-                yaw += dt * 0.08;      // a slow idle spin
-                moving = true;
+                moving = true;         // idle — the slow spin resumes below, only when level
+            }
+
+            // Tilt joystick: gravity across the screen peeks the globe (up-left tilt → up-left region),
+            // and springs smoothly back to centre when you level the phone — like a controller stick.
+            final double DEAD = 0.06, GY = 2.0, GP = 1.5, MAX = 1.1;
+            double nx = -tiltX, ny = -tiltY;
+            double txT = Math.abs(nx) < DEAD ? 0 : Math.max(-MAX, Math.min(MAX, (nx - Math.signum(nx) * DEAD) * GY));
+            double tyT = Math.abs(ny) < DEAD ? 0 : Math.max(-MAX, Math.min(MAX, (ny - Math.signum(ny) * DEAD) * GP));
+            tiltYaw += (txT - tiltYaw) * Math.min(1, dt * 8);
+            tiltPitch += (tyT - tiltPitch) * Math.min(1, dt * 8);
+            boolean tilting = Math.abs(txT) > 0.001 || Math.abs(tyT) > 0.001;
+            if (!tilting && Double.isNaN(targetYaw) && Math.abs(vYaw) <= 0.0005 && Math.abs(vPitch) <= 0.0005) {
+                yaw += dt * 0.08;      // resume the slow idle spin only when level and at rest
             }
 
             float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.4f * zoom;
