@@ -25,13 +25,13 @@ import android.widget.Toast;
  */
 public class BuecherActivity extends Activity {
 
-    // {subject, platform, openUrl, redeemUrl}
+    // {subject, platform, openUrl, redeemUrl, spineColorHex}
     private static final String[][] META = {
-        {"Rechnungswesen", "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch"},
-        {"Mathematik", "edubase", "https://app.edubase.ch/#library", ""},
-        {"Deutsch", "edubase", "https://app.edubase.ch/#library", ""},
-        {"Französisch", "edubase", "https://app.edubase.ch/#library", ""},
-        {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem"},
+        {"Rechnungswesen", "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
+        {"Mathematik", "edubase", "https://app.edubase.ch/#library", "", "B5271E"},
+        {"Deutsch", "edubase", "https://app.edubase.ch/#library", "", "C8643B"},
+        {"Französisch", "edubase", "https://app.edubase.ch/#library", "", "3E7C7B"},
+        {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "6A4FA0"},
     };
     // per subject: {title, subtitle, code}  (code "im Buch" = printed in the paper book)
     private static final String[][][] BOOKS = {
@@ -115,6 +115,7 @@ public class BuecherActivity extends Activity {
 
     private void addGroup(LinearLayout col, String[] meta, String[][] books) {
         String subject = meta[0], platform = meta[1], openUrl = meta[2], redeemUrl = meta[3];
+        final int spine = 0xFF000000 | Integer.parseInt(meta[4], 16);
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
@@ -133,12 +134,12 @@ public class BuecherActivity extends Activity {
             final String title = bk[0], subtitle = bk[1], code = bk[2];
             boolean inBook = "im Buch".equals(code);
 
-            LinearLayout c = new LinearLayout(this);
-            c.setOrientation(LinearLayout.VERTICAL);
-            c.setBackground(box(card, line, dp(14)));
-            c.setPadding(dp(15), dp(13), dp(15), dp(13));
-            c.setClickable(true);
-            c.setOnClickListener(v -> {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setBackground(box(card, line, dp(14)));
+            row.setPadding(dp(13), dp(13), dp(15), dp(13));
+            row.setClickable(true);
+            row.setOnClickListener(v -> {
                 if (!inBook) {
                     ClipboardManager cm = getSystemService(ClipboardManager.class);
                     if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
@@ -148,7 +149,15 @@ public class BuecherActivity extends Activity {
             });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
             clp.bottomMargin = dp(10);
-            c.setLayoutParams(clp);
+            row.setLayoutParams(clp);
+
+            LinearLayout.LayoutParams cvp = new LinearLayout.LayoutParams(dp(54), dp(76));
+            cvp.rightMargin = dp(13);
+            row.addView(makeCover(title, spine), cvp);
+
+            LinearLayout c = new LinearLayout(this);
+            c.setOrientation(LinearLayout.VERTICAL);
+            row.addView(c, new LinearLayout.LayoutParams(0, -2, 1f));
 
             TextView tt = new TextView(this);
             tt.setText(title);
@@ -205,7 +214,7 @@ public class BuecherActivity extends Activity {
             openRow.setPadding(0, dp(10), 0, 0);
             c.addView(openRow);
 
-            col.addView(c);
+            col.addView(row);
         }
 
         if (!redeemUrl.isEmpty()) {
@@ -215,6 +224,34 @@ public class BuecherActivity extends Activity {
             all.setOnClickListener(v -> open(openUrl));
             col.addView(all);
         }
+    }
+
+    /** A little book cover: coloured spine + light face with the title, like a shelf. */
+    private View makeCover(String title, int spine) {
+        LinearLayout cov = new LinearLayout(this);
+        cov.setOrientation(LinearLayout.HORIZONTAL);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(0xFFF0EEF4);
+        g.setCornerRadius(dp(6));
+        g.setStroke(Math.round(getResources().getDisplayMetrics().density), 0x22000000);
+        cov.setBackground(g);
+        cov.setClipToOutline(true);
+
+        View sp = new View(this);
+        sp.setBackgroundColor(spine);
+        cov.addView(sp, new LinearLayout.LayoutParams(dp(7), -1));
+
+        TextView ft = new TextView(this);
+        ft.setText(title);
+        ft.setTextColor(spine);
+        ft.setTextSize(8.5f);
+        ft.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        ft.setLineSpacing(0, 1.05f);
+        ft.setPadding(dp(5), dp(6), dp(4), dp(6));
+        ft.setMaxLines(6);
+        ft.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        cov.addView(ft, new LinearLayout.LayoutParams(0, -1, 1f));
+        return cov;
     }
 
     private void open(String url) {
