@@ -239,6 +239,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        setupNfc();
         DiagLog.init(this);
         DiagLog.log("launcher start, " + wallpaperStatusSafe());
         pickColours();
@@ -3544,6 +3545,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         final java.util.List<Runnable> acts = new java.util.ArrayList<>();
         labels.add("🏁 Fuchs-Rennen (Bluetooth)");
         acts.add(() -> startActivity(new Intent(this, RaceActivity.class)));
+        labels.add("📲 Auf NFC-Tag schreiben …");
+        acts.add(this::showArcTapNfc);
         for (Themes.Theme t : Themes.ALL) {
             final String id = t.id, nm = t.name;
             labels.add("Theme · " + nm);
@@ -3602,6 +3605,108 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             })
             .setNegativeButton("Nein", null)
             .show();
+    }
+
+    /* ───────── ARC·Tap NFC: write a theme/buddy to a tag, tap a tag to apply ───────── */
+    private android.nfc.NfcAdapter arcNfc;
+    private android.app.PendingIntent arcNfcPI;
+    private String nfcWrite;
+    private boolean nfcChecked;
+
+    private void setupNfc() {
+        arcNfc = android.nfc.NfcAdapter.getDefaultAdapter(this);
+        if (arcNfc == null) return;
+        Intent i = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0;
+        arcNfcPI = android.app.PendingIntent.getActivity(this, 0, i, flags);
+    }
+
+    private void nfcResume() {
+        if (arcNfc != null && nfcWrite != null) {
+            try { arcNfc.enableForegroundDispatch(this, arcNfcPI, null, null); } catch (RuntimeException ignored) {}
+        }
+    }
+
+    private void nfcPause() {
+        if (arcNfc != null) { try { arcNfc.disableForegroundDispatch(this); } catch (RuntimeException ignored) {} }
+    }
+
+    private void armNfcWrite(String themeId, int buddyIdx, String what) {
+        if (arcNfc == null) { pop("Dieses Gerät hat kein NFC"); return; }
+        if (!arcNfc.isEnabled()) { pop("NFC ist aus – oben in den Schnelleinstellungen einschalten"); return; }
+        nfcWrite = (themeId == null ? "" : themeId) + "|" + buddyIdx;
+        nfcResume();
+        pop("NFC: " + what + " – Tag jetzt an die Rückseite des Geräts halten");
+    }
+
+    private void showArcTapNfc() {
+        final java.util.List<CharSequence> labels = new java.util.ArrayList<>();
+        final java.util.List<Runnable> acts = new java.util.ArrayList<>();
+        for (Themes.Theme t : Themes.ALL) {
+            final String id = t.id, nm = t.name;
+            labels.add("Theme · " + nm);
+            acts.add(() -> armNfcWrite(id, -1, "Theme " + nm));
+        }
+        for (int i = 0; i < BUDDIES.length; i++) {
+            final int idx = i;
+            labels.add("Buddy · " + BUDDIES[i][0]);
+            acts.add(() -> armNfcWrite(null, idx, "Buddy " + BUDDIES[idx][0]));
+        }
+        new android.app.AlertDialog.Builder(this).setTitle("Auf NFC-Tag schreiben")
+            .setItems(labels.toArray(new CharSequence[0]), (d, w) -> acts.get(w).run())
+            .setNegativeButton("Abbrechen", null).show();
+    }
+
+    private void handleNfc(Intent intent) {
+        if (intent == null || intent.getAction() == null) return;
+        android.nfc.Tag tag = intent.getParcelableExtra(android.nfc.NfcAdapter.EXTRA_TAG);
+        if (nfcWrite != null && tag != null) {                   // writing a tag we armed
+            boolean ok = writeTag(tag, nfcWrite);
+            pop(ok ? "Auf NFC-Tag geschrieben ✓" : "Schreiben fehlgeschlagen – Tag nochmal halten");
+            if (ok) { nfcWrite = null; nfcPause(); }
+            return;
+        }
+        if (android.nfc.NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {   // tapped our tag
+            String payload = readArcTap(intent);
+            if (payload != null) {
+                prefs.edit().putString("arctapIn", payload).putLong("arctapInAt", System.currentTimeMillis()).apply();
+                checkArcTapIncoming();
+            }
+        }
+    }
+
+    private String readArcTap(Intent intent) {
+        android.os.Parcelable[] raw = intent.getParcelableArrayExtra(android.nfc.NfcAdapter.EXTRA_NDEF_MESSAGES);
+        if (raw == null) return null;
+        for (android.os.Parcelable pr : raw) {
+            if (!(pr instanceof android.nfc.NdefMessage)) continue;
+            for (android.nfc.NdefRecord r : ((android.nfc.NdefMessage) pr).getRecords()) {
+                if ("application/vnd.architectdna.arctap".equals(r.toMimeType())) {
+                    return new String(r.getPayload(), java.nio.charset.StandardCharsets.UTF_8);
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean writeTag(android.nfc.Tag tag, String payload) {
+        android.nfc.NdefMessage msg = new android.nfc.NdefMessage(android.nfc.NdefRecord.createMime(
+            "application/vnd.architectdna.arctap", payload.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        try {
+            android.nfc.tech.Ndef ndef = android.nfc.tech.Ndef.get(tag);
+            if (ndef != null) {
+                ndef.connect();
+                boolean ok = ndef.isWritable() && ndef.getMaxSize() >= msg.toByteArray().length;
+                if (ok) ndef.writeNdefMessage(msg);
+                ndef.close();
+                return ok;
+            }
+            android.nfc.tech.NdefFormatable f = android.nfc.tech.NdefFormatable.get(tag);
+            if (f != null) { f.connect(); f.format(msg); f.close(); return true; }
+        } catch (Exception e) {
+            DiagLog.log("nfc write: " + e.getMessage());
+        }
+        return false;
     }
 
     private void pop(CharSequence text) {
@@ -5762,6 +5867,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             };
             prefs.registerOnSharedPreferenceChangeListener(arcTapListener);
         }
+        nfcResume();
+        if (!nfcChecked) { nfcChecked = true; handleNfc(getIntent()); }
         applyPro();
         applySwept();
         reviveBuddy();
@@ -5843,6 +5950,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onPause() {
         super.onPause();
+        nfcPause();
         handler.removeCallbacks(friendTick);
         try {
             unregisterReceiver(lowWatch);
@@ -6044,6 +6152,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (intent != null && intent.getAction() != null && intent.getAction().startsWith("android.nfc.action.")) {
+            handleNfc(intent);
+            return;
+        }
         if (CALIBRATE_NOD.equals(intent.getAction())) {
             calibrate("nod");
             return;
