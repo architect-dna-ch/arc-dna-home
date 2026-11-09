@@ -307,6 +307,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Bücher: all e-books across edubase / RW-Lehrmittel / kv-edupool, with activation codes. -->
+        <activity
+            android:name=".BuecherActivity"
+            android:exported="false"
+            android:label="Bücher"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC·Tap Fuchs-Rennen: live Bluetooth race between two ARC-DNA devices. -->
         <activity
             android:name=".RaceActivity"
