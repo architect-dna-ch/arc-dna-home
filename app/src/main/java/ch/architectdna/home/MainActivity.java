@@ -1680,11 +1680,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void renderHomeLibrary() {
         if (homeLib == null || homeLib.getVisibility() != View.VISIBLE) return;
         // At most 34 apps here: the ones you use first, then A–Z (the full list is the volle Mediathek).
+        // Main screen stays ARC-only: the colourful third-party apps live in the Mediathek,
+        // reached by the cube button bottom-right. Here we show just our own apps.
         List<AppEntry> pick = new ArrayList<>();
-        for (AppEntry a : lastRecent) if (!pick.contains(a)) pick.add(a);
+        for (AppEntry a : lastRecent) if (isOwnApp(a) && !pick.contains(a)) pick.add(a);
         for (AppEntry a : apps) {
             if (pick.size() >= 34) break;
-            if (!pick.contains(a)) pick.add(a);
+            if (isOwnApp(a) && !pick.contains(a)) pick.add(a);
         }
         fillGrid(homeLib, pick.subList(0, Math.min(34, pick.size())), cols());
         // Bottom bar, so a long open list can be closed without scrolling back up to its title.
@@ -1750,6 +1752,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         List<AppEntry> out = new ArrayList<>();
         for (AppEntry a : apps) if (a.label.toLowerCase(Locale.ROOT).contains(q)) out.add(a);
         return out;
+    }
+
+    /** True for our own ARC-DNA apps (same package); false for installed third-party apps. */
+    private boolean isOwnApp(AppEntry a) {
+        return a != null && a.component != null && getPackageName().equals(a.component.getPackageName());
     }
 
     private void loadApps() {
