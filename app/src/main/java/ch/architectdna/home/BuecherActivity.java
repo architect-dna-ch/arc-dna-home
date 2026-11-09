@@ -28,11 +28,11 @@ public class BuecherActivity extends Activity {
     // {subject, platform, openUrl, redeemUrl, spineColorHex}
     private static final String[][] META = {
         {"Rechnungswesen", "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
-        {"Mathematik", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B5271E"},
-        {"Deutsch", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "C8643B"},
-        {"Französisch", "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "3E7C7B"},
-        {"Englisch", "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "1E6FA8"},
-        {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "6A4FA0"},
+        {"Mathematik", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "2E9AA6"},
+        {"Deutsch", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B7A52E"},
+        {"Französisch", "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "5B9BC4"},
+        {"Englisch", "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "46A86E"},
+        {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "3E6B5E"},
     };
     // per subject: {title, subtitle, code}  (code "im Buch" = printed in the paper book)
     private static final String[][][] BOOKS = {
@@ -247,6 +247,10 @@ public class BuecherActivity extends Activity {
         View sp = new View(this);
         sp.setBackgroundColor(spine);
         cov.addView(sp, new LinearLayout.LayoutParams(dp(8), -1));
+
+        View edge = new View(this);          // a thin page-edge next to the spine, like a real book
+        edge.setBackgroundColor(0xF2FFFFFF);
+        cov.addView(edge, new LinearLayout.LayoutParams(dp(2), -1));
 
         LinearLayout face = new LinearLayout(this);
         face.setOrientation(LinearLayout.VERTICAL);
