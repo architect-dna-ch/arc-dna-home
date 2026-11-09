@@ -165,35 +165,90 @@ public class FokusActivity extends Activity {
     private LinearLayout.LayoutParams halfLp() { return new LinearLayout.LayoutParams(-1, 0, 1f); }
 
     private View half(String label, String hint, boolean first) {
-        LinearLayout c = new LinearLayout(this);
-        c.setOrientation(LinearLayout.VERTICAL);
-        c.setGravity(Gravity.CENTER);
+        android.widget.FrameLayout c = new android.widget.FrameLayout(this);
         GradientDrawable g = new GradientDrawable();
         g.setColor(first ? card : bg);
-        g.setStroke(dp(first ? 1.6f : 1.2f), first ? rust : line);
-        g.setCornerRadius(dp(20));
+        g.setStroke(dp(first ? 1.8f : 1.2f), first ? rust : line);
+        g.setCornerRadius(dp(22));
         c.setBackground(g);
         c.setClickable(true);
+
+        // faint overlapping-square motif, top-right — texture, not noise
+        android.widget.FrameLayout.LayoutParams clp = new android.widget.FrameLayout.LayoutParams(dp(96), dp(96), Gravity.TOP | Gravity.END);
+        clp.topMargin = dp(16); clp.rightMargin = dp(16);
+        c.addView(ghostCube(first), clp);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_VERTICAL);
+        col.setPadding(dp(26), dp(22), dp(26), dp(22));
 
         TextView t = new TextView(this);
         t.setText(label);
         t.setTextColor(ink);
-        t.setTextSize(34);
-        t.setLetterSpacing(-0.03f);
+        t.setTextSize(36);
+        t.setLetterSpacing(-0.035f);
         t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        c.addView(t);
+        col.addView(t);
         if (hint != null && !hint.isEmpty()) {
             TextView s = new TextView(this);
             s.setText(hint);
             s.setTextColor(ink2);
-            s.setTextSize(14);
-            s.setPadding(0, dp(4), 0, 0);
-            c.addView(s);
+            s.setTextSize(15);
+            s.setPadding(0, dp(5), 0, 0);
+            col.addView(s);
         }
         final Node target = first ? cur.a : cur.b;
+        TextView p = new TextView(this);
+        p.setText(previewOf(target));
+        p.setTextColor(ink3);
+        p.setTextSize(12);
+        p.setTypeface(Typeface.MONOSPACE);
+        p.setLetterSpacing(0.02f);
+        p.setMaxLines(2);
+        p.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        p.setPadding(0, dp(16), 0, 0);
+        col.addView(p);
+        c.addView(col, new android.widget.FrameLayout.LayoutParams(-1, -1));
+
+        TextView arr = new TextView(this);
+        arr.setText("→");
+        arr.setTextColor(first ? rust : ink3);
+        arr.setTextSize(26);
+        android.widget.FrameLayout.LayoutParams alp = new android.widget.FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
+        alp.rightMargin = dp(24); alp.bottomMargin = dp(18);
+        c.addView(arr, alp);
+
         final String crumb = label;
         c.setOnClickListener(v -> go(target, crumb));
         return c;
+    }
+
+    /** A preview of what's behind a choice: the next two options, or the apps if it's a leaf. */
+    private String previewOf(Node n) {
+        if (n == null) return "";
+        if (n.leaf()) {
+            StringBuilder b = new StringBuilder("↳  ");
+            for (int i = 0; i < n.apps.length; i++) { if (i > 0) b.append("  ·  "); b.append(appLabel(n.apps[i])); }
+            return b.toString();
+        }
+        return "↳  " + n.la + "  ·  " + n.lb;
+    }
+
+    /** The ARC·DNA overlapping-square mark, faint, as card texture. */
+    private View ghostCube(boolean accent) {
+        android.widget.FrameLayout f = new android.widget.FrameLayout(this);
+        f.setAlpha(0.10f);
+        int col = accent ? rust : ink;
+        View s1 = new View(this);
+        GradientDrawable g1 = new GradientDrawable(); g1.setStroke(dp(2.4f), col); g1.setColor(0); s1.setBackground(g1);
+        android.widget.FrameLayout.LayoutParams p1 = new android.widget.FrameLayout.LayoutParams(dp(62), dp(62));
+        p1.leftMargin = dp(12); p1.topMargin = dp(16);
+        f.addView(s1, p1);
+        View s2 = new View(this);
+        GradientDrawable g2 = new GradientDrawable(); g2.setStroke(dp(2.4f), col); g2.setColor(0); s2.setBackground(g2);
+        f.addView(s2, new android.widget.FrameLayout.LayoutParams(dp(62), dp(62)));
+        return f;
     }
 
     // ---- a leaf: the 2–3 apps that fit ----

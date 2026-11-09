@@ -28,9 +28,10 @@ public class BuecherActivity extends Activity {
     // {subject, platform, openUrl, redeemUrl, spineColorHex}
     private static final String[][] META = {
         {"Rechnungswesen", "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
-        {"Mathematik", "edubase", "https://app.edubase.ch/#library", "", "B5271E"},
-        {"Deutsch", "edubase", "https://app.edubase.ch/#library", "", "C8643B"},
-        {"Französisch", "edubase", "https://app.edubase.ch/#library", "", "3E7C7B"},
+        {"Mathematik", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B5271E"},
+        {"Deutsch", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "C8643B"},
+        {"Französisch", "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "3E7C7B"},
+        {"Englisch", "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "1E6FA8"},
         {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "6A4FA0"},
     };
     // per subject: {title, subtitle, code}  (code "im Buch" = printed in the paper book)
@@ -45,14 +46,18 @@ public class BuecherActivity extends Activity {
             {"Betriebsbuchhaltung — Lösungen", "Grundlagen", "B162K1-PALOXI"},
         },
         {
-            {"Mathe Wirtschaftsschule — Band 1", "Aufgaben", "im Buch"},
-            {"Mathe Wirtschaftsschule — Band 2", "Aufgaben", "im Buch"},
+            {"Mathe Wirtschaftsschule — Band 1", "Aufgaben", "1fi6crwgwzze"},
+            {"Mathe Wirtschaftsschule — Band 2", "Aufgaben", "v1ro6vf2qvax"},
         },
         {
-            {"Deutsch für die BM", "Grundlagenbuch", "im Buch"},
+            {"Deutsch für die BM", "Grundlagenbuch", "3yjmvh8zqlot"},
         },
         {
-            {"abc DELF Junior B2", "3e édition · inkl. eBook", "im Buch"},
+            {"abc DELF Junior B2", "3e édition · inkl. eBook", "74Q273F8"},
+        },
+        {
+            {"Complete First — Student's Book", "B2 · Student's Book + Digital Pack", "E8V8-9M8R3-VY6U-R6Z0"},
+            {"Complete First — Workbook Audio", "B2 · Workbook Audio", "6X9X-XJQX-EL6F-9MKN"},
         },
         {
             {"W&G BM Sonderedition", "Recht · VWL · BWL · Digitale LM · 3 Jahre", "LIC-NHPX2PJROQKNDEVPRNN1"},

@@ -1918,6 +1918,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         fabMenu = m;
         m.setOnClickListener(v -> closeFabMenu());
         m.setElevation(dp(9));
+        // Full-screen blackout + blur behind the bubbles, so the menu reads as its own layer.
+        m.setBackgroundColor(isNight() ? 0xC2000000 : 0x990F0B08);
+        m.setAlpha(0f);
+        m.animate().alpha(1f).setDuration(200).start();
+        blurHome(true);
         String name = BUDDIES[buddy()][1];
         Object[][] items = {
             {"✳  Claude", (Runnable) this::openClaude},
@@ -1963,9 +1968,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (m == null) return;
         claudeFab.animate().rotation(0).setDuration(220).start();
         claudeFab.setElevation(dp(4));
-        for (int i = 0; i < m.getChildCount(); i++) m.getChildAt(i).animate().alpha(0f).translationY(dp(30)).setStartDelay(0).setDuration(150).start();
+        blurHome(false);
+        m.animate().alpha(0f).setDuration(150).start();
         m.postDelayed(() -> rootFrame.removeView(m), 170);
     }
+
+    /** Blur the home behind the FAB menu (Android 12+); a no-op below, where the scrim alone carries it. */
+    private void blurHome(boolean on) {
+        if (Build.VERSION.SDK_INT < 31 || scroll == null) return;
+        try {
+            scroll.setRenderEffect(on
+                ? android.graphics.RenderEffect.createBlurEffect(dp(20), dp(20), android.graphics.Shader.TileMode.CLAMP)
+                : null);
+        } catch (Throwable ignored) { }
+    }
+
     private LinearLayout proDock;
 
     private boolean pro() {
@@ -6677,7 +6694,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 if (getRootWindowInsets().getDisplayCutout() != null)
                     top = Math.max(top, getRootWindowInsets().getDisplayCutout().getSafeInsetTop());
             }
-            return top + dp(4);
+            return top + dp(18);   // real clearance below the status-bar icons so the dial isn't jammed under them
         }
 
         private int statusTop() {
