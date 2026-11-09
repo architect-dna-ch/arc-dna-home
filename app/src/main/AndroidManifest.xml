@@ -298,6 +298,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC·Tap Fuchs-Rennen: live Bluetooth race between two ARC-DNA devices. -->
+        <activity
+            android:name=".RaceActivity"
+            android:exported="false"
+            android:label="Fuchs-Rennen"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Kompass: anchors, own rules, parked doubts, money envelopes, pace & dose. -->
         <activity
             android:name=".KompassActivity"

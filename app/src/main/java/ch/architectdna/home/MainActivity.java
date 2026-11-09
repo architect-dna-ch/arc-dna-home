@@ -3537,9 +3537,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /* ───────── ARC·Tap: share a theme or buddy to the paired device over Bluetooth ───────── */
+    private android.content.SharedPreferences.OnSharedPreferenceChangeListener arcTapListener;
+
     private void showArcTap() {
         final java.util.List<CharSequence> labels = new java.util.ArrayList<>();
         final java.util.List<Runnable> acts = new java.util.ArrayList<>();
+        labels.add("🏁 Fuchs-Rennen (Bluetooth)");
+        acts.add(() -> startActivity(new Intent(this, RaceActivity.class)));
         for (Themes.Theme t : Themes.ALL) {
             final String id = t.id, nm = t.name;
             labels.add("Theme · " + nm);
@@ -5752,6 +5756,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         homeInFront = true;
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         checkArcTapIncoming();
+        if (arcTapListener == null) {
+            arcTapListener = (sp, key) -> {
+                if ("arctapIn".equals(key)) handler.post(this::checkArcTapIncoming);   // instant, no next-sync wait
+            };
+            prefs.registerOnSharedPreferenceChangeListener(arcTapListener);
+        }
         applyPro();
         applySwept();
         reviveBuddy();
