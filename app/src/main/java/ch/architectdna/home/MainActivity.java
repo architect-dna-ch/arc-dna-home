@@ -1973,16 +1973,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         m.postDelayed(() -> rootFrame.removeView(m), 170);
     }
 
-    /** Blur the home behind the FAB menu (Android 12+); a no-op below, where the scrim alone carries it. */
-    private void blurHome(boolean on) {
-        if (Build.VERSION.SDK_INT < 31 || scroll == null) return;
-        try {
-            scroll.setRenderEffect(on
-                ? android.graphics.RenderEffect.createBlurEffect(dp(20), dp(20), android.graphics.Shader.TileMode.CLAMP)
-                : null);
-        } catch (Throwable ignored) { }
-    }
-
     private LinearLayout proDock;
 
     private boolean pro() {
