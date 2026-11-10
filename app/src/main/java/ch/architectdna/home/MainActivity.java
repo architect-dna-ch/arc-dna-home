@@ -933,11 +933,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 @Override public boolean onDown(android.view.MotionEvent e) { edgeFired = false; return true; }
                 @Override public boolean onScroll(android.view.MotionEvent e1, android.view.MotionEvent e2, float dx, float dy) {
                     if (!edgeFired && e1 != null && e2 != null && e1.getX() - e2.getX() > dp(40)
-                        && Math.abs(e1.getX() - e2.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFired = true; openLibrary(); return true; }
+                        && Math.abs(e1.getX() - e2.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFired = true; openArcWorld(); return true; }
                     return false;
                 }
                 @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
-                    if (!edgeFired && e1 != null && e2 != null && e1.getX() - e2.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFired = true; openLibrary(); return true; }
+                    if (!edgeFired && e1 != null && e2 != null && e1.getX() - e2.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFired = true; openArcWorld(); return true; }
                     return false;
                 }
             });
@@ -951,11 +951,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 @Override public boolean onDown(android.view.MotionEvent e) { edgeFiredL = false; return true; }
                 @Override public boolean onScroll(android.view.MotionEvent e1, android.view.MotionEvent e2, float dx, float dy) {
                     if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(40)
-                        && Math.abs(e2.getX() - e1.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFiredL = true; openArcWorld(); return true; }
+                        && Math.abs(e2.getX() - e1.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFiredL = true; openLibrary(); return true; }
                     return false;
                 }
                 @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
-                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFiredL = true; openArcWorld(); return true; }
+                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFiredL = true; openLibrary(); return true; }
                     return false;
                 }
             });
@@ -980,7 +980,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 @Override public boolean onDown(android.view.MotionEvent e) { return true; }
                 @Override public boolean onSingleTapUp(android.view.MotionEvent e) { launchRailAt(e.getY()); return true; }
                 @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
-                    if (e1 != null && e2 != null && e1.getX() - e2.getX() > dp(36) && Math.abs(vx) > Math.abs(vy)) { openLibrary(); return true; }
+                    if (e1 != null && e2 != null && e1.getX() - e2.getX() > dp(36) && Math.abs(vx) > Math.abs(vy)) { openArcWorld(); return true; }
                     return false;
                 }
             });
