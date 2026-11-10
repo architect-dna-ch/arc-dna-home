@@ -176,6 +176,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private LinearLayout recentHome, recentLib, recentRail;
     private boolean edgeFired, edgeFiredL;
     private ThumbFanView thumbFan;
+    private AmbientView ambient;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -311,11 +312,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (thumbFan != null) thumbFan.setMinimal(on);
         // opaque background so the wallpaper's cube/grid stops bleeding through — clean like the mockup
         if (scroll != null) scroll.setBackgroundColor(on ? (paper() | 0xFF000000) : ((paper() & 0x00FFFFFF) | 0xF4000000));
+        refreshRecentRail();   // the bottom dock stays in both modes
         if (on) {
-            if (recentRail != null) recentRail.setVisibility(View.GONE);
             for (View v : new View[]{fox, bubble, seismo, proDock}) if (v != null) v.setVisibility(View.GONE);
         } else {
-            refreshRecentRail();
             floaters(true);
             applyPro();
         }
@@ -977,50 +977,63 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeSwipe.setOnTouchListener((v, ev) -> edgeGd.onTouchEvent(ev));
         root.addView(edgeSwipe, new FrameLayout.LayoutParams(dp(26), -1, Gravity.END));
 
-        // Left-edge swipe → your ARC·DNA world (the Fokus funnel).
+        // Left-edge drag → the Mediathek, following your thumb the whole way (not a snap).
         View edgeSwipeL = new View(this);
-        final android.view.GestureDetector edgeGdL = new android.view.GestureDetector(this,
-            new android.view.GestureDetector.SimpleOnGestureListener() {
-                @Override public boolean onDown(android.view.MotionEvent e) { edgeFiredL = false; return true; }
-                @Override public boolean onScroll(android.view.MotionEvent e1, android.view.MotionEvent e2, float dx, float dy) {
-                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(40)
-                        && Math.abs(e2.getX() - e1.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFiredL = true; openLibrary(); return true; }
-                    return false;
+        edgeSwipeL.setOnTouchListener(new View.OnTouchListener() {
+            float sx, sy; boolean dragging;
+            @Override public boolean onTouch(View v, android.view.MotionEvent ev) {
+                switch (ev.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        sx = ev.getRawX(); sy = ev.getRawY(); dragging = false; return true;
+                    case android.view.MotionEvent.ACTION_MOVE: {
+                        float dx = ev.getRawX() - sx, dy = ev.getRawY() - sy;
+                        if (!dragging && dx > dp(14) && Math.abs(dx) > Math.abs(dy)) { dragging = true; libDragStart(); }
+                        if (dragging) libDrag(dx);
+                        return true;
+                    }
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        if (dragging) libDragEnd(ev.getRawX() - sx);
+                        return true;
                 }
-                @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
-                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFiredL = true; openLibrary(); return true; }
-                    return false;
-                }
-            });
-        edgeSwipeL.setOnTouchListener((v, ev) -> edgeGdL.onTouchEvent(ev));
+                return false;
+            }
+        });
         root.addView(edgeSwipeL, new FrameLayout.LayoutParams(dp(26), -1, Gravity.START));
 
-        // Muscle-memory thumb rail: your recent apps pinned to the right edge, always the same spot.
-        // Tap an icon to launch; swipe left on the rail to open the Mediathek (inset from the very
-        // edge so it never fights Android's back gesture).
+        // The dock: your recent apps in a floating bar along the bottom, centred — MacBook-style,
+        // always the same spot. Tap an icon to launch; swipe up on the dock to open the Mediathek.
+        // Horizontal so it never collides with the right-edge FOKUS fan label.
         recentRail = new LinearLayout(this);
-        recentRail.setOrientation(LinearLayout.VERTICAL);
-        recentRail.setGravity(Gravity.CENTER_HORIZONTAL);
-        recentRail.setPadding(dp(5), dp(8), dp(5), dp(8));
+        recentRail.setOrientation(LinearLayout.HORIZONTAL);
+        recentRail.setGravity(Gravity.CENTER_VERTICAL);
+        recentRail.setPadding(dp(10), dp(7), dp(10), dp(7));
         GradientDrawable railBg = new GradientDrawable();
-        railBg.setColor(0x24E07A3C);
-        railBg.setStroke(dp(1), 0x55E07A3C);
-        railBg.setCornerRadius(dp(28));
+        railBg.setColor((card & 0x00FFFFFF) | 0xF2000000);   // frosted, near-opaque card
+        railBg.setStroke(dp(1), line);
+        railBg.setCornerRadius(dp(26));
         recentRail.setBackground(railBg);
+        recentRail.setElevation(dp(7));
         recentRail.setVisibility(View.GONE);
         final android.view.GestureDetector railGd = new android.view.GestureDetector(this,
             new android.view.GestureDetector.SimpleOnGestureListener() {
                 @Override public boolean onDown(android.view.MotionEvent e) { return true; }
-                @Override public boolean onSingleTapUp(android.view.MotionEvent e) { launchRailAt(e.getY()); return true; }
+                @Override public boolean onSingleTapUp(android.view.MotionEvent e) { launchRailAt(e.getX()); return true; }
                 @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
-                    if (e1 != null && e2 != null && e1.getX() - e2.getX() > dp(36) && Math.abs(vx) > Math.abs(vy)) { openArcWorld(); return true; }
+                    if (e1 != null && e2 != null && e1.getY() - e2.getY() > dp(36) && Math.abs(vy) > Math.abs(vx)) { openLibrary(); return true; }
                     return false;
                 }
             });
         recentRail.setOnTouchListener((v, ev) -> railGd.onTouchEvent(ev));
-        FrameLayout.LayoutParams railLp = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.CENTER_VERTICAL);
-        railLp.rightMargin = dp(6);
+        FrameLayout.LayoutParams railLp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        railLp.bottomMargin = dp(76);
         root.addView(recentRail, railLp);
+
+        // Ambient background data — faint, non-clickable diagrams behind the home.
+        ambient = new AmbientView(this);
+        ambient.setColors(ink, ink2, ink3, 0xFFE07A3C);
+        root.addView(ambient, new FrameLayout.LayoutParams(-1, -1));
+        refreshAmbient();
 
         setupThumbFan(root);
         applyMockHome();
@@ -1726,6 +1739,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         floaters(true);
     }
 
+    // ---- interactive Mediathek drag: the panel tracks your thumb from the left edge ----
+    private float libW() { float w = library.getWidth(); return w > 0 ? w : getResources().getDisplayMetrics().widthPixels; }
+    private void libDragStart() {
+        if (libraryOpen || library == null) return;
+        library.setElevation(dp(28)); library.bringToFront();
+        library.setVisibility(View.VISIBLE);
+        library.setTranslationX(libW()); library.setAlpha(0f);
+        library.animate().cancel(); scroll.animate().cancel();
+        scroll.setPivotX(0);
+        floaters(false); blurHome(true);
+    }
+    private void libDrag(float dx) {
+        if (library == null) return;
+        float w = libW(), p = Math.max(0f, Math.min(1f, dx / w));
+        library.setTranslationX(w * (1f - p)); library.setAlpha(Math.min(1f, p * 1.3f));
+        scroll.setAlpha(1f - 0.6f * p); scroll.setScaleX(1f - 0.03f * p); scroll.setScaleY(1f - 0.03f * p);
+    }
+    private void libDragEnd(float dx) {
+        if (library == null) return;
+        float w = libW(), p = dx / w;
+        if (p > 0.30f) {                       // committed → settle the Mediathek open
+            libraryOpen = true;
+            library.animate().alpha(1f).translationX(0).setDuration(220)
+                .setInterpolator(new DecelerateInterpolator(1.7f)).start();
+            scroll.animate().alpha(0.4f).scaleX(0.97f).scaleY(0.97f).setDuration(220)
+                .setInterpolator(new DecelerateInterpolator(1.7f)).start();
+            libScroll.scrollTo(0, 0);
+            if (!headMode().equals("off")) startHead();
+        } else {                                // let go early → slide it back out
+            library.animate().alpha(0f).translationX(w).setDuration(200)
+                .withEndAction(() -> library.setVisibility(View.GONE)).start();
+            scroll.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).start();
+            blurHome(false); floaters(true);
+        }
+    }
+
     /** Fox, rabbit button, speech bubble and seismograph float over the page: out of the way in the Mediathek. */
     private void floaters(boolean show) {
         if (show && mockHome()) show = false;   // mock home keeps the fox / seismo / bubble hidden
@@ -2200,16 +2249,69 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int n = Math.min(6, lastRecent.size());
         if (n == 0) { recentRail.setVisibility(View.GONE); return; }
         recentRail.setVisibility(View.VISIBLE);
+        recentRail.setAlpha(1f); recentRail.setTranslationY(0f);
         for (int i = 0; i < n; i++) {
             AppEntry a = lastRecent.get(i);
             ImageView iv = new ImageView(this);
             iv.setImageDrawable(a.icon);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setTag(a);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(40), dp(40));
-            lp.topMargin = i == 0 ? 0 : dp(9);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(44), dp(44));
+            lp.leftMargin = i == 0 ? 0 : dp(12);
             recentRail.addView(iv, lp);
         }
+    }
+
+    /** Fill the ambient background cells: battery and network now, storage now, weather off-thread. */
+    private void refreshAmbient() {
+        if (ambient == null) return;
+        try {
+            android.content.Intent b = registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            if (b != null) {
+                int lvl = b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1), sc = b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1);
+                if (lvl >= 0 && sc > 0) ambient.setBattery(Math.round(lvl * 100f / sc));
+            }
+        } catch (Exception ignored) { }
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            String net = "Offline";
+            if (cm != null) {
+                android.net.NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
+                if (nc != null) net = nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ? "WLAN"
+                    : nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ? "Mobil" : "Netz";
+            }
+            ambient.setNet(net);
+        } catch (Exception ignored) { }
+        try {
+            android.os.StatFs fs = new android.os.StatFs(getFilesDir().getAbsolutePath());
+            float gb = 1024f * 1024f * 1024f;
+            ambient.setStorage(fs.getAvailableBytes() / gb, fs.getTotalBytes() / gb);
+        } catch (Exception ignored) { }
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(
+                    "https://api.open-meteo.com/v1/forecast?latitude=46.95&longitude=7.44&current=temperature_2m,weather_code").openConnection();
+                c.setConnectTimeout(6000); c.setReadTimeout(6000);
+                java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream()));
+                StringBuilder sb = new StringBuilder(); String ln;
+                while ((ln = r.readLine()) != null) sb.append(ln);
+                r.close();
+                org.json.JSONObject cur = new org.json.JSONObject(sb.toString()).getJSONObject("current");
+                final float temp = (float) cur.getDouble("temperature_2m");
+                final String sky = skyWord(cur.optInt("weather_code", -1));
+                runOnUiThread(() -> { if (ambient != null) ambient.setWeather(temp, sky); });
+            } catch (Exception ignored) { }
+        }).start();
+    }
+    private String skyWord(int code) {
+        if (code == 0) return "klar";
+        if (code <= 3) return "wolkig";
+        if (code <= 48) return "Nebel";
+        if (code <= 67) return "Regen";
+        if (code <= 77) return "Schnee";
+        if (code <= 82) return "Schauer";
+        if (code <= 99) return "Gewitter";
+        return "";
     }
 
     /** Left-edge swipe target: open the ARC·DNA world (the Fokus funnel). */
@@ -2253,18 +2355,26 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         thumbFan.setColors(card, line, ink, ink2, ink3, 0xFFE07A3C);
         thumbFan.setData(left, right);
         thumbFan.setMinimal(mockHome());
+        // While a fan is open, slide the dock out of the way (it lives low-centre, where the right
+        // fan blooms) — MacBook-style auto-hide.
+        thumbFan.setActiveListener(active -> {
+            if (recentRail == null) return;
+            recentRail.animate().cancel();
+            recentRail.animate().alpha(active ? 0f : 1f).translationY(active ? dp(28) : 0)
+                .setDuration(active ? 140 : 200).start();
+        });
         root.addView(thumbFan, new FrameLayout.LayoutParams(-1, -1));
     }
     private Drawable dr(int res) { try { return getDrawable(res); } catch (RuntimeException e) { return null; } }
     private void startAct(Class<?> cls) { try { startActivity(new Intent(this, cls)); } catch (RuntimeException ignored) { } }
     private void safe(Intent i) { try { startActivity(i); } catch (RuntimeException ignored) { } }
 
-    /** A tap on the rail at vertical position y launches whichever recent icon sits there. */
-    private void launchRailAt(float y) {
+    /** A tap on the dock at horizontal position x launches whichever recent icon sits there. */
+    private void launchRailAt(float x) {
         if (recentRail == null) return;
         for (int i = 0; i < recentRail.getChildCount(); i++) {
             View c = recentRail.getChildAt(i);
-            if (y >= c.getTop() && y <= c.getBottom() && c.getTag() instanceof AppEntry) {
+            if (x >= c.getLeft() && x <= c.getRight() && c.getTag() instanceof AppEntry) {
                 launch((AppEntry) c.getTag());
                 return;
             }
@@ -6151,6 +6261,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(friendTick);
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
+        refreshAmbient();                    // refresh the ambient background data cells
         if (mockHome()) applyMockHome();     // re-assert the clean look after returning to home
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         checkArcTapIncoming();

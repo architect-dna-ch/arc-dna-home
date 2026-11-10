@@ -36,7 +36,11 @@ public class ThumbFanView extends View {
     private final Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float dens, petalR, nubR, R1, R2, Rflat;
     private float lx, ly, rx, ry;
-    private static final float A0 = 8, A1 = 88, SPAN = 24;
+    private static final float A0 = 8, A1 = 88;
+
+    public interface ActiveListener { void onActive(boolean active); }
+    private ActiveListener activeListener;
+    public void setActiveListener(ActiveListener l) { this.activeListener = l; }
 
     private int side = 0;              // -1 left, 1 right, 0 none
     private boolean active = false;
@@ -78,9 +82,10 @@ public class ThumbFanView extends View {
     }
     private float catAng(int i) { int n = right.length; return n <= 1 ? (A0 + A1) / 2 : A0 + (A1 - A0) * i / (n - 1); }
     private float appAng(int ci, int j) {
-        int n = right[ci].apps.length; float c = catAng(ci);
-        float a = n <= 1 ? c : c - SPAN + 2 * SPAN * j / (n - 1);
-        return Math.max(4, Math.min(92, a));
+        // Spread the apps across the whole fan arc, evenly — never clustered near one edge, so two
+        // apps can't land on top of each other when their category sits at the end of the arc.
+        int n = right[ci].apps.length;
+        return n <= 1 ? (A0 + A1) / 2 : A0 + (A1 - A0) * j / (n - 1);
     }
     private float flatAng(int i) { int n = left.length; return n <= 1 ? (A0 + A1) / 2 : A0 + (A1 - A0) * i / (n - 1); }
 
@@ -92,6 +97,7 @@ public class ThumbFanView extends View {
                 int s = nubAt(x, y);
                 if (s == 0) return false;                 // not on a nub → let it pass through
                 side = s; active = true; mode = 0; flatHot = catHot = appHot = activeCat = -1;
+                if (activeListener != null) activeListener.onActive(true);
                 update(x, y); invalidate(); return true;
             case MotionEvent.ACTION_MOVE:
                 if (!active) return false;
@@ -99,7 +105,9 @@ public class ThumbFanView extends View {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 if (!active) return false;
-                release(); active = false; side = 0; invalidate(); return true;
+                release(); active = false; side = 0;
+                if (activeListener != null) activeListener.onActive(false);
+                invalidate(); return true;
         }
         return false;
     }
