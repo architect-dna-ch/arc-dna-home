@@ -174,6 +174,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private final Map<View, Float> foldState = new HashMap<>();
     private static final String LABEL_TAG = "section-label";
     private LinearLayout recentHome, recentLib, recentRail;
+    private boolean edgeFired;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -924,6 +925,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         root.addView(claudeFab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
+
+        // Right-edge swipe → Mediathek (you use 3-button nav, so the edge is free of the back gesture).
+        View edgeSwipe = new View(this);
+        final android.view.GestureDetector edgeGd = new android.view.GestureDetector(this,
+            new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override public boolean onDown(android.view.MotionEvent e) { edgeFired = false; return true; }
+                @Override public boolean onScroll(android.view.MotionEvent e1, android.view.MotionEvent e2, float dx, float dy) {
+                    if (!edgeFired && e1 != null && e2 != null && e1.getX() - e2.getX() > dp(40)
+                        && Math.abs(e1.getX() - e2.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFired = true; openLibrary(); return true; }
+                    return false;
+                }
+                @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
+                    if (!edgeFired && e1 != null && e2 != null && e1.getX() - e2.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFired = true; openLibrary(); return true; }
+                    return false;
+                }
+            });
+        edgeSwipe.setOnTouchListener((v, ev) -> edgeGd.onTouchEvent(ev));
+        root.addView(edgeSwipe, new FrameLayout.LayoutParams(dp(26), -1, Gravity.END));
 
         // Muscle-memory thumb rail: your recent apps pinned to the right edge, always the same spot.
         // Tap an icon to launch; swipe left on the rail to open the Mediathek (inset from the very
