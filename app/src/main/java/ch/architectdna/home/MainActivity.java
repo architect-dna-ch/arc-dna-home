@@ -1285,7 +1285,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private FrameLayout buildLibrary() {
         FrameLayout lib = new FrameLayout(this);
-        lib.setBackgroundColor(panel);
+        lib.setBackgroundColor(isNight() ? 0xE6140D07 : 0xECF6E6C6);   // warm orange frosted glass (translucent)
         lib.setVisibility(View.GONE);
         lib.setClickable(true);
 
@@ -1650,19 +1650,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (libraryOpen) return;
         libraryOpen = true;
         hideKeyboard();
-        // One smooth move: the home page sinks back and fades while the Mediathek slides up over it.
+        // Orange frosted glass: the Mediathek sweeps in from the right (matching the edge-swipe) over
+        // the blurred home, which stays faintly visible through the translucent panel.
+        blurHome(true);
         library.setElevation(dp(28));      // above the Schlicht overlay (elevation 24) when it's on
         library.bringToFront();
         library.setVisibility(View.VISIBLE);
         library.setAlpha(0f);
-        library.setTranslationY(dp(48));
+        library.setTranslationX(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80));
         library.animate().cancel();
-        library.animate().alpha(1f).translationY(0).setDuration(320)
-            .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        library.animate().alpha(1f).translationX(0).setDuration(340)
+            .setInterpolator(new DecelerateInterpolator(1.7f)).start();
         scroll.animate().cancel();
-        scroll.setPivotY(scroll.getHeight() * 0.35f);
-        scroll.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(320)
-            .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        scroll.setPivotX(0);
+        scroll.animate().alpha(0.4f).scaleX(0.97f).scaleY(0.97f).setDuration(340)
+            .setInterpolator(new DecelerateInterpolator(1.7f)).start();
         libScroll.scrollTo(0, 0);
         floaters(false);
         // Head / eye scrolling only works in the Mediathek: the camera starts here …
@@ -1676,9 +1678,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         stopHead();
         hideKeyboard();
         libSearch.setText("");
-        // The same move backwards: the Mediathek slides down and fades, the home page comes forward.
+        blurHome(false);
+        // The same move backwards: the Mediathek sweeps back out to the right, the home comes forward.
         library.animate().cancel();
-        library.animate().alpha(0f).translationY(dp(48)).setDuration(280)
+        library.animate().alpha(0f).translationX(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80)).setDuration(260)
             .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
             .withEndAction(() -> library.setVisibility(View.GONE)).start();
         scroll.animate().cancel();
