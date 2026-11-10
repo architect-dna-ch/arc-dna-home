@@ -989,6 +989,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         railLp.rightMargin = dp(6);
         root.addView(recentRail, railLp);
 
+        setupThumbFan(root);
+
         // Compact (Professionell): the three main apps stay at the bottom, always reachable.
         proDock = new LinearLayout(this);
         proDock.setGravity(Gravity.CENTER_VERTICAL);
@@ -2179,6 +2181,47 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void openArcWorld() {
         try { startActivity(new Intent(this, FokusActivity.class)); } catch (RuntimeException ignored) { }
     }
+
+    /** The thumb-fans: press-hold a bottom corner, slide along your thumb's arc, release to launch. */
+    private void setupThumbFan(FrameLayout root) {
+        final String LERN = "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY";
+        ThumbFanView.Item[] left = {
+            new ThumbFanView.Item("Claude", dr(R.drawable.ic_claude), this::openClaude),
+            new ThumbFanView.Item("Telefon", null, () -> safe(new Intent(Intent.ACTION_DIAL))),
+            new ThumbFanView.Item("SMS", null, () -> safe(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING))),
+            new ThumbFanView.Item("Mail", null, () -> safe(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_EMAIL))),
+            new ThumbFanView.Item("Kamera", dr(R.drawable.ic_line_arccam), () -> startAct(CameraActivity.class)),
+        };
+        ThumbFanView.Cat[] right = {
+            new ThumbFanView.Cat("Ruhe", new ThumbFanView.Item[]{
+                new ThumbFanView.Item("Musik", dr(R.drawable.ic_line_player), () -> startAct(PlayerActivity.class)),
+                new ThumbFanView.Item("Globus", dr(R.drawable.ic_line_globus), () -> startAct(GlobusActivity.class)),
+                new ThumbFanView.Item("VOID FREQ", dr(R.drawable.ic_line_freq), () -> startAct(FreqActivity.class)),
+            }, this::openArcWorld),
+            new ThumbFanView.Cat("Spiel", new ThumbFanView.Item[]{
+                new ThumbFanView.Item("Fuchsjagd", null, () -> startAct(RaceActivity.class)),
+                new ThumbFanView.Item("Nexus", dr(R.drawable.ic_line_nexus), () -> startAct(NexusActivity.class)),
+                new ThumbFanView.Item("Board", dr(R.drawable.ic_line_board), () -> startAct(BoardActivity.class)),
+            }, this::openArcWorld),
+            new ThumbFanView.Cat("Schule", new ThumbFanView.Item[]{
+                new ThumbFanView.Item("Lernen", null, () -> safe(new Intent(Intent.ACTION_VIEW, Uri.parse(LERN)))),
+                new ThumbFanView.Item("Bücher", dr(R.drawable.ic_line_buecher), () -> startAct(BuecherActivity.class)),
+                new ThumbFanView.Item("Wecker", null, () -> startAct(WeckerActivity.class)),
+            }, this::openArcWorld),
+            new ThumbFanView.Cat("Arbeit", new ThumbFanView.Item[]{
+                new ThumbFanView.Item("Board", dr(R.drawable.ic_line_board), () -> startAct(BoardActivity.class)),
+                new ThumbFanView.Item("Aufnahme", dr(R.drawable.ic_line_recorder), () -> startAct(RecorderActivity.class)),
+                new ThumbFanView.Item("Werkzeuge", dr(R.drawable.ic_line_werkzeuge), () -> startAct(WerkzeugeActivity.class)),
+            }, this::openArcWorld),
+        };
+        ThumbFanView fan = new ThumbFanView(this);
+        fan.setColors(card, line, ink, ink2, 0xFFE07A3C);
+        fan.setData(left, right);
+        root.addView(fan, new FrameLayout.LayoutParams(-1, -1));
+    }
+    private Drawable dr(int res) { try { return getDrawable(res); } catch (RuntimeException e) { return null; } }
+    private void startAct(Class<?> cls) { try { startActivity(new Intent(this, cls)); } catch (RuntimeException ignored) { } }
+    private void safe(Intent i) { try { startActivity(i); } catch (RuntimeException ignored) { } }
 
     /** A tap on the rail at vertical position y launches whichever recent icon sits there. */
     private void launchRailAt(float y) {
