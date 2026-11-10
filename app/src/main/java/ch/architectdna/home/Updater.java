@@ -88,10 +88,7 @@ final class Updater {
 
     /** Called on resume (throttled) or from the button (manual = always, with feedback). */
     void check(boolean manual) {
-        if (token().isEmpty()) {
-            ui.onUpdateState("Updates einrichten", false);
-            return;
-        }
+        // Public repo needs no token; a private one uses the pasted token if there is one.
         if (busy) return;
         if (!manual && System.currentTimeMillis() - prefs.getLong("updateChecked", 0) < CHECK_EVERY_MS) {
             showState();
@@ -333,7 +330,7 @@ final class Updater {
         c.setReadTimeout(30000);
         c.setRequestProperty("Accept", accept);
         c.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
-        if (withToken) c.setRequestProperty("Authorization", "Bearer " + token());
+        if (withToken && !token().isEmpty()) c.setRequestProperty("Authorization", "Bearer " + token());
         return c;
     }
 
