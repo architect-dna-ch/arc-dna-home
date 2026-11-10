@@ -35,7 +35,7 @@ public class ThumbFanView extends View {
     private final Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float dens, petalR, nubR, R1, R2, Rflat;
     private float lx, ly, rx, ry;
-    private static final float A0 = 10, A1 = 80, SPAN = 16;
+    private static final float A0 = 8, A1 = 88, SPAN = 24;
 
     private int side = 0;              // -1 left, 1 right, 0 none
     private boolean active = false;
@@ -62,9 +62,9 @@ public class ThumbFanView extends View {
     protected void onSizeChanged(int w, int h, int ow, int oh) {
         petalR = 25 * dens; nubR = 27 * dens;
         float base = Math.min(w, h);
-        R1 = Math.min(base * 0.19f, 150 * dens);
-        R2 = Math.min(base * 0.33f, 250 * dens);
-        Rflat = Math.min(base * 0.27f, 205 * dens);
+        R1 = Math.min(base * 0.24f, 172 * dens);
+        R2 = Math.min(base * 0.44f, 300 * dens);
+        Rflat = Math.min(base * 0.34f, 245 * dens);
         lx = 42 * dens; ly = h - 42 * dens;
         rx = w - 120 * dens; ry = h - 42 * dens;
     }
