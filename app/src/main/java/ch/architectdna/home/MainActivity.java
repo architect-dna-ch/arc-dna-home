@@ -299,13 +299,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return prefs.getBoolean("mockHome", true);
     }
 
-    /** Hide everything below the greeting (and the top dial) so the home reads like the mockup. */
+    /** Strip the home to clock · date · greeting + the thumb-fans (mockup look), or restore it. */
     private void applyMockHome() {
         if (content == null || flexGap == null) return;
         boolean on = mockHome();
         int gi = content.indexOfChild(flexGap);
         for (int i = gi + 1; i < content.getChildCount(); i++) content.getChildAt(i).setVisibility(on ? View.GONE : View.VISIBLE);
         if (peek != null) peek.setVisibility(on ? View.GONE : View.VISIBLE);
+        if (lever != null) lever.setVisibility(on ? View.GONE : View.VISIBLE);
+        if (on) {
+            if (recentRail != null) recentRail.setVisibility(View.GONE);
+            for (View v : new View[]{fox, bubble, seismo, proDock}) if (v != null) v.setVisibility(View.GONE);
+        } else {
+            refreshRecentRail();
+            floaters(true);
+            applyPro();
+        }
     }
 
     /** Glow themes get the drawn backdrop, the flip-in scroll and the bolder outlines. */
@@ -1715,6 +1724,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Fox, rabbit button, speech bubble and seismograph float over the page: out of the way in the Mediathek. */
     private void floaters(boolean show) {
+        if (show && mockHome()) show = false;   // mock home keeps the fox / seismo / bubble hidden
         for (View v : new View[]{fox, bubble, seismo}) {
             if (v == null) continue;
             v.animate().cancel();
@@ -6133,6 +6143,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         handler.removeCallbacks(friendTick);
         handler.postDelayed(friendTick, 5 * 60_000);
         homeInFront = true;
+        if (mockHome()) applyMockHome();     // re-assert the clean look after returning to home
         prefs.edit().putBoolean("uiNight", isNight()).putLong("uiNightAt", System.currentTimeMillis()).apply();
         checkArcTapIncoming();
         if (arcTapListener == null) {
