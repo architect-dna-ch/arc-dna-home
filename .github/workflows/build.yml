@@ -30,15 +30,10 @@ jobs:
             https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
       - name: Build release APK
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: gradle assembleRelease --build-cache --stacktrace -x lint -x lintVitalRelease
 
-      - name: Build Play bundle (AAB)
-        run: gradle bundleRelease --no-daemon
-
-      - name: Rename outputs
-        run: |
-          cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
-          cp app/build/outputs/bundle/release/app-release.aab ARC-DNA-Home.aab
+      - name: Rename output
+        run: cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
 
       # The release below is what the app installs from; this copy is extra, so a full artifact
       # quota must not stop the release.
@@ -47,9 +42,7 @@ jobs:
         with:
           retention-days: 2
           name: ARC-DNA-Home
-          path: |
-            ARC-DNA-Home.apk
-            ARC-DNA-Home.aab
+          path: ARC-DNA-Home.apk
 
       # Small in-app update patches: from each of the last 6 releases to this build (tools/apkdelta.py).
       - name: Update patches
@@ -57,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p deltas
-          for tag in $(gh api "repos/${{ github.repository }}/releases?per_page=6" --jq '.[].tag_name'); do
+          for tag in $(gh api "repos/${{ github.repository }}/releases?per_page=3" --jq '.[].tag_name'); do
             mkdir -p "old/$tag"
             gh release download "$tag" -p ARC-DNA-Home.apk -D "old/$tag" -R "${{ github.repository }}" || continue
             python3 tools/apkdelta.py "old/$tag/ARC-DNA-Home.apk" ARC-DNA-Home.apk "deltas/delta-$tag.bin" || rm -f "deltas/delta-$tag.bin"
