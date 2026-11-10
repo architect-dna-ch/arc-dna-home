@@ -173,7 +173,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private int foldInset;
     private final Map<View, Float> foldState = new HashMap<>();
     private static final String LABEL_TAG = "section-label";
-    private LinearLayout recentHome, recentLib;
+    private LinearLayout recentHome, recentLib, recentRail;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -924,6 +924,33 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         root.addView(claudeFab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
+
+        // Muscle-memory thumb rail: your recent apps pinned to the right edge, always the same spot.
+        // Tap an icon to launch; swipe left on the rail to open the Mediathek (inset from the very
+        // edge so it never fights Android's back gesture).
+        recentRail = new LinearLayout(this);
+        recentRail.setOrientation(LinearLayout.VERTICAL);
+        recentRail.setGravity(Gravity.CENTER_HORIZONTAL);
+        recentRail.setPadding(dp(5), dp(8), dp(5), dp(8));
+        GradientDrawable railBg = new GradientDrawable();
+        railBg.setColor(0x24E07A3C);
+        railBg.setStroke(dp(1), 0x55E07A3C);
+        railBg.setCornerRadius(dp(28));
+        recentRail.setBackground(railBg);
+        recentRail.setVisibility(View.GONE);
+        final android.view.GestureDetector railGd = new android.view.GestureDetector(this,
+            new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override public boolean onDown(android.view.MotionEvent e) { return true; }
+                @Override public boolean onSingleTapUp(android.view.MotionEvent e) { launchRailAt(e.getY()); return true; }
+                @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
+                    if (e1 != null && e2 != null && e1.getX() - e2.getX() > dp(36) && Math.abs(vx) > Math.abs(vy)) { openLibrary(); return true; }
+                    return false;
+                }
+            });
+        recentRail.setOnTouchListener((v, ev) -> railGd.onTouchEvent(ev));
+        FrameLayout.LayoutParams railLp = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.CENTER_VERTICAL);
+        railLp.rightMargin = dp(6);
+        root.addView(recentRail, railLp);
 
         // Compact (Professionell): the three main apps stay at the bottom, always reachable.
         proDock = new LinearLayout(this);
@@ -2089,6 +2116,37 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * the Mediathek knows (launchable ones). Needs the special "Usage access" permission;
      * without it both rows show a button to the settings page instead.
      */
+    /** Fill the right-edge thumb rail with recent apps (orange strip, fixed position = muscle memory). */
+    private void refreshRecentRail() {
+        if (recentRail == null) return;
+        recentRail.removeAllViews();
+        int n = Math.min(6, lastRecent.size());
+        if (n == 0) { recentRail.setVisibility(View.GONE); return; }
+        recentRail.setVisibility(View.VISIBLE);
+        for (int i = 0; i < n; i++) {
+            AppEntry a = lastRecent.get(i);
+            ImageView iv = new ImageView(this);
+            iv.setImageDrawable(a.icon);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            iv.setTag(a);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(40), dp(40));
+            lp.topMargin = i == 0 ? 0 : dp(9);
+            recentRail.addView(iv, lp);
+        }
+    }
+
+    /** A tap on the rail at vertical position y launches whichever recent icon sits there. */
+    private void launchRailAt(float y) {
+        if (recentRail == null) return;
+        for (int i = 0; i < recentRail.getChildCount(); i++) {
+            View c = recentRail.getChildAt(i);
+            if (y >= c.getTop() && y <= c.getBottom() && c.getTag() instanceof AppEntry) {
+                launch((AppEntry) c.getTag());
+                return;
+            }
+        }
+    }
+
     private void refreshRecents() {
         if (recentHome == null || apps.isEmpty()) return;
         if (!hasUsageAccess()) {
@@ -2137,6 +2195,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 }
                 boolean same = keys(recent).equals(keys(lastRecent)) && recentCarousel != null;
                 lastRecent = recent;
+                refreshRecentRail();
                 prefs.edit().putString("recentOrder", android.text.TextUtils.join(",", keys(recent))).apply();
                 if (dashboard != null) dashboard.refreshFolders();
                 if (same) return;               // nothing changed: leave the row alone
