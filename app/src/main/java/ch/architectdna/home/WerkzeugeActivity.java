@@ -47,6 +47,7 @@ public class WerkzeugeActivity extends Activity {
         rust = night ? 0xFFD1472E : 0xFFB5271E;
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
+        calmBars(bg);
 
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(bg);
@@ -151,6 +152,19 @@ public class WerkzeugeActivity extends Activity {
         g.setStroke(Math.round(getResources().getDisplayMetrics().density), stroke);
         g.setCornerRadius(radius);
         return g;
+    }
+
+    /** Calm the system bars: no forced contrast scrim, icons tinted to match the background. */
+    private void calmBars(int bg) {
+        if (android.os.Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            android.view.WindowInsetsController wic = getWindow().getInsetsController();
+            if (wic != null) {
+                boolean light = (((bg >> 16) & 255) + ((bg >> 8) & 255) + (bg & 255)) > 384;
+                int f = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                wic.setSystemBarsAppearance(light ? f : 0, f);
+            }
+        }
     }
 
     private int dp(float v) {
