@@ -308,6 +308,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Werkzeuge: the ARC·DNA AI tools (web apps on claude.ai), each opens in the browser. -->
+        <activity
+            android:name=".WerkzeugeActivity"
+            android:exported="false"
+            android:label="Werkzeuge"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Fokus: the decision funnel — two choices at a time until only the right apps remain. -->
         <activity
             android:name=".FokusActivity"

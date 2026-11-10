@@ -6384,6 +6384,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** ARC-DNA's own apps {name, activity, line icon, launcher icon}. */
     private static Object[][] arcList() {
         return new Object[][]{{"Fokus", FokusActivity.class, R.drawable.ic_line_fokus, R.drawable.ic_line_fokus},
+            {"Werkzeuge", WerkzeugeActivity.class, R.drawable.ic_line_werkzeuge, R.drawable.ic_line_werkzeuge},
             {"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Bücher", BuecherActivity.class, R.drawable.ic_line_buecher, R.drawable.ic_line_buecher},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
