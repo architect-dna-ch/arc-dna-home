@@ -1033,7 +1033,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         // Ambient background data — faint, non-clickable diagrams behind the home.
         ambient = new AmbientView(this);
-        ambient.setColors(ink, ink2, ink3, 0xFFE07A3C);
+        ambient.setColors(ink2, ink3, 0xFFE07A3C);
         root.addView(ambient, new FrameLayout.LayoutParams(-1, -1));
         refreshAmbient();
 
