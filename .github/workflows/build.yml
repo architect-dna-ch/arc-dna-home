@@ -30,7 +30,7 @@ jobs:
             https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
       - name: Build release APK
-        run: gradle assembleRelease --build-cache --stacktrace -x lint -x lintVitalRelease
+        run: gradle assembleRelease --build-cache --stacktrace
 
       - name: Rename output
         run: cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
