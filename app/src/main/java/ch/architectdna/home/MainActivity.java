@@ -3086,6 +3086,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         updateLib.setTextColor(available ? rust : ink2);
         updateHome.setText(text);
         updateHome.setVisibility(available ? View.VISIBLE : View.GONE);
+        // Auto-update: when a newer GitHub version is ready, pull & install it in the background —
+        // a small delta patch, silent on Android 12+ once ARC-DNA is the installer of record.
+        if (available && prefs.getBoolean("autoUpdate", true)) updater.install();
     }
 
     /** One-time setup: a read-only GitHub token for this private repository. */
