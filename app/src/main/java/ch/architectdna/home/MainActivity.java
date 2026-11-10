@@ -174,7 +174,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private final Map<View, Float> foldState = new HashMap<>();
     private static final String LABEL_TAG = "section-label";
     private LinearLayout recentHome, recentLib, recentRail;
-    private boolean edgeFired;
+    private boolean edgeFired, edgeFiredL;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -943,6 +943,24 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             });
         edgeSwipe.setOnTouchListener((v, ev) -> edgeGd.onTouchEvent(ev));
         root.addView(edgeSwipe, new FrameLayout.LayoutParams(dp(26), -1, Gravity.END));
+
+        // Left-edge swipe → your ARC·DNA world (the Fokus funnel).
+        View edgeSwipeL = new View(this);
+        final android.view.GestureDetector edgeGdL = new android.view.GestureDetector(this,
+            new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override public boolean onDown(android.view.MotionEvent e) { edgeFiredL = false; return true; }
+                @Override public boolean onScroll(android.view.MotionEvent e1, android.view.MotionEvent e2, float dx, float dy) {
+                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(40)
+                        && Math.abs(e2.getX() - e1.getX()) > Math.abs(e1.getY() - e2.getY())) { edgeFiredL = true; openArcWorld(); return true; }
+                    return false;
+                }
+                @Override public boolean onFling(android.view.MotionEvent e1, android.view.MotionEvent e2, float vx, float vy) {
+                    if (!edgeFiredL && e1 != null && e2 != null && e2.getX() - e1.getX() > dp(28) && Math.abs(vx) > Math.abs(vy)) { edgeFiredL = true; openArcWorld(); return true; }
+                    return false;
+                }
+            });
+        edgeSwipeL.setOnTouchListener((v, ev) -> edgeGdL.onTouchEvent(ev));
+        root.addView(edgeSwipeL, new FrameLayout.LayoutParams(dp(26), -1, Gravity.START));
 
         // Muscle-memory thumb rail: your recent apps pinned to the right edge, always the same spot.
         // Tap an icon to launch; swipe left on the rail to open the Mediathek (inset from the very
@@ -2152,6 +2170,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             lp.topMargin = i == 0 ? 0 : dp(9);
             recentRail.addView(iv, lp);
         }
+    }
+
+    /** Left-edge swipe target: open the ARC·DNA world (the Fokus funnel). */
+    private void openArcWorld() {
+        try { startActivity(new Intent(this, FokusActivity.class)); } catch (RuntimeException ignored) { }
     }
 
     /** A tap on the rail at vertical position y launches whichever recent icon sits there. */
