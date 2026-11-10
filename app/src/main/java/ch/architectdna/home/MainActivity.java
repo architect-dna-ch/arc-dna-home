@@ -294,6 +294,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return prefs.getBoolean("cleanHome", true);
     }
 
+    /** Mock home: strip the page to clock · date · greeting + the thumb-fans, like the ARC mockup. */
+    private boolean mockHome() {
+        return prefs.getBoolean("mockHome", true);
+    }
+
+    /** Hide everything below the greeting (and the top dial) so the home reads like the mockup. */
+    private void applyMockHome() {
+        if (content == null || flexGap == null) return;
+        boolean on = mockHome();
+        int gi = content.indexOfChild(flexGap);
+        for (int i = gi + 1; i < content.getChildCount(); i++) content.getChildAt(i).setVisibility(on ? View.GONE : View.VISIBLE);
+        if (peek != null) peek.setVisibility(on ? View.GONE : View.VISIBLE);
+    }
+
     /** Glow themes get the drawn backdrop, the flip-in scroll and the bolder outlines. */
     private boolean spicy() {
         return theme().glow;
@@ -637,6 +651,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calmBtn.setOnClickListener(v -> openCrisis());
         top.addView(calmBtn);
         top.addView(gearButton());
+        top.setOnLongClickListener(v -> {       // long-press the header toggles the mockup-clean home
+            prefs.edit().putBoolean("mockHome", !mockHome()).apply();
+            applyMockHome();
+            pop(mockHome() ? "Mock-Home · lang drücken = voller Home" : "Voller Home · lang drücken = Mock");
+            return true;
+        });
         content.addView(top);
 
         updateHome = text(14, ink, true);
@@ -990,6 +1010,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         root.addView(recentRail, railLp);
 
         setupThumbFan(root);
+        applyMockHome();
 
         // Compact (Professionell): the three main apps stay at the bottom, always reachable.
         proDock = new LinearLayout(this);
