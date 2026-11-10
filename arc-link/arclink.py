@@ -18,9 +18,10 @@ What's new in v1.2:
     floats a small "⌨ xx%" chip — so you can see how much "keyboard" is left over USB.
 
 Controls:
+  F9   — QUIT (always works, even while forwarding)
   F10  — hard pause / resume (overrides auto-engage; when paused the Mac is fully yours)
   F1 BACK · F2 HOME · F3 RECENTS · ⌥/⌘-Backspace delete word
-  Ctrl-C to quit.
+  Ctrl-C also quits (Ctrl shortcuts now pass through to the Mac).
 
 Env overrides:  ARCLINK_SIZE=2560x1600   ARCLINK_SENS=1.6
 
@@ -68,9 +69,12 @@ KEYEVENT = {
     keyboard.Key.f1: 4, keyboard.Key.f2: 3, keyboard.Key.f3: 187,   # BACK / HOME / RECENTS
 }
 
-# Option or Command held + Backspace = delete the whole word (like macOS).
-MODS = {keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
-        keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
+# Modifier groups. ⌥/⌘+Backspace = delete word; Ctrl shortcuts (incl. Ctrl-C to quit) pass to the Mac.
+ALT  = {keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r}
+CMD  = {keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
+CTRL = {keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r}
+MODS  = ALT | CMD            # word-delete trigger (⌥/⌘ + Backspace)
+TRACK = ALT | CMD | CTRL     # modifiers we keep track of
 
 
 def adb_state():
@@ -135,7 +139,7 @@ class ArcLink:
         threading.Thread(target=self._batt_poll, daemon=True).start()
         mode = "keyboard + trackpad" if MOUSE else "keyboard only"
         print(f"ARC Link · tablet {self.dev.w}x{self.dev.h} · {mode} · engages when the Pad is plugged in")
-        print("F10 pause · F1 back · F2 home · F3 recents · 3-finger swipe = recents · ⌥/⌘-⌫ delete word · Ctrl-C quit"
+        print("F10 pause · F9 QUIT · F1 back · F2 home · F3 recents · 3-finger swipe = recents · ⌥/⌘-⌫ delete word · Ctrl-C quits"
               + ("" if MOUSE else "  (ARCLINK_MOUSE=0 disables the trackpad)"))
         print("keyboard battery → tablet chip · every 60 s while plugged in")
 
@@ -176,7 +180,11 @@ class ArcLink:
 
     # ── macOS capture: swallow events while active so they don't also hit the Mac ──
     def intercept(self, event_type, event):
-        return None if self.active() else event
+        if not self.active():
+            return event
+        if self.mods & CTRL:        # let Ctrl-C (and other Ctrl shortcuts) reach the Mac — so you can always quit
+            return event
+        return None
 
     # ── text buffering ──
     def _flusher(self):
@@ -191,6 +199,9 @@ class ArcLink:
 
     # ── keyboard ──
     def on_press(self, key):
+        if key == keyboard.Key.f9:                 # hard quit — always works, even while forwarding
+            print("\nARC Link beendet. (F9)")
+            os._exit(0)
         if key == keyboard.Key.f10:
             if key in self.down: return
             self.down.add(key)
@@ -198,7 +209,7 @@ class ArcLink:
             self.flush()
             print("PAUSED (Mac is yours)" if self.paused else "RESUMED")
             return
-        if key in MODS: self.mods.add(key)
+        if key in TRACK: self.mods.add(key)
         if not self.active(): return
         # auto-repeat IS allowed now (hold backspace = many deletes, spam ! = many !) —
         # the darwin_intercept suppression already stops the old double-typing.
@@ -210,7 +221,7 @@ class ArcLink:
         code = KEYEVENT.get(key)
         if code is not None:
             if key == keyboard.Key.backspace:
-                if self.mods:                       # ⌥/⌘ + backspace → delete the whole word
+                if self.mods & MODS:                # ⌥/⌘ + backspace → delete the whole word
                     n = max(1, len(self.word)); self.flush()
                     for _ in range(n): self.dev.keyevent(67)
                     self.word = ""
