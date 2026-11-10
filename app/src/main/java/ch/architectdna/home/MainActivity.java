@@ -941,9 +941,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         // Claude, always one tap away: floating bottom right.
         claudeFab = new ImageView(this);
-        claudeFab.setImageResource(R.drawable.ic_fab_cube);      // the ARC-DNA cube: the menu (Claude is one of its bubbles)
+        claudeFab.setImageResource(R.drawable.ic_spark);         // the ARC-DNA spark: the menu (Claude is one of its bubbles)
         claudeFab.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        claudeFab.setPadding(dp(13), dp(13), dp(13), dp(13));
+        claudeFab.setPadding(dp(14), dp(14), dp(14), dp(14));
         GradientDrawable cr = new GradientDrawable();
         cr.setShape(GradientDrawable.OVAL);
         cr.setColor(card);
@@ -957,7 +957,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             openClaude();
             return true;
         });
-        root.addView(claudeFab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
+        FrameLayout.LayoutParams fabLp = new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END);
+        fabLp.setMargins(0, 0, dp(16), dp(70));   // lift it out of the corner clutter / system nav
+        root.addView(claudeFab, fabLp);
 
         // Right-edge swipe → Mediathek (you use 3-button nav, so the edge is free of the back gesture).
         View edgeSwipe = new View(this);
@@ -1009,7 +1011,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         recentRail.setGravity(Gravity.CENTER_VERTICAL);
         recentRail.setPadding(dp(10), dp(7), dp(10), dp(7));
         GradientDrawable railBg = new GradientDrawable();
-        railBg.setColor((card & 0x00FFFFFF) | 0xF2000000);   // frosted, near-opaque card
+        railBg.setColor((card & 0x00FFFFFF) | 0xFF000000);   // opaque card — no content bleeds through
         railBg.setStroke(dp(1), line);
         railBg.setCornerRadius(dp(26));
         recentRail.setBackground(railBg);

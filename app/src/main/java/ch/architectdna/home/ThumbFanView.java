@@ -198,13 +198,7 @@ public class ThumbFanView extends View {
         c.save(); c.rotate(-90, 20 * dens, h / 2f); c.drawText("MEDIATHEK", 20 * dens, h / 2f, tp); c.restore();
         c.save(); c.rotate(90, w - 20 * dens, h / 2f); c.drawText("FOKUS", w - 20 * dens, h / 2f, tp); c.restore();
         tp.setLetterSpacing(0);
-        if (!active) {
-            tp.setColor(ink2); tp.setTextSize(15 * dens);
-            c.drawText("Halt eine untere Ecke gedrückt.", w / 2f, h * 0.46f, tp);
-            tp.setColor(ink3); tp.setTextSize(10.5f * dens); tp.setLetterSpacing(0.12f);
-            c.drawText("DEIN DAUMEN KENNT DEN WEG", w / 2f, h * 0.46f + 22 * dens, tp);
-            tp.setLetterSpacing(0);
-        }
+        // Center hint removed — the ambient data cells own the middle now, and each nub says "halten".
     }
 
     private void petal(Canvas c, float cx, float cy, String label, Drawable icon, boolean hot, boolean dim) {
