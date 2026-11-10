@@ -175,6 +175,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final String LABEL_TAG = "section-label";
     private LinearLayout recentHome, recentLib, recentRail;
     private boolean edgeFired, edgeFiredL;
+    private ThumbFanView thumbFan;
     private boolean hidden, libraryOpen;
 
     private final List<AppEntry> apps = new ArrayList<>();
@@ -307,6 +308,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         for (int i = gi + 1; i < content.getChildCount(); i++) content.getChildAt(i).setVisibility(on ? View.GONE : View.VISIBLE);
         if (peek != null) peek.setVisibility(on ? View.GONE : View.VISIBLE);
         if (lever != null) lever.setVisibility(on ? View.GONE : View.VISIBLE);
+        if (thumbFan != null) thumbFan.setMinimal(on);
+        // opaque background so the wallpaper's cube/grid stops bleeding through — clean like the mockup
+        if (scroll != null) scroll.setBackgroundColor(on ? (paper() | 0xFF000000) : ((paper() & 0x00FFFFFF) | 0xF4000000));
         if (on) {
             if (recentRail != null) recentRail.setVisibility(View.GONE);
             for (View v : new View[]{fox, bubble, seismo, proDock}) if (v != null) v.setVisibility(View.GONE);
@@ -2245,10 +2249,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 new ThumbFanView.Item("Werkzeuge", dr(R.drawable.ic_line_werkzeuge), () -> startAct(WerkzeugeActivity.class)),
             }, this::openArcWorld),
         };
-        ThumbFanView fan = new ThumbFanView(this);
-        fan.setColors(card, line, ink, ink2, 0xFFE07A3C);
-        fan.setData(left, right);
-        root.addView(fan, new FrameLayout.LayoutParams(-1, -1));
+        thumbFan = new ThumbFanView(this);
+        thumbFan.setColors(card, line, ink, ink2, ink3, 0xFFE07A3C);
+        thumbFan.setData(left, right);
+        thumbFan.setMinimal(mockHome());
+        root.addView(thumbFan, new FrameLayout.LayoutParams(-1, -1));
     }
     private Drawable dr(int res) { try { return getDrawable(res); } catch (RuntimeException e) { return null; } }
     private void startAct(Class<?> cls) { try { startActivity(new Intent(this, cls)); } catch (RuntimeException ignored) { } }

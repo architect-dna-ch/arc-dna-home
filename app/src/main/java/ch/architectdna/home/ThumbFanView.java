@@ -28,7 +28,8 @@ public class ThumbFanView extends View {
 
     private Item[] left = new Item[0];
     private Cat[] right = new Cat[0];
-    private int card, line, ink, ink2, orange, glow;
+    private int card, line, ink, ink2, ink3, orange, glow;
+    private boolean minimal;
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -51,11 +52,12 @@ public class ThumbFanView extends View {
         tp.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
     }
 
-    public void setColors(int card, int line, int ink, int ink2, int orange) {
-        this.card = card; this.line = line; this.ink = ink; this.ink2 = ink2; this.orange = orange;
+    public void setColors(int card, int line, int ink, int ink2, int ink3, int orange) {
+        this.card = card; this.line = line; this.ink = ink; this.ink2 = ink2; this.ink3 = ink3; this.orange = orange;
         this.glow = (orange & 0x00FFFFFF) | 0x33000000;
         invalidate();
     }
+    public void setMinimal(boolean m) { this.minimal = m; invalidate(); }
     public void setData(Item[] left, Cat[] right) { this.left = left; this.right = right; invalidate(); }
 
     @Override
@@ -139,8 +141,9 @@ public class ThumbFanView extends View {
 
     @Override
     protected void onDraw(Canvas c) {
-        drawNub(c, lx, ly);
-        drawNub(c, rx, ry);
+        if (minimal) drawChrome(c);
+        drawNub(c, lx, ly, true);
+        drawNub(c, rx, ry, false);
         if (!active) return;
         if (side == -1) {
             for (int i = 0; i < left.length; i++) {
@@ -163,13 +166,37 @@ public class ThumbFanView extends View {
         }
     }
 
-    private void drawNub(Canvas c, float cx, float cy) {
+    private void drawNub(Canvas c, float cx, float cy, boolean spark) {
         fill.setColor(card); c.drawCircle(cx, cy, nubR, fill);
         stroke.setColor(orange); stroke.setStrokeWidth(1.8f * dens); c.drawCircle(cx, cy, nubR, stroke);
-        // the ARC overlapping-square mark
-        float s = 11 * dens; stroke.setStrokeWidth(1.5f * dens);
-        c.drawRect(cx - s / 2 - 2 * dens, cy - s / 2 + 2 * dens, cx + s / 2 - 2 * dens, cy + s / 2 + 2 * dens, stroke);
-        c.drawRect(cx - s / 2 + 2 * dens, cy - s / 2 - 2 * dens, cx + s / 2 + 2 * dens, cy + s / 2 - 2 * dens, stroke);
+        stroke.setStrokeWidth(1.6f * dens);
+        if (spark) {                                   // left nub: a spark (quick apps)
+            float s = 9 * dens, d = s * 0.7f;
+            c.drawLine(cx - s, cy, cx + s, cy, stroke); c.drawLine(cx, cy - s, cx, cy + s, stroke);
+            c.drawLine(cx - d, cy - d, cx + d, cy + d, stroke); c.drawLine(cx - d, cy + d, cx + d, cy - d, stroke);
+        } else {                                       // right nub: the overlapping squares (Fokus)
+            float s = 11 * dens;
+            c.drawRect(cx - s / 2 - 2 * dens, cy - s / 2 + 2 * dens, cx + s / 2 - 2 * dens, cy + s / 2 + 2 * dens, stroke);
+            c.drawRect(cx - s / 2 + 2 * dens, cy - s / 2 - 2 * dens, cx + s / 2 + 2 * dens, cy + s / 2 - 2 * dens, stroke);
+        }
+        tp.setColor(ink3); tp.setTextSize(8 * dens); tp.setLetterSpacing(0.08f);
+        c.drawText("halten", cx, cy + nubR + 13 * dens, tp); tp.setLetterSpacing(0);
+    }
+
+    /** The minimal-home chrome: edge labels + the centre hint, matching the ARC Home mockup. */
+    private void drawChrome(Canvas c) {
+        int w = getWidth(), h = getHeight();
+        tp.setColor(orange); tp.setTextSize(11 * dens); tp.setLetterSpacing(0.16f);
+        c.save(); c.rotate(-90, 20 * dens, h / 2f); c.drawText("MEDIATHEK", 20 * dens, h / 2f, tp); c.restore();
+        c.save(); c.rotate(90, w - 20 * dens, h / 2f); c.drawText("FOKUS", w - 20 * dens, h / 2f, tp); c.restore();
+        tp.setLetterSpacing(0);
+        if (!active) {
+            tp.setColor(ink2); tp.setTextSize(15 * dens);
+            c.drawText("Halt eine untere Ecke gedrückt.", w / 2f, h * 0.46f, tp);
+            tp.setColor(ink3); tp.setTextSize(10.5f * dens); tp.setLetterSpacing(0.12f);
+            c.drawText("DEIN DAUMEN KENNT DEN WEG", w / 2f, h * 0.46f + 22 * dens, tp);
+            tp.setLetterSpacing(0);
+        }
     }
 
     private void petal(Canvas c, float cx, float cy, String label, Drawable icon, boolean hot, boolean dim) {
