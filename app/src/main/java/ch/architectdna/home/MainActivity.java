@@ -307,7 +307,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean on = mockHome();
         int gi = content.indexOfChild(flexGap);
         for (int i = gi + 1; i < content.getChildCount(); i++) content.getChildAt(i).setVisibility(on ? View.GONE : View.VISIBLE);
-        if (peek != null) peek.setVisibility(on ? View.GONE : View.VISIBLE);
+        if (peek != null) peek.setVisibility(View.GONE);   // peek dial retired — it collided with the header
         if (lever != null) lever.setVisibility(on ? View.GONE : View.VISIBLE);
         if (thumbFan != null) thumbFan.setMinimal(on);
         // opaque background so the wallpaper's cube/grid stops bleeding through — clean like the mockup
@@ -7004,6 +7004,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         /** Appears once the top cards have scrolled away, slides back up at the top. */
         void follow(int y) {
+            // Disabled: it hung from the top centre and collided with the ARCHITECT·DNA header. The
+            // clean home keeps the big digital clock; the alarm countdown belongs in Bär, not floating.
+            if (!prefs.getBoolean("peekDial", false)) { shown = false; removeCallbacks(tick); setVisibility(View.GONE); return; }
             // Always there (asked for); at the top it hangs small above the big clock, full size once scrolled.
             boolean big = y > Math.max(dp(300), clocksEnd - dp(8));
             float sc = big ? 1f : 0.55f;            // small at the top: clears the ARCHITECT · DNA line
