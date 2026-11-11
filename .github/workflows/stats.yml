@@ -1,0 +1,57 @@
+name: Build Statistik APK
+
+# The second home (ARC-DNA Statistik) is its own app: built only when its module changes,
+# released under its own tags, never marked "latest" so the main launcher's updater ignores it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stats/**'
+      - '.github/workflows/stats.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build release APK
+        run: gradle :stats:assembleRelease --build-cache --stacktrace
+
+      - name: Rename output
+        run: cp stats/build/outputs/apk/release/stats-release.apk ARC-DNA-Statistik.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: stats-v0.${{ github.run_number }}
+          name: ARC-DNA Statistik 0.${{ github.run_number }}
+          files: ARC-DNA-Statistik.apk
+          make_latest: false
+          body: |
+            The second home. Download **ARC-DNA-Statistik.apk**, open it and allow installing.
+            First start: tap "Zugriff erlauben" and switch on usage access for ARC Statistik.
+
+      # Keep only the 5 newest Statistik releases (and their tags).
+      - name: Prune old Statistik releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | startswith("stats-v"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+          while read -r tag; do
+            gh release delete "$tag" --yes --cleanup-tag -R "${{ github.repository }}" || true
+          done

@@ -3,6 +3,10 @@ name: Build APK
 on:
   push:
     branches: [main]
+    # The Statistik app has its own workflow (stats.yml); its changes don't rebuild the launcher.
+    paths-ignore:
+      - 'stats/**'
+      - '.github/workflows/stats.yml'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +34,7 @@ jobs:
             https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
       - name: Build release APK
-        run: gradle assembleRelease --build-cache --stacktrace
+        run: gradle :app:assembleRelease --build-cache --stacktrace
 
       - name: Rename output
         run: cp app/build/outputs/apk/release/app-release.apk ARC-DNA-Home.apk
@@ -50,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p deltas
-          for tag in $(gh api "repos/${{ github.repository }}/releases?per_page=3" --jq '.[].tag_name'); do
+          for tag in $(gh api "repos/${{ github.repository }}/releases?per_page=20" --jq '[.[] | select(.tag_name | startswith("v"))][:3][].tag_name'); do
             mkdir -p "old/$tag"
             gh release download "$tag" -p ARC-DNA-Home.apk -D "old/$tag" -R "${{ github.repository }}" || continue
             python3 tools/apkdelta.py "old/$tag/ARC-DNA-Home.apk" ARC-DNA-Home.apk "deltas/delta-$tag.bin" || rm -f "deltas/delta-$tag.bin"
@@ -92,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api "repos/${{ github.repository }}/releases?per_page=100" \
-            --jq 'sort_by(.created_at) | reverse | .[10:] | .[].tag_name' |
+            --jq '[.[] | select(.tag_name | startswith("v"))] | sort_by(.created_at) | reverse | .[10:] | .[].tag_name' |
           while read -r tag; do
             gh release delete "$tag" --yes --cleanup-tag -R "${{ github.repository }}" || true
           done
