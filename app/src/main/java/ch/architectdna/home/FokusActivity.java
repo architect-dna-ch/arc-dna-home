@@ -73,13 +73,20 @@ public class FokusActivity extends Activity {
         ink2 = night ? 0xFFADA293 : 0xFF6A5F54;
         ink3 = night ? 0xFF6E6456 : 0xFFA99E8E;
         rust = night ? 0xFFD1472E : 0xFFB5271E;
-        getWindow().setStatusBarColor(bg);
-        getWindow().setNavigationBarColor(bg);
+        getWindow().setStatusBarColor(0);
+        getWindow().setNavigationBarColor(0);
         calmBars(bg);
+        overlayWindow();
 
         rootView = new LinearLayout(this);
         rootView.setOrientation(LinearLayout.VERTICAL);
-        rootView.setBackgroundColor(bg);
+        GradientDrawable panel = new GradientDrawable();
+        panel.setColor(bg);
+        float r = dp(24);
+        panel.setCornerRadii(new float[]{r, r, 0, 0, 0, 0, r, r});   // rounded left edge of the overlay panel
+        rootView.setBackground(panel);
+        rootView.setElevation(dp(16));
+        rootView.setClipToOutline(true);
         if (Build.VERSION.SDK_INT >= 30) {
             rootView.setOnApplyWindowInsetsListener((v, in) -> {
                 android.graphics.Insets i = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
@@ -87,9 +94,42 @@ public class FokusActivity extends Activity {
                 return in;
             });
         }
-        setContentView(rootView);
+        // Shell: a blurred tap-out gutter on the left (15%), the funnel panel on the right (85%).
+        LinearLayout shell = new LinearLayout(this);
+        shell.setOrientation(LinearLayout.HORIZONTAL);
+        View gutter = new View(this);
+        gutter.setOnClickListener(v -> closeOverlay());
+        shell.addView(gutter, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.15f));
+        shell.addView(rootView, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 0.85f));
+        setContentView(shell);
+        rootView.post(() -> {                                       // slide the panel in from the right
+            rootView.setTranslationX(rootView.getWidth());
+            rootView.animate().translationX(0).setDuration(300)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+        });
         cur = root();
         show();
+    }
+
+    /** Translucent overlay window: dim + (API 31+) blur the home showing behind the panel. */
+    private void overlayWindow() {
+        android.view.Window w = getWindow();
+        w.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        android.view.WindowManager.LayoutParams lp = w.getAttributes();
+        lp.dimAmount = 0.22f;
+        if (Build.VERSION.SDK_INT >= 31) {
+            lp.setBlurBehindRadius(dp(22));
+            w.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+        }
+        w.setAttributes(lp);
+    }
+
+    /** Slide the panel back out to the right, then finish — no window animation. */
+    private void closeOverlay() {
+        if (rootView == null) { finish(); return; }
+        rootView.animate().translationX(rootView.getWidth()).setDuration(220)
+            .setInterpolator(new android.view.animation.AccelerateInterpolator())
+            .withEndAction(() -> { finish(); overridePendingTransition(0, 0); }).start();
     }
 
     private void go(Node next, String crumb) {
@@ -102,7 +142,7 @@ public class FokusActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (!stack.isEmpty()) { cur = stack.pop(); if (!trail.isEmpty()) trail.pop(); show(); }
-        else super.onBackPressed();
+        else closeOverlay();
     }
 
     private void show() {

@@ -9,4 +9,14 @@
         <item name="android:colorAccent">@color/rust</item>
         <item name="android:windowAnimationStyle">@null</item>
     </style>
+
+    <!-- Fokus overlay: translucent so the home shows (blurred) behind the 85% panel. -->
+    <style name="FokusOverlay" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:colorAccent">@color/rust</item>
+    </style>
 </resources>

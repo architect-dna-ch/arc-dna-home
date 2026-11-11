@@ -320,7 +320,7 @@
             android:name=".FokusActivity"
             android:exported="false"
             android:label="Fokus"
-            android:theme="@android:style/Theme.Material.NoActionBar" />
+            android:theme="@style/FokusOverlay" />
 
         <!-- Bücher: all e-books across edubase / RW-Lehrmittel / kv-edupool, with activation codes. -->
         <activity
