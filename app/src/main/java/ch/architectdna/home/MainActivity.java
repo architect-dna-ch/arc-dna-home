@@ -2980,16 +2980,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      *  phone hasn't. Falls back to the app-only override (which does NOT follow the native toggle). */
     private void applyNight(boolean dark) {
         try {
+            // Write the real system night setting; UiModeManagerService observes it and re-themes.
             android.provider.Settings.Secure.putInt(getContentResolver(), "ui_night_mode", dark ? 2 : 1);  // 2=yes 1=no
         } catch (Exception e) {
             setAppNight(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
             pop("Für echten System-Dark: WRITE_SECURE_SETTINGS per ARC Link freigeben.");
-            return;
         }
-        try {   // nudge it live; the system config change then recreates us in the new mode
-            UiModeManager ui = (UiModeManager) getSystemService(UI_MODE_SERVICE);
-            if (ui != null) ui.setNightModeActivated(dark);
-        } catch (Exception ignored) { }
     }
 
     /** Clockwise: portrait → landscape → upside down → other landscape → portrait; counter-clockwise backwards. */
