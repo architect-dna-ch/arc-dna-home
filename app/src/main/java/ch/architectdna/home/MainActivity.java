@@ -1708,16 +1708,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         library.bringToFront();
         library.setVisibility(View.VISIBLE);
         library.setAlpha(0f);
-        library.setTranslationX(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80));
+        library.setTranslationX(-(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80)));   // from the LEFT
         library.animate().cancel();
         library.animate().alpha(1f).translationX(0).setDuration(340)
             .setInterpolator(new DecelerateInterpolator(1.7f)).start();
         scroll.animate().cancel();
-        scroll.setPivotX(0);
+        scroll.setPivotX(scroll.getWidth());   // home recedes to the right as the Mediathek enters from the left
         scroll.animate().alpha(0.4f).scaleX(0.97f).scaleY(0.97f).setDuration(340)
             .setInterpolator(new DecelerateInterpolator(1.7f)).start();
         libScroll.scrollTo(0, 0);
         floaters(false);
+        dockOverLib(true);                 // keep the bottom dock on top of the Mediathek
         // Head / eye scrolling only works in the Mediathek: the camera starts here …
         if (!headMode().equals("off")) startHead();
     }
@@ -1730,32 +1731,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hideKeyboard();
         libSearch.setText("");
         blurHome(false);
-        // The same move backwards: the Mediathek sweeps back out to the right, the home comes forward.
+        // The same move backwards: the Mediathek sweeps back out to the left, the home comes forward.
         library.animate().cancel();
-        library.animate().alpha(0f).translationX(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80)).setDuration(260)
+        library.animate().alpha(0f).translationX(-(library.getWidth() > 0 ? library.getWidth() * 0.16f : dp(80))).setDuration(260)
             .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
             .withEndAction(() -> library.setVisibility(View.GONE)).start();
         scroll.animate().cancel();
         scroll.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(320)
             .setInterpolator(new DecelerateInterpolator(1.6f)).start();
         floaters(true);
+        dockOverLib(false);
     }
 
     // ---- interactive Mediathek drag: the panel tracks your thumb from the left edge ----
     private float libW() { float w = library.getWidth(); return w > 0 ? w : getResources().getDisplayMetrics().widthPixels; }
+    /** Keep the bottom dock drawn and tappable above the open Mediathek; restore the normal stack on close. */
+    private void dockOverLib(boolean over) {
+        if (recentRail != null) { recentRail.setElevation(dp(over ? 30 : 7)); if (over) recentRail.bringToFront(); }
+        if (!over) {   // put the interactive overlays back on top of the dock
+            if (ambient != null) ambient.bringToFront();
+            if (thumbFan != null) thumbFan.bringToFront();
+            if (claudeFab != null) claudeFab.bringToFront();
+        }
+    }
     private void libDragStart() {
         if (libraryOpen || library == null) return;
         library.setElevation(dp(28)); library.bringToFront();
         library.setVisibility(View.VISIBLE);
-        library.setTranslationX(libW()); library.setAlpha(0f);
+        library.setTranslationX(-libW()); library.setAlpha(0f);   // hidden off the LEFT
         library.animate().cancel(); scroll.animate().cancel();
-        scroll.setPivotX(0);
-        floaters(false); blurHome(true);
+        scroll.setPivotX(scroll.getWidth());
+        floaters(false); blurHome(true); dockOverLib(true);
     }
     private void libDrag(float dx) {
         if (library == null) return;
         float w = libW(), p = Math.max(0f, Math.min(1f, dx / w));
-        library.setTranslationX(w * (1f - p)); library.setAlpha(Math.min(1f, p * 1.3f));
+        library.setTranslationX(-w * (1f - p)); library.setAlpha(Math.min(1f, p * 1.3f));   // slides in from the left
         scroll.setAlpha(1f - 0.6f * p); scroll.setScaleX(1f - 0.03f * p); scroll.setScaleY(1f - 0.03f * p);
     }
     private void libDragEnd(float dx) {
@@ -1769,11 +1780,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 .setInterpolator(new DecelerateInterpolator(1.7f)).start();
             libScroll.scrollTo(0, 0);
             if (!headMode().equals("off")) startHead();
-        } else {                                // let go early → slide it back out
-            library.animate().alpha(0f).translationX(w).setDuration(200)
+        } else {                                // let go early → slide it back out to the left
+            library.animate().alpha(0f).translationX(-w).setDuration(200)
                 .withEndAction(() -> library.setVisibility(View.GONE)).start();
             scroll.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).start();
-            blurHome(false); floaters(true);
+            blurHome(false); floaters(true); dockOverLib(false);
         }
     }
 
@@ -2951,7 +2962,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             a.addListener(new android.animation.AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(android.animation.Animator animation) {
-                    setAppNight(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
+                    applyNight(dark);
                 }
             });
             a.start();
@@ -2962,6 +2973,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (Build.VERSION.SDK_INT < 31) return;
         UiModeManager ui = (UiModeManager) getSystemService(UI_MODE_SERVICE);
         if (ui != null) ui.setApplicationNightMode(mode);   // the activity is recreated in the new mode
+    }
+
+    /** Drive the REAL system dark mode (one switch: the launcher toggle and the phone's native toggle
+     *  become the same). Needs WRITE_SECURE_SETTINGS — the manifest declares it; grant via adb if the
+     *  phone hasn't. Falls back to the app-only override (which does NOT follow the native toggle). */
+    private void applyNight(boolean dark) {
+        try {
+            android.provider.Settings.Secure.putInt(getContentResolver(), "ui_night_mode", dark ? 2 : 1);  // 2=yes 1=no
+        } catch (Exception e) {
+            setAppNight(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
+            pop("Für echten System-Dark: WRITE_SECURE_SETTINGS per ARC Link freigeben.");
+            return;
+        }
+        try {   // nudge it live; the system config change then recreates us in the new mode
+            UiModeManager ui = (UiModeManager) getSystemService(UI_MODE_SERVICE);
+            if (ui != null) ui.setNightModeActivated(dark);
+        } catch (Exception ignored) { }
     }
 
     /** Clockwise: portrait → landscape → upside down → other landscape → portrait; counter-clockwise backwards. */
