@@ -980,23 +980,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         edgeSwipe.setOnTouchListener((v, ev) -> edgeGd.onTouchEvent(ev));
         root.addView(edgeSwipe, new FrameLayout.LayoutParams(dp(26), -1, Gravity.END));
 
-        // Left-edge drag → the Mediathek, following your thumb the whole way (not a snap).
+        // Left-edge swipe → Globus (the globe). Mediathek now opens by pulling the dock up instead.
         View edgeSwipeL = new View(this);
         edgeSwipeL.setOnTouchListener(new View.OnTouchListener() {
-            float sx, sy; boolean dragging;
+            float sx, sy; boolean fired;
             @Override public boolean onTouch(View v, android.view.MotionEvent ev) {
                 switch (ev.getActionMasked()) {
                     case android.view.MotionEvent.ACTION_DOWN:
-                        sx = ev.getRawX(); sy = ev.getRawY(); dragging = false; return true;
+                        sx = ev.getRawX(); sy = ev.getRawY(); fired = false; return true;
                     case android.view.MotionEvent.ACTION_MOVE: {
                         float dx = ev.getRawX() - sx, dy = ev.getRawY() - sy;
-                        if (!dragging && dx > dp(14) && Math.abs(dx) > Math.abs(dy)) { dragging = true; libDragStart(); }
-                        if (dragging) libDrag(dx);
+                        if (!fired && dx > dp(44) && Math.abs(dx) > Math.abs(dy) * 1.4f) { fired = true; startAct(GlobusActivity.class); }
                         return true;
                     }
                     case android.view.MotionEvent.ACTION_UP:
                     case android.view.MotionEvent.ACTION_CANCEL:
-                        if (dragging) libDragEnd(ev.getRawX() - sx);
                         return true;
                 }
                 return false;
