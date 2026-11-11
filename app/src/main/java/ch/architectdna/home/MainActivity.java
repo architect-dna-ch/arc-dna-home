@@ -314,7 +314,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (scroll != null) scroll.setBackgroundColor(on ? (paper() | 0xFF000000) : ((paper() & 0x00FFFFFF) | 0xF4000000));
         refreshRecentRail();   // the bottom dock stays in both modes
         if (on) {
-            for (View v : new View[]{fox, bubble, seismo, proDock}) if (v != null) v.setVisibility(View.GONE);
+            for (View v : new View[]{bubble, seismo, proDock}) if (v != null) v.setVisibility(View.GONE);
+            if (fox != null) fox.setVisibility(View.VISIBLE);   // the buddy floats in the middle of the clean home
         } else {
             floaters(true);
             applyPro();
@@ -1088,14 +1089,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
         });
         fox.setOnTouchListener((v, e) -> buddyTaps.onTouchEvent(e));
-        root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.BOTTOM | Gravity.START));
+        root.addView(fox, new FrameLayout.LayoutParams(dp(84), dp(56), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         bubble = text(13, ink, true);
         bubble.setBackground(box(ink, ink, 12));
         bubble.setTextColor(0xFF000000 | (~ink & 0xFFFFFF));
         bubble.setPadding(dp(10), dp(6), dp(10), dp(6));
         bubble.setVisibility(View.GONE);
-        root.addView(bubble, new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START));
+        root.addView(bubble, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int top0, bottom, left, right;
@@ -1120,14 +1121,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             topScrim.requestLayout();
             foldInset = bottom + dp(84);
             ((FrameLayout.LayoutParams) seismo.getLayoutParams()).setMargins(left, 0, right, bottom + dp(6));
-            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(left + dp(14), 0, 0, bottom + dp(20));
+            int foxTop = (int) ((v.getHeight() > 0 ? v.getHeight() : getResources().getDisplayMetrics().heightPixels) * 0.42f);
+            ((FrameLayout.LayoutParams) fox.getLayoutParams()).setMargins(0, foxTop, 0, 0);   // float the buddy in the open middle
             ((FrameLayout.LayoutParams) gameButton.getLayoutParams()).setMargins(left + dp(18), 0, 0, bottom + dp(84));
             ((FrameLayout.LayoutParams) claudeFab.getLayoutParams()).setMargins(0, 0, right + dp(18), bottom + dp(40));
             ((FrameLayout.LayoutParams) proDock.getLayoutParams()).setMargins(left + dp(18), 0, 0, bottom + dp(38));
             claudeFab.requestLayout();
             proDock.requestLayout();
             gameButton.requestLayout();
-            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(left + dp(70), 0, 0, bottom + dp(72));
+            ((FrameLayout.LayoutParams) bubble.getLayoutParams()).setMargins(0, foxTop - dp(40), 0, 0);
             bottomScrim.requestLayout();
             seismo.requestLayout();
             fox.requestLayout();
