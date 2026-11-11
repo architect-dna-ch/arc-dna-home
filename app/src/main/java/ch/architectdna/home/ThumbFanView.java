@@ -72,7 +72,7 @@ public class ThumbFanView extends View {
         R2 = Math.min(base * 0.44f, 300 * dens);
         Rflat = Math.min(base * 0.34f, 245 * dens);
         lx = 42 * dens; ly = h - 42 * dens;
-        rx = w - 120 * dens; ry = h - 42 * dens;
+        rx = w - 42 * dens; ry = h - 42 * dens;   // bottom-right corner, symmetric with the left nub
     }
 
     private int nubAt(float x, float y) {
