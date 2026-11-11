@@ -959,8 +959,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         FrameLayout.LayoutParams fabLp = new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END);
-        fabLp.setMargins(0, 0, dp(16), dp(70));   // lift it out of the corner clutter / system nav
+        fabLp.setMargins(0, 0, dp(16), dp(70));
         root.addView(claudeFab, fabLp);
+        claudeFab.setVisibility(View.GONE);   // ARC-DNA button removed from the home (Claude lives in the fans/dock)
 
         // Right-edge swipe → Mediathek (you use 3-button nav, so the edge is free of the back gesture).
         View edgeSwipe = new View(this);
