@@ -20,7 +20,20 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
+import android.widget.BaseAdapter;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -41,10 +54,14 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * ARC-DNA Statistik — the second home. No icon wall: it ranks your apps by a score built from
- * how much you use them (last 7 days), how recently, and whether this hour of the day matches
- * their pattern. The three weights are yours to tune. All numbers come from Android's usage
- * events and never leave the phone.
+ * ARC-DNA Statistik — the second home. Built on what the big launchers already taught everyone:
+ * the WHOLE screen is the control, never a small target.
+ *   swipe up anywhere    → all apps (Pixel / One UI / HyperOS drawer)
+ *   swipe down anywhere  → search with the keyboard up (iOS Spotlight)
+ *   swipe left           → the statistics page (iOS Today view); swipe right or Back returns
+ *   bottom dock          → your most-used apps, always in the same spot (iOS / macOS / ChromeOS shelf)
+ *   suggestions grid     → what you most likely want now (Pixel app suggestions, iPadOS dock)
+ * The ranking comes from real usage events (7 days): frequency, recency and hour-of-day match.
  */
 public class StatsHomeActivity extends Activity {
 
@@ -62,16 +79,25 @@ public class StatsHomeActivity extends Activity {
 
     private int paper, card, ink, ink2, ink3, line, rust, teal;
     private SharedPreferences prefs;
-    private LinearLayout col, accessCard, predBox, topBox, allBox;
-    private TextView dateTv, screenTv, hourHint;
+    private InputMethodManager imm;
+    private SwipeFrame root;
+    private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
+    private ScrollView statsPage;
+    private TextView glance, accessLink, screenTv, hourHint;
+    private EditText search;
+    private GridView grid;
     private HourChart chart;
-    private final List<App> apps = new ArrayList<>();
-    private boolean loading;
+    private final List<App> apps = new ArrayList<>();     // ranked by score
+    private final List<App> shown = new ArrayList<>();    // what the drawer grid shows
+    private final GridAdapter adapter = new GridAdapter();
+    private boolean loading, drawerOpen;
+    private int page;                                      // 0 = home, 1 = statistics
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         prefs = getSharedPreferences("stats", MODE_PRIVATE);
+        imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         paper = night ? 0xFF14110E : 0xFFF5F1E8;
         card = night ? 0xFF1C1915 : 0xFFFBF8F1;
@@ -86,28 +112,38 @@ public class StatsHomeActivity extends Activity {
         if (!night) getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
-        ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(paper);
-        sv.setFillViewport(true);
-        col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(20), dp(20), dp(20), dp(28));
-        sv.addView(col, new ScrollView.LayoutParams(-1, -2));
-        sv.setOnApplyWindowInsetsListener((v, in) -> {
-            int l, t, r, bo;
+        root = new SwipeFrame();
+        root.setBackgroundColor(paper);
+        buildHome();
+        buildStats();
+        buildDrawer();
+        root.addView(homePage, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(statsPage, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(drawer, new FrameLayout.LayoutParams(-1, -1));
+        root.setOnApplyWindowInsetsListener((v, in) -> {
+            int l, t, r, bo, ime = 0;
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets i = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
                 l = i.left; t = i.top; r = i.right; bo = i.bottom;
+                ime = in.getInsets(android.view.WindowInsets.Type.ime()).bottom;
             } else {
                 l = in.getSystemWindowInsetLeft(); t = in.getSystemWindowInsetTop();
                 r = in.getSystemWindowInsetRight(); bo = in.getSystemWindowInsetBottom();
             }
-            col.setPadding(l + dp(20), t + dp(20), r + dp(20), bo + dp(28));
+            homePage.setPadding(l + dp(20), t + dp(20), r + dp(20), bo + dp(14));
+            statsCol.setPadding(l + dp(20), t + dp(20), r + dp(20), bo + dp(28));
+            drawer.setPadding(l + dp(14), t + dp(12), r + dp(14), Math.max(bo, ime));
             return in;
         });
+        setContentView(root);
+    }
 
-        // ---- header: eyebrow, clock, date ----
-        col.addView(label("ARC·DNA · STATISTIK-HOME", rust));
+    /** Page 0: glance on top, suggestions in the middle, dock and search at the bottom. */
+    private void buildHome() {
+        homePage = new LinearLayout(this);
+        homePage.setOrientation(LinearLayout.VERTICAL);
+
+        homePage.addView(label("ARC·DNA", rust));
         TextClock clock = new TextClock(this);
         clock.setFormat24Hour("HH:mm");
         clock.setFormat12Hour("HH:mm");
@@ -115,12 +151,50 @@ public class StatsHomeActivity extends Activity {
         clock.setTextSize(64);
         clock.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         clock.setLetterSpacing(-0.04f);
-        col.addView(clock);
-        dateTv = text(15, ink2, false);
-        dateTv.setTypeface(Typeface.MONOSPACE);
-        col.addView(dateTv);
+        homePage.addView(clock);
+        glance = text(15, ink2, false);
+        homePage.addView(glance);
+        accessLink = text(14, rust, true);
+        accessLink.setText("Nutzungszugriff erlauben →");
+        accessLink.setPadding(0, dp(12), 0, dp(12));
+        accessLink.setOnClickListener(v -> openUsageSettings());
+        accessLink.setVisibility(View.GONE);
+        homePage.addView(accessLink);
 
-        // ---- usage access prompt (hidden once granted) ----
+        homePage.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        homePage.addView(label("VORSCHLÄGE FÜR JETZT", ink3), lp(-1, -2, 0, 0, 0, dp(10)));
+        suggestBox = new LinearLayout(this);
+        suggestBox.setOrientation(LinearLayout.VERTICAL);
+        homePage.addView(suggestBox);
+
+        dock = new LinearLayout(this);
+        dock.setGravity(Gravity.CENTER_VERTICAL);
+        dock.setPadding(dp(8), dp(10), dp(8), dp(10));
+        dock.setBackground(box(card, line, 28));
+        homePage.addView(dock, lp(-1, -2, 0, dp(18), 0, 0));
+
+        TextView pill = text(14, ink3, false);
+        pill.setText("Suchen   ·   ↑ alle Apps   ·   ← Statistik");
+        pill.setGravity(Gravity.CENTER);
+        pill.setPadding(dp(16), dp(13), dp(16), dp(13));
+        pill.setBackground(box(card, line, 40));
+        pill.setOnClickListener(v -> openDrawer(true));
+        homePage.addView(pill, lp(-1, -2, 0, dp(12), 0, 0));
+    }
+
+    /** Page 1: the numbers behind the suggestions, and the three weights of the model. */
+    private void buildStats() {
+        statsPage = new ScrollView(this);
+        statsPage.setBackgroundColor(paper);
+        statsPage.setVisibility(View.GONE);
+        statsCol = new LinearLayout(this);
+        statsCol.setOrientation(LinearLayout.VERTICAL);
+        statsPage.addView(statsCol, new ScrollView.LayoutParams(-1, -2));
+        LinearLayout col = statsCol;
+
+        col.addView(label("STATISTIK   ·   → zurück", rust));
+
         accessCard = cardBox();
         TextView at = text(15, ink, true);
         at.setText("Nutzungszugriff fehlt");
@@ -133,20 +207,11 @@ public class StatsHomeActivity extends Activity {
         btn.setGravity(Gravity.CENTER);
         btn.setPadding(dp(18), dp(11), dp(18), dp(11));
         btn.setBackground(box(rust, rust, 40));
-        btn.setOnClickListener(v -> {
-            try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (RuntimeException ignored) { }
-        });
+        btn.setOnClickListener(v -> openUsageSettings());
         accessCard.addView(btn, lp(-2, -2, 0, 0, 0, 0));
         accessCard.setVisibility(View.GONE);
         col.addView(accessCard, lp(-1, -2, 0, dp(16), 0, 0));
 
-        // ---- now: the predicted apps ----
-        col.addView(label("JETZT WAHRSCHEINLICH", ink3), lp(-1, -2, 0, dp(22), 0, dp(8)));
-        predBox = new LinearLayout(this);
-        predBox.setOrientation(LinearLayout.VERTICAL);
-        col.addView(predBox);
-
-        // ---- the model: three weights ----
         LinearLayout model = cardBox();
         model.addView(label("MODELL — AUSTÜFTELN", ink3));
         model.addView(slider("Häufigkeit", "wF", 45));
@@ -154,7 +219,6 @@ public class StatsHomeActivity extends Activity {
         model.addView(slider("Tageszeit", "wH", 30));
         col.addView(model, lp(-1, -2, 0, dp(14), 0, 0));
 
-        // ---- today's screen time + top apps ----
         LinearLayout today = cardBox();
         today.addView(label("HEUTE AM BILDSCHIRM", ink3));
         screenTv = text(32, ink, true);
@@ -165,7 +229,6 @@ public class StatsHomeActivity extends Activity {
         today.addView(topBox, lp(-1, -2, 0, dp(8), 0, 0));
         col.addView(today, lp(-1, -2, 0, dp(14), 0, 0));
 
-        // ---- usage by hour ----
         LinearLayout hourCard = cardBox();
         hourCard.addView(label("NUTZUNG NACH STUNDE · 7 TAGE", ink3));
         chart = new HourChart();
@@ -174,26 +237,235 @@ public class StatsHomeActivity extends Activity {
         hourHint.setTypeface(Typeface.MONOSPACE);
         hourCard.addView(hourHint, lp(-1, -2, 0, dp(6), 0, 0));
         col.addView(hourCard, lp(-1, -2, 0, dp(14), 0, 0));
+    }
 
-        // ---- every app, ranked ----
-        col.addView(label("ALLE APPS · NACH SCORE", ink3), lp(-1, -2, 0, dp(22), 0, dp(8)));
-        allBox = new LinearLayout(this);
-        allBox.setOrientation(LinearLayout.VERTICAL);
-        col.addView(allBox);
+    /** The drawer: search on top, every app in a 4-column grid. Pull down at the top to close. */
+    private void buildDrawer() {
+        drawer = new LinearLayout(this);
+        drawer.setOrientation(LinearLayout.VERTICAL);
+        drawer.setBackgroundColor(paper);
+        drawer.setVisibility(View.GONE);
+        drawer.setClickable(true);
+        drawer.setFocusableInTouchMode(true);
 
-        setContentView(sv);
+        search = new EditText(this);
+        search.setHint("Apps suchen");
+        search.setHintTextColor(ink3);
+        search.setTextColor(ink);
+        search.setTextSize(17);
+        search.setSingleLine(true);
+        search.setImeOptions(EditorInfo.IME_ACTION_GO);
+        search.setPadding(dp(18), dp(13), dp(18), dp(13));
+        search.setBackground(box(card, line, 40));
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int c, int d) { }
+            @Override public void onTextChanged(CharSequence s, int a, int c, int d) { }
+            @Override public void afterTextChanged(Editable e) { filter(e.toString()); }
+        });
+        search.setOnEditorActionListener((v, id, ev) -> {
+            if (!shown.isEmpty()) launch(shown.get(0));
+            return true;
+        });
+        drawer.addView(search, lp(-1, -2, 0, 0, 0, dp(10)));
+
+        grid = new GridView(this);
+        grid.setNumColumns(4);
+        grid.setVerticalSpacing(dp(6));
+        grid.setSelector(new android.graphics.drawable.ColorDrawable(0));
+        grid.setVerticalScrollBarEnabled(false);
+        grid.setClipToPadding(false);
+        grid.setPadding(0, 0, 0, dp(24));
+        grid.setAdapter(adapter);
+        grid.setOnItemClickListener((p, v, pos, id) -> launch(shown.get(pos)));
+        grid.setOnTouchListener(new View.OnTouchListener() {
+            float downY; boolean fromTop;
+            @Override public boolean onTouch(View v, MotionEvent e) {
+                if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    downY = e.getRawY();
+                    fromTop = !grid.canScrollVertically(-1);
+                } else if (e.getActionMasked() == MotionEvent.ACTION_MOVE && fromTop
+                    && e.getRawY() - downY > dp(90)) {
+                    fromTop = false;
+                    closeDrawer();
+                }
+                return false;
+            }
+        });
+        drawer.addView(grid, new LinearLayout.LayoutParams(-1, 0, 1f));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        dateTv.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date()));
         load();
     }
 
-    /** A home screen has nowhere to go back to. */
+    /** Leaving for another app: the next time home shows, it is the plain home page again. */
+    @Override
+    protected void onStop() {
+        super.onStop();
+        resetToHome();
+    }
+
+    /** Home button while already here. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        closeDrawer();
+        showStats(false);
+    }
+
+    /** Back closes what is open; on the plain home there is nowhere to go back to. */
     @Override
     public void onBackPressed() {
+        if (drawerOpen) closeDrawer();
+        else showStats(false);
+    }
+
+    // ================= whole-screen gestures, pages, drawer =================
+
+    /** The root: any swipe that starts anywhere — on an icon or on empty space — is a gesture. */
+    private final class SwipeFrame extends FrameLayout {
+        private float sx, sy;
+        private final int slop;
+
+        SwipeFrame() {
+            super(StatsHomeActivity.this);
+            slop = ViewConfiguration.get(StatsHomeActivity.this).getScaledTouchSlop();
+        }
+
+        @Override public boolean onInterceptTouchEvent(MotionEvent e) {
+            if (drawerOpen) return false;
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                sx = e.getX(); sy = e.getY();
+                return false;
+            }
+            if (e.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float dx = Math.abs(e.getX() - sx), dy = Math.abs(e.getY() - sy);
+                if (dx < slop * 2 && dy < slop * 2) return false;
+                return page == 0 || dx > dy;        // the statistics page keeps its own vertical scroll
+            }
+            return false;
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            if (drawerOpen) return false;
+            if (e.getActionMasked() == MotionEvent.ACTION_UP) {
+                float dx = e.getX() - sx, dy = e.getY() - sy;
+                if (Math.max(Math.abs(dx), Math.abs(dy)) > dp(44)) {
+                    boolean horizontal = Math.abs(dx) > Math.abs(dy);
+                    if (page == 1) { if (horizontal && dx > 0) showStats(false); }
+                    else if (horizontal) { if (dx < 0) showStats(true); }
+                    else if (dy < 0) openDrawer(false);
+                    else openDrawer(true);
+                }
+            }
+            return true;
+        }
+    }
+
+    private void showStats(boolean on) {
+        if ((page == 1) == on) return;
+        page = on ? 1 : 0;
+        float w = root.getWidth();
+        if (on) {
+            statsPage.setVisibility(View.VISIBLE);
+            statsPage.setTranslationX(w);
+            statsPage.animate().translationX(0).setDuration(240).setInterpolator(new DecelerateInterpolator(1.6f)).withEndAction(null).start();
+            homePage.animate().translationX(-w * 0.25f).alpha(0f).setDuration(240).start();
+        } else {
+            statsPage.animate().translationX(w).setDuration(220).withEndAction(() -> statsPage.setVisibility(View.GONE)).start();
+            homePage.animate().translationX(0).alpha(1f).setDuration(220).start();
+        }
+    }
+
+    private void openDrawer(boolean focusSearch) {
+        if (drawerOpen) return;
+        drawerOpen = true;
+        filter("");
+        grid.setSelection(0);
+        drawer.setVisibility(View.VISIBLE);
+        drawer.setTranslationY(root.getHeight());
+        drawer.animate().translationY(0).setDuration(240).setInterpolator(new DecelerateInterpolator(1.6f)).withEndAction(null).start();
+        if (focusSearch) {
+            search.requestFocus();
+            if (imm != null) imm.showSoftInput(search, 0);
+        }
+    }
+
+    private void closeDrawer() {
+        if (!drawerOpen) return;
+        drawerOpen = false;
+        if (imm != null) imm.hideSoftInputFromWindow(search.getWindowToken(), 0);
+        drawer.animate().translationY(root.getHeight()).setDuration(200).withEndAction(() -> {
+            drawer.setVisibility(View.GONE);
+            search.setText("");
+            search.clearFocus();
+        }).start();
+    }
+
+    private void resetToHome() {
+        drawerOpen = false;
+        page = 0;
+        drawer.animate().cancel();
+        statsPage.animate().cancel();
+        homePage.animate().cancel();
+        drawer.setVisibility(View.GONE);
+        statsPage.setVisibility(View.GONE);
+        homePage.setTranslationX(0);
+        homePage.setAlpha(1f);
+        search.setText("");
+        search.clearFocus();
+    }
+
+    /** Drawer contents: everything A–Z, or the matches for what is typed (prefix matches first). */
+    private void filter(String q) {
+        final String s = q.trim().toLowerCase(Locale.ROOT);
+        shown.clear();
+        for (App a : apps) if (s.isEmpty() || a.label.toLowerCase(Locale.ROOT).contains(s)) shown.add(a);
+        Collections.sort(shown, (x, y) -> {
+            if (!s.isEmpty()) {
+                boolean px = x.label.toLowerCase(Locale.ROOT).startsWith(s), py = y.label.toLowerCase(Locale.ROOT).startsWith(s);
+                if (px != py) return px ? -1 : 1;
+            }
+            return x.label.compareToIgnoreCase(y.label);
+        });
+        adapter.notifyDataSetChanged();
+    }
+
+    private final class GridAdapter extends BaseAdapter {
+        @Override public int getCount() { return shown.size(); }
+        @Override public Object getItem(int i) { return shown.get(i); }
+        @Override public long getItemId(int i) { return i; }
+        @Override public View getView(int i, View cv, ViewGroup parent) {
+            LinearLayout cell = cv instanceof LinearLayout ? (LinearLayout) cv : appCell(52, true);
+            if (cv == null) cell.setLayoutParams(new AbsListView.LayoutParams(-1, -2));
+            App a = shown.get(i);
+            ((ImageView) cell.getChildAt(0)).setImageDrawable(a.icon);
+            ((TextView) cell.getChildAt(1)).setText(a.label);
+            return cell;
+        }
+    }
+
+    /** An app cell: icon over (optionally) its name. The whole cell is the touch target. */
+    private LinearLayout appCell(int iconDp, boolean withLabel) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER_HORIZONTAL);
+        cell.setPadding(dp(4), dp(8), dp(4), dp(8));
+        ImageView iv = new ImageView(this);
+        cell.addView(iv, new LinearLayout.LayoutParams(dp(iconDp), dp(iconDp)));
+        TextView nm = text(12, ink, false);
+        nm.setGravity(Gravity.CENTER);
+        nm.setSingleLine(true);
+        nm.setEllipsize(TextUtils.TruncateAt.END);
+        nm.setVisibility(withLabel ? View.VISIBLE : View.GONE);
+        cell.addView(nm, lp(-1, -2, 0, dp(5), 0, 0));
+        return cell;
+    }
+
+    private void openUsageSettings() {
+        try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (RuntimeException ignored) { }
     }
 
     // ================= data =================
@@ -213,6 +485,7 @@ public class StatsHomeActivity extends Activity {
         loading = true;
         final boolean access = hasAccess();
         accessCard.setVisibility(access ? View.GONE : View.VISIBLE);
+        accessLink.setVisibility(access ? View.GONE : View.VISIBLE);
         new Thread(() -> {
             final List<App> list = queryApps();
             if (access) {
@@ -330,27 +603,47 @@ public class StatsHomeActivity extends Activity {
     // ================= rendering =================
 
     private void render(int nowHour) {
-        double best = apps.isEmpty() ? 1 : Math.max(apps.get(0).score, 1e-9);
-
-        // predicted: top 6 in two rows of three
-        predBox.removeAllViews();
-        int n = Math.min(6, apps.size());
-        for (int row = 0; row * 3 < n; row++) {
-            LinearLayout line3 = new LinearLayout(this);
-            for (int k = 0; k < 3; k++) {
-                int idx = row * 3 + k;
-                LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, -2, 1f);
-                if (k > 0) clp.leftMargin = dp(8);
-                line3.addView(idx < n ? predCell(apps.get(idx), idx == 0, apps.get(idx).score / best) : new View(this), clp);
-            }
-            predBox.addView(line3, lp(-1, -2, 0, row == 0 ? 0 : dp(8), 0, 0));
+        // dock: the four most-used apps of the week — stable, so the thumb learns the spot
+        List<App> byTotal = new ArrayList<>(apps);
+        Collections.sort(byTotal, (x, y) -> Long.compare(y.total, x.total));
+        List<App> docked = new ArrayList<>(byTotal.subList(0, Math.min(4, byTotal.size())));
+        dock.removeAllViews();
+        for (App a : docked) {
+            LinearLayout cell = appCell(54, false);
+            ((ImageView) cell.getChildAt(0)).setImageDrawable(a.icon);
+            cell.setOnClickListener(v -> launch(a));
+            dock.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
         }
 
-        // today's screen time + top five
+        // suggestions: the next eight by score, two rows of four
+        List<App> sug = new ArrayList<>();
+        for (App a : apps) { if (!docked.contains(a)) sug.add(a); if (sug.size() == 8) break; }
+        suggestBox.removeAllViews();
+        for (int row = 0; row * 4 < sug.size(); row++) {
+            LinearLayout line4 = new LinearLayout(this);
+            for (int k = 0; k < 4; k++) {
+                int idx = row * 4 + k;
+                View cellView;
+                if (idx < sug.size()) {
+                    final App a = sug.get(idx);
+                    LinearLayout cell = appCell(56, true);
+                    ((ImageView) cell.getChildAt(0)).setImageDrawable(a.icon);
+                    ((TextView) cell.getChildAt(1)).setText(a.label);
+                    cell.setOnClickListener(v -> launch(a));
+                    cellView = cell;
+                } else cellView = new View(this);
+                line4.addView(cellView, new LinearLayout.LayoutParams(0, -2, 1f));
+            }
+            suggestBox.addView(line4, lp(-1, -2, 0, row == 0 ? 0 : dp(6), 0, 0));
+        }
+
+        // glance + statistics page: today's screen time and top five
         long todayAll = 0;
         List<App> byToday = new ArrayList<>();
         for (App a : apps) { todayAll += a.today; if (a.today > 0) byToday.add(a); }
         Collections.sort(byToday, (x, y) -> Long.compare(y.today, x.today));
+        String date = new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date());
+        glance.setText(todayAll > 0 ? date + "  ·  " + dur(todayAll) + " am Bildschirm" : date);
         screenTv.setText(todayAll > 0 ? dur(todayAll) : "—");
         topBox.removeAllViews();
         long topMax = byToday.isEmpty() ? 1 : byToday.get(0).today;
@@ -382,54 +675,7 @@ public class StatsHomeActivity extends Activity {
             ? String.format(Locale.ROOT, "Peak um %02d:00 · jetzt (%02d:00) rot", peak, nowHour)
             : "Noch keine Nutzungsdaten.");
 
-        // every app, ranked
-        allBox.removeAllViews();
-        for (App a : apps) allBox.addView(appRow(a), lp(-1, -2, 0, 0, 0, dp(6)));
-    }
-
-    private View predCell(App a, boolean top, double frac) {
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setPadding(dp(12), dp(12), dp(12), dp(12));
-        cell.setBackground(box(card, top ? rust : line, 14));
-        ImageView iv = new ImageView(this);
-        iv.setImageDrawable(a.icon);
-        cell.addView(iv, new LinearLayout.LayoutParams(dp(40), dp(40)));
-        TextView nm = text(14, ink, true);
-        nm.setText(a.label);
-        nm.setSingleLine(true);
-        nm.setEllipsize(TextUtils.TruncateAt.END);
-        cell.addView(nm, lp(-1, -2, 0, dp(6), 0, 0));
-        TextView why = text(11, ink2, false);
-        why.setText(a.why);
-        why.setLines(2);
-        cell.addView(why);
-        cell.addView(bar(frac, rust, dp(4)), lp(-1, dp(4), 0, dp(6), 0, 0));
-        cell.setOnClickListener(v -> launch(a));
-        return cell;
-    }
-
-    private View appRow(App a) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(12), dp(9), dp(12), dp(9));
-        row.setBackground(box(card, line, 12));
-        ImageView iv = new ImageView(this);
-        iv.setImageDrawable(a.icon);
-        row.addView(iv, new LinearLayout.LayoutParams(dp(32), dp(32)));
-        TextView nm = text(14, ink, false);
-        nm.setText(a.label);
-        nm.setSingleLine(true);
-        nm.setEllipsize(TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0, -2, 1f);
-        nlp.leftMargin = dp(12);
-        row.addView(nm, nlp);
-        TextView t = text(12, ink3, false);
-        t.setTypeface(Typeface.MONOSPACE);
-        t.setText(a.total > 0 ? dur(a.total / 7) + "/Tag" : "");
-        row.addView(t);
-        row.setOnClickListener(v -> launch(a));
-        return row;
+        if (drawerOpen) filter(search.getText().toString());
     }
 
     private void launch(App a) {
