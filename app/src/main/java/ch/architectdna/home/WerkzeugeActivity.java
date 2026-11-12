@@ -27,7 +27,7 @@ public class WerkzeugeActivity extends Activity {
         {"Antrieb", "Checkt bei dir ein & wirft dir Funken", "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ", "C8643B"},
         {"Puls", "Wachheit im Unterricht — nicht absitzen", "https://claude.ai/artifact/Bt4Jkje111WSshedwsBqN2", "3E7C7B"},
         {"Bär", "Zwei feste Säulen: Schlaf & Aufwachen", "https://claude.ai/artifact/98afjmwppVJkPpVMXBLjp2", "2E3A52"},
-        {"Takt", "Dein Tag, um deinen Körper geplant", "https://claude.ai/artifact/EkQ7EuNqWdcR1mBkFtqZE5", "2E9AA6"},
+        {"Takt", "Dein Tag, um deinen Körper geplant · in der App", "app:takt", "2E9AA6"},
         {"Fundament", "Grundlinie, Anker & deine Wurzeln", "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
     };
 
@@ -74,7 +74,7 @@ public class WerkzeugeActivity extends Activity {
         h1.setPadding(0, dp(6), 0, dp(4));
         col.addView(h1);
         TextView sub = new TextView(this);
-        sub.setText("Deine KI-Begleiter. Sie laufen auf claude.ai – Tippen öffnet sie im Browser, wo du schon eingeloggt bist.");
+        sub.setText("Deine KI-Begleiter. Takt läuft direkt in der App. Die anderen laufen auf claude.ai – Tippen öffnet sie im Browser, wo du schon eingeloggt bist.");
         sub.setTextColor(ink2);
         sub.setTextSize(14);
         sub.setPadding(0, 0, 0, dp(12));
@@ -123,13 +123,17 @@ public class WerkzeugeActivity extends Activity {
         c.addView(st);
         row.addView(c, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView arr = mono("↗", rust);
+        TextView arr = mono(url.startsWith("app:") ? "→" : "↗", rust);
         arr.setTextSize(16);
         row.addView(arr);
         return row;
     }
 
     private void open(String url) {
+        if ("app:takt".equals(url)) {                 // Takt is built in — no browser
+            startActivity(new Intent(this, TaktActivity.class));
+            return;
+        }
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (RuntimeException e) {

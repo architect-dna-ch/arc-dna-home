@@ -315,6 +315,14 @@
             android:label="Werkzeuge"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
+        <!-- Takt: the day planned around your body — native, offline, no browser. -->
+        <activity
+            android:name=".TaktActivity"
+            android:exported="false"
+            android:label="Takt"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Fokus: the decision funnel — two choices at a time until only the right apps remain. -->
         <activity
             android:name=".FokusActivity"
