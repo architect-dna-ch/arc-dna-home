@@ -4,5 +4,6 @@
     android:accessibilityEventTypes="typeWindowStateChanged|typeViewClicked|typeViewLongClicked|typeViewTextChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
     android:description="@string/scroll_assist_description"
     android:notificationTimeout="100" />

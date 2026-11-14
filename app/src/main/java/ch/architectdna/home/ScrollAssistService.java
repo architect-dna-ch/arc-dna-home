@@ -205,6 +205,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (prefs == null || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         int type = event.getEventType();
+        OpenerOverlay.onEvent(this, event, pkg);   // the WhatsApp message coach (toolbar only there)
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             noteAssistant(pkg);
             VpnWarnActivity.check(this, pkg);      // Tor Browser without a VPN → the call-style warning
