@@ -7,6 +7,8 @@ on:
     paths-ignore:
       - 'stats/**'
       - '.github/workflows/stats.yml'
+      - 'orbit/**'
+      - '.github/workflows/orbit.yml'
   workflow_dispatch:
 
 permissions:

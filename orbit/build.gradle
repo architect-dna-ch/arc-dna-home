@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+
+// ARC-DNA Orbit: the third home — your apps on a 24-hour dial. Own APK and package,
+// built by .github/workflows/orbit.yml, independent of the launcher and of Statistik.
+android {
+    namespace 'ch.architectdna.orbit'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ch.architectdna.orbit'
+        minSdk 26
+        targetSdk 35
+        versionCode runNumber
+        versionName "0.${runNumber}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../app/arc-dna-home.p12')
+            storePassword 'arcdnahome'
+            keyAlias 'arcdna'
+            keyPassword 'arcdnahome'
+            storeType 'pkcs12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

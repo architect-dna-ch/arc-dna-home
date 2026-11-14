@@ -496,7 +496,8 @@ public class StatsHomeActivity extends Activity {
         return t;
     }
 
-    private boolean orbitDesign() { return prefs.getString("design", "orbit").equals("orbit"); }
+    static final String DEFAULT_DESIGN = "grid";
+    private boolean orbitDesign() { return prefs.getString("design", DEFAULT_DESIGN).equals("orbit"); }
 
     /** Orbit (design 3) or the grid (design 2): same data, two ways to show it. */
     private void applyDesign() {
@@ -518,6 +519,7 @@ public class StatsHomeActivity extends Activity {
         private final List<App> shownApps = new ArrayList<>();
         private float[] ax = new float[0], ay = new float[0], ar = new float[0];
         private float[] ang = new float[0], wgt = new float[0];
+        private Drawable[] icons = new Drawable[0];
         private int now;
         private float downX, downY;
         private long downAt;
@@ -530,8 +532,14 @@ public class StatsHomeActivity extends Activity {
             List<App> used = new ArrayList<>();
             for (App a : ranked) if (a.total > 0) used.add(a);
             Collections.sort(used, (x, y) -> Long.compare(y.total, x.total));
-            shownApps.addAll(used.subList(0, Math.min(16, used.size())));
+            shownApps.addAll(used.subList(0, Math.min(12, used.size())));
             int n = shownApps.size();
+            icons = new Drawable[n];
+            for (int i = 0; i < n; i++) {
+                Drawable d = shownApps.get(i).icon;
+                Drawable.ConstantState cs = d == null ? null : d.getConstantState();
+                icons[i] = cs != null ? cs.newDrawable(getResources()).mutate() : null;
+            }
             ang = new float[n]; wgt = new float[n];
             double best = 1e-9;
             for (App a : shownApps) best = Math.max(best, a.score);
@@ -554,18 +562,21 @@ public class StatsHomeActivity extends Activity {
         private void layoutIcons(float cx, float cy, float R) {
             int n = shownApps.size();
             ax = new float[n]; ay = new float[n]; ar = new float[n];
-            float[] rings = {R * 0.95f, R * 0.72f, R * 0.49f};
+            float[] rings = {R * 0.92f, R * 0.66f};
             for (int i = 0; i < n; i++) {
-                float size = dp(20) + dp(12) * wgt[i];
-                float a = ang[i] - (float) (Math.PI / 2);
-                float bx = 0, by = 0;
-                for (float rr : rings) {                             // first ring with room wins
-                    bx = cx + (float) Math.cos(a) * rr; by = cy + (float) Math.sin(a) * rr;
-                    boolean free = true;
-                    for (int j = 0; j < i; j++) if (Math.hypot(bx - ax[j], by - ay[j]) < size + ar[j] + dp(4)) { free = false; break; }
-                    if (free) break;
+                float size = dp(18) + dp(10) * wgt[i];
+                boolean placed = false;
+                // try the app's own hour first, then step outwards: +7.5°, −7.5°, +15° … on both rings
+                for (int k = 0; k < 48 && !placed; k++) {
+                    float off = (float) Math.toRadians(7.5 * ((k / 2 + 1) / 2) * (k % 4 < 2 ? 1 : -1));
+                    float rr = rings[k % 2];
+                    float a = ang[i] - (float) (Math.PI / 2) + (k < 2 ? 0 : off);
+                    float bx = cx + (float) Math.cos(a) * rr, by = cy + (float) Math.sin(a) * rr;
+                    boolean free = Math.hypot(bx - cx, by - cy) > dp(52) + size + dp(4);
+                    for (int j = 0; j < i && free; j++) if (Math.hypot(bx - ax[j], by - ay[j]) < size + ar[j] + dp(6)) free = false;
+                    if (free) { ax[i] = bx; ay[i] = by; ar[i] = size; placed = true; }
                 }
-                ax[i] = bx; ay[i] = by; ar[i] = size;
+                if (!placed) { ax[i] = -9999; ay[i] = -9999; ar[i] = 0; }   // no room: leave it to the drawer
             }
         }
 
@@ -594,7 +605,7 @@ public class StatsHomeActivity extends Activity {
             // icons
             layoutIcons(cx, cy, R);
             for (int i = 0; i < shownApps.size(); i++) {
-                Drawable d = shownApps.get(i).icon;
+                Drawable d = i < icons.length ? icons[i] : null;
                 int s = Math.round(ar[i]);
                 if (d != null) {
                     d.setBounds(Math.round(ax[i]) - s, Math.round(ay[i]) - s, Math.round(ax[i]) + s, Math.round(ay[i]) + s);

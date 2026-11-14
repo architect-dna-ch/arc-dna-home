@@ -1,0 +1,57 @@
+name: Build Orbit APK
+
+# The third home (ARC-DNA Orbit) is its own app: built only when its module changes,
+# released under its own tags, never marked "latest" so the main launcher's updater ignores it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'orbit/**'
+      - '.github/workflows/orbit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build release APK
+        run: gradle :orbit:assembleRelease --build-cache --stacktrace
+
+      - name: Rename output
+        run: cp orbit/build/outputs/apk/release/orbit-release.apk ARC-DNA-Orbit.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: orbit-v0.${{ github.run_number }}
+          name: ARC-DNA Orbit 0.${{ github.run_number }}
+          files: ARC-DNA-Orbit.apk
+          make_latest: false
+          body: |
+            The third home. Download **ARC-DNA-Orbit.apk**, open it and allow installing.
+            First start: tap "Zugriff erlauben" and switch on usage access for ARC Orbit.
+
+      # Keep only the 5 newest Orbit releases (and their tags).
+      - name: Prune old Orbit releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | startswith("orbit-v"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+          while read -r tag; do
+            gh release delete "$tag" --yes --cleanup-tag -R "${{ github.repository }}" || true
+          done
