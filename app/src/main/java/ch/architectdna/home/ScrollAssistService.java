@@ -207,6 +207,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         int type = event.getEventType();
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             noteAssistant(pkg);
+            VpnWarnActivity.check(this, pkg);      // Tor Browser without a VPN → the call-style warning
             // Overlays, dialogs and keyboards report windows too, for a moment; only real apps
             // (with a launcher icon) that stay in front ~0.5 s may switch the mode.
             if (pkg.equals("com.android.systemui")) {

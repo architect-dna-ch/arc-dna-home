@@ -315,6 +315,16 @@
             android:label="Werkzeuge"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
+        <!-- VPN guard: rings like a call when Tor Browser runs without a VPN. -->
+        <activity
+            android:name=".VpnWarnActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=".vpnwarn"
+            android:label="VPN-Warnung"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Takt: the day planned around your body — native, offline, no browser. -->
         <activity
             android:name=".TaktActivity"
