@@ -87,7 +87,11 @@ final class Updater {
     }
 
     /** Called on resume (throttled) or from the button (manual = always, with feedback). */
+    /** Messages only when you asked (tapped the update line); background auto-updates stay silent. */
+    private boolean loud;
+
     void check(boolean manual) {
+        loud = manual;
         // Public repo needs no token; a private one uses the pasted token if there is one.
         if (busy) return;
         if (!manual && System.currentTimeMillis() - prefs.getLong("updateChecked", 0) < CHECK_EVERY_MS) {
@@ -355,6 +359,7 @@ final class Updater {
 
     private void toast(String s) {
         DiagLog.log("update: " + s);
+        if (!loud) return;
         Toast.makeText(activity, s, Toast.LENGTH_LONG).show();
     }
 }
