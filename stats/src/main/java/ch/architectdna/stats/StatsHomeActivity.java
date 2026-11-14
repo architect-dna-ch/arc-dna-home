@@ -83,7 +83,10 @@ public class StatsHomeActivity extends Activity {
     private SwipeFrame root;
     private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
     private ScrollView statsPage;
-    private TextView glance, accessLink, screenTv, hourHint, sugLabel;
+    private TextView glance, accessLink, screenTv, hourHint, sugLabel, designTag, classicClock, classicDate, classicGreet;
+    private LinearLayout classicBox, classicStrip;
+    private long todayScreen;
+    private final android.os.Handler ticker = new android.os.Handler(android.os.Looper.getMainLooper());
     private View homeClock, homeGap;
     private OrbitView orbit;
     private EditText search;
@@ -100,7 +103,8 @@ public class StatsHomeActivity extends Activity {
         super.onCreate(b);
         prefs = getSharedPreferences("stats", MODE_PRIVATE);
         imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean night = !"classic".equals(prefs.getString("design", DEFAULT_DESIGN))
+            && (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         paper = night ? 0xFF14110E : 0xFFF5F1E8;
         card = night ? 0xFF1C1915 : 0xFFFBF8F1;
         ink = night ? 0xFFEDE7DA : 0xFF1B1613;
@@ -146,7 +150,10 @@ public class StatsHomeActivity extends Activity {
         homePage = new LinearLayout(this);
         homePage.setOrientation(LinearLayout.VERTICAL);
 
-        homePage.addView(label("ARC·DNA", rust));
+        designTag = label("", rust);
+        designTag.setPadding(0, dp(4), dp(24), dp(8));
+        designTag.setOnClickListener(v -> cycleDesign());
+        homePage.addView(designTag);
         TextClock clock = new TextClock(this);
         clock.setFormat24Hour("HH:mm");
         clock.setFormat12Hour("HH:mm");
@@ -156,7 +163,7 @@ public class StatsHomeActivity extends Activity {
         clock.setLetterSpacing(-0.04f);
         homePage.addView(clock);
         homeClock = clock;
-        clock.setOnLongClickListener(v -> { prefs.edit().putString("design", "orbit").apply(); applyDesign(); orbit.set(apps, Calendar.getInstance().get(Calendar.HOUR_OF_DAY)); return true; });
+
         glance = text(15, ink2, false);
         homePage.addView(glance);
         accessLink = text(14, rust, true);
@@ -172,6 +179,10 @@ public class StatsHomeActivity extends Activity {
         // Design 3 — Orbit: the day as a dial. Long-press its centre to switch designs.
         orbit = new OrbitView();
         homePage.addView(orbit, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        // Design "Classic" — the ARC·DNA home look: big clock, the duck, a quiet info strip.
+        buildClassic();
+        homePage.addView(classicBox, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         sugLabel = label("VORSCHLÄGE FÜR JETZT", ink3);
         homePage.addView(sugLabel, lp(-1, -2, 0, 0, 0, dp(10)));
@@ -498,16 +509,138 @@ public class StatsHomeActivity extends Activity {
     }
 
     static final String DEFAULT_DESIGN = "grid";
-    private boolean orbitDesign() { return prefs.getString("design", DEFAULT_DESIGN).equals("orbit"); }
+    private static final String[] DESIGNS = {"grid", "orbit", "classic"};
+    private String design() { return prefs.getString("design", DEFAULT_DESIGN); }
+    private boolean orbitDesign() { return design().equals("orbit"); }
 
-    /** Orbit (design 3) or the grid (design 2): same data, two ways to show it. */
+    /** Tap ARC·DNA: Grid → Orbit → Classic → Grid. Classic switches the palette, so it rebuilds. */
+    private void cycleDesign() {
+        String cur = design(), next = DESIGNS[0];
+        for (int i = 0; i < DESIGNS.length; i++) if (DESIGNS[i].equals(cur)) next = DESIGNS[(i + 1) % DESIGNS.length];
+        prefs.edit().putString("design", next).apply();
+        if (cur.equals("classic") || next.equals("classic")) { recreate(); return; }
+        applyDesign();
+        orbit.set(apps, Calendar.getInstance().get(Calendar.HOUR_OF_DAY));
+    }
+
+    /** One app, three looks: the grid, the Orbit dial, and Classic. Same data underneath. */
     private void applyDesign() {
-        boolean o = orbitDesign();
+        String d = design();
+        boolean o = d.equals("orbit"), c = d.equals("classic"), g = !o && !c;
         orbit.setVisibility(o ? View.VISIBLE : View.GONE);
-        homeClock.setVisibility(o ? View.GONE : View.VISIBLE);
-        homeGap.setVisibility(o ? View.GONE : View.VISIBLE);
-        sugLabel.setVisibility(o ? View.GONE : View.VISIBLE);
-        suggestBox.setVisibility(o ? View.GONE : View.VISIBLE);
+        classicBox.setVisibility(c ? View.VISIBLE : View.GONE);
+        homeClock.setVisibility(g ? View.VISIBLE : View.GONE);
+        glance.setVisibility(c ? View.GONE : View.VISIBLE);
+        homeGap.setVisibility(g ? View.VISIBLE : View.GONE);
+        sugLabel.setVisibility(g ? View.VISIBLE : View.GONE);
+        suggestBox.setVisibility(g ? View.VISIBLE : View.GONE);
+        designTag.setText("ARC·DNA   " + (g ? "● ○ ○" : o ? "○ ● ○" : "○ ○ ●"));
+        if (c) tickClassic();
+    }
+
+    // ================= Classic =================
+
+    private void buildClassic() {
+        classicBox = new LinearLayout(this);
+        classicBox.setOrientation(LinearLayout.VERTICAL);
+        classicClock = text(96, ink, true);
+        classicClock.setLetterSpacing(-0.05f);
+        classicClock.setIncludeFontPadding(false);
+        classicBox.addView(classicClock, lp(-1, -2, 0, dp(10), 0, 0));
+        classicDate = text(16, ink2, false);
+        classicDate.setTypeface(Typeface.MONOSPACE);
+        classicBox.addView(classicDate, lp(-1, -2, 0, dp(14), 0, 0));
+        classicGreet = text(17, ink, true);
+        classicGreet.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        classicBox.addView(classicGreet, lp(-1, -2, 0, dp(4), 0, 0));
+        classicBox.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
+        classicBox.addView(new DuckView(), new LinearLayout.LayoutParams(-1, dp(80)));
+        classicBox.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
+        classicStrip = new LinearLayout(this);
+        classicBox.addView(classicStrip, lp(-1, -2, 0, 0, 0, dp(4)));
+    }
+
+    /** Clock with the rust colon, the greeting, and the strip — refreshed every 15 s while shown. */
+    private void tickClassic() {
+        ticker.removeCallbacksAndMessages(null);
+        if (!design().equals("classic")) return;
+        Calendar c = Calendar.getInstance();
+        int h = c.get(Calendar.HOUR_OF_DAY);
+        String t = String.format(Locale.ROOT, "%02d:%02d", h, c.get(Calendar.MINUTE));
+        android.text.SpannableString sp = new android.text.SpannableString(t);
+        sp.setSpan(new android.text.style.ForegroundColorSpan(rust), 2, 3, 0);
+        classicClock.setText(sp);
+        classicDate.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date()));
+        classicGreet.setText(h < 5 ? "Gute Nacht." : h < 11 ? "Guten Morgen." : h < 17 ? "Guten Tag." : "Guten Abend.");
+
+        int batt = -1;
+        try {
+            Intent bi = registerReceiver(null, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (bi != null) batt = Math.round(100f * bi.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, 0) / Math.max(1, bi.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)));
+        } catch (RuntimeException ignored) { }
+        float freeGb = 0, totalGb = 1;
+        try {
+            android.os.StatFs fs = new android.os.StatFs(getFilesDir().getAbsolutePath());
+            freeGb = fs.getAvailableBytes() / 1e9f; totalGb = Math.max(1, fs.getTotalBytes() / 1e9f);
+        } catch (RuntimeException ignored) { }
+        int usedToday = 0;
+        for (App a : apps) if (a.today > 0) usedToday++;
+        classicStrip.removeAllViews();
+        classicStrip.addView(cell("AKKU", batt < 0 ? "—" : batt + "%", batt < 0 ? 0 : batt / 100f, batt >= 0 && batt <= 20), new LinearLayout.LayoutParams(0, -2, 1f));
+        classicStrip.addView(cell("HEUTE", todayScreen > 0 ? dur(todayScreen) : "—", Math.min(1f, todayScreen / (6f * 3600_000f)), false), new LinearLayout.LayoutParams(0, -2, 1f));
+        classicStrip.addView(cell("APPS", String.valueOf(usedToday), Math.min(1f, usedToday / 30f), false), new LinearLayout.LayoutParams(0, -2, 1f));
+        classicStrip.addView(cell("SPEICHER", Math.round(freeGb) + "G", freeGb / totalGb, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        ticker.postDelayed(this::tickClassic, 15_000);
+    }
+
+    private View cell(String label, String value, float frac, boolean low) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(0, 0, dp(10), 0);
+        TextView l = label(label, ink3);
+        c.addView(l);
+        TextView v = text(24, ink2, false);
+        v.setText(value);
+        v.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        c.addView(v, lp(-1, -2, 0, dp(2), 0, dp(6)));
+        c.addView(bar(frac, low ? 0xFFE8503A : rust, dp(3)), new LinearLayout.LayoutParams(-1, dp(3)));
+        return c;
+    }
+
+    /** The ARC·DNA duck, bobbing on its line of water. */
+    private final class DuckView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final long t0 = android.os.SystemClock.uptimeMillis();
+        DuckView() { super(StatsHomeActivity.this); }
+        @Override protected void onDraw(Canvas c) {
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, u = dp(1);
+            float bob = (float) Math.sin((android.os.SystemClock.uptimeMillis() - t0) / 700.0) * 2 * u;
+            // water
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.2f * u); p.setColor(0xFF3B82F6);
+            android.graphics.Path w = new android.graphics.Path();
+            w.moveTo(cx - 44 * u, cy + 20 * u);
+            for (int i = 0; i < 4; i++) w.rQuadTo(11 * u, -5 * u, 22 * u, 0);
+            c.drawPath(w, p);
+            c.save(); c.translate(0, bob);
+            // body
+            android.graphics.RectF body = new android.graphics.RectF(cx - 40 * u, cy - 6 * u, cx + 24 * u, cy + 19 * u);
+            p.setStyle(Paint.Style.FILL); p.setColor(0xFFFFFFFF); c.drawOval(body, p);
+            p.setColor(0xFF7A4A2A); c.drawArc(new android.graphics.RectF(cx + 6 * u, cy - 6 * u, cx + 24 * u, cy + 19 * u), -60, 160, true, p);
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.4f * u); p.setColor(0xFF1B1613); c.drawOval(body, p);
+            // wing mark
+            p.setColor(0xFF3B5BA9); c.drawLine(cx - 18 * u, cy + 5 * u, cx - 8 * u, cy + 4 * u, p);
+            // head + neck ring + beak + eye
+            p.setStyle(Paint.Style.FILL); p.setColor(0xFF2F7D55); c.drawCircle(cx + 22 * u, cy - 16 * u, 11 * u, p);
+            p.setStyle(Paint.Style.STROKE); p.setColor(0xFF1B1613); c.drawCircle(cx + 22 * u, cy - 16 * u, 11 * u, p);
+            p.setColor(0xFFFFFFFF); p.setStrokeWidth(2.6f * u); c.drawLine(cx + 14 * u, cy - 5 * u, cx + 25 * u, cy - 6 * u, p);
+            p.setStyle(Paint.Style.FILL); p.setColor(0xFFF2B33D);
+            android.graphics.Path beak = new android.graphics.Path();
+            beak.moveTo(cx + 31 * u, cy - 19 * u); beak.lineTo(cx + 46 * u, cy - 15 * u); beak.lineTo(cx + 31 * u, cy - 12 * u); beak.close();
+            c.drawPath(beak, p);
+            p.setColor(0xFF1B1613); c.drawCircle(cx + 25 * u, cy - 19 * u, 1.8f * u, p);
+            c.restore();
+            postInvalidateDelayed(50);
+        }
     }
 
     /**
@@ -654,8 +787,7 @@ public class StatsHomeActivity extends Activity {
                     float cx = getWidth() / 2f, cy = getHeight() / 2f;
                     if (Math.hypot(e.getX() - cx, e.getY() - cy) < dp(52)) {
                         if (e.getEventTime() - downAt > 450) {           // long-press centre: switch design
-                            prefs.edit().putString("design", "grid").apply();
-                            applyDesign();
+                            cycleDesign();
                         }
                         return true;
                     }
@@ -848,6 +980,8 @@ public class StatsHomeActivity extends Activity {
         long todayAll = 0;
         List<App> byToday = new ArrayList<>();
         for (App a : apps) { todayAll += a.today; if (a.today > 0) byToday.add(a); }
+        todayScreen = todayAll;
+        if (design().equals("classic")) tickClassic();
         Collections.sort(byToday, (x, y) -> Long.compare(y.today, x.today));
         String date = new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date());
         glance.setText(todayAll > 0 ? date + "  ·  " + dur(todayAll) + " am Bildschirm" : date);
