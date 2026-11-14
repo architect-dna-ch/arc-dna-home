@@ -83,7 +83,9 @@ public class StatsHomeActivity extends Activity {
     private SwipeFrame root;
     private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
     private ScrollView statsPage;
-    private TextView glance, accessLink, screenTv, hourHint;
+    private TextView glance, accessLink, screenTv, hourHint, sugLabel;
+    private View homeClock, homeGap;
+    private OrbitView orbit;
     private EditText search;
     private GridView grid;
     private HourChart chart;
@@ -152,6 +154,8 @@ public class StatsHomeActivity extends Activity {
         clock.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         clock.setLetterSpacing(-0.04f);
         homePage.addView(clock);
+        homeClock = clock;
+        clock.setOnLongClickListener(v -> { prefs.edit().putString("design", "orbit").apply(); applyDesign(); orbit.set(apps, Calendar.getInstance().get(Calendar.HOUR_OF_DAY)); return true; });
         glance = text(15, ink2, false);
         homePage.addView(glance);
         accessLink = text(14, rust, true);
@@ -161,9 +165,15 @@ public class StatsHomeActivity extends Activity {
         accessLink.setVisibility(View.GONE);
         homePage.addView(accessLink);
 
-        homePage.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
+        homeGap = new View(this);
+        homePage.addView(homeGap, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        homePage.addView(label("VORSCHLÄGE FÜR JETZT", ink3), lp(-1, -2, 0, 0, 0, dp(10)));
+        // Design 3 — Orbit: the day as a dial. Long-press its centre to switch designs.
+        orbit = new OrbitView();
+        homePage.addView(orbit, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        sugLabel = label("VORSCHLÄGE FÜR JETZT", ink3);
+        homePage.addView(sugLabel, lp(-1, -2, 0, 0, 0, dp(10)));
         suggestBox = new LinearLayout(this);
         suggestBox.setOrientation(LinearLayout.VERTICAL);
         homePage.addView(suggestBox);
@@ -486,6 +496,166 @@ public class StatsHomeActivity extends Activity {
         return t;
     }
 
+    private boolean orbitDesign() { return prefs.getString("design", "orbit").equals("orbit"); }
+
+    /** Orbit (design 3) or the grid (design 2): same data, two ways to show it. */
+    private void applyDesign() {
+        boolean o = orbitDesign();
+        orbit.setVisibility(o ? View.VISIBLE : View.GONE);
+        homeClock.setVisibility(o ? View.GONE : View.VISIBLE);
+        homeGap.setVisibility(o ? View.GONE : View.VISIBLE);
+        sugLabel.setVisibility(o ? View.GONE : View.VISIBLE);
+        suggestBox.setVisibility(o ? View.GONE : View.VISIBLE);
+    }
+
+    /**
+     * The day as a dial: 24 hours around, the hand at now. Each app sits at the hour you usually
+     * use it (circular mean of its 7-day pattern); the closer it is to the hand and the more you use
+     * it, the bigger and brighter it is. Tap an icon to open it; long-press the centre to switch design.
+     */
+    private final class OrbitView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final List<App> shownApps = new ArrayList<>();
+        private float[] ax = new float[0], ay = new float[0], ar = new float[0];
+        private float[] ang = new float[0], wgt = new float[0];
+        private int now;
+        private float downX, downY;
+        private long downAt;
+
+        OrbitView() { super(StatsHomeActivity.this); }
+
+        void set(List<App> ranked, int nowHour) {
+            now = nowHour;
+            shownApps.clear();
+            List<App> used = new ArrayList<>();
+            for (App a : ranked) if (a.total > 0) used.add(a);
+            Collections.sort(used, (x, y) -> Long.compare(y.total, x.total));
+            shownApps.addAll(used.subList(0, Math.min(16, used.size())));
+            int n = shownApps.size();
+            ang = new float[n]; wgt = new float[n];
+            double best = 1e-9;
+            for (App a : shownApps) best = Math.max(best, a.score);
+            for (int i = 0; i < n; i++) {
+                App a = shownApps.get(i);
+                double x = 0, y = 0;
+                for (int h = 0; h < 24; h++) {
+                    double t = (h + 0.5) / 24.0 * Math.PI * 2;
+                    x += a.hours[h] * Math.cos(t); y += a.hours[h] * Math.sin(t);
+                }
+                double t = Math.atan2(y, x);
+                if (t < 0) t += Math.PI * 2;
+                ang[i] = (float) t;                                  // 0 = midnight, clockwise
+                wgt[i] = (float) Math.max(0, Math.min(1, a.score / best));
+            }
+            requestLayout();
+            invalidate();
+        }
+
+        private void layoutIcons(float cx, float cy, float R) {
+            int n = shownApps.size();
+            ax = new float[n]; ay = new float[n]; ar = new float[n];
+            float[] rings = {R * 0.95f, R * 0.72f, R * 0.49f};
+            for (int i = 0; i < n; i++) {
+                float size = dp(20) + dp(12) * wgt[i];
+                float a = ang[i] - (float) (Math.PI / 2);
+                float bx = 0, by = 0;
+                for (float rr : rings) {                             // first ring with room wins
+                    bx = cx + (float) Math.cos(a) * rr; by = cy + (float) Math.sin(a) * rr;
+                    boolean free = true;
+                    for (int j = 0; j < i; j++) if (Math.hypot(bx - ax[j], by - ay[j]) < size + ar[j] + dp(4)) { free = false; break; }
+                    if (free) break;
+                }
+                ax[i] = bx; ay[i] = by; ar[i] = size;
+            }
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
+            float R = Math.min(w, h) / 2f - dp(34);
+            if (R <= 0) return;
+            // dial: 24 ticks, major every 6 h
+            p.setStyle(Paint.Style.STROKE);
+            for (int i = 0; i < 24; i++) {
+                double t = i / 24.0 * Math.PI * 2 - Math.PI / 2;
+                boolean major = i % 6 == 0;
+                p.setColor(major ? ink3 : line);
+                p.setStrokeWidth(dp(major ? 2 : 1));
+                float r1 = R + dp(14), r2 = R + dp(major ? 24 : 19);
+                c.drawLine(cx + (float) Math.cos(t) * r1, cy + (float) Math.sin(t) * r1,
+                    cx + (float) Math.cos(t) * r2, cy + (float) Math.sin(t) * r2, p);
+            }
+            // hand at now (minutes included)
+            Calendar cal = Calendar.getInstance();
+            double tn = (cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60.0) / 24.0 * Math.PI * 2 - Math.PI / 2;
+            p.setColor(rust);
+            p.setStrokeWidth(dp(2.5f));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            c.drawLine(cx, cy, cx + (float) Math.cos(tn) * (R + dp(24)), cy + (float) Math.sin(tn) * (R + dp(24)), p);
+            // icons
+            layoutIcons(cx, cy, R);
+            for (int i = 0; i < shownApps.size(); i++) {
+                Drawable d = shownApps.get(i).icon;
+                int s = Math.round(ar[i]);
+                if (d != null) {
+                    d.setBounds(Math.round(ax[i]) - s, Math.round(ay[i]) - s, Math.round(ax[i]) + s, Math.round(ay[i]) + s);
+                    d.setAlpha(Math.round(110 + 145 * wgt[i]));
+                    d.draw(c);
+                    d.setAlpha(255);
+                }
+                if (i == 0) {                                        // the top pick gets a ring
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setColor(rust);
+                    p.setStrokeWidth(dp(2));
+                    c.drawCircle(ax[i], ay[i], ar[i] + dp(5), p);
+                }
+            }
+            // centre: the time, and today's screen time
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(card);
+            c.drawCircle(cx, cy, dp(52), p);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setColor(ink);
+            p.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+            p.setTextSize(dp(30));
+            c.drawText(String.format(Locale.ROOT, "%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)), cx, cy + dp(6), p);
+            long today = 0;
+            for (App a : apps) today += a.today;
+            p.setTypeface(Typeface.MONOSPACE);
+            p.setTextSize(dp(10.5f));
+            p.setColor(ink3);
+            c.drawText(today > 0 ? dur(today) + " heute" : "ARC·DNA", cx, cy + dp(24), p);
+            if (shownApps.isEmpty()) {
+                p.setColor(ink2);
+                p.setTextSize(dp(12));
+                c.drawText("Noch keine Nutzungsdaten", cx, cy + R * 0.6f, p);
+            }
+            postInvalidateDelayed(30_000);
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downX = e.getX(); downY = e.getY(); downAt = e.getEventTime();
+                    return true;
+                case MotionEvent.ACTION_UP: {
+                    if (Math.hypot(e.getX() - downX, e.getY() - downY) > dp(12)) return true;
+                    float cx = getWidth() / 2f, cy = getHeight() / 2f;
+                    if (Math.hypot(e.getX() - cx, e.getY() - cy) < dp(52)) {
+                        if (e.getEventTime() - downAt > 450) {           // long-press centre: switch design
+                            prefs.edit().putString("design", "grid").apply();
+                            applyDesign();
+                        }
+                        return true;
+                    }
+                    for (int i = 0; i < shownApps.size() && i < ax.length; i++)
+                        if (Math.hypot(e.getX() - ax[i], e.getY() - ay[i]) < ar[i] + dp(8)) { launch(shownApps.get(i)); return true; }
+                    return true;
+                }
+            }
+            return true;
+        }
+    }
+
     private void openUsageSettings() {
         try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (RuntimeException ignored) { }
     }
@@ -625,6 +795,9 @@ public class StatsHomeActivity extends Activity {
     // ================= rendering =================
 
     private void render(int nowHour) {
+        applyDesign();
+        orbit.set(apps, nowHour);
+
         // dock: the four most-used apps of the week — stable, so the thumb learns the spot
         List<App> byTotal = new ArrayList<>(apps);
         Collections.sort(byTotal, (x, y) -> Long.compare(y.total, x.total));
