@@ -168,6 +168,14 @@ public class StatsHomeActivity extends Activity {
         suggestBox.setOrientation(LinearLayout.VERTICAL);
         homePage.addView(suggestBox);
 
+        // Architect-DNA web tools, one tap away
+        LinearLayout tools = new LinearLayout(this);
+        tools.addView(toolChip("⚖ Einspruch", "https://einspruch.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
+        View tgap = new View(this);
+        tools.addView(tgap, new LinearLayout.LayoutParams(dp(8), 1));
+        tools.addView(toolChip("⚓ Anchor", "https://anchor.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
+        homePage.addView(tools, lp(-1, -2, 0, dp(14), 0, 0));
+
         dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setPadding(dp(8), dp(10), dp(8), dp(10));
@@ -462,6 +470,20 @@ public class StatsHomeActivity extends Activity {
         nm.setVisibility(withLabel ? View.VISIBLE : View.GONE);
         cell.addView(nm, lp(-1, -2, 0, dp(5), 0, 0));
         return cell;
+    }
+
+    private TextView toolChip(String label, final String url) {
+        TextView t = text(14, ink, true);
+        t.setText(label);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(12), dp(11), dp(12), dp(11));
+        t.setBackground(box(card, line, 40));
+        t.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException ignored) { }
+        });
+        return t;
     }
 
     private void openUsageSettings() {

@@ -29,6 +29,8 @@ public class WerkzeugeActivity extends Activity {
         {"Bär", "Zwei feste Säulen: Schlaf & Aufwachen", "https://claude.ai/artifact/98afjmwppVJkPpVMXBLjp2", "2E3A52"},
         {"Takt", "Dein Tag, um deinen Körper geplant · in der App", "app:takt", "2E9AA6"},
         {"Fundament", "Grundlinie, Anker & deine Wurzeln", "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
+        {"Einspruch", "Formeller Brief an Krankenkasse, Vermieter, Behörde", "https://einspruch.architect-dna.ch", "C89B4A"},
+        {"Anchor", "Begleiter, der deine Situation kennt · Notfall-Modus", "https://anchor.architect-dna.ch", "C4A882"},
     };
 
     private int bg, card, line, ink, ink2, ink3, rust;
