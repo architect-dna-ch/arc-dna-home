@@ -117,6 +117,7 @@ public class OrbitHomeActivity extends Activity {
 
         root = new SwipeFrame();
         root.setBackgroundColor(paper);
+        root.addView(new HelixView(), new FrameLayout.LayoutParams(-1, -1));   // behind everything
         buildHome();
         buildStats();
         buildDrawer();
@@ -956,6 +957,47 @@ public class OrbitHomeActivity extends Activity {
             p.setTextSize(dp(9));
             p.setTypeface(Typeface.MONOSPACE);
             for (int i = 0; i < 24; i += 6) c.drawText(String.format(Locale.ROOT, "%02d", i), i * slot + gap, h - dp(2), p);
+        }
+    }
+
+    /** The Werkschau helix: two strands of dots turning slowly behind the home. Paints only. */
+    private final class HelixView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final long t0 = android.os.SystemClock.uptimeMillis();
+        private final boolean still = Settings.Global.getFloat(getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
+
+        HelixView() {
+            super(OrbitHomeActivity.this);
+            setClickable(false);
+            setFocusable(false);
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight();
+            float cx = w * 0.86f, amp = w * 0.12f, top = -dp(20), span = h + dp(40);
+            int n = 46;
+            float t = still ? 0 : (android.os.SystemClock.uptimeMillis() - t0) * 0.00045f;
+            for (int i = 0; i < n; i++) {
+                float y = top + span * i / (n - 1);
+                float ph = i * 0.32f + t;
+                float xa = cx + (float) Math.sin(ph) * amp, xb = cx + (float) Math.sin(ph + Math.PI) * amp;
+                float za = ((float) Math.cos(ph) + 1) / 2, zb = 1 - za;
+                if (i % 2 == 0) {
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(dp(1));
+                    p.setColor(ink);
+                    p.setAlpha(14);
+                    c.drawLine(xa, y, xb, y, p);
+                }
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(rust);
+                p.setAlpha(Math.round(255 * (0.25f + za * 0.6f) * 0.45f));
+                c.drawCircle(xa, y, dp(2 + za * 3.5f), p);
+                p.setColor(ink);
+                p.setAlpha(Math.round(255 * (0.12f + zb * 0.45f) * 0.45f));
+                c.drawCircle(xb, y, dp(2 + zb * 3.5f), p);
+            }
+            if (!still) postInvalidateDelayed(40);           // ~25 fps; stops while the home isn't drawn
         }
     }
 
