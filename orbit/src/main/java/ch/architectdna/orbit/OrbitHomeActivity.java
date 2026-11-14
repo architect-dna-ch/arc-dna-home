@@ -102,13 +102,13 @@ public class OrbitHomeActivity extends Activity {
         prefs = getSharedPreferences("orbit", MODE_PRIVATE);
         imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        paper = night ? 0xFF14110E : 0xFFF5F1E8;
-        card = night ? 0xFF1C1915 : 0xFFFBF8F1;
-        ink = night ? 0xFFEDE7DA : 0xFF1B1613;
-        ink2 = night ? 0xFFADA293 : 0xFF6A5F54;
-        ink3 = night ? 0xFF6E6456 : 0xFFA99E8E;
-        line = night ? 0xFF2E2820 : 0xFFE2D9C8;
-        rust = night ? 0xFFD4523B : 0xFFB5271E;
+        paper = night ? 0xFF0E0E0D : 0xFFFAFAF8;
+        card = night ? 0xFF1A1A18 : 0xFFFFFFFF;
+        ink = night ? 0xFFF4F2EC : 0xFF1A1A1A;
+        ink2 = night ? 0xFFA5A5A0 : 0xFF5A5A58;
+        ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
+        line = night ? 0xFF2C2C2A : 0xFFE0E0D8;
+        rust = night ? 0xFFD9472F : 0xFFB5271E;
         teal = night ? 0xFF4FA594 : 0xFF2E6E63;
         getWindow().setStatusBarColor(paper);
         getWindow().setNavigationBarColor(paper);
@@ -147,7 +147,7 @@ public class OrbitHomeActivity extends Activity {
         homePage = new LinearLayout(this);
         homePage.setOrientation(LinearLayout.VERTICAL);
 
-        homePage.addView(label("ARC·DNA", rust));
+        homePage.addView(label("— ARC·DNA", rust));
         TextClock clock = new TextClock(this);
         clock.setFormat24Hour("HH:mm");
         clock.setFormat12Hour("HH:mm");
@@ -1017,9 +1017,9 @@ public class OrbitHomeActivity extends Activity {
     }
 
     private TextView label(String s, int colour) {
-        TextView t = text(11, colour, true);
-        t.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        t.setLetterSpacing(0.16f);
+        TextView t = text(11, colour, false);
+        t.setTypeface(Typeface.MONOSPACE);
+        t.setLetterSpacing(0.24f);           // the ARC Player label style
         t.setText(s);
         return t;
     }

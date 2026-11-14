@@ -105,13 +105,13 @@ public class StatsHomeActivity extends Activity {
         imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         boolean night = !"classic".equals(prefs.getString("design", DEFAULT_DESIGN))
             && (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        paper = night ? 0xFF14110E : 0xFFF5F1E8;
-        card = night ? 0xFF1C1915 : 0xFFFBF8F1;
-        ink = night ? 0xFFEDE7DA : 0xFF1B1613;
-        ink2 = night ? 0xFFADA293 : 0xFF6A5F54;
-        ink3 = night ? 0xFF6E6456 : 0xFFA99E8E;
-        line = night ? 0xFF2E2820 : 0xFFE2D9C8;
-        rust = night ? 0xFFD4523B : 0xFFB5271E;
+        paper = night ? 0xFF0E0E0D : 0xFFFAFAF8;
+        card = night ? 0xFF1A1A18 : 0xFFFFFFFF;
+        ink = night ? 0xFFF4F2EC : 0xFF1A1A1A;
+        ink2 = night ? 0xFFA5A5A0 : 0xFF5A5A58;
+        ink3 = night ? 0xFF6F6E69 : 0xFF9A9A98;
+        line = night ? 0xFF2C2C2A : 0xFFE0E0D8;
+        rust = night ? 0xFFD9472F : 0xFFB5271E;
         teal = night ? 0xFF4FA594 : 0xFF2E6E63;
         getWindow().setStatusBarColor(paper);
         getWindow().setNavigationBarColor(paper);
@@ -534,7 +534,7 @@ public class StatsHomeActivity extends Activity {
         homeGap.setVisibility(g ? View.VISIBLE : View.GONE);
         sugLabel.setVisibility(g ? View.VISIBLE : View.GONE);
         suggestBox.setVisibility(g ? View.VISIBLE : View.GONE);
-        designTag.setText("ARC·DNA   " + (g ? "● ○ ○" : o ? "○ ● ○" : "○ ○ ●"));
+        designTag.setText("— ARC·DNA   " + (g ? "● ○ ○" : o ? "○ ● ○" : "○ ○ ●"));
         if (c) tickClassic();
     }
 
@@ -626,18 +626,18 @@ public class StatsHomeActivity extends Activity {
             android.graphics.RectF body = new android.graphics.RectF(cx - 40 * u, cy - 6 * u, cx + 24 * u, cy + 19 * u);
             p.setStyle(Paint.Style.FILL); p.setColor(0xFFFFFFFF); c.drawOval(body, p);
             p.setColor(0xFF7A4A2A); c.drawArc(new android.graphics.RectF(cx + 6 * u, cy - 6 * u, cx + 24 * u, cy + 19 * u), -60, 160, true, p);
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.4f * u); p.setColor(0xFF1B1613); c.drawOval(body, p);
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.4f * u); p.setColor(0xFF1A1A1A); c.drawOval(body, p);
             // wing mark
             p.setColor(0xFF3B5BA9); c.drawLine(cx - 18 * u, cy + 5 * u, cx - 8 * u, cy + 4 * u, p);
             // head + neck ring + beak + eye
             p.setStyle(Paint.Style.FILL); p.setColor(0xFF2F7D55); c.drawCircle(cx + 22 * u, cy - 16 * u, 11 * u, p);
-            p.setStyle(Paint.Style.STROKE); p.setColor(0xFF1B1613); c.drawCircle(cx + 22 * u, cy - 16 * u, 11 * u, p);
+            p.setStyle(Paint.Style.STROKE); p.setColor(0xFF1A1A1A); c.drawCircle(cx + 22 * u, cy - 16 * u, 11 * u, p);
             p.setColor(0xFFFFFFFF); p.setStrokeWidth(2.6f * u); c.drawLine(cx + 14 * u, cy - 5 * u, cx + 25 * u, cy - 6 * u, p);
             p.setStyle(Paint.Style.FILL); p.setColor(0xFFF2B33D);
             android.graphics.Path beak = new android.graphics.Path();
             beak.moveTo(cx + 31 * u, cy - 19 * u); beak.lineTo(cx + 46 * u, cy - 15 * u); beak.lineTo(cx + 31 * u, cy - 12 * u); beak.close();
             c.drawPath(beak, p);
-            p.setColor(0xFF1B1613); c.drawCircle(cx + 25 * u, cy - 19 * u, 1.8f * u, p);
+            p.setColor(0xFF1A1A1A); c.drawCircle(cx + 25 * u, cy - 19 * u, 1.8f * u, p);
             c.restore();
             postInvalidateDelayed(50);
         }
@@ -1150,9 +1150,9 @@ public class StatsHomeActivity extends Activity {
     }
 
     private TextView label(String s, int colour) {
-        TextView t = text(11, colour, true);
-        t.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        t.setLetterSpacing(0.16f);
+        TextView t = text(11, colour, false);
+        t.setTypeface(Typeface.MONOSPACE);
+        t.setLetterSpacing(0.24f);           // the ARC Player label style
         t.setText(s);
         return t;
     }
