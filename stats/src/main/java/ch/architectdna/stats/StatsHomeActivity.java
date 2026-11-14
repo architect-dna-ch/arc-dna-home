@@ -1020,6 +1020,7 @@ public class StatsHomeActivity extends Activity {
     }
 
     private void launch(App a) {
+        if (VpnGate.intercept(this, a.pkg, a.launch)) return;   // Tor without VPN: warn first
         try { startActivity(a.launch); } catch (RuntimeException ignored) { }
     }
 

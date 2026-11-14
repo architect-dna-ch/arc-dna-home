@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Reads how long and when each app is used. Granted by hand in Settings → Usage access. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
