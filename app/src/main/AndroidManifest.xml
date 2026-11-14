@@ -219,6 +219,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Einspruch and Anchor, native front ends for the Architect-DNA services. -->
+        <activity
+            android:name=".EinspruchActivity"
+            android:exported="true"
+            android:label="Einspruch"
+            android:taskAffinity="ch.architectdna.home.einspruch"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AnchorActivity"
+            android:exported="true"
+            android:label="Anchor"
+            android:taskAffinity="ch.architectdna.home.anchor"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- ARC Remote: the phone steers the music on the tablet over Bluetooth. -->
         <activity
             android:name=".RemoteActivity"

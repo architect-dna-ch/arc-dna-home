@@ -192,10 +192,10 @@ public class StatsHomeActivity extends Activity {
 
         // Architect-DNA web tools, one tap away
         LinearLayout tools = new LinearLayout(this);
-        tools.addView(toolChip("⚖ Einspruch", "https://einspruch.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
+        tools.addView(nativeChip("⚖ Einspruch", "EinspruchActivity", "https://einspruch.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
         View tgap = new View(this);
         tools.addView(tgap, new LinearLayout.LayoutParams(dp(8), 1));
-        tools.addView(toolChip("⚓ Anchor", "https://anchor.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
+        tools.addView(nativeChip("⚓ Anchor", "AnchorActivity", "https://anchor.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
         homePage.addView(tools, lp(-1, -2, 0, dp(14), 0, 0));
         LinearLayout tools2 = new LinearLayout(this);
         tools2.addView(toolChip("🛁 Wellness", "https://architect-dna.ch/wellness/"), new LinearLayout.LayoutParams(0, -2, 1f));
@@ -508,6 +508,19 @@ public class StatsHomeActivity extends Activity {
         nm.setVisibility(withLabel ? View.VISIBLE : View.GONE);
         cell.addView(nm, lp(-1, -2, 0, dp(5), 0, 0));
         return cell;
+    }
+
+    /** Opens the native screen in ARC-DNA Home; the website if Home isn't installed. */
+    private TextView nativeChip(String label, String cls, String url) {
+        TextView t = toolChip(label, url);
+        t.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home." + cls).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException e) {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (RuntimeException ignored) { }
+            }
+        });
+        return t;
     }
 
     private TextView toolChip(String label, final String url) {
