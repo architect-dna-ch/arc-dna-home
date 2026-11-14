@@ -31,6 +31,8 @@ public class WerkzeugeActivity extends Activity {
         {"Fundament", "Grundlinie, Anker & deine Wurzeln", "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
         {"Einspruch", "Formeller Brief an Krankenkasse, Vermieter, Behörde", "https://einspruch.architect-dna.ch", "C89B4A"},
         {"Anchor", "Begleiter, der deine Situation kennt · Notfall-Modus", "https://anchor.architect-dna.ch", "C4A882"},
+        {"Wellness", "Erlaubnis zur Ruhe · 9 geführte Rituale", "https://architect-dna.ch/wellness/", "3E7C5A"},
+        {"Health", "Hausmittel mit Herkunft · und wann zum Arzt", "https://architect-dna.ch/health/", "B5271E"},
     };
 
     private int bg, card, line, ink, ink2, ink3, rust;

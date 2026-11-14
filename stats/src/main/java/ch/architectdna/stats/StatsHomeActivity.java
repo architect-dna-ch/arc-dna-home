@@ -197,6 +197,12 @@ public class StatsHomeActivity extends Activity {
         tools.addView(tgap, new LinearLayout.LayoutParams(dp(8), 1));
         tools.addView(toolChip("⚓ Anchor", "https://anchor.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
         homePage.addView(tools, lp(-1, -2, 0, dp(14), 0, 0));
+        LinearLayout tools2 = new LinearLayout(this);
+        tools2.addView(toolChip("🛁 Wellness", "https://architect-dna.ch/wellness/"), new LinearLayout.LayoutParams(0, -2, 1f));
+        View tgap2 = new View(this);
+        tools2.addView(tgap2, new LinearLayout.LayoutParams(dp(8), 1));
+        tools2.addView(toolChip("🧅 Health", "https://architect-dna.ch/health/"), new LinearLayout.LayoutParams(0, -2, 1f));
+        homePage.addView(tools2, lp(-1, -2, 0, dp(8), 0, 0));
 
         dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
