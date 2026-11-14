@@ -193,6 +193,16 @@ public class OrbitHomeActivity extends Activity {
         tools2.addView(tgap2, new LinearLayout.LayoutParams(dp(8), 1));
         tools2.addView(toolChip("🧅 Health", "https://architect-dna.ch/health/"), new LinearLayout.LayoutParams(0, -2, 1f));
         homePage.addView(tools2, lp(-1, -2, 0, dp(8), 0, 0));
+        TextView remote = toolChip("🔊 Musik aufs Tablet", "");
+        remote.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException e) {
+                android.widget.Toast.makeText(this, "Dafür ARC-DNA Home installieren.", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+        homePage.addView(remote, lp(-1, -2, 0, dp(8), 0, 0));
 
         dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);

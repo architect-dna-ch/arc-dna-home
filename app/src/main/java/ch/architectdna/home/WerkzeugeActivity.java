@@ -28,6 +28,7 @@ public class WerkzeugeActivity extends Activity {
         {"Puls", "Wachheit im Unterricht — nicht absitzen", "https://claude.ai/artifact/Bt4Jkje111WSshedwsBqN2", "3E7C7B"},
         {"Bär", "Zwei feste Säulen: Schlaf & Aufwachen", "https://claude.ai/artifact/98afjmwppVJkPpVMXBLjp2", "2E3A52"},
         {"Takt", "Dein Tag, um deinen Körper geplant · in der App", "app:takt", "2E9AA6"},
+        {"ARC Remote", "Musik auf dem Tablet vom Handy steuern · Bluetooth", "app:remote", "D9472F"},
         {"Fundament", "Grundlinie, Anker & deine Wurzeln", "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
         {"Einspruch", "Formeller Brief an Krankenkasse, Vermieter, Behörde", "https://einspruch.architect-dna.ch", "C89B4A"},
         {"Anchor", "Begleiter, der deine Situation kennt · Notfall-Modus", "https://anchor.architect-dna.ch", "C4A882"},
@@ -136,6 +137,10 @@ public class WerkzeugeActivity extends Activity {
     private void open(String url) {
         if ("app:takt".equals(url)) {                 // Takt is built in — no browser
             startActivity(new Intent(this, TaktActivity.class));
+            return;
+        }
+        if ("app:remote".equals(url)) {
+            startActivity(new Intent(this, RemoteActivity.class));
             return;
         }
         try {

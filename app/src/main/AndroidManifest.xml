@@ -219,6 +219,17 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Remote: the phone steers the music on the tablet over Bluetooth. -->
+        <activity
+            android:name=".RemoteActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_player"
+            android:label="ARC Remote"
+            android:launchMode="singleTask"
+            android:taskAffinity="ch.architectdna.home.remote"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Energie: drops down like a control centre: battery, switches, what drains. -->
         <activity
             android:name=".EnergyActivity"

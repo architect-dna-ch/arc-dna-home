@@ -35,6 +35,24 @@ final class Updater {
         void onUpdateState(String text, boolean available);
     }
 
+    /** Live progress for the download animation. phase: 0 patch, 1 rebuild, 2 full APK / writing, 3 confirm, -1 failed. */
+    interface Progress {
+        void onProgress(int phase, long done, long total, int version);
+    }
+
+    volatile Progress progress;
+    private long lastProg;
+
+    private void prog(int phase, long done, long total, boolean force) {
+        Progress p = progress;
+        if (p == null) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (!force && now - lastProg < 60) return;
+        lastProg = now;
+        int v = latest;
+        main.post(() -> p.onProgress(phase, done, total, v));
+    }
+
     static final String ACTION_STATUS = "ch.architectdna.home.UPDATE_STATUS";
     private static final String REPO = "https://api.github.com/repos/architect-dna-ch/arc-dna-home";
     private static final long CHECK_EVERY_MS = 6 * 3600 * 1000L;
@@ -165,6 +183,7 @@ final class Updater {
         }
         busy = true;
         ui.onUpdateState("Lädt Update …", false);
+        prog(deltaId != 0 ? 0 : 2, 0, 0, true);
         new Thread(() -> {
             PackageInstaller.Session session = null;
             try {
@@ -200,6 +219,7 @@ final class Updater {
                         out.write(buf, 0, r);
                         done += r;
                         int pct = length > 0 ? (int) (done * 100 / length) : 0;
+                        prog(built != null ? 1 : 2, done, length, false);
                         if (pct != lastPct) {
                             lastPct = pct;
                             main.post(() -> ui.onUpdateState((built != null ? "Installiert Update … " : "Lädt Update … ") + pct + " %", false));
@@ -213,9 +233,11 @@ final class Updater {
                 session.commit(pending.getIntentSender());
                 session.close();
                 session = null;
+                prog(3, 1, 1, true);
                 main.post(() -> ui.onUpdateState("Installation bestätigen …", false));
             } catch (Exception e) {
                 if (session != null) session.abandon();
+                prog(-1, 0, 0, true);
                 main.post(() -> {
                     toast(e.getMessage());
                     showState();
@@ -257,7 +279,14 @@ final class Updater {
             java.io.File patch = new java.io.File(activity.getCacheDir(), "update.delta");
             try (InputStream in = c.getInputStream(); OutputStream o = new java.io.FileOutputStream(patch)) {
                 byte[] buf = new byte[64 * 1024];
-                for (int r; (r = in.read(buf)) != -1; ) o.write(buf, 0, r);
+                long got = 0;
+                prog(0, 0, total, true);
+                for (int r; (r = in.read(buf)) != -1; ) {
+                    o.write(buf, 0, r);
+                    got += r;
+                    prog(0, got, total, false);
+                }
+                prog(0, got, total, true);
             }
             java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
             byte[] want = new byte[32];

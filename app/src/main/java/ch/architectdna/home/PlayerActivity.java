@@ -93,6 +93,11 @@ public class PlayerActivity extends Activity {
         name.setLetterSpacing(0.24f);
         name.setText("ARC PLAYER");
         head.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView remB = chip("🔊 Tablet", ink2);
+        remB.setOnClickListener(v -> startActivity(new Intent(this, RemoteActivity.class)));
+        head.addView(remB);
+        View rg = new View(this);
+        head.addView(rg, new LinearLayout.LayoutParams(dp(8), 1));
         TextView djB = chip("🎧 DJ", rust);
         djB.setOnClickListener(v -> openDj());
         head.addView(djB);

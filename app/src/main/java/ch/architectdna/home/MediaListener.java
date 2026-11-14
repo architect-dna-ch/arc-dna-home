@@ -90,6 +90,7 @@ public class MediaListener extends NotificationListenerService {
         main.removeCallbacks(tick);
         main.postDelayed(tick, 60_000);
         BtSync.startServer(this);
+        BtRemote.startServer(this);      // the phone can steer this device's music (ARC Remote)
     }
 
     private final android.content.BroadcastReceiver battery = new android.content.BroadcastReceiver() {
@@ -120,6 +121,7 @@ public class MediaListener extends NotificationListenerService {
         if (bgPhases != null) bgPhases.stop();
         ArcMediaNotice.cancel(this);
         BtSync.stopServer();
+        BtRemote.stopServer();
         report();
     }
 

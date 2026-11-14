@@ -272,6 +272,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int savedY = prefs.getInt("homeScrollY", 0);
         if (savedY > 0) scroll.post(() -> scroll.scrollTo(0, savedY));
         updater = new Updater(this, prefs, this::onUpdateState);
+        updater.progress = this::onUpdateProgress;
         applyOrientation();
         prefs.edit().remove("hidden").apply();   // the old wallpaper-only mode became the Fuchsjagd game
         applyWallpaperIfNeeded();
@@ -3217,6 +3218,35 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     /* ================= Updates ================= */
+
+    private UpdateView updateView;
+
+    /** The download made visible: a helix assembling as the bytes arrive, with the real network numbers. */
+    private void onUpdateProgress(int phase, long done, long total, int version) {
+        if (rootFrame == null || isFinishing()) return;
+        if (updateView == null || updateView.getParent() != rootFrame) {
+            updateView = new UpdateView(this);
+            FrameLayout.LayoutParams l = new FrameLayout.LayoutParams(-1, dp((int) UpdateView.heightDp()), Gravity.TOP);
+            l.leftMargin = dp(12);
+            l.rightMargin = dp(12);
+            l.topMargin = dp(44);
+            rootFrame.addView(updateView, l);
+            UpdateView mine = updateView;
+            mine.setOnClickListener(v -> dropUpdateView(mine, 0));
+        }
+        updateView.update(phase, done, total, version);
+        if (updateView.isFinished()) {
+            dropUpdateView(updateView, phase == -1 ? 2600 : 1600);
+            updateView = null;
+        }
+    }
+
+    private void dropUpdateView(UpdateView v, long delay) {
+        if (v == updateView) updateView = null;
+        v.postDelayed(() -> v.animate().alpha(0f).translationY(-dp(12)).setDuration(280).withEndAction(() -> {
+            if (v.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) v.getParent()).removeView(v);
+        }).start(), delay);
+    }
 
     private void onUpdateState(String text, boolean available) {
         updateLib.setText(text.toUpperCase(Locale.GERMAN));
