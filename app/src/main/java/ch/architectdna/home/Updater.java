@@ -145,6 +145,7 @@ final class Updater {
                     showState();
                     if (manual && n <= current()) toast(L.t("ARC-DNA ist aktuell (1.0.") + current() + ").");
                 });
+                if (n <= current()) updateSiblings(manual);
             } catch (Exception e) {
                 DiagLog.log("update check failed: " + e.getMessage());
                 // Not again on every unlock: try once an hour until it works.
@@ -160,6 +161,71 @@ final class Updater {
                 busy = false;
             }
         }).start();
+    }
+
+    /** The other ARC apps (separate APKs) have no updater of their own: ARC-DNA keeps them current. */
+    private static final String[][] SIBLINGS = {
+        {"ch.architectdna.stats", "stats-v"}, {"ch.architectdna.orbit", "orbit-v"}, {"ch.architectdna.browser", "browser-v"}};
+
+    private void updateSiblings(boolean manual) {
+        try {
+            HttpURLConnection c = open(REPO + "/releases?per_page=40", "application/vnd.github+json", true);
+            if (c.getResponseCode() != 200) return;
+            JSONArray all = new JSONArray(readAll(c.getInputStream()));
+            for (String[] sib : SIBLINGS) {
+                long installed;
+                try {
+                    PackageInfo pi = activity.getPackageManager().getPackageInfo(sib[0], 0);
+                    installed = Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : versionCodeLegacy(pi);
+                } catch (Exception e) {
+                    continue;                               // not installed: never installs anything new by itself
+                }
+                int best = 0;
+                long asset = 0;
+                for (int i = 0; i < all.length(); i++) {
+                    JSONObject r = all.getJSONObject(i);
+                    String tag = r.getString("tag_name");
+                    if (!tag.startsWith(sib[1])) continue;
+                    int n = Integer.parseInt(tag.substring(tag.lastIndexOf('.') + 1));   // stats-v0.14 → 14 = versionCode
+                    if (n <= best) continue;
+                    JSONArray as = r.getJSONArray("assets");
+                    for (int k = 0; k < as.length(); k++)
+                        if (as.getJSONObject(k).getString("name").endsWith(".apk")) { best = n; asset = as.getJSONObject(k).getLong("id"); }
+                }
+                if (best > installed && asset != 0) {
+                    DiagLog.log("update sibling " + sib[0] + ": " + installed + " → " + best);
+                    if (manual) main.post(() -> toast(L.t("Aktualisiert ") + sib[0].substring(sib[0].lastIndexOf('.') + 1) + " …"));
+                    installSibling(asset, sib[0]);
+                }
+            }
+        } catch (Exception e) {
+            DiagLog.log("sibling update failed: " + e.getMessage());
+        }
+    }
+
+    /** Same as install(), for another ARC app; Android asks once, later updates go through quietly. */
+    private void installSibling(long id, String pkg) throws Exception {
+        if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) return;
+        HttpURLConnection c = download(id);
+        long length = c.getContentLengthLong();
+        PackageInstaller installer = activity.getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(pkg);
+        if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        int sid = installer.createSession(params);
+        PackageInstaller.Session session = installer.openSession(sid);
+        try (InputStream in = c.getInputStream(); OutputStream out = session.openWrite(pkg + ".apk", 0, length)) {
+            byte[] buf = new byte[64 * 1024];
+            for (int r; (r = in.read(buf)) != -1; ) out.write(buf, 0, r);
+            session.fsync(out);
+        } catch (Exception e) {
+            session.abandon();
+            throw e;
+        }
+        Intent status = new Intent(activity, MainActivity.class).setAction(ACTION_STATUS);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+        session.commit(PendingIntent.getActivity(activity, 8 + Math.abs(pkg.hashCode() % 50), status, flags).getIntentSender());
+        session.close();
     }
 
     private void showState() {

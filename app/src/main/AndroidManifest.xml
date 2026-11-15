@@ -66,6 +66,10 @@
 
     <!-- Android 11+ package visibility: see every launchable app and the default apps for the dock. -->
     <queries>
+        <!-- The other ARC apps, so ARC-DNA can keep them updated. -->
+        <package android:name="ch.architectdna.stats" />
+        <package android:name="ch.architectdna.orbit" />
+        <package android:name="ch.architectdna.browser" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

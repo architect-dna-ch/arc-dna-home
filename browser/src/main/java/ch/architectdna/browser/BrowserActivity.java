@@ -141,6 +141,38 @@ public class BrowserActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         newTab(null);
         handle(getIntent());
+        // First start: offer once to become the default browser, so every link opens here.
+        android.content.SharedPreferences p = getSharedPreferences("browser", MODE_PRIVATE);
+        if (!isDefault() && !p.getBoolean("askedDefault", false)) {
+            p.edit().putBoolean("askedDefault", true).apply();
+            main.postDelayed(this::askDefault, 900);
+        }
+    }
+
+    private boolean isDefault() {
+        if (Build.VERSION.SDK_INT >= 29) {
+            android.app.role.RoleManager rm = getSystemService(android.app.role.RoleManager.class);
+            return rm != null && rm.isRoleHeld(android.app.role.RoleManager.ROLE_BROWSER);
+        }
+        android.content.pm.ResolveInfo ri = getPackageManager().resolveActivity(
+            new Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        return ri != null && getPackageName().equals(ri.activityInfo.packageName);
+    }
+
+    /** Android's own "make default browser" sheet; older Android: the default-apps screen. */
+    private void askDefault() {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                android.app.role.RoleManager rm = getSystemService(android.app.role.RoleManager.class);
+                if (rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER)) {
+                    startActivityForResult(rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER), 78);
+                    return;
+                }
+            }
+            startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+        } catch (RuntimeException e) {
+            toast(t("Settings → Apps → Default apps → Browser", "Einstellungen → Apps → Standard-Apps → Browser"));
+        }
     }
 
     @Override
@@ -422,6 +454,7 @@ public class BrowserActivity extends Activity {
 
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 String scheme = r.getUrl().getScheme();
+                if ("arc".equals(scheme)) { askDefault(); return true; }   // the start page's "make default" button
                 if ("http".equals(scheme) || "https".equals(scheme) || "about".equals(scheme) || "data".equals(scheme)) return false;
                 // intent:, mailto:, tel:, market: … hand over to the right app
                 try {
@@ -504,6 +537,11 @@ public class BrowserActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == 78) {
+            toast(isDefault() ? t("ARC Browser is now your default. Links open here.", "ARC Browser ist jetzt Standard. Links öffnen hier.") : "");
+            for (Tab tb : tabs) if (tb.start) startPage(tb);
+            return;
+        }
         if (req == 77 && fileCallback != null) {
             fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
             fileCallback = null;
@@ -567,11 +605,13 @@ public class BrowserActivity extends Activity {
             + "button{border:0;border-radius:8px;background:" + inkC + ";color:" + paper + ";font-weight:800;padding:0 18px;font-size:15px}"
             + ".g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:30px}"
             + ".t{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:" + ink2C + ";font-size:11.5px;padding:12px 4px;border:1px solid " + lineC + ";border-radius:8px;background:" + cardC + "}"
+            + ".d{display:block;margin-top:18px;padding:14px;border-radius:8px;background:" + rustC + ";color:#fff;text-decoration:none;font-weight:700;font-size:14.5px}"
             + ".t span{font-size:24px}.f{margin-top:36px;font:10.5px monospace;letter-spacing:.14em;color:" + ink2C + ";line-height:1.8}"
             + "</style></head><body><div class=l>— ARC·DNA BROWSER</div>"
             + "<h1>" + t("Browse.<br>Leave no trace.", "Surfen.<br>Keine Spuren.") + "</h1>"
             + "<p>" + t("Trackers blocked. Nothing kept when you leave.", "Tracker blockiert. Nichts bleibt, wenn du gehst.") + "</p>"
             + "<form action='https://duckduckgo.com/' method=get><input name=q placeholder='" + t("Search privately", "Privat suchen") + "'><button>→</button></form>"
+            + (isDefault() ? "" : "<a class=d href='arc://default'>" + t("Make ARC Browser your default → every link opens here, private.", "ARC Browser als Standard → jeder Link öffnet hier, privat.") + "</a>")
             + "<div class=g>" + tb + "</div>"
             + "<div class=f>" + t("🛡 ADS & TRACKERS BLOCKED · 🍪 NO THIRD-PARTY COOKIES<br>🧹 WIPED ON EXIT · ● GREEN = VPN ON",
                 "🛡 WERBUNG & TRACKER BLOCKIERT · 🍪 KEINE DRITT-COOKIES<br>🧹 BEIM SCHLIESSEN GELÖSCHT · ● GRÜN = VPN AN") + "</div>"
