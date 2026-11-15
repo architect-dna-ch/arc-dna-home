@@ -299,7 +299,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Mock home: strip the page to clock · date · greeting + the thumb-fans, like the ARC mockup. */
     private boolean mockHome() {
-        return prefs.getBoolean("mockHome", true);
+        return true;   // the clean home is the only home now: the old full page piled everything on top of each other
     }
 
     /** Strip the home to clock · date · greeting + the thumb-fans (mockup look), or restore it. */
@@ -666,12 +666,6 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calmBtn.setOnClickListener(v -> openCrisis());
         top.addView(calmBtn);
         top.addView(gearButton());
-        top.setOnLongClickListener(v -> {       // long-press the header toggles the mockup-clean home
-            prefs.edit().putBoolean("mockHome", !mockHome()).apply();
-            applyMockHome();
-            pop(mockHome() ? L.t("Mock-Home · lang drücken = voller Home") : L.t("Voller Home · lang drücken = Mock"));
-            return true;
-        });
         content.addView(top);
 
         updateHome = text(14, ink, true);
@@ -8052,7 +8046,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */
     private void applySwept() {
-        boolean on = swept() && !pro();
+        boolean on = swept() && !pro() && !mockHome();   // the clean home has nothing to sweep
         strip(on);
         if (on) {
             for (View v : clutter()) if (v != null) v.setVisibility(View.GONE);
