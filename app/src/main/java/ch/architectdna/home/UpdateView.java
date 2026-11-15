@@ -21,7 +21,7 @@ import java.util.Locale;
  */
 final class UpdateView extends View {
 
-    private static final int BG = 0xF20E0E0D, LINE = 0xFF2C2C2A, INK = 0xFFF4F2EC, INK2 = 0xFFA5A5A0, INK3 = 0xFF6F6E69, RUST = 0xFFD9472F, GREEN = 0xFF2BD96B;
+    private static final int BG = 0xFF0E0E0D, LINE = 0xFF2C2C2A, INK = 0xFFF4F2EC, INK2 = 0xFFA5A5A0, INK3 = 0xFF6F6E69, RUST = 0xFFD9472F, GREEN = 0xFF2BD96B;
     private static final int PAIRS = 26;
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -182,8 +182,8 @@ final class UpdateView extends View {
         }
         String l1 = net + (speed.isEmpty() ? "" : "  ·  " + speed);
         String l2 = size + (eta.isEmpty() ? "" : "  ·  " + eta);
-        c.drawText(l1, pad, by + 26 * d, p);
-        c.drawText(l2, w - pad - p.measureText(l2), by + 26 * d, p);
+        c.drawText(l1, pad, by + 26 * d, p);       // network · speed
+        c.drawText(l2, pad, by + 44 * d, p);       // size · time left, own line so they never overlap
 
         // thin progress line
         float ly = h - 12 * d;
@@ -195,7 +195,7 @@ final class UpdateView extends View {
         if (getAlpha() > 0) postInvalidateOnAnimation();
     }
 
-    static float heightDp() { return 190; }
+    static float heightDp() { return 208; }
 
     private static String mbit(double bitsPerSecond) {
         double m = bitsPerSecond / 1_000_000.0;
