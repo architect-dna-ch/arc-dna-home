@@ -404,6 +404,14 @@ final class BtRemote {
                     case "PREV": t.skipToPrevious(); break;
                     case "SEEK": t.seekTo(Long.parseLong(arg)); break;
                     case "QITEM": t.skipToQueueItem(Long.parseLong(arg)); break;
+                    case "SEEKBY": MediaExtras.seekBy(ctl, Long.parseLong(arg)); break;
+                    case "SPEEDNEXT": MediaExtras.nextSpeed(ctl); break;
+                    case "SLEEP": {
+                        int min = Integer.parseInt(arg);
+                        MediaExtras.sleepIn(ctl, min);
+                        if (link != null) link.send("NOTE\t" + (min == 0 ? L.t("Sleep-Timer aus.") : L.t("Pausiert in ") + min + " min."));
+                        break;
+                    }
                     default: break;
                 }
             } catch (RuntimeException ignored) { }

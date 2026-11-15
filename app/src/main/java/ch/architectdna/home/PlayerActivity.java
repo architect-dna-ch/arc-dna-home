@@ -170,6 +170,31 @@ public class PlayerActivity extends Activity {
         controls.addView(next, new LinearLayout.LayoutParams(dp(58), dp(58)));
         col.addView(controls);
 
+        // Netflix-style extras: −10 s, speed, sleep timer, +10 s
+        LinearLayout extras = new LinearLayout(this);
+        extras.setGravity(Gravity.CENTER);
+        TextView back10 = chip("⟲ 10", ink);
+        back10.setOnClickListener(v -> MediaExtras.seekBy(controller, -10_000));
+        TextView speed = chip("1×", ink2);
+        speed.setOnClickListener(v -> speed.setText(MediaExtras.speedLabel(MediaExtras.nextSpeed(controller))));
+        TextView sleepT = chip("☾ " + L.t("AUS"), ink2);
+        sleepT.setOnClickListener(v -> {
+            int left = MediaExtras.sleepLeft(), next = 0;
+            for (int m : MediaExtras.SLEEP_MIN) if (m > left) { next = m; break; }
+            MediaExtras.sleepIn(controller, next);
+            sleepT.setText(next == 0 ? "☾ " + L.t("AUS") : "☾ " + next + " MIN");
+        });
+        TextView fwd10 = chip("10 ⟳", ink);
+        fwd10.setOnClickListener(v -> MediaExtras.seekBy(controller, 10_000));
+        for (TextView x : new TextView[]{back10, speed, sleepT, fwd10}) {
+            LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(0, -2, 1f);
+            xl.leftMargin = xl.rightMargin = dp(3);
+            extras.addView(x, xl);
+        }
+        LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(-1, -2);
+        el.topMargin = dp(16);
+        col.addView(extras, el);
+
         actions = new Flow(this, dp(8));
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, -2);
         al.topMargin = dp(18);

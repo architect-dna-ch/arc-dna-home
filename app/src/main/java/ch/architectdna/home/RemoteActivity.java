@@ -73,6 +73,10 @@ public class RemoteActivity extends Activity {
     private float speed = 1f;
     private int vol, volMax = 15;
     private String artKey = "";
+    private TextView speedBtn, sleepBtn;
+    private int sleepMin;
+    private long lastTapAt;
+    private float lastTapX;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -111,6 +115,22 @@ public class RemoteActivity extends Activity {
             @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10)); }
         });
         cover.setClipToOutline(true);
+        cover.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() != MotionEvent.ACTION_UP) return true;
+            long now = SystemClock.uptimeMillis();
+            boolean right = e.getX() > v.getWidth() / 2f;
+            if (now - lastTapAt < 320 && (lastTapX > v.getWidth() / 2f) == right) {
+                send(right ? "SEEKBY\t10000" : "SEEKBY\t-10000");
+                pos = Math.max(0, nowPos() + (right ? 10_000 : -10_000));
+                at = now;
+                flash(right ? "10 ⟳" : "⟲ 10");
+                lastTapAt = 0;
+            } else {
+                lastTapAt = now;
+                lastTapX = e.getX();
+            }
+            return true;
+        });
         FrameLayout coverBox = new FrameLayout(this) {
             @Override protected void onMeasure(int w, int h) { super.onMeasure(w, w); }
         };
@@ -153,6 +173,25 @@ public class RemoteActivity extends Activity {
         tr.addView(new View(this), new LinearLayout.LayoutParams(dp(22), 1));
         tr.addView(circle("⏭", card, ink, 72, v -> send("NEXT")));
         col.addView(tr, lp(-1, -2, dp(10)));
+
+        // Netflix-style extras: −10 s · speed · sleep timer · +10 s (double-tap the cover left/right works too)
+        LinearLayout ex = new LinearLayout(this);
+        TextView b10 = pill("⟲ 10", v -> { pos = Math.max(0, nowPos() - 10_000); at = SystemClock.uptimeMillis(); send("SEEKBY\t-10000"); });
+        speedBtn = pill("1×", v -> send("SPEEDNEXT"));
+        sleepBtn = pill("☾", v -> {
+            int next = 0;
+            for (int m : MediaExtras.SLEEP_MIN) if (m > sleepMin) { next = m; break; }
+            sleepMin = next;
+            sleepBtn.setText(next == 0 ? "☾" : "☾ " + next + "'");
+            send("SLEEP\t" + next);
+        });
+        TextView f10 = pill("10 ⟳", v -> { pos = nowPos() + 10_000; at = SystemClock.uptimeMillis(); send("SEEKBY\t10000"); });
+        for (TextView x : new TextView[]{b10, speedBtn, sleepBtn, f10}) {
+            LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            xl.leftMargin = xl.rightMargin = dp(3);
+            ex.addView(x, xl);
+        }
+        col.addView(ex, lp(-1, -2, dp(16)));
 
         // volume
         LinearLayout vr = new LinearLayout(this);
@@ -311,6 +350,7 @@ public class RemoteActivity extends Activity {
                 try { speed = Float.parseFloat(p[7]); } catch (NumberFormatException e) { speed = 1f; }
                 at = SystemClock.uptimeMillis();
                 vol = (int) parseL(p[8]);
+                if (speedBtn != null) speedBtn.setText(MediaExtras.speedLabel(speed));
                 volMax = Math.max(1, (int) parseL(p[9]));
                 paintPlay();
                 seek.invalidate();
@@ -350,6 +390,13 @@ public class RemoteActivity extends Activity {
 
     private static long parseL(String s) {
         try { return Long.parseLong(s); } catch (NumberFormatException e) { return 0; }
+    }
+
+    /** A short "⟲ 10" over the cover, like a video player. */
+    private void flash(String s) {
+        note.setText(s);
+        note.setAlpha(1f);
+        note.animate().alpha(0.4f).setDuration(700).start();
     }
 
     private long nowPos() {

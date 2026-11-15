@@ -597,7 +597,7 @@ public class StatsHomeActivity extends Activity {
         classicGreet.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         classicBox.addView(classicGreet, lp(-1, -2, 0, dp(4), 0, 0));
         classicBox.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
-        classicBox.addView(new DuckView(), new LinearLayout.LayoutParams(-1, dp(80)));
+        classicBox.addView(new View(this), new LinearLayout.LayoutParams(-1, dp(80)));   // the duck is retired: just air
         classicBox.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
         classicStrip = new LinearLayout(this);
         classicBox.addView(classicStrip, lp(-1, -2, 0, 0, 0, dp(4)));
