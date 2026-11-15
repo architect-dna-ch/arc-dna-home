@@ -98,6 +98,9 @@ public class BrowserActivity extends Activity {
     private WebChromeClient.CustomViewCallback customCallback;
     private ValueCallback<Uri[]> fileCallback;
 
+    private SelfUpdater updater;
+    private boolean updLoud;
+
     private final List<Tab> tabs = new ArrayList<>();
     private Tab cur;
 
@@ -139,6 +142,7 @@ public class BrowserActivity extends Activity {
         setContentView(root);
 
         CookieManager.getInstance().setAcceptCookie(true);
+        updater = new SelfUpdater(this, "browser-v", (text, need) -> { if (updLoud || need) toast(text); });
         newTab(null);
         handle(getIntent());
         // First start: offer once to become the default browser, so every link opens here.
@@ -178,6 +182,7 @@ public class BrowserActivity extends Activity {
     @Override
     protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
+        if (SelfUpdater.ACTION.equals(i.getAction())) { updater.onStatus(i); return; }
         handle(i);
     }
 
@@ -186,6 +191,8 @@ public class BrowserActivity extends Activity {
         super.onResume();
         paintVpn();
         if (cur != null) cur.web.onResume();
+        updLoud = false;
+        updater.check(false);                 // updates itself from the public mirror, quietly
     }
 
     @Override
@@ -388,6 +395,7 @@ public class BrowserActivity extends Activity {
             t("⎋  Open in another app", "⎋  In anderer App öffnen"),
             t("🖥  Desktop site on/off", "🖥  Desktop-Seite an/aus"),
             t("🧹  Wipe everything now", "🧹  Jetzt alles löschen"),
+            t("⟳  Check for updates", "⟳  Nach Updates suchen"),
         };
         new AlertDialog.Builder(this, dark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)
             .setItems(items, (d, i) -> {
@@ -398,6 +406,7 @@ public class BrowserActivity extends Activity {
                     case 3: if (u != null) copy(u); break;
                     case 4: if (u != null) try { startActivity(Intent.createChooser(new Intent(Intent.ACTION_VIEW, Uri.parse(u)), null)); } catch (RuntimeException ignored) { } break;
                     case 5: toggleDesktop(); break;
+                    case 7: updLoud = true; updater.fix(() -> { }); break;
                     default:
                         for (Tab tb : new ArrayList<>(tabs)) { tabs.remove(tb); tb.web.destroy(); }
                         cur = null;

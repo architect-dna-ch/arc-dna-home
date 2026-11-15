@@ -44,6 +44,20 @@ jobs:
             ARC Browser. Download **ARC-Browser.apk**, open it and allow installing.
             To make it your default browser: Settings → Apps → Default apps → Browser.
 
+
+      # Public download mirror (architect-dna-ch/arc-releases): APK only, so the apps update without a token.
+      # Needs the repo secret RELEASES_TOKEN (fine-grained, arc-releases only, Contents: read & write); skipped without it.
+      - name: Mirror to public downloads
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "RELEASES_TOKEN not set, mirror skipped"; exit 0; fi
+          gh release create "browser-v0.${{ github.run_number }}" ARC-Browser.apk -R architect-dna-ch/arc-releases \
+            --title "ARC Browser 0.${{ github.run_number }}" --notes "Download ARC-Browser.apk, open it and allow installing." --latest=false
+          gh api "repos/architect-dna-ch/arc-releases/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | startswith("browser-v"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+          while read -r tag; do gh release delete "$tag" --yes --cleanup-tag -R architect-dna-ch/arc-releases || true; done
+
       # Keep only the 5 newest Browser releases (and their tags).
       - name: Prune old Browser releases
         env:

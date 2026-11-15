@@ -32,7 +32,10 @@ final class SelfUpdater {
     interface Ui { void state(String text, boolean actionNeeded); }
 
     static final String ACTION = "ch.architectdna.orbit.SELF_UPDATE";
+    /** Public mirror first (no token needed), the private repo only as a fallback with the token. */
+    private static final String MIRROR = "https://api.github.com/repos/architect-dna-ch/arc-releases";
     private static final String REPO = "https://api.github.com/repos/architect-dna-ch/arc-dna-home";
+    private volatile String from = MIRROR;
     private static final long EVERY_MS = 6 * 3600 * 1000L;
 
     private final Activity a;
@@ -71,19 +74,23 @@ final class SelfUpdater {
     /** On every resume (at most every 6 h) and when asked. Installs by itself when there is something new. */
     void check(boolean manual) {
         if (busy) return;
-        if (!hasToken()) { ui.state(L.t("Updates: Token einmal einfügen →"), true); return; }
         if (!manual && System.currentTimeMillis() - prefs.getLong("checked", 0) < EVERY_MS) { ui.state(L.t("Aktuell · 0.") + current(), false); return; }
         busy = true;
         ui.state(L.t("Suche Updates …"), false);
         new Thread(() -> {
             try {
-                HttpURLConnection c = open(REPO + "/releases?per_page=40", "application/vnd.github+json", true);
-                int code = c.getResponseCode();
-                if (code == 401 || code == 403 || code == 404) throw new IOException(L.t("Token ungültig oder ohne Zugriff (") + code + ")");
-                if (code != 200) throw new IOException("GitHub " + code);
-                JSONArray all = new JSONArray(read(c.getInputStream()));
                 int best = 0;
                 long asset = 0;
+                for (String repo : new String[]{MIRROR, REPO}) {
+                boolean priv = repo.equals(REPO);
+                if (priv && (best > 0 || !hasToken())) break;    // the mirror had it, or no token for the fallback
+                HttpURLConnection c = open(repo + "/releases?per_page=40", "application/vnd.github+json", priv);
+                int code = c.getResponseCode();
+                if (code != 200) {
+                    if (priv) throw new IOException(L.t("Token ungültig oder ohne Zugriff (") + code + ")");
+                    continue;
+                }
+                JSONArray all = new JSONArray(read(c.getInputStream()));
                 for (int i = 0; i < all.length(); i++) {
                     JSONObject r = all.getJSONObject(i);
                     String tag = r.getString("tag_name");
@@ -92,7 +99,8 @@ final class SelfUpdater {
                     if (n <= best) continue;
                     JSONArray as = r.getJSONArray("assets");
                     for (int k = 0; k < as.length(); k++)
-                        if (as.getJSONObject(k).getString("name").endsWith(".apk")) { best = n; asset = as.getJSONObject(k).getLong("id"); }
+                        if (as.getJSONObject(k).getString("name").endsWith(".apk")) { best = n; asset = as.getJSONObject(k).getLong("id"); from = repo; }
+                }
                 }
                 prefs.edit().putLong("checked", System.currentTimeMillis()).apply();
                 if (best > current() && asset != 0) {
@@ -119,7 +127,6 @@ final class SelfUpdater {
 
     /** What a tap on the update line does when something is needed. */
     void fix(Runnable askToken) {
-        if (!hasToken()) { askToken.run(); return; }
         if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
             try {
                 a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.getPackageName())));
@@ -130,7 +137,7 @@ final class SelfUpdater {
     }
 
     private void install(long id) throws Exception {
-        HttpURLConnection c = open(REPO + "/releases/assets/" + id, "application/octet-stream", true);
+        HttpURLConnection c = open(from + "/releases/assets/" + id, "application/octet-stream", from.equals(REPO));
         c.setInstanceFollowRedirects(false);
         int code = c.getResponseCode();
         if (code / 100 == 3) {
