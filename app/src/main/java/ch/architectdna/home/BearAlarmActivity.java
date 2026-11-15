@@ -66,12 +66,41 @@ public class BearAlarmActivity extends Activity {
         vibrator = getSystemService(Vibrator.class);
         AlarmLog.ringStarted(this, getIntent().getStringExtra("label"));
         startSound(renderLoop(false));
+        // Nobody there? The bear gives up instead of roaring for 20 minutes: after a few minutes it
+        // snoozes by itself (twice on a phone), then stops. A tablet rings once and stops.
+        view.postDelayed(this::giveUp, tablet() ? 2 * 60_000L : 4 * 60_000L);
+    }
+
+    private boolean tablet() {
+        return getResources().getConfiguration().smallestScreenWidthDp >= 600;
+    }
+
+    private void giveUp() {
+        if (done) return;
+        done = true;
+        android.content.SharedPreferences p = getSharedPreferences("home", MODE_PRIVATE);
+        int n = p.getInt("bearAutoSnoozes", 0);
+        if (!tablet() && n < 2) {
+            p.edit().putInt("bearAutoSnoozes", n + 1).apply();
+            AlarmScheduler.snooze(this, 5);
+            DiagLog.log("bear alarm: no answer, auto-snooze " + (n + 1));
+        } else {
+            p.edit().putInt("bearAutoSnoozes", 0).apply();
+            AlarmScheduler.cancelSnooze(this);
+            DiagLog.log("bear alarm: no answer, stopped");
+        }
+        AlarmLog.finished(this, false);
+        stopAll();
+        finish();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (!done) AlarmLog.finished(this, false);     // swiped away / killed without an answer
+        if (!done) {                                    // swiped away / killed without an answer
+            done = true;                                // (also stops the pending give-up)
+            AlarmLog.finished(this, false);
+        }
         stopAll();
     }
 
@@ -124,6 +153,7 @@ public class BearAlarmActivity extends Activity {
     private void wakeUp() {
         if (done) return;
         done = true;
+        getSharedPreferences("home", MODE_PRIVATE).edit().putInt("bearAutoSnoozes", 0).apply();
         AlarmScheduler.cancelSnooze(this);
         AlarmLog.finished(this, true);
         stopAll();
@@ -133,6 +163,7 @@ public class BearAlarmActivity extends Activity {
     private void snooze() {
         if (done) return;
         done = true;
+        getSharedPreferences("home", MODE_PRIVATE).edit().putInt("bearAutoSnoozes", 0).apply();
         AlarmScheduler.snooze(this, 5);
         AlarmLog.snoozed(this);
         stopAll();
