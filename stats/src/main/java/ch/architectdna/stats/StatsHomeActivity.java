@@ -143,6 +143,11 @@ public class StatsHomeActivity extends Activity {
             return in;
         });
         setContentView(root);
+        updater = new SelfUpdater(this, "stats-v", (text, need) -> {
+            if (updLine == null) return;
+            updLine.setText(text.toUpperCase(java.util.Locale.ROOT));
+            updLine.setTextColor(need ? rust : ink3);
+        });
     }
 
     /** Page 0: glance on top, suggestions in the middle, dock and search at the bottom. */
@@ -283,6 +288,17 @@ public class StatsHomeActivity extends Activity {
         hourHint.setTypeface(Typeface.MONOSPACE);
         hourCard.addView(hourHint, lp(-1, -2, 0, dp(6), 0, 0));
         col.addView(hourCard, lp(-1, -2, 0, dp(14), 0, 0));
+
+        // Updates: this app keeps itself current. Tap = check now (or set up the token / allow installing).
+        LinearLayout updCard = cardBox();
+        updCard.addView(label(L.t("UPDATES"), ink3));
+        updLine = text(12, ink3, false);
+        updLine.setTypeface(Typeface.MONOSPACE);
+        updLine.setPadding(0, dp(8), 0, dp(2));
+        updCard.addView(updLine);
+        updCard.setOnClickListener(v -> updater.fix(this::askToken));
+        updCard.setOnLongClickListener(v -> { askToken(); return true; });
+        col.addView(updCard, lp(-1, -2, 0, dp(14), 0, 0));
     }
 
     /** The drawer: search on top, every app in a 4-column grid. Pull down at the top to close. */
@@ -344,6 +360,7 @@ public class StatsHomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         load();
+        if (updater != null) updater.check(false);
     }
 
     /** Leaving for another app: the next time home shows, it is the plain home page again. */
@@ -357,6 +374,7 @@ public class StatsHomeActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (SelfUpdater.ACTION.equals(intent.getAction())) { updater.onStatus(intent); return; }
         closeDrawer();
         showStats(false);
     }
@@ -1173,6 +1191,27 @@ public class StatsHomeActivity extends Activity {
         l.setPadding(dp(16), dp(16), dp(16), dp(16));
         l.setBackground(box(card, line, 18));
         return l;
+    }
+
+    private SelfUpdater updater;
+    private TextView updLine;
+
+    /** One-time: the read-only GitHub token (same one ARC-DNA used). Stays encrypted on this phone. */
+    private void askToken() {
+        EditText in = new EditText(this);
+        in.setHint("github_pat_…");
+        in.setSingleLine(true);
+        in.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        LinearLayout w = new LinearLayout(this);
+        w.setPadding(dp(20), dp(8), dp(20), 0);
+        w.addView(in, new LinearLayout.LayoutParams(-1, -2));
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(L.t("Updates einrichten"))
+            .setMessage(L.t("GitHub → Fine-grained token, nur „arc-dna-home“, Contents: Read-only. Einmal einfügen, dann aktualisiert sich die App selbst."))
+            .setView(w)
+            .setPositiveButton(L.t("Speichern & prüfen"), (d, i) -> { updater.setToken(in.getText().toString()); updater.check(true); })
+            .setNegativeButton(L.t("Token auf GitHub erstellen"), (d, i) -> Web.open(this, "https://github.com/settings/personal-access-tokens/new"))
+            .show();
     }
 
     private TextView label(String s, int colour) {
