@@ -177,7 +177,7 @@ public class EinspruchActivity extends Activity {
     }
 
     private void web(String path) {
-        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(ORIGIN + path))); }
+        try { Web.open(this, ORIGIN + path); }
         catch (RuntimeException e) { Toast.makeText(this, t("No browser found", "Kein Browser gefunden"), Toast.LENGTH_SHORT).show(); }
     }
 

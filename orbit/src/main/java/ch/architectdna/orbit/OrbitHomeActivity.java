@@ -517,7 +517,7 @@ public class OrbitHomeActivity extends Activity {
         t.setBackground(box(card, line, 40));
         t.setOnClickListener(v -> {
             try {
-                startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                Web.open(this, url);
             } catch (RuntimeException ignored) { }
         });
         return t;

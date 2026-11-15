@@ -146,7 +146,7 @@ public class WerkzeugeActivity extends Activity {
             return;
         }
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            Web.open(this, url);
         } catch (RuntimeException e) {
             Toast.makeText(this, L.t("Kein Browser gefunden"), Toast.LENGTH_SHORT).show();
         }

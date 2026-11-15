@@ -66,9 +66,8 @@ public class BearAlarmActivity extends Activity {
         vibrator = getSystemService(Vibrator.class);
         AlarmLog.ringStarted(this, getIntent().getStringExtra("label"));
         startSound(renderLoop(false));
-        // Nobody there? The bear gives up instead of roaring for 20 minutes: after a few minutes it
-        // snoozes by itself (twice on a phone), then stops. A tablet rings once and stops.
-        view.postDelayed(this::giveUp, tablet() ? 2 * 60_000L : 4 * 60_000L);
+        // The pattern: 30 s of bear, 2 min quiet, 30 s once more, then it's done. No snooze.
+        view.postDelayed(this::giveUp, 30_000L);
     }
 
     private boolean tablet() {
@@ -79,20 +78,20 @@ public class BearAlarmActivity extends Activity {
         if (done) return;
         done = true;
         android.content.SharedPreferences p = getSharedPreferences("home", MODE_PRIVATE);
-        int n = p.getInt("bearAutoSnoozes", 0);
-        if (!tablet() && n < 2) {
-            p.edit().putInt("bearAutoSnoozes", n + 1).apply();
-            AlarmScheduler.snooze(this, 5);
-            DiagLog.log("bear alarm: no answer, auto-snooze " + (n + 1));
+        if (!p.getBoolean("bearRetried", false)) {
+            p.edit().putBoolean("bearRetried", true).apply();
+            AlarmScheduler.snooze(this, 2);            // one more round in 2 minutes
+            DiagLog.log("bear alarm: no answer, once more in 2 min");
         } else {
-            p.edit().putInt("bearAutoSnoozes", 0).apply();
+            p.edit().putBoolean("bearRetried", false).apply();
             AlarmScheduler.cancelSnooze(this);
-            DiagLog.log("bear alarm: no answer, stopped");
+            DiagLog.log("bear alarm: no answer, done");
         }
         AlarmLog.finished(this, false);
         stopAll();
         finish();
     }
+
 
     @Override
     protected void onDestroy() {
@@ -153,7 +152,7 @@ public class BearAlarmActivity extends Activity {
     private void wakeUp() {
         if (done) return;
         done = true;
-        getSharedPreferences("home", MODE_PRIVATE).edit().putInt("bearAutoSnoozes", 0).apply();
+        getSharedPreferences("home", MODE_PRIVATE).edit().putBoolean("bearRetried", false).apply();
         AlarmScheduler.cancelSnooze(this);
         AlarmLog.finished(this, true);
         stopAll();
@@ -163,7 +162,7 @@ public class BearAlarmActivity extends Activity {
     private void snooze() {
         if (done) return;
         done = true;
-        getSharedPreferences("home", MODE_PRIVATE).edit().putInt("bearAutoSnoozes", 0).apply();
+        getSharedPreferences("home", MODE_PRIVATE).edit().putBoolean("bearRetried", false).apply();
         AlarmScheduler.snooze(this, 5);
         AlarmLog.snoozed(this);
         stopAll();
@@ -508,10 +507,8 @@ public class BearAlarmActivity extends Activity {
 
             // Snooze (tap) and wake up (hold 1 s, fills up).
             float pad = dp(24), bh = dp(60), bottom = h - dp(48);
-            snoozeBtn.set(pad, bottom - bh * 2 - dp(14), w - pad, bottom - bh - dp(14));
+            snoozeBtn.setEmpty();                      // no snooze: 30 s, 2 min quiet, 30 s, done
             wakeBtn.set(pad, bottom - bh, w - pad, bottom);
-            paint.setColor(0x33F2EFE8);
-            c.drawRoundRect(snoozeBtn, dp(8), dp(8), paint);
             paint.setColor(0xFFB5271E);
             c.drawRoundRect(wakeBtn, dp(8), dp(8), paint);
             if (holdStart >= 0) {
@@ -524,10 +521,7 @@ public class BearAlarmActivity extends Activity {
             }
             paint.setTextSize(dp(14));
             paint.setColor(0xFFF2EFE8);
-            String s1 = L.t("SNOOZE 5 MIN · BÄR ZURÜCK IN DIE HÖHLE");
             String s2 = holdStart >= 0 ? L.t("HALTEN …") : L.t("AUFWACHEN · 1 S HALTEN");
-            if (paint.measureText(s1) > snoozeBtn.width() - dp(20)) s1 = "SNOOZE 5 MIN";
-            c.drawText(s1, snoozeBtn.centerX() - paint.measureText(s1) / 2, snoozeBtn.centerY() + dp(5), paint);
             c.drawText(s2, wakeBtn.centerX() - paint.measureText(s2) / 2, wakeBtn.centerY() + dp(5), paint);
         }
     }
