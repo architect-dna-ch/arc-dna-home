@@ -179,10 +179,10 @@ public class PlayerActivity extends Activity {
         speed.setOnClickListener(v -> speed.setText(MediaExtras.speedLabel(MediaExtras.nextSpeed(controller))));
         TextView sleepT = chip("☾ " + L.t("AUS"), ink2);
         sleepT.setOnClickListener(v -> {
-            int left = MediaExtras.sleepLeft(), next = 0;
-            for (int m : MediaExtras.SLEEP_MIN) if (m > left) { next = m; break; }
-            MediaExtras.sleepIn(controller, next);
-            sleepT.setText(next == 0 ? "☾ " + L.t("AUS") : "☾ " + next + " MIN");
+            int left = MediaExtras.sleepLeft(), mins = 0;
+            for (int m : MediaExtras.SLEEP_MIN) if (m > left) { mins = m; break; }
+            MediaExtras.sleepIn(controller, mins);
+            sleepT.setText(mins == 0 ? "☾ " + L.t("AUS") : "☾ " + mins + " MIN");
         });
         TextView fwd10 = chip("10 ⟳", ink);
         fwd10.setOnClickListener(v -> MediaExtras.seekBy(controller, 10_000));
