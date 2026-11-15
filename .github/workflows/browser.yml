@@ -1,0 +1,56 @@
+name: Build Browser APK
+
+# ARC Browser is its own app: built only when its module changes, released under browser-v tags.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'browser/**'
+      - '.github/workflows/browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build release APK
+        run: gradle :browser:assembleRelease --build-cache --stacktrace
+
+      - name: Rename output
+        run: cp browser/build/outputs/apk/release/browser-release.apk ARC-Browser.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: browser-v0.${{ github.run_number }}
+          name: ARC Browser 0.${{ github.run_number }}
+          files: ARC-Browser.apk
+          make_latest: false
+          body: |
+            ARC Browser. Download **ARC-Browser.apk**, open it and allow installing.
+            To make it your default browser: Settings → Apps → Default apps → Browser.
+
+      # Keep only the 5 newest Browser releases (and their tags).
+      - name: Prune old Browser releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | startswith("browser-v"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+          while read -r tag; do
+            gh release delete "$tag" --yes --cleanup-tag -R "${{ github.repository }}" || true
+          done

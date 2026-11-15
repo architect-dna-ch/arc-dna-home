@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ARC Browser: a paper tile with an ink globe and one rust meridian. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#F5F1E8" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z" />
+    <path android:strokeColor="#1B1613" android:strokeWidth="3" android:fillColor="#00000000"
+        android:pathData="M24,10a14,14 0,1 1,0 28a14,14 0,1 1,0 -28z M10,24h28 M12.5,17h23 M12.5,31h23" />
+    <path android:strokeColor="#B5271E" android:strokeWidth="3" android:fillColor="#00000000"
+        android:pathData="M24,10c-5,4 -7,9 -7,14s2,10 7,14c5,-4 7,-9 7,-14s-2,-10 -7,-14z" />
+</vector>

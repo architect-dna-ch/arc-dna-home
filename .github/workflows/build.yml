@@ -9,6 +9,8 @@ on:
       - '.github/workflows/stats.yml'
       - 'orbit/**'
       - '.github/workflows/orbit.yml'
+      - 'browser/**'
+      - '.github/workflows/browser.yml'
   workflow_dispatch:
 
 permissions:
