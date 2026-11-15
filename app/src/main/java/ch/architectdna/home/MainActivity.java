@@ -1420,6 +1420,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         settingsLink.setText(L.t("⚙ EINSTELLUNGEN →"));
         settingsLink.setPadding(dp(4), dp(16), dp(4), dp(8));
         settingsLink.setOnClickListener(v -> showSettings());
+        settingsLink.setVisibility(View.GONE);         // no settings screen: everything runs on good defaults
         body.addView(settingsLink, margins(-1, -2, 0, dp(16), 0, 0));
         return lib;
     }
@@ -1434,10 +1435,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         g.setPadding(dp(14), dp(2), dp(4), dp(2));
         g.setContentDescription(L.t("Einstellungen"));
         g.setOnClickListener(v -> showSettings());
+        g.setVisibility(View.GONE);                    // no settings screen
         return g;
     }
 
+    /** The settings screen is retired: ARC-DNA runs on its defaults. Kept in code, unreachable. */
+    private static final boolean SETTINGS_SCREEN = false;
+
     private void showSettings() {
+        if (!SETTINGS_SCREEN) return;
         if (settingsSheet != null) return;
         hideKeyboard();
         FrameLayout sheet = new FrameLayout(this);
@@ -2799,6 +2805,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 if (dx < 0) openLibrary();
                 else startActivity(new Intent(this, GlobusActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }
+            // Pull down from the top (left of the Energie corner): look for an update now.
+            if (gestures && !strokeMulti && !strokeOnLever && !strokeOnSlider && !strokeOnCard
+                && downX <= rootFrame.getWidth() * 0.6f && downY < rootFrame.getHeight() * 0.2f
+                && dy > dp(110) && dy < rootFrame.getHeight() * 0.5f && Math.abs(dx) < dy * 0.5f
+                && ev.getEventTime() - downTime < 800) {
+                DiagLog.log("pull down: update check");
+                pullForUpdate();
+                return super.dispatchTouchEvent(ev);
+            }
             // Down from the top-right corner: Energie drops in like a control centre.
             if (gestures && !strokeMulti && !strokeOnLever && downX > rootFrame.getWidth() * 0.6f && downY < rootFrame.getHeight() * 0.2f
                 && dy > dp(110) && Math.abs(dx) < dy && ev.getEventTime() - downTime < 700) {
@@ -3220,6 +3235,36 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /* ================= Updates ================= */
 
     private UpdateView updateView;
+    private TextView pullPill;
+
+    /** Pull to refresh, for the app itself: a small pill drops in and the update check runs. */
+    private void pullForUpdate() {
+        if (rootFrame == null) return;
+        rootFrame.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        if (pullPill == null || pullPill.getParent() != rootFrame) {
+            pullPill = new TextView(this);
+            pullPill.setTextColor(0xFFF4F2EC);
+            pullPill.setTextSize(12);
+            pullPill.setTypeface(android.graphics.Typeface.MONOSPACE);
+            pullPill.setLetterSpacing(0.14f);
+            pullPill.setPadding(dp(16), dp(9), dp(16), dp(9));
+            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+            g.setColor(0xFF0E0E0D);
+            g.setCornerRadius(dp(20));
+            pullPill.setBackground(g);
+            pullPill.setElevation(dp(8));
+            FrameLayout.LayoutParams l = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            l.topMargin = dp(52);
+            rootFrame.addView(pullPill, l);
+        }
+        TextView pill = pullPill;
+        pill.setText(L.t("↻ SUCHE UPDATE …"));
+        pill.setAlpha(0f);
+        pill.setTranslationY(-dp(20));
+        pill.animate().alpha(1f).translationY(0).setDuration(220).start();
+        updater.check(true);
+        pill.postDelayed(() -> pill.animate().alpha(0f).translationY(-dp(16)).setDuration(260).start(), 2200);
+    }
 
     /** The download made visible: a helix assembling as the bytes arrive, with the real network numbers. */
     private void onUpdateProgress(int phase, long done, long total, int version) {
