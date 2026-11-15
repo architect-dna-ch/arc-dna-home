@@ -4,6 +4,8 @@
 
     <!-- Reads how long and when each app is used. Granted by hand in Settings → Usage access. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Only for Einspruch and Anchor (they talk to their own servers). -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
@@ -38,5 +40,17 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".EinspruchActivity"
+            android:exported="false"
+            android:label="Einspruch"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AnchorActivity"
+            android:exported="false"
+            android:label="Anchor"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

@@ -501,15 +501,11 @@ public class OrbitHomeActivity extends Activity {
     }
 
     /** Opens the native screen in ARC-DNA Home; the website if Home isn't installed. */
+    /** Einspruch and Anchor are built into this app: no browser, no other app needed. */
     private TextView nativeChip(String label, String cls, String url) {
         TextView t = toolChip(label, url);
-        t.setOnClickListener(v -> {
-            try {
-                startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home." + cls).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            } catch (RuntimeException e) {
-                try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (RuntimeException ignored) { }
-            }
-        });
+        Class<?> screen = "EinspruchActivity".equals(cls) ? EinspruchActivity.class : AnchorActivity.class;
+        t.setOnClickListener(v -> startActivity(new Intent(this, screen)));
         return t;
     }
 
