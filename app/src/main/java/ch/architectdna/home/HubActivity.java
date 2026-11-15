@@ -80,6 +80,7 @@ public class HubActivity extends Activity {
         updateLine = ui.mono("", ui.ink3, 11);
         updateLine.setPadding(0, ui.dp(10), 0, ui.dp(4));
         updateLine.setOnClickListener(v -> { updater.check(true); });
+        updateLine.setOnLongClickListener(v -> { askToken(); return true; });
         col.addView(updateLine, ui.lp(-1, -2, ui.dp(10)));
         TextView pull = ui.mono(t("PULL DOWN = CHECK FOR UPDATES", "RUNTERZIEHEN = UPDATES SUCHEN"), ui.ink3, 9.5f);
         col.addView(pull);
@@ -124,6 +125,23 @@ public class HubActivity extends Activity {
             {"👾", "Nexus Breach", t("Waves, upgrades, bosses", "Wellen, Upgrades, Bosse"), NexusActivity.class},
             {"✏️", "Whiteboard", t("Draw, learn to draw", "Zeichnen, zeichnen lernen"), BoardActivity.class},
         });
+    }
+
+    /** Hold the update line: paste the read-only GitHub token (private repo). Stays encrypted on this device. */
+    private void askToken() {
+        android.widget.EditText in = ui.input("github_pat_…", false, 200);
+        in.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        LinearLayout w = new LinearLayout(this);
+        w.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), 0);
+        w.addView(in, new LinearLayout.LayoutParams(-1, -2));
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(t("Set up updates", "Updates einrichten"))
+            .setMessage(t("GitHub → fine-grained token, only \"arc-dna-home\", Contents: read-only. Paste once, then ARC-DNA updates itself.",
+                "GitHub → Fine-grained token, nur „arc-dna-home“, Contents: Read-only. Einmal einfügen, dann aktualisiert sich ARC-DNA selbst."))
+            .setView(w)
+            .setPositiveButton(t("Save & check", "Speichern & prüfen"), (d, i) -> { updater.setToken(in.getText().toString()); updater.check(true); })
+            .setNegativeButton(t("Create token", "Token erstellen"), (d, i) -> Web.open(this, "https://github.com/settings/personal-access-tokens/new"))
+            .show();
     }
 
     private void section(LinearLayout col, String name, Object[][] rows) {
