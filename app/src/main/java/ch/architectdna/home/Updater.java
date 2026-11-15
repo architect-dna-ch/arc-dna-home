@@ -222,7 +222,7 @@ final class Updater {
             session.abandon();
             throw e;
         }
-        Intent status = new Intent(activity, MainActivity.class).setAction(ACTION_STATUS);
+        Intent status = new Intent(activity, activity.getClass()).setAction(ACTION_STATUS);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
         session.commit(PendingIntent.getActivity(activity, 8 + Math.abs(pkg.hashCode() % 50), status, flags).getIntentSender());
         session.close();
@@ -293,7 +293,7 @@ final class Updater {
                     }
                     session.fsync(out);
                 }
-                Intent status = new Intent(activity, MainActivity.class).setAction(ACTION_STATUS);
+                Intent status = new Intent(activity, activity.getClass()).setAction(ACTION_STATUS);
                 int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
                 PendingIntent pending = PendingIntent.getActivity(activity, 7, status, flags);
                 session.commit(pending.getIntentSender());

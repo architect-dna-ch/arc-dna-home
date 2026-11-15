@@ -55,7 +55,7 @@ final class AlarmScheduler {
     }
 
     private static void set(Context c, AlarmManager am, long at, int code) {
-        PendingIntent show = PendingIntent.getActivity(c, 10, new Intent(c, MainActivity.class),
+        PendingIntent show = PendingIntent.getActivity(c, 10, new Intent(c, WeckerActivity.class),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         DiagLog.log("alarm set code=" + code + " in " + (at - System.currentTimeMillis()) / 60000 + " min");
         try {

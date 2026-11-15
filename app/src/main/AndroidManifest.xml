@@ -97,6 +97,19 @@
         android:supportsRtl="true"
         android:theme="@style/Home">
 
+        <!-- ARC-DNA hub: the launcher icon. Every ARC tool in one list, plus updates. -->
+        <activity
+            android:name=".HubActivity"
+            android:exported="true"
+            android:label="ARC-DNA"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".MainActivity"
             android:clearTaskOnLaunch="true"
@@ -107,12 +120,7 @@
             android:resumeWhilePausing="true"
             android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustResize|stateHidden">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!-- The old home screen (clock + duck) is retired: no HOME, no launcher icon. -->
             <!-- ARC·Tap NFC tag: tap a tag written by ARC·Tap to apply a theme/buddy. -->
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
