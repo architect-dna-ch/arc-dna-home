@@ -121,7 +121,7 @@ public class HubActivity extends Activity {
         });
         section(col, t("Play", "Spielen"), new Object[][]{
             {"🎯", t("Games", "Spielothek"), t("Darts, rocket, table tennis", "Darts, Rakete, Tischtennis"), SpielothekActivity.class},
-            {"⬡", "Nexus Breach", t("Waves, upgrades, bosses", "Wellen, Upgrades, Bosse"), NexusActivity.class},
+            {"👾", "Nexus Breach", t("Waves, upgrades, bosses", "Wellen, Upgrades, Bosse"), NexusActivity.class},
             {"✏️", "Whiteboard", t("Draw, learn to draw", "Zeichnen, zeichnen lernen"), BoardActivity.class},
         });
     }
