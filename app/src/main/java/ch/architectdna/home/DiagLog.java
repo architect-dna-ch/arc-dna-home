@@ -59,11 +59,11 @@ final class DiagLog {
     }
 
     static synchronized String read() {
-        if (file == null || !file.exists()) return "(leer)";
+        if (file == null || !file.exists()) return L.t("(leer)");
         try {
             return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            return "(nicht lesbar: " + e + ")";
+            return L.t("(nicht lesbar: ") + e + ")";
         }
     }
 }

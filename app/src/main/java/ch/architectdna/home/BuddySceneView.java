@@ -141,22 +141,22 @@ final class BuddySceneView extends View {
 
     /** Each strip: 4 panels of {caption, speech, prop emoji, pose}; pose 0 stand, 1 flip, 2 lie, 3 jump. */
     private static final String[][][] STRIPS = {
-        {{"Montag.", "Heute nur gesund.", "🎋", "0"}, {"Dann:", "…ist das Kuchen?", "🍰", "1"},
-            {"Analyse:", "Bambus ist auch Kuchen. Irgendwie.", "🤔", "0"}, {"Fazit.", "Beides. Balance.", "🎋🍰", "3"}},
-        {{"Ruhe finden.", "Ommm.", "🧘", "0"}, {"BZZZ.", "…", "📱", "1"},
-            {"Nur kurz.", "Ommm-ail checken.", "📧", "0"}, {"Später.", "Morgen meditiere ich. Versprochen.", "🌙", "2"}},
-        {{"Boxgym.", "Heute zeig ich's dem Sack!", "🥊", "0"}, {"BAM!", "Hah!", "💥", "3"},
-            {"Der Sack schwingt zurück.", "Aua.", "😵", "2"}, {"Trotzdem.", "Runde 2. Immer Runde 2.", "💪", "0"}},
-        {{"Spaziergang.", "Mist, Regen.", "🌧️", "0"}, {"Schirm auf …", "…kaputt.", "☂️", "1"},
-            {"Stille.", "…", "💧", "0"}, {"Plan B.", "Dann halt tanzen.", "💃", "3"}},
-        {{"Abends.", "Was, wenn …", "💭", "0"}, {"Und was, wenn …", "…und dann …und dann …", "💭💭💭", "1"},
-            {"Der Eisbär kommt.", "Eisbär sagt: Tee.", "🍵", "0"}, {"Hm.", "Okay. Tee.", "🍵", "2"}},
-        {{"Wichtig.", "Heute: Steuern.", "📄", "0"}, {"5 Minuten später.", "Zzz …", "😴", "2"},
-            {"Ruck!", "Nur fünf Minuten am Stück!", "⏱️", "3"}, {"Erledigt.", "Panda ist ein Held.", "✅", "0"}},
-        {{"Party.", "Ich kenn hier niemand.", "🎉", "0"}, {"Jemand winkt.", "Meint die mich?", "👋", "1"},
-            {"Mut.", "Hi. Ich bin Panda.", "🙂", "0"}, {"Später.", "Ein Gespräch. Reicht für heute.", "⭐", "3"}},
-        {{"Spiegel.", "Bin ich gut genug?", "🪞", "0"}, {"Liste:", "Fehler 1, Fehler 2 …", "📝", "1"},
-            {"Die Eule fragt:", "Und was hast du gut gemacht?", "🦉", "0"}, {"Oh.", "…ziemlich viel, eigentlich.", "💚", "3"}},
+        {{L.t("Montag."), L.t("Heute nur gesund."), "🎋", "0"}, {L.t("Dann:"), L.t("…ist das Kuchen?"), "🍰", "1"},
+            {L.t("Analyse:"), L.t("Bambus ist auch Kuchen. Irgendwie."), "🤔", "0"}, {L.t("Fazit."), L.t("Beides. Balance."), "🎋🍰", "3"}},
+        {{L.t("Ruhe finden."), "Ommm.", "🧘", "0"}, {"BZZZ.", "…", "📱", "1"},
+            {L.t("Nur kurz."), L.t("Ommm-ail checken."), "📧", "0"}, {L.t("Später."), L.t("Morgen meditiere ich. Versprochen."), "🌙", "2"}},
+        {{L.t("Boxgym."), L.t("Heute zeig ich's dem Sack!"), "🥊", "0"}, {"BAM!", "Hah!", "💥", "3"},
+            {L.t("Der Sack schwingt zurück."), L.t("Aua."), "😵", "2"}, {L.t("Trotzdem."), L.t("Runde 2. Immer Runde 2."), "💪", "0"}},
+        {{L.t("Spaziergang."), L.t("Mist, Regen."), "🌧️", "0"}, {L.t("Schirm auf …"), L.t("…kaputt."), "☂️", "1"},
+            {L.t("Stille."), "…", "💧", "0"}, {"Plan B.", L.t("Dann halt tanzen."), "💃", "3"}},
+        {{L.t("Abends."), L.t("Was, wenn …"), "💭", "0"}, {L.t("Und was, wenn …"), L.t("…und dann …und dann …"), "💭💭💭", "1"},
+            {L.t("Der Eisbär kommt."), L.t("Eisbär sagt: Tee."), "🍵", "0"}, {"Hm.", L.t("Okay. Tee."), "🍵", "2"}},
+        {{L.t("Wichtig."), L.t("Heute: Steuern."), "📄", "0"}, {L.t("5 Minuten später."), "Zzz …", "😴", "2"},
+            {L.t("Ruck!"), L.t("Nur fünf Minuten am Stück!"), "⏱️", "3"}, {L.t("Erledigt."), L.t("Panda ist ein Held."), "✅", "0"}},
+        {{"Party.", L.t("Ich kenn hier niemand."), "🎉", "0"}, {L.t("Jemand winkt."), L.t("Meint die mich?"), "👋", "1"},
+            {L.t("Mut."), L.t("Hi. Ich bin Panda."), "🙂", "0"}, {L.t("Später."), L.t("Ein Gespräch. Reicht für heute."), "⭐", "3"}},
+        {{L.t("Spiegel."), L.t("Bin ich gut genug?"), "🪞", "0"}, {L.t("Liste:"), L.t("Fehler 1, Fehler 2 …"), "📝", "1"},
+            {L.t("Die Eule fragt:"), L.t("Und was hast du gut gemacht?"), "🦉", "0"}, {"Oh.", L.t("…ziemlich viel, eigentlich."), "💚", "3"}},
     };
     private int strip, panel = 1;
     private float panelAt;
@@ -232,7 +232,7 @@ final class BuddySceneView extends View {
         p.setTextSize(dp(15));
         p.setColor(0xFF1A1A1A);
         float y = top + 2 * ph + gap + dp(34);
-        c.drawText(panel < 4 ? "Tippen = weiter" : "Tippen = nächster Comic  ·  " + (strip + 1) + "/" + STRIPS.length, w / 2, y, p);
+        c.drawText(panel < 4 ? L.t("Tippen = weiter") : L.t("Tippen = nächster Comic  ·  ") + (strip + 1) + "/" + STRIPS.length, w / 2, y, p);
         p.setTextAlign(Paint.Align.LEFT);
         p.setTypeface(Typeface.DEFAULT);
     }
@@ -340,7 +340,7 @@ final class BuddySceneView extends View {
                             if (Math.hypot(o[0] - s[2], o[1] - dp(16) - s[3]) < dp(44)) {
                                 things.remove(k);
                                 score += 2;
-                                pop(o[0], o[1] - dp(40), o[3] == 1 ? "+2 PLATSCH" : "+2 TREFFER", 0xFF2B8BD9);
+                                pop(o[0], o[1] - dp(40), o[3] == 1 ? L.t("+2 PLATSCH") : L.t("+2 TREFFER"), 0xFF2B8BD9);
                                 break;
                             }
                         }
@@ -379,18 +379,18 @@ final class BuddySceneView extends View {
         }
         boolean hurt = t - hurtAt < 0.4f;
         drawArt(c, bx, h - dp(8), Math.min(w * 0.55f, dp(210)), false, hurt ? (float) Math.sin(t * 60) * 6 : 0, hurt ? 150 : 255);
-        if (t < 3.5f) tip(c, w, h, "Pinguine & Robben antippen ❄ · Schneebälle auf dich wegtippen");
+        if (t < 3.5f) tip(c, w, h, L.t("Pinguine & Robben antippen ❄ · Schneebälle auf dich wegtippen"));
     }
 
     /* ================= OWL: night exploration ================= */
 
     private static final String[] OWL_FINDS = {"🐭", "⭐", "🍄", "🗝️", "💎", "📜", "🌙", "🐌", "🦔", "🌰", "🪶", "🕯️"};
     private static final String[] OWL_FACTS = {
-        "Eulen drehen den Kopf bis 270°.", "Eulen fliegen fast lautlos.", "Ihre Augen sind Röhren – sie drehen sich nicht.",
-        "Ein Ohr sitzt höher als das andere: so hören sie, wo etwas ist.", "Schleiereulen hören eine Maus unter Schnee.",
-        "Eine Eulengruppe heißt Parlament.", "Eulen sehen Farben, aber nachts vor allem Hell und Dunkel.",
-        "Manche Eulen jagen auch tagsüber.", "Eulen haben drei Augenlider.", "Der Uhu ist die grösste Eule Europas.",
-        "Eulen schlucken Mäuse ganz – und würgen Gewölle aus.", "Federn an den Füssen halten warm."};
+        L.t("Eulen drehen den Kopf bis 270°."), L.t("Eulen fliegen fast lautlos."), L.t("Ihre Augen sind Röhren – sie drehen sich nicht."),
+        L.t("Ein Ohr sitzt höher als das andere: so hören sie, wo etwas ist."), L.t("Schleiereulen hören eine Maus unter Schnee."),
+        L.t("Eine Eulengruppe heißt Parlament."), L.t("Eulen sehen Farben, aber nachts vor allem Hell und Dunkel."),
+        L.t("Manche Eulen jagen auch tagsüber."), L.t("Eulen haben drei Augenlider."), L.t("Der Uhu ist die grösste Eule Europas."),
+        L.t("Eulen schlucken Mäuse ganz – und würgen Gewölle aus."), L.t("Federn an den Füssen halten warm.")};
     // things: x, y, emoji index, found(0/1), seen (seconds under the light)
     private int found;
     private float dark = 0.86f;
@@ -471,7 +471,7 @@ final class BuddySceneView extends View {
             }
             if (found == things.size()) {
                 level++;
-                pop(w / 2, h * 0.3f, "Nacht " + level + " · noch dunkler", 0xFFE6FF7A);
+                pop(w / 2, h * 0.3f, L.t("Nacht ") + level + L.t(" · noch dunkler"), 0xFFE6FF7A);
                 hide(w, h);
             }
         }
@@ -480,7 +480,7 @@ final class BuddySceneView extends View {
         c.drawRoundRect(w * 0.1f, h - dp(64), w * 0.9f, h - dp(52), dp(6), dp(6), p);
         drawArt(c, w / 2, h - dp(58), dp(150), gx < w / 2, 0, 255);
         if (!over && t > 90) end();
-        if (t < 4f) tip(c, w, h, "Finger = Blick der Eule · Licht auf etwas halten = gefunden");
+        if (t < 4f) tip(c, w, h, L.t("Finger = Blick der Eule · Licht auf etwas halten = gefunden"));
     }
 
     /* ================= DRAGON: fly and fire ================= */
@@ -550,7 +550,7 @@ final class BuddySceneView extends View {
                             things.remove(i);
                             int v = o[4] == 0 ? 3 : o[4] == 1 ? 2 : 1;
                             score += v;
-                            pop(o[0], o[1] - dp(20), "+" + v + (o[4] == 2 ? " VERBRANNT" : " 🔥"), 0xFFFFD34D);
+                            pop(o[0], o[1] - dp(20), "+" + v + (o[4] == 2 ? L.t(" VERBRANNT") : " 🔥"), 0xFFFFD34D);
                             continue;
                         }
                     }
@@ -600,7 +600,7 @@ final class BuddySceneView extends View {
         c.drawRoundRect(dp(16), h - dp(40), w - dp(16), h - dp(28), dp(6), dp(6), p);
         p.setColor(fireOut ? 0xFF8A8A86 : 0xFFFF9A2B);
         c.drawRoundRect(dp(16), h - dp(40), dp(16) + (w - dp(32)) * fuel, h - dp(28), dp(6), dp(6), p);
-        if (t < 4f) tip(c, w, h, "Finger hoch/runter = fliegen · halten = Feuer 🔥 · Pfeilen ausweichen");
+        if (t < 4f) tip(c, w, h, L.t("Finger hoch/runter = fliegen · halten = Feuer 🔥 · Pfeilen ausweichen"));
     }
 
     /* ================= Shared ================= */
@@ -659,7 +659,7 @@ final class BuddySceneView extends View {
         p.setColor(0xFFF4F2EC);
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         p.setTextSize(dp(13));
-        String name = new String[]{"🐼 COMIC", "🐻‍❄️ SCHNEEBALL", "🦉 NACHT " + level, "🐉 FEUER"}[kind];
+        String name = new String[]{"🐼 COMIC", L.t("🐻‍❄️ SCHNEEBALL"), L.t("🦉 NACHT ") + level, L.t("🐉 FEUER")}[kind];
         String extra = kind == OWL ? "  ·  " + found + "/" + things.size() + "  ·  0:" + String.format(Locale.ROOT, "%02d", Math.max(0, 90 - (int) t)) : "";
         c.drawText(name + "  ·  " + score + extra + "  ·  BEST " + Math.max(score, prefs.getInt(bestKey(), 0)), dp(28), top, p);
         if (kind == ICE || kind == DRAGON) {
@@ -681,11 +681,11 @@ final class BuddySceneView extends View {
         p.setColor(0xFFF4F2EC);
         p.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
         p.setTextSize(dp(32));
-        c.drawText(new String[]{"", "Eisbär ist müde. ❄", "Morgen wird's hell. 🦉", "Der Drache landet. 🐉"}[kind], w / 2, h * 0.36f, p);
+        c.drawText(new String[]{"", L.t("Eisbär ist müde. ❄"), L.t("Morgen wird's hell. 🦉"), L.t("Der Drache landet. 🐉")}[kind], w / 2, h * 0.36f, p);
         p.setTypeface(Typeface.MONOSPACE);
         p.setTextSize(dp(15));
-        String unit = new String[]{"", " Treffer", " gefunden", " Punkte"}[kind];
-        c.drawText(score + unit + " · Bestwert " + prefs.getInt(bestKey(), 0), w / 2, h * 0.36f + dp(36), p);
+        String unit = new String[]{"", L.t(" Treffer"), L.t(" gefunden"), L.t(" Punkte")}[kind];
+        c.drawText(score + unit + L.t(" · Bestwert ") + prefs.getInt(bestKey(), 0), w / 2, h * 0.36f + dp(36), p);
         againR.set(dp(40), h * 0.5f, w - dp(40), h * 0.5f + dp(56));
         backR.set(dp(40), h * 0.5f + dp(68), w - dp(40), h * 0.5f + dp(118));
         p.setColor(0xFFB5271E);
@@ -694,8 +694,8 @@ final class BuddySceneView extends View {
         c.drawRoundRect(backR, dp(16), dp(16), p);
         p.setColor(0xFFFFFFFF);
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        c.drawText("NOCHMAL", againR.centerX(), againR.centerY() + dp(5), p);
-        c.drawText("ZURÜCK ZUM HOME", backR.centerX(), backR.centerY() + dp(5), p);
+        c.drawText(L.t("NOCHMAL"), againR.centerX(), againR.centerY() + dp(5), p);
+        c.drawText(L.t("ZURÜCK ZUM HOME"), backR.centerX(), backR.centerY() + dp(5), p);
         p.setTextAlign(Paint.Align.LEFT);
         p.setTypeface(Typeface.DEFAULT);
     }

@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  */
 public class TaktActivity extends Activity {
 
-    private static final String[] ENERGY = {"🪫 leer", "😮‍💨 müde", "🙂 ok", "⚡ auf Zug", "🔥 brennt"};
+    private static final String[] ENERGY = {L.t("🪫 leer"), L.t("😮‍💨 müde"), "🙂 ok", L.t("⚡ auf Zug"), L.t("🔥 brennt")};
     private static final Pattern DUR = Pattern.compile("(\\d{1,3})\\s*(min|m|h|std)\\b", Pattern.CASE_INSENSITIVE);
     private static final String[] HEAVY = {"lern", "prüf", "pruef", "mathe", "rechn", "schreib", "bau", "code", "programm",
         "aufsatz", "hausaufg", "projekt", "präsent", "praesent", "franz", "englisch", "deutsch", "bewerb", "steuer", "vortrag", "bms", "w&g", "wug"};
@@ -79,7 +79,7 @@ public class TaktActivity extends Activity {
             if (!P.has("wake")) P.put("wake", "07:00");
             if (!P.has("sleep")) P.put("sleep", "23:00");
             if (!P.has("energy")) P.put("energy", 2);
-            if (!P.has("fixes")) P.put("fixes", new JSONArray().put(new JSONObject().put("s", "08:00").put("e", "12:00").put("label", "Schule")));
+            if (!P.has("fixes")) P.put("fixes", new JSONArray().put(new JSONObject().put("s", "08:00").put("e", "12:00").put("label", L.t("Schule"))));
         } catch (JSONException ignored) { }
 
         ScrollView sv = new ScrollView(this);
@@ -97,27 +97,27 @@ public class TaktActivity extends Activity {
         }
         sv.addView(col);
 
-        col.addView(mono("ARC·DNA · TAG", rust, 11));
+        col.addView(mono(L.t("ARC·DNA · TAG"), rust, 11));
         TextView h1 = text(36, ink, true);
         h1.setText("Takt");
         col.addView(h1);
         TextView sub = text(14.5f, ink2, false);
-        sub.setText("Kein starres Raster. Feste Anker — dann fliesst der Rest deines Tages drumherum, nach deiner Energie. Und wenn du hinterherhängst, plant Takt neu.");
+        sub.setText(L.t("Kein starres Raster. Feste Anker — dann fliesst der Rest deines Tages drumherum, nach deiner Energie. Und wenn du hinterherhängst, plant Takt neu."));
         col.addView(sub);
 
         // ---- anchors ----
         LinearLayout anchors = cardBox();
-        anchors.addView(mono("FESTE ANKER", ink3, 11));
+        anchors.addView(mono(L.t("FESTE ANKER"), ink3, 11));
         LinearLayout ws = new LinearLayout(this);
         ws.setGravity(Gravity.CENTER_VERTICAL);
         wakeBtn = timeButton("wake");
         sleepBtn = timeButton("sleep");
-        ws.addView(mono("☀️ AUF", ink3, 11));
+        ws.addView(mono(L.t("☀️ AUF"), ink3, 11));
         ws.addView(wakeBtn, lp(-2, -2, dp(8), 0, dp(18), 0));
-        ws.addView(mono("🌙 SCHLAF", ink3, 11));
+        ws.addView(mono(L.t("🌙 SCHLAF"), ink3, 11));
         ws.addView(sleepBtn, lp(-2, -2, dp(8), 0, 0, 0));
         anchors.addView(ws, lp(-1, -2, 0, dp(10), 0, 0));
-        anchors.addView(mono("FIXE BLÖCKE (SCHULE, TERMINE)", ink3, 11), lp(-1, -2, 0, dp(16), 0, 0));
+        anchors.addView(mono(L.t("FIXE BLÖCKE (SCHULE, TERMINE)"), ink3, 11), lp(-1, -2, 0, dp(16), 0, 0));
         fixBox = new LinearLayout(this);
         fixBox.setOrientation(LinearLayout.VERTICAL);
         anchors.addView(fixBox);
@@ -126,10 +126,10 @@ public class TaktActivity extends Activity {
 
         // ---- tasks + energy ----
         LinearLayout day = cardBox();
-        day.addView(mono("WAS WILLST / MUSST DU HEUTE?", ink3, 11));
+        day.addView(mono(L.t("WAS WILLST / MUSST DU HEUTE?"), ink3, 11));
         dump = new EditText(this);
         dump.setText(P.optString("dump", ""));
-        dump.setHint("Eine Sache pro Zeile.\nz.B. Mathe lernen 45min");
+        dump.setHint(L.t("Eine Sache pro Zeile.\nz.B. Mathe lernen 45min"));
         dump.setHintTextColor(ink3);
         dump.setTextColor(ink);
         dump.setTextSize(16);
@@ -144,22 +144,22 @@ public class TaktActivity extends Activity {
             @Override public void afterTextChanged(Editable e) { put("dump", e.toString()); save(); }
         });
         day.addView(dump, lp(-1, -2, 0, dp(10), 0, 0));
-        TextView tip = mono("„!“ vor einer Zeile = schwer / Denkarbeit · „45min“ oder „2h“ = Dauer", ink3, 10);
+        TextView tip = mono(L.t("„!“ vor einer Zeile = schwer / Denkarbeit · „45min“ oder „2h“ = Dauer"), ink3, 10);
         day.addView(tip, lp(-1, -2, 0, dp(6), 0, 0));
 
-        day.addView(mono("ENERGIE JETZT", ink3, 11), lp(-1, -2, 0, dp(16), 0, dp(8)));
+        day.addView(mono(L.t("ENERGIE JETZT"), ink3, 11), lp(-1, -2, 0, dp(16), 0, dp(8)));
         energyBox = new LinearLayout(this);
         energyBox.setOrientation(LinearLayout.VERTICAL);
         day.addView(energyBox);
         renderEnergy();
-        warmChip = chip("🌡️ Raum warm");
+        warmChip = chip(L.t("🌡️ Raum warm"));
         warmChip.setOnClickListener(v -> { put("warm", !P.optBoolean("warm", false)); save(); styleWarm(); });
         day.addView(warmChip, lp(-2, -2, 0, dp(10), 0, 0));
         styleWarm();
-        day.addView(mono("(Wärme macht müde – Takt legt Schweres dann früher)", ink3, 10), lp(-1, -2, 0, dp(6), 0, 0));
+        day.addView(mono(L.t("(Wärme macht müde – Takt legt Schweres dann früher)"), ink3, 10), lp(-1, -2, 0, dp(6), 0, 0));
 
         TextView plan = text(17, 0xFFFFFFFF, true);
-        plan.setText("Plan mir den Tag ↓");
+        plan.setText(L.t("Plan mir den Tag ↓"));
         plan.setGravity(Gravity.CENTER);
         plan.setPadding(dp(20), dp(15), dp(20), dp(15));
         plan.setBackground(box(rust, rust, 40));
@@ -177,8 +177,8 @@ public class TaktActivity extends Activity {
         resultCard = cardBox();
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(mono("DEIN TAKT HEUTE", ink3, 11), new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView reflow = mono("↻ Neu ab jetzt", ink2, 12);
+        head.addView(mono(L.t("DEIN TAKT HEUTE"), ink3, 11), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView reflow = mono(L.t("↻ Neu ab jetzt"), ink2, 12);
         reflow.setPadding(dp(10), dp(8), 0, dp(8));
         reflow.setOnClickListener(v -> planDay(true));
         head.addView(reflow);
@@ -309,8 +309,8 @@ public class TaktActivity extends Activity {
         // just out of a long fixed block → refuel first
         if (fi > 0 && cursor - fixes.get(fi - 1)[1] <= 20 && fixes.get(fi - 1)[1] - fixes.get(fi - 1)[0] >= 180
             && cursor + 30 <= windDown) {
-            out.add(block(cursor, cursor + 30, "In Ruhe essen & auftanken", "pause",
-                "Nach " + fixNames.get(fi - 1) + " zuerst auftanken, bevor etwas Neues kommt.", true));
+            out.add(block(cursor, cursor + 30, L.t("In Ruhe essen & auftanken"), "pause",
+                L.t("Nach ") + fixNames.get(fi - 1) + L.t(" zuerst auftanken, bevor etwas Neues kommt."), true));
             cursor += 30;
         }
         for (int k = 0; k < order.size(); k++) {
@@ -330,8 +330,8 @@ public class TaktActivity extends Activity {
                 String name = fixNames.get(fi);
                 fi++;
                 if (longFix && cursor + 30 <= windDown) {
-                    out.add(block(cursor, cursor + 30, "In Ruhe essen & auftanken", "pause",
-                        "Nach " + name + " zuerst auftanken, bevor etwas Neues kommt.", true));
+                    out.add(block(cursor, cursor + 30, L.t("In Ruhe essen & auftanken"), "pause",
+                        L.t("Nach ") + name + L.t(" zuerst auftanken, bevor etwas Neues kommt."), true));
                     cursor += 30;
                 }
             }
@@ -341,28 +341,28 @@ public class TaktActivity extends Activity {
             placed++;
             boolean more = k + 1 < order.size();
             if (t.kind.equals("fokus") && more && cursor + 10 <= windDown) {
-                out.add(block(cursor, cursor + 10, "Kurze Pause — weg vom Bildschirm", "pause", "Zehn Minuten, dann ist der Kopf wieder da.", true));
+                out.add(block(cursor, cursor + 10, L.t("Kurze Pause — weg vom Bildschirm"), "pause", L.t("Zehn Minuten, dann ist der Kopf wieder da."), true));
                 cursor += 10;
             } else if (!moved && more && placed == 1 && cursor + 20 <= windDown) {
-                out.add(block(cursor, cursor + 20, "Kurzer Spaziergang oder Dehnen", "körper", "Etwas Bewegung macht den Kopf frei.", true));
+                out.add(block(cursor, cursor + 20, L.t("Kurzer Spaziergang oder Dehnen"), "körper", L.t("Etwas Bewegung macht den Kopf frei."), true));
                 cursor += 20;
                 moved = true;
             }
         }
         if (from < sleep - 5) {
             int s = Math.max(Math.max(windDown, cursor), from);
-            if (s < sleep) out.add(block(s, sleep, "Runterfahren — Bildschirm aus", "pause",
-                "Bildschirmarm ausklingen lassen, damit du um " + fmt(sleep) + " gut einschläfst.", true));
+            if (s < sleep) out.add(block(s, sleep, L.t("Runterfahren — Bildschirm aus"), "pause",
+                L.t("Bildschirmarm ausklingen lassen, damit du um ") + fmt(sleep) + L.t(" gut einschläfst."), true));
         }
 
         // anchors + kept (already done) blocks + the new plan, in time order
         List<JSONObject> all = new ArrayList<>(keep);
-        all.add(anchor(wake, wake, "Aufstehen ☀️"));
+        all.add(anchor(wake, wake, L.t("Aufstehen ☀️")));
         for (int i = 0; i < fixes.size(); i++) {
             String nm = fixNames.get(i);
             all.add(anchor(fixes.get(i)[0], fixes.get(i)[1], nm.equals("dem fixen Block") ? "Fixer Block" : nm));
         }
-        all.add(anchor(sleep, sleep, "In die Höhle 🌙"));
+        all.add(anchor(sleep, sleep, L.t("In die Höhle 🌙")));
         all.addAll(out);
         Collections.sort(all, (x, y) -> x.optInt("s") != y.optInt("s") ? Integer.compare(x.optInt("s"), y.optInt("s"))
             : Boolean.compare(y.optBoolean("anchor"), x.optBoolean("anchor")));
@@ -371,13 +371,13 @@ public class TaktActivity extends Activity {
 
         // the honest note
         StringBuilder note = new StringBuilder();
-        if (placed == 0) note.append("Heute ist kein freies Fenster mehr dafür. ");
-        else if (reflow) note.append("Neu geplant ab ").append(fmt(from)).append(": ").append(placed).append(placed == 1 ? " Sache" : " Sachen").append(" für den Rest des Tages. ");
-        else note.append(placed).append(placed == 1 ? " Sache" : " Sachen").append(" eingeplant, mit Luft dazwischen. ");
-        if (warm && !heavy.isEmpty()) note.append("Der Raum ist warm – das Schwere kommt deshalb zuerst. ");
-        else if (low && !heavy.isEmpty()) note.append("Wenig Energie: Leichtes zuerst, vom Schweren nur ein 25-Minuten-Anfang. ");
-        else if (energy >= 3 && !heavy.isEmpty()) note.append("Du bist auf Zug – Denkarbeit zuerst. ");
-        if (!tomorrow.isEmpty()) note.append("Auf morgen: ").append(android.text.TextUtils.join(", ", tomorrow)).append(".");
+        if (placed == 0) note.append(L.t("Heute ist kein freies Fenster mehr dafür. "));
+        else if (reflow) note.append(L.t("Neu geplant ab ")).append(fmt(from)).append(": ").append(placed).append(placed == 1 ? L.t(" Sache") : L.t(" Sachen")).append(L.t(" für den Rest des Tages. "));
+        else note.append(placed).append(placed == 1 ? L.t(" Sache") : L.t(" Sachen")).append(L.t(" eingeplant, mit Luft dazwischen. "));
+        if (warm && !heavy.isEmpty()) note.append(L.t("Der Raum ist warm – das Schwere kommt deshalb zuerst. "));
+        else if (low && !heavy.isEmpty()) note.append(L.t("Wenig Energie: Leichtes zuerst, vom Schweren nur ein 25-Minuten-Anfang. "));
+        else if (energy >= 3 && !heavy.isEmpty()) note.append(L.t("Du bist auf Zug – Denkarbeit zuerst. "));
+        if (!tomorrow.isEmpty()) note.append(L.t("Auf morgen: ")).append(android.text.TextUtils.join(", ", tomorrow)).append(".");
         put("plan", plan);
         put("note", note.toString().trim());
         save();
@@ -388,14 +388,14 @@ public class TaktActivity extends Activity {
 
     private static String why(Task t, int energy, boolean warm, boolean low) {
         if (t.kind.equals("fokus")) {
-            if (warm) return "Wärme macht müde – Schweres zuerst, solange es geht.";
-            if (low) return "Nur ein kurzer Anfang – bei wenig Energie zählt der Start.";
-            if (energy >= 3) return "Du bist auf Zug – das Schwere, solange der Kopf frisch ist.";
-            return "Denkarbeit ins frischeste freie Fenster.";
+            if (warm) return L.t("Wärme macht müde – Schweres zuerst, solange es geht.");
+            if (low) return L.t("Nur ein kurzer Anfang – bei wenig Energie zählt der Start.");
+            if (energy >= 3) return L.t("Du bist auf Zug – das Schwere, solange der Kopf frisch ist.");
+            return L.t("Denkarbeit ins frischeste freie Fenster.");
         }
         if (t.kind.equals("körper")) return "Bewegung bringt Energie zurück.";
-        if (t.fun) return "Entspannt – passt gut ans Ende des Tages.";
-        return low ? "Leicht – passt zu wenig Energie." : "Leicht – läuft gut nebenher.";
+        if (t.fun) return L.t("Entspannt – passt gut ans Ende des Tages.");
+        return low ? L.t("Leicht – passt zu wenig Energie.") : L.t("Leicht – läuft gut nebenher.");
     }
 
     private static JSONObject block(int s, int e, String title, String kind, String why, boolean auto) {
@@ -453,7 +453,7 @@ public class TaktActivity extends Activity {
 
             if (!anchor) {
                 TextView mark = text(13, rust, true);
-                mark.setText(done ? "↺" : "erledigt ✓");
+                mark.setText(done ? "↺" : L.t("erledigt ✓"));
                 mark.setPadding(dp(10), dp(4), 0, dp(10));
                 mark.setOnClickListener(v -> { try { o.put("done", !o.optBoolean("done")); } catch (JSONException ignored) { } save(); renderPlan(); });
                 row.addView(mark);

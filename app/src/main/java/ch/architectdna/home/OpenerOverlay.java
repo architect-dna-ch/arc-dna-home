@@ -86,13 +86,13 @@ final class OpenerOverlay {
         int q = count(d, '?');
         int lines = d.split("\n+").length;
         if (low.matches("(?s).*(bitte (antworte|schreib)|warum (antwortest|schreibst) du nicht|meldest du dich|bist du sauer|ignorierst du|why (aren't|arent|don't|dont) you (answer|reply)).*"))
-            out.add(new String[]{"stop", "Drängt auf Antwort", "Wirkt bedürftig. Lass Raum — wer will, antwortet."});
+            out.add(new String[]{"stop", L.t("Drängt auf Antwort"), L.t("Wirkt bedürftig. Lass Raum — wer will, antwortet.")});
         int sorry = 0;
         for (String w : new String[]{"sorry", "tut mir leid", "entschuldig"}) sorry += occurrences(low, w);
-        if (sorry > 1) out.add(new String[]{"mid", "Mehrfach entschuldigt", "Eine Entschuldigung reicht, wenn überhaupt."});
-        if (d.length() > 320) out.add(new String[]{"mid", "Lang", d.length() + " Zeichen — kürzer wirkt entspannter."});
-        if (q > 2) out.add(new String[]{"mid", q + " Fragen", "Eine gute Frage schlägt drei."});
-        if (lines > 4) out.add(new String[]{"mid", lines + " Absätze", "Eher eine Nachricht, kein Brief."});
+        if (sorry > 1) out.add(new String[]{"mid", L.t("Mehrfach entschuldigt"), L.t("Eine Entschuldigung reicht, wenn überhaupt.")});
+        if (d.length() > 320) out.add(new String[]{"mid", L.t("Lang"), d.length() + L.t(" Zeichen — kürzer wirkt entspannter.")});
+        if (q > 2) out.add(new String[]{"mid", q + L.t(" Fragen"), L.t("Eine gute Frage schlägt drei.")});
+        if (lines > 4) out.add(new String[]{"mid", lines + L.t(" Absätze"), L.t("Eher eine Nachricht, kein Brief.")});
         if (d.contains("??") || d.contains("!!")) out.add(new String[]{"mid", "Doppelte Satzzeichen", "Kann drängend wirken. ✓ räumt es auf."});
         String letters = d.replaceAll("[^A-Za-zÄÖÜäöü]", "");
         if (letters.length() >= 12 && letters.equals(letters.toUpperCase(Locale.ROOT))) out.add(new String[]{"mid", "Alles in GROSS", "Liest sich wie Schreien."});
@@ -149,7 +149,7 @@ final class OpenerOverlay {
         light.setTextColor(0xFF0E0B0A);
         light.setTypeface(Typeface.DEFAULT_BOLD);
         light.setTextSize(13);
-        light.setContentDescription("Opener: Hinweise");
+        light.setContentDescription(L.t("Opener: Hinweise"));
         light.setOnClickListener(v -> { cardOpen = !cardOpen; update(s); });
         bar.addView(light);
 
@@ -160,8 +160,8 @@ final class OpenerOverlay {
         count.setPadding(0, dp(s, 6), 0, dp(s, 6));
         bar.addView(count);
 
-        bar.addView(button(s, "✓", "Aufräumen", v -> applyTidy(s)));
-        bar.addView(button(s, "✕", "Ausblenden", v -> { dismissed = true; hide(s); }));
+        bar.addView(button(s, "✓", L.t("Aufräumen"), v -> applyTidy(s)));
+        bar.addView(button(s, "✕", L.t("Ausblenden"), v -> { dismissed = true; hide(s); }));
 
         try {
             wm.addView(bar, params(s, Gravity.END | Gravity.CENTER_VERTICAL, dp(s, 4), -dp(s, 150)));
@@ -210,7 +210,7 @@ final class OpenerOverlay {
             card.setOnClickListener(v -> { cardOpen = false; hideCard(s); });
         }
         card.removeAllViews();
-        if (issues.isEmpty()) issues.add(new String[]{"go", "Nichts im Weg", "Klingt nach dir. Senden."});
+        if (issues.isEmpty()) issues.add(new String[]{"go", L.t("Nichts im Weg"), L.t("Klingt nach dir. Senden.")});
         for (String[] i : issues) {
             TextView t = new TextView(s);
             int c = i[0].equals("stop") ? STOP : i[0].equals("go") ? GO : MID;
@@ -253,7 +253,7 @@ final class OpenerOverlay {
     private static void applyTidy(AccessibilityService s) {
         String clean = tidy(draft);
         if (clean.equals(draft)) {
-            Toast.makeText(s, "Schon sauber.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(s, L.t("Schon sauber."), Toast.LENGTH_SHORT).show();
             return;
         }
         boolean done = false;
@@ -267,7 +267,7 @@ final class OpenerOverlay {
         if (!done) {
             ClipboardManager cm = (ClipboardManager) s.getSystemService(Context.CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Opener", clean));
-            Toast.makeText(s, "Aufgeräumt & kopiert — einfügen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(s, L.t("Aufgeräumt & kopiert — einfügen."), Toast.LENGTH_SHORT).show();
             return;
         }
         draft = clean;

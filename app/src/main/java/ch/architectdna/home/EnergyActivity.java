@@ -140,7 +140,7 @@ public class EnergyActivity extends Activity {
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, -2);
         gl.topMargin = dp(14);
         panel.addView(grid, gl);
-        saverState = tile(grid, "🔋", "Sparen", v -> toggleSaver());
+        saverState = tile(grid, "🔋", L.t("Sparen"), v -> toggleSaver());
         ((View) saverState.getParent()).setOnLongClickListener(v -> {
             open(new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS));
             return true;
@@ -148,9 +148,9 @@ public class EnergyActivity extends Activity {
         tile(grid, "📶", "WLAN", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_WIFI : null, Settings.ACTION_WIFI_SETTINGS));
         tile(grid, "🌐", "Internet", v -> panelOr(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_INTERNET_CONNECTIVITY : null, Settings.ACTION_WIRELESS_SETTINGS));
         tile(grid, "ᛒ", "Bluetooth", v -> open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)));
-        torchState = tile(grid, "🔦", "Lampe", v -> torch());
-        soundState = tile(grid, "🔊", "Laut", v -> toggleSound());
-        zenState = tile(grid, "🌙", "Ruhe", v -> toggleZen());
+        torchState = tile(grid, "🔦", L.t("Lampe"), v -> torch());
+        soundState = tile(grid, "🔊", L.t("Laut"), v -> toggleSound());
+        zenState = tile(grid, "🌙", L.t("Ruhe"), v -> toggleZen());
         tile(grid, "📊", "System", v -> open(new Intent(Intent.ACTION_POWER_USAGE_SUMMARY)));
         vpnState = tile(grid, "🛡", "VPN", v -> open(new Intent(this, VpnActivity.class)));
 
@@ -200,12 +200,12 @@ public class EnergyActivity extends Activity {
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
         sl.topMargin = dp(12);
         panel.addView(sound, sl);
-        volume("♪", "Medien", android.media.AudioManager.STREAM_MUSIC);
-        volume("☎", "Anruf", android.media.AudioManager.STREAM_VOICE_CALL);
-        volume("🔔", "Klingeln", android.media.AudioManager.STREAM_RING);
-        volume("✉", "Mitteilungen", android.media.AudioManager.STREAM_NOTIFICATION);
+        volume("♪", L.t("Medien"), android.media.AudioManager.STREAM_MUSIC);
+        volume("☎", L.t("Anruf"), android.media.AudioManager.STREAM_VOICE_CALL);
+        volume("🔔", L.t("Klingeln"), android.media.AudioManager.STREAM_RING);
+        volume("✉", L.t("Mitteilungen"), android.media.AudioManager.STREAM_NOTIFICATION);
         TextView out = mono(10, rust);
-        out.setText("AUSGABE WÄHLEN ↗");
+        out.setText(L.t("AUSGABE WÄHLEN ↗"));
         out.setPadding(dp(4), dp(10), 0, dp(2));
         out.setOnClickListener(v -> {
             // Android's own output switcher (headphones, speaker, cast): only the system may switch.
@@ -219,13 +219,13 @@ public class EnergyActivity extends Activity {
         sound.addView(out);
 
         // Last 24 h.
-        panel.addView(head("Letzte 24 Stunden"));
+        panel.addView(head(L.t("Letzte 24 Stunden")));
         curve = new Curve();
         curve.setBackground(box(card, line, 16));
         panel.addView(curve, new LinearLayout.LayoutParams(-1, dp(110)));
 
         // What drains.
-        panel.addView(head("Was zieht Akku"));
+        panel.addView(head(L.t("Was zieht Akku")));
         drains = new LinearLayout(this);
         drains.setOrientation(LinearLayout.VERTICAL);
         panel.addView(drains);
@@ -301,10 +301,10 @@ public class EnergyActivity extends Activity {
         String st;
         if (plugged) {
             long left = Build.VERSION.SDK_INT >= 28 && bm != null ? bm.computeChargeTimeRemaining() : -1;
-            st = "⚡ LÄDT" + (left > 0 ? " · VOLL IN " + hm(left) : "");
+            st = L.t("⚡ LÄDT") + (left > 0 ? L.t(" · VOLL IN ") + hm(left) : "");
         } else {
             double rate = recentRate();
-            st = rate > 0.2 ? "NOCH CA. " + hm((long) (lvl / rate * 3_600_000)) : "ENTLÄDT";
+            st = rate > 0.2 ? L.t("NOCH CA. ") + hm((long) (lvl / rate * 3_600_000)) : L.t("ENTLÄDT");
         }
         state.setText(st);
         state.setTextColor(plugged ? green : lvl <= 15 ? rust : ink2);
@@ -312,15 +312,15 @@ public class EnergyActivity extends Activity {
         PowerManager pm = getSystemService(PowerManager.class);
         boolean saver = pm != null && pm.isPowerSaveMode();
         saverState.setTextColor(saver ? amber : ink2);
-        saverState.setText(saver ? "SPAREN AN" : "SPAREN");
+        saverState.setText(saver ? L.t("SPAREN AN") : L.t("SPAREN"));
         torchState.setTextColor(torchOn ? amber : ink2);
         android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
         boolean zen = nm != null && nm.getCurrentInterruptionFilter() > android.app.NotificationManager.INTERRUPTION_FILTER_ALL;
         zenState.setTextColor(zen ? amber : ink2);
-        zenState.setText(zen ? "RUHE AN" : "RUHE");
+        zenState.setText(zen ? L.t("RUHE AN") : L.t("RUHE"));
         boolean vpn = VpnActivity.vpnOn(getSystemService(android.net.ConnectivityManager.class));
         vpnState.setTextColor(vpn ? green : ink2);
-        vpnState.setText(vpn ? "VPN AN" : "VPN");
+        vpnState.setText(vpn ? L.t("VPN AN") : "VPN");
     }
 
     private double lastRate = -1;
@@ -344,12 +344,12 @@ public class EnergyActivity extends Activity {
         drains.removeAllViews();
         if (all.size() < 4) {
             TextView t = text(14, ink3, false);
-            t.setText("ARC-DNA schreibt ab jetzt bei jedem Prozent mit, was gerade läuft. Nach ein paar Stunden steht hier, "
-                + "was am meisten Akku zieht: Apps, Musik, schwaches Netz.");
+            t.setText(L.t("ARC-DNA schreibt ab jetzt bei jedem Prozent mit, was gerade läuft. Nach ein paar Stunden steht hier, ")
+                + L.t("was am meisten Akku zieht: Apps, Musik, schwaches Netz."));
             drains.addView(t);
             return;
         }
-        String[] heads = {"APPS & BILDSCHIRM", "MUSIK", "NETZ & SIGNAL"};
+        String[] heads = {L.t("APPS & BILDSCHIRM"), L.t("MUSIK"), L.t("NETZ & SIGNAL")};
         for (int k = 0; k < 3; k++) {
             List<BatteryLog.Drain> list = d.get(k);
             if (list.isEmpty()) continue;
@@ -453,7 +453,7 @@ public class EnergyActivity extends Activity {
                 } catch (SecurityException e) {
                     // Ring / notifications can't change while do-not-disturb holds them.
                     b.setProgress(am.getStreamVolume(stream));
-                    n.setText((name + " · in Ruhe gesperrt").toUpperCase(Locale.GERMAN));
+                    n.setText((name + L.t(" · in Ruhe gesperrt")).toUpperCase(Locale.GERMAN));
                 }
             }
 
@@ -618,9 +618,9 @@ public class EnergyActivity extends Activity {
             p.setTextSize(dp(9));
             p.setColor(ink3);
             c.drawText("−24 H", pad, h - dp(4), p);
-            c.drawText("JETZT", w - pad - p.measureText("JETZT"), h - dp(4), p);
+            c.drawText(L.t("JETZT"), w - pad - p.measureText(L.t("JETZT")), h - dp(4), p);
             if (list == null || list.size() < 2) {
-                c.drawText("NOCH KEINE DATEN", w / 2 - p.measureText("NOCH KEINE DATEN") / 2, h / 2, p);
+                c.drawText(L.t("NOCH KEINE DATEN"), w / 2 - p.measureText(L.t("NOCH KEINE DATEN")) / 2, h / 2, p);
                 return;
             }
             float top = pad, bottom = h - dp(18);

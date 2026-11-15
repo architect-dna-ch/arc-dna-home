@@ -33,8 +33,8 @@ import java.util.Locale;
  */
 public class FreqActivity extends Activity {
 
-    private static final String[] WHAT = {"Lange Arbeitsphasen", "Ruhig werden, lesen", "Abschalten, tief", "Locker dranbleiben", "Mit Kopfhörern"};
-    private static final String[] SUB = {"Brown noise · 40 Hz Gamma", "Gefiltertes Rauschen · Tropfen", "Tiefer Drone · Obertöne",
+    private static final String[] WHAT = {L.t("Lange Arbeitsphasen"), L.t("Ruhig werden, lesen"), L.t("Abschalten, tief"), L.t("Locker dranbleiben"), L.t("Mit Kopfhörern")};
+    private static final String[] SUB = {"Brown noise · 40 Hz Gamma", L.t("Gefiltertes Rauschen · Tropfen"), L.t("Tiefer Drone · Obertöne"),
         "Am7 Loop · Beat · Vinyl", "Binaural Alpha 10 Hz"};
     private static final int[] COLOURS = {0, 0xFF3C8DFF, 0xFFA77BFF, 0xFFF29A1F, 0xFF2BBF6A};   // 0 = rust
 
@@ -85,13 +85,13 @@ public class FreqActivity extends Activity {
         // Header: label, status, close.
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("VOID FREQ · Fokus"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("VOID FREQ · Fokus")), new LinearLayout.LayoutParams(0, -2, 1f));
         status = mono(11, ink3);
         head.addView(status);
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(16), dp(4), dp(2), dp(4));
-        close.setContentDescription("VOID FREQ schliessen");
+        close.setContentDescription(L.t("VOID FREQ schliessen"));
         close.setOnClickListener(v -> finish());
         head.addView(close);
         col.addView(head);
@@ -118,7 +118,7 @@ public class FreqActivity extends Activity {
         col.addView(viz, margins(0, dp(22)));
 
         // Channels.
-        col.addView(label("Kanäle"), margins(0, dp(30)));
+        col.addView(label(L.t("Kanäle")), margins(0, dp(30)));
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setBackground(box(card, line, 8));
@@ -158,7 +158,7 @@ public class FreqActivity extends Activity {
         col.addView(list);
 
         // Volume.
-        col.addView(label("Lautstärke"), margins(0, dp(30)));
+        col.addView(label(L.t("Lautstärke")), margins(0, dp(30)));
         LinearLayout vol = new LinearLayout(this);
         vol.setGravity(Gravity.CENTER_VERTICAL);
         vol.setBackground(box(card, line, 8));
@@ -280,9 +280,9 @@ public class FreqActivity extends Activity {
         String ch = FreqService.engine().channel();
         int i = index(ch), shown = i >= 0 ? i : Math.max(0, index(prefs.getString("last", "focus")));
         int accent = i >= 0 ? COLOURS[i] : rust;
-        title.setText(i >= 0 ? FreqService.NAMES[i] : "Wähl einen\nKanal.");
-        sub.setText((i >= 0 ? SUB[i] : "Brown noise · Regen · Drone · Lo-Fi · Binaural").toUpperCase(Locale.GERMAN));
-        status.setText(i >= 0 ? "● LÄUFT" : "STILL");
+        title.setText(i >= 0 ? FreqService.NAMES[i] : L.t("Wähl einen\nKanal."));
+        sub.setText((i >= 0 ? SUB[i] : L.t("Brown noise · Regen · Drone · Lo-Fi · Binaural")).toUpperCase(Locale.GERMAN));
+        status.setText(i >= 0 ? L.t("● LÄUFT") : L.t("STILL"));
         status.setTextColor(i >= 0 ? accent : ink3);
         GradientDrawable pb = new GradientDrawable();
         pb.setShape(GradientDrawable.OVAL);
@@ -293,7 +293,7 @@ public class FreqActivity extends Activity {
         for (int k = 0; k < 5; k++) {
             boolean on = k == i;
             rows[k].setBackgroundColor(on ? active : 0);
-            states[k].setText(on ? "■ LÄUFT" : "▶");
+            states[k].setText(on ? L.t("■ LÄUFT") : "▶");
             states[k].setTextColor(on ? COLOURS[k] : ink3);
         }
         volume.setProgressTintList(android.content.res.ColorStateList.valueOf(accent));
@@ -324,7 +324,7 @@ public class FreqActivity extends Activity {
             progress.setLayoutParams(lp);
         }
         int s = prefs.getInt("sessions", 0);
-        sessions.setText(s > 0 ? (s + " FOKUS-SESSION" + (s > 1 ? "S" : "") + " GESCHAFFT") : "");
+        sessions.setText(s > 0 ? (s + L.t(" FOKUS-SESSION") + (s > 1 ? "S" : "") + L.t(" GESCHAFFT")) : "");
         spectrum.accent = accent;
         spectrum.playing = i >= 0;
     }

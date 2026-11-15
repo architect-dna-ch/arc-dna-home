@@ -39,18 +39,18 @@ public class CrisisActivity extends Activity {
 
     // Seeded loops (editable idea of what the doubt attacks); the user adds their own.
     private static final String[] SEED = {
-        "„Ist das Sünde? Richtig oder falsch?“",
-        "„Darf diese Freundschaft sein – nur weil sie eine Frau ist?“",
-        "„Darf ich das geniessen (Film, Ruhe, YouTube)?“",
-        "„Muss ich etwas wiedergutmachen / nachholen?“",
-        "„Bin ich gut genug / ein guter Mensch?“",
+        L.t("„Ist das Sünde? Richtig oder falsch?“"),
+        L.t("„Darf diese Freundschaft sein – nur weil sie eine Frau ist?“"),
+        L.t("„Darf ich das geniessen (Film, Ruhe, YouTube)?“"),
+        L.t("„Muss ich etwas wiedergutmachen / nachholen?“"),
+        L.t("„Bin ich gut genug / ein guter Mensch?“"),
     };
     // The exposure line per loop: agreeing to the uncertainty instead of solving it.
     private static final String EXPO =
-        "Vielleicht. Ich weiss es nicht, und ich lasse es offen.\n\n"
-            + "Ich beantworte die Frage NICHT. Ich google nicht, ich bete sie nicht weg, ich frage niemanden, "
-            + "ich checke nicht.\n\nDer Zweifel darf da sein. Er entscheidet nicht. Ich lebe weiter – jetzt, "
-            + "mit genau dem, was er mir verbieten will.";
+        L.t("Vielleicht. Ich weiss es nicht, und ich lasse es offen.\n\n")
+            + L.t("Ich beantworte die Frage NICHT. Ich google nicht, ich bete sie nicht weg, ich frage niemanden, ")
+            + L.t("ich checke nicht.\n\nDer Zweifel darf da sein. Er entscheidet nicht. Ich lebe weiter – jetzt, ")
+            + L.t("mit genau dem, was er mir verbieten will.");
 
     private SharedPreferences sos;
     private int state = PICK;
@@ -115,11 +115,11 @@ public class CrisisActivity extends Activity {
 
     /* 1. What is the loop right now? */
     private void renderPick() {
-        head("SOS · Zwang stoppen", "Welcher Gedanke dreht sich gerade?");
+        head(L.t("SOS · Zwang stoppen"), L.t("Welcher Gedanke dreht sich gerade?"));
         int wins = sos.getInt("wins", 0);
-        if (wins > 0) col.addView(small("Schon " + wins + "× nicht gehorcht. Jedes Mal zählt."));
+        if (wins > 0) col.addView(small(L.t("Schon ") + wins + L.t("× nicht gehorcht. Jedes Mal zählt.")));
         boolean pin = sos.getBoolean("pin", false);
-        TextView pinToggle = small((pin ? "🔒 Ablenkung gesperrt" : "🔓 Ablenkung frei") + " · antippen zum Umschalten");
+        TextView pinToggle = small((pin ? L.t("🔒 Ablenkung gesperrt") : L.t("🔓 Ablenkung frei")) + L.t(" · antippen zum Umschalten"));
         pinToggle.setOnClickListener(v -> {
             boolean now = !sos.getBoolean("pin", false);
             sos.edit().putBoolean("pin", now).apply();
@@ -142,14 +142,14 @@ public class CrisisActivity extends Activity {
         for (String custom : customLoops()) col.addView(bigButton(custom, cCard, cLine, () -> choose(custom)));
         for (String sd : SEED) col.addView(bigButton(sd, cCard, cLine, () -> choose(sd)));
         EditText in = new EditText(this);
-        in.setHint("Eigener Gedanke …");
+        in.setHint(L.t("Eigener Gedanke …"));
         in.setHintTextColor(cInk3);
         in.setTextColor(cInk);
         in.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         in.setBackground(box(cCard, cLine, 14));
         in.setPadding(dp(16), dp(14), dp(16), dp(14));
         col.addView(in, lp(dp(10)));
-        col.addView(bigButton("→ Diesen Gedanken stoppen", cCard, cAccent, () -> {
+        col.addView(bigButton(L.t("→ Diesen Gedanken stoppen"), cCard, cAccent, () -> {
             String t = in.getText().toString().trim();
             if (t.isEmpty()) return;
             saveCustom(t);
@@ -165,13 +165,13 @@ public class CrisisActivity extends Activity {
 
     /* 2. Name it as the compulsion. */
     private void renderName() {
-        head("Das ist der Zwang.", loop);
-        col.addView(para("Nicht du. Nicht Gott. Der Zwang.\n\n"
-            + "Er stellt eine Frage, auf die es keine sichere Antwort gibt, und tut so, als müsstest du sie "
-            + "JETZT lösen. Musst du nicht. Die Frage ist die Falle, nicht die Lösung.", cInk, 17));
-        col.addView(para("Wenn dein einziger naher Mensch eine Frau ist, dann ist das ein Geschenk – kein Fall "
-            + "fürs Gericht. Der Zwang macht „weil Frau“ zum Problem. Du nicht.", cGreen, 15));
-        col.addView(bigButton("Weiter – ich beantworte sie NICHT", cCard, cAccent, () -> {
+        head(L.t("Das ist der Zwang."), loop);
+        col.addView(para(L.t("Nicht du. Nicht Gott. Der Zwang.\n\n")
+            + L.t("Er stellt eine Frage, auf die es keine sichere Antwort gibt, und tut so, als müsstest du sie ")
+            + L.t("JETZT lösen. Musst du nicht. Die Frage ist die Falle, nicht die Lösung."), cInk, 17));
+        col.addView(para(L.t("Wenn dein einziger naher Mensch eine Frau ist, dann ist das ein Geschenk – kein Fall ")
+            + L.t("fürs Gericht. Der Zwang macht „weil Frau“ zum Problem. Du nicht."), cGreen, 15));
+        col.addView(bigButton(L.t("Weiter – ich beantworte sie NICHT"), cCard, cAccent, () -> {
             state = EXPOSE;
             render();
         }));
@@ -179,15 +179,15 @@ public class CrisisActivity extends Activity {
 
     /* 3. Exposure: agree to the uncertainty, turn toward the forbidden-wanted thing. */
     private void renderExpose() {
-        head("Unsicherheit stehen lassen", null);
+        head(L.t("Unsicherheit stehen lassen"), null);
         col.addView(para(EXPO, cInk, 17));
-        col.addView(small("Sag es einmal langsam – laut oder im Kopf."));
-        TextView howLong = small("Wie lange hältst du durch, ohne zu checken? Die Welle sinkt meist in 20 Min.");
+        col.addView(small(L.t("Sag es einmal langsam – laut oder im Kopf.")));
+        TextView howLong = small(L.t("Wie lange hältst du durch, ohne zu checken? Die Welle sinkt meist in 20 Min."));
         col.addView(howLong);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER);
         for (int m : new int[]{10, 20, 30}) {
-            TextView b = chip(m + " Min", m == minutes);
+            TextView b = chip(m + L.t(" Min"), m == minutes);
             b.setOnClickListener(v -> {
                 minutes = m;
                 renderExpose();
@@ -195,7 +195,7 @@ public class CrisisActivity extends Activity {
             row.addView(b);
         }
         col.addView(row, lp(dp(10)));
-        col.addView(bigButton("Jetzt aushalten (" + minutes + " Min)", cCard, cGreen, () -> {
+        col.addView(bigButton(L.t("Jetzt aushalten (") + minutes + L.t(" Min)"), cCard, cGreen, () -> {
             rideEnd = SystemClock.uptimeMillis() + minutes * 60_000L;
             spikes = 0;
             state = RIDE;
@@ -209,22 +209,22 @@ public class CrisisActivity extends Activity {
     private TextView clock, waveNote;
 
     private void renderRide() {
-        head("Nicht gehorchen. Nur warten.", loop);
-        col.addView(para("Nicht googeln · nicht wegbeten · nicht nachfragen · nicht checken.\n"
-            + "Der Drang ist eine Welle. Du musst nichts tun. Sie sinkt von allein.", cGreen, 15));
+        head(L.t("Nicht gehorchen. Nur warten."), loop);
+        col.addView(para(L.t("Nicht googeln · nicht wegbeten · nicht nachfragen · nicht checken.\n")
+            + L.t("Der Drang ist eine Welle. Du musst nichts tun. Sie sinkt von allein."), cGreen, 15));
         wave = new UrgeWave(this);
         col.addView(wave, new LinearLayout.LayoutParams(-1, dp(120)));
         clock = text(40, cInk, true);
         clock.setGravity(Gravity.CENTER);
         col.addView(clock, lp(dp(8)));
-        waveNote = small("Jeder Drang, dem du nicht folgst, macht den Zwang kleiner.");
+        waveNote = small(L.t("Jeder Drang, dem du nicht folgst, macht den Zwang kleiner."));
         col.addView(waveNote);
-        col.addView(bigButton("Ein Drang kam hoch", cCard, cAmber, () -> {
+        col.addView(bigButton(L.t("Ein Drang kam hoch"), cCard, cAmber, () -> {
             spikes++;
             if (wave != null) wave.spike();
-            if (waveNote != null) waveNote.setText("Drang #" + spikes + ". Nicht reagiert = Welle bricht. Schau zu, wie sie sinkt.");
+            if (waveNote != null) waveNote.setText(L.t("Drang #") + spikes + L.t(". Nicht reagiert = Welle bricht. Schau zu, wie sie sinkt."));
         }));
-        col.addView(bigButton("Ich halte durch – Film/Ruhe JETZT", cCard, cLine, this::toward));
+        col.addView(bigButton(L.t("Ich halte durch – Film/Ruhe JETZT"), cCard, cLine, this::toward));
     }
 
     private void toward() {
@@ -258,11 +258,11 @@ public class CrisisActivity extends Activity {
 
     /* 5. Done. */
     private void renderDone() {
-        head("Geschafft.", null);
-        col.addView(para("Du hast dem Zwang nicht gehorcht. Die Frage ist noch offen – und du lebst trotzdem "
-            + "weiter. Genau das schwächt ihn, jedes Mal ein bisschen mehr.", cInk, 17));
-        col.addView(small(spikes > 0 ? spikes + " Drang-Wellen – alle vorbei." : "Ruhig geblieben."));
-        col.addView(bigButton("Nochmal einen Gedanken stoppen", cCard, cLine, () -> {
+        head(L.t("Geschafft."), null);
+        col.addView(para(L.t("Du hast dem Zwang nicht gehorcht. Die Frage ist noch offen – und du lebst trotzdem ")
+            + L.t("weiter. Genau das schwächt ihn, jedes Mal ein bisschen mehr."), cInk, 17));
+        col.addView(small(spikes > 0 ? spikes + L.t(" Drang-Wellen – alle vorbei.") : L.t("Ruhig geblieben.")));
+        col.addView(bigButton(L.t("Nochmal einen Gedanken stoppen"), cCard, cLine, () -> {
             state = PICK;
             loop = "";
             render();
@@ -323,7 +323,7 @@ public class CrisisActivity extends Activity {
 
     private void addExit() {
         TextView exit = text(14, cInk2, false);
-        exit.setText("Raus – 3 Sekunden halten");
+        exit.setText(L.t("Raus – 3 Sekunden halten"));
         exit.setGravity(Gravity.CENTER);
         exit.setPadding(dp(16), dp(14), dp(16), dp(14));
         exit.setBackground(box(cCard, cLine, 16));
@@ -343,7 +343,7 @@ public class CrisisActivity extends Activity {
         col.addView(exit, lp(dp(22)));
         TextView line = text(12, cInk3, false);
         line.setGravity(Gravity.CENTER);
-        line.setText("In echter Gefahr für dich oder andere: 143 halten.");
+        line.setText(L.t("In echter Gefahr für dich oder andere: 143 halten."));
         line.setOnClickListener(v -> {
             if (pinned && Build.VERSION.SDK_INT >= 21) {
                 try {
@@ -515,7 +515,7 @@ public class CrisisActivity extends Activity {
             c.drawPath(path, p);
             t.setColor(cInk2);
             t.setTextSize(13 * dp);
-            c.drawText(level > 0.55f ? "Drang hoch – nichts tun, zuschauen" : level > 0.12f ? "sinkt …" : "ruhig", w / 2, h - 6 * dp, t);
+            c.drawText(level > 0.55f ? L.t("Drang hoch – nichts tun, zuschauen") : level > 0.12f ? L.t("sinkt …") : "ruhig", w / 2, h - 6 * dp, t);
             if (running) postInvalidateOnAnimation();
         }
     }

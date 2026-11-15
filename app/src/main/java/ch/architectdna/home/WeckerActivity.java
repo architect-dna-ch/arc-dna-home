@@ -73,7 +73,7 @@ public class WeckerActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView label = mono(11, ink3);
-        label.setText("— BÄR-WECKER");
+        label.setText(L.t("— BÄR-WECKER"));
         label.setLetterSpacing(0.24f);
         head.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(22, ink, true);
@@ -100,7 +100,7 @@ public class WeckerActivity extends Activity {
         dailyState = mono(11, ink3);
         t.addView(dailyState);
         hero.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView sw = chip("AN/AUS", rust);
+        TextView sw = chip(L.t("AN/AUS"), rust);
         sw.setOnClickListener(v -> {
             prefs.edit().putBoolean("alarmOn", !prefs.getBoolean("alarmOn", false)).apply();
             AlarmScheduler.schedule(this);
@@ -114,10 +114,10 @@ public class WeckerActivity extends Activity {
         LinearLayout dh = new LinearLayout(this);
         dh.setGravity(Gravity.CENTER_VERTICAL);
         TextView dl = mono(11, ink3);
-        dl.setText("— TERMINE · EINMALIG");
+        dl.setText(L.t("— TERMINE · EINMALIG"));
         dl.setLetterSpacing(0.2f);
         dh.addView(dl, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView add = chip("+ TERMIN", rust);
+        TextView add = chip(L.t("+ TERMIN"), rust);
         add.setOnClickListener(v -> addDeadline(null));
         dh.addView(add);
         col.addView(dh, margins(-1, -2, dp(26)));
@@ -127,12 +127,12 @@ public class WeckerActivity extends Activity {
 
         // Quick ideas: one tap fills the form.
         TextView ideas = mono(10, ink3);
-        ideas.setText("SCHNELL");
+        ideas.setText(L.t("SCHNELL"));
         ideas.setLetterSpacing(0.2f);
         col.addView(ideas, margins(-2, -2, dp(22)));
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.VERTICAL);
-        String[] quick = {"Vorbereitung erster Tag Homeoffice", "Abgabe / Deadline", "Termin – losgehen", "Medikament"};
+        String[] quick = {L.t("Vorbereitung erster Tag Homeoffice"), L.t("Abgabe / Deadline"), L.t("Termin – losgehen"), L.t("Medikament")};
         for (String q : quick) {
             TextView c = chip("＋ " + q, ink2);
             c.setOnClickListener(v -> addDeadline(q));
@@ -144,14 +144,14 @@ public class WeckerActivity extends Activity {
         LinearLayout lh = new LinearLayout(this);
         lh.setGravity(Gravity.CENTER_VERTICAL);
         TextView ll = mono(11, ink3);
-        ll.setText("— AUFWACH-LOG");
+        ll.setText(L.t("— AUFWACH-LOG"));
         ll.setLetterSpacing(0.2f);
         lh.addView(ll, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView copy = chip("DATEN KOPIEREN", ink2);
+        TextView copy = chip(L.t("DATEN KOPIEREN"), ink2);
         copy.setOnClickListener(v -> {
             android.content.ClipboardManager cm = getSystemService(android.content.ClipboardManager.class);
-            if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("ARC-DNA Aufwach-Log", AlarmLog.json(this)));
-            android.widget.Toast.makeText(this, "Aufwach-Log kopiert – einfach Claude schicken.", android.widget.Toast.LENGTH_SHORT).show();
+            if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText(L.t("ARC-DNA Aufwach-Log"), AlarmLog.json(this)));
+            android.widget.Toast.makeText(this, L.t("Aufwach-Log kopiert – einfach Claude schicken."), android.widget.Toast.LENGTH_SHORT).show();
         });
         lh.addView(copy);
         col.addView(lh, margins(-1, -2, dp(30)));
@@ -180,7 +180,7 @@ public class WeckerActivity extends Activity {
         List<AlarmLog.Entry> all = AlarmLog.entries(this);
         if (all.isEmpty()) {
             TextView none = text(15, ink3, false);
-            none.setText("Noch keine Daten. Ab dem nächsten Bären steht hier, wie lange er klingelt, wie oft du snoozt und wann du wirklich wach bist.");
+            none.setText(L.t("Noch keine Daten. Ab dem nächsten Bären steht hier, wie lange er klingelt, wie oft du snoozt und wann du wirklich wach bist."));
             wakeLog.addView(none);
             return;
         }
@@ -198,10 +198,10 @@ public class WeckerActivity extends Activity {
         stats.setPadding(dp(16), dp(14), dp(16), dp(14));
         stats.setBackground(box(card, line, 18));
         String[][] cells = {
-            {n == 0 ? "–" : AlarmLog.dur(sumWake / n), "Ø BIS WACH"},
-            {n == 0 ? "–" : AlarmLog.dur(sumLast / n), "Ø LETZTES KLINGELN"},
+            {n == 0 ? "–" : AlarmLog.dur(sumWake / n), L.t("Ø BIS WACH")},
+            {n == 0 ? "–" : AlarmLog.dur(sumLast / n), L.t("Ø LETZTES KLINGELN")},
             {n == 0 ? "–" : String.format(Locale.GERMAN, "%.1f", sumSnooze / (float) n), "Ø SNOOZES"},
-            {boosted + "/" + n, "LAUT NÖTIG"}};
+            {boosted + "/" + n, L.t("LAUT NÖTIG")}};
         for (String[] c : cells) {
             LinearLayout cell = new LinearLayout(this);
             cell.setOrientation(LinearLayout.VERTICAL);
@@ -240,7 +240,7 @@ public class WeckerActivity extends Activity {
                 p.setColor(ink3);
                 c.drawText("MAX " + AlarmLog.dur(max), 0, getHeight() - dp(2), p);
                 p.setTextAlign(android.graphics.Paint.Align.RIGHT);
-                c.drawText("ROT OHNE · GELB MIT SNOOZE", w, getHeight() - dp(2), p);
+                c.drawText(L.t("ROT OHNE · GELB MIT SNOOZE"), w, getHeight() - dp(2), p);
                 p.setTextAlign(android.graphics.Paint.Align.LEFT);
             }
         };
@@ -254,12 +254,12 @@ public class WeckerActivity extends Activity {
             row.setPadding(dp(14), dp(10), dp(14), dp(10));
             row.setBackground(box(card, line, 14));
             TextView top = text(15, ink, true);
-            top.setText(f.format(new Date(e.at)) + (e.label == null || e.label.isEmpty() ? " · Täglich" : " · " + e.label));
+            top.setText(f.format(new Date(e.at)) + (e.label == null || e.label.isEmpty() ? L.t(" · Täglich") : " · " + e.label));
             row.addView(top);
             TextView sub = mono(10, "wach".equals(e.outcome) ? rust : ink3);
             sub.setText(("wach".equals(e.outcome) ? "WACH NACH " + AlarmLog.dur(e.wakeMs) : "ABGEBROCHEN")
-                + " · KLINGELTE " + AlarmLog.dur(e.ringMs) + " · " + e.snoozes + " SNOOZE"
-                + (e.roared ? " · WÜTEND" : "") + (e.boosted ? " · LAUT" : ""));
+                + L.t(" · KLINGELTE ") + AlarmLog.dur(e.ringMs) + " · " + e.snoozes + " SNOOZE"
+                + (e.roared ? L.t(" · WÜTEND") : "") + (e.boosted ? L.t(" · LAUT") : ""));
             row.addView(sub);
             wakeLog.addView(row, margins(-1, -2, dp(8)));
         }
@@ -270,7 +270,7 @@ public class WeckerActivity extends Activity {
         int m = prefs.getInt("alarmMinutes", 7 * 60);
         daily.setText(String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60));
         daily.setTextColor(on ? ink : ink3);
-        dailyState.setText(on ? "TÄGLICH · DER BÄR KOMMT AUS DER HÖHLE" : "TÄGLICH · AUS · TIPPEN ZUM STELLEN");
+        dailyState.setText(on ? L.t("TÄGLICH · DER BÄR KOMMT AUS DER HÖHLE") : L.t("TÄGLICH · AUS · TIPPEN ZUM STELLEN"));
         dailyState.setTextColor(on ? rust : ink3);
         paintWakeLog();
         list.removeAllViews();
@@ -278,7 +278,7 @@ public class WeckerActivity extends Activity {
         SimpleDateFormat f = new SimpleDateFormat("EEE d. MMM · HH:mm", Locale.GERMAN);
         if (ds.isEmpty()) {
             TextView none = text(15, ink3, false);
-            none.setText("Noch nichts. „+ TERMIN“ – z. B. Mittwoch 13:10, Vorbereitung erster Tag Homeoffice.");
+            none.setText(L.t("Noch nichts. „+ TERMIN“ – z. B. Mittwoch 13:10, Vorbereitung erster Tag Homeoffice."));
             list.addView(none);
         }
         for (AlarmScheduler.Deadline d : ds) {
@@ -316,10 +316,10 @@ public class WeckerActivity extends Activity {
 
     private String until(long at) {
         long min = (at - System.currentTimeMillis()) / 60000;
-        if (min < 0) return "VORBEI";
+        if (min < 0) return L.t("VORBEI");
         if (min < 60) return "IN " + min + " MIN";
         if (min < 48 * 60) return "IN " + min / 60 + " H " + min % 60 + " MIN";
-        return "IN " + min / 1440 + " TAGEN";
+        return "IN " + min / 1440 + L.t(" TAGEN");
     }
 
     private FrameLayout rootView;
@@ -356,14 +356,14 @@ public class WeckerActivity extends Activity {
         panel.setBackground(g);
         panel.setClickable(true);
         TextView title = mono(11, ink3);
-        title.setText(daily ? "— TÄGLICHER WECKER" : "— NEUER TERMIN");
+        title.setText(daily ? L.t("— TÄGLICHER WECKER") : L.t("— NEUER TERMIN"));
         title.setLetterSpacing(0.24f);
         panel.addView(title);
         EditText e = null;
         if (!daily) {
             e = new EditText(this);
             e.setText(text);
-            e.setHint("Was? z. B. Vorbereitung erster Tag Homeoffice");
+            e.setHint(L.t("Was? z. B. Vorbereitung erster Tag Homeoffice"));
             e.setTextColor(ink);
             e.setHintTextColor(ink3);
             e.setTextSize(20);
@@ -385,7 +385,7 @@ public class WeckerActivity extends Activity {
             for (int k = 0; k < dayChips.length; k++) {
                 Calendar c = Calendar.getInstance();
                 c.add(Calendar.DAY_OF_YEAR, k);
-                String lbl = k == 0 ? "HEUTE" : k == 1 ? "MORGEN" : df.format(c.getTime()).toUpperCase(Locale.GERMAN);
+                String lbl = k == 0 ? L.t("HEUTE") : k == 1 ? L.t("MORGEN") : df.format(c.getTime()).toUpperCase(Locale.GERMAN);
                 TextView chip = mono(12, ink2);
                 chip.setText(lbl);
                 chip.setPadding(dp(14), dp(9), dp(14), dp(9));
@@ -411,8 +411,8 @@ public class WeckerActivity extends Activity {
         // Buttons.
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.END);
-        TextView cancel = chip("ABBRECHEN", ink2);
-        TextView ok = chip(daily ? "WECKER STELLEN 🐻" : "TERMIN SETZEN 🐻", rust);
+        TextView cancel = chip(L.t("ABBRECHEN"), ink2);
+        TextView ok = chip(daily ? L.t("WECKER STELLEN 🐻") : L.t("TERMIN SETZEN 🐻"), rust);
         buttons.addView(cancel);
         LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(-2, -2);
         ol.leftMargin = dp(10);
@@ -434,13 +434,13 @@ public class WeckerActivity extends Activity {
                 AlarmScheduler.schedule(this);
             } else {
                 String what = field.getText().toString().trim();
-                if (what.isEmpty()) what = "Termin";
+                if (what.isEmpty()) what = L.t("Termin");
                 day.set(Calendar.HOUR_OF_DAY, dial.hour);
                 day.set(Calendar.MINUTE, dial.minute);
                 day.set(Calendar.SECOND, 0);
                 day.set(Calendar.MILLISECOND, 0);
                 if (day.getTimeInMillis() <= System.currentTimeMillis()) {
-                    title.setText("— DAS IST SCHON VORBEI · ANDERE ZEIT");
+                    title.setText(L.t("— DAS IST SCHON VORBEI · ANDERE ZEIT"));
                     title.setTextColor(rust);
                     return;
                 }
@@ -540,7 +540,7 @@ public class WeckerActivity extends Activity {
             p.setTextSize(dp(10));
             p.setTypeface(Typeface.MONOSPACE);
             p.setColor(ink3);
-            String hint = minutes ? "MINUTEN · RUNDHERUM ZIEHEN" : "STUNDEN · RUNDHERUM ZIEHEN · DANN MINUTEN";
+            String hint = minutes ? L.t("MINUTEN · RUNDHERUM ZIEHEN") : L.t("STUNDEN · RUNDHERUM ZIEHEN · DANN MINUTEN");
             p.setTextAlign(android.graphics.Paint.Align.CENTER);
             c.drawText(hint, cx, h - dp(2), p);
             p.setTextAlign(android.graphics.Paint.Align.LEFT);

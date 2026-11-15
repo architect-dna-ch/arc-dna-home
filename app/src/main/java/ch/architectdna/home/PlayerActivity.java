@@ -112,7 +112,7 @@ public class PlayerActivity extends Activity {
         disk.setOnClickListener(v -> disk.nextEra());
         disk.setOnLongClickListener(v -> {
             disk.autoEra();
-            android.widget.Toast.makeText(this, "Ära wieder automatisch (pro Song).", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(this, L.t("Ära wieder automatisch (pro Song)."), android.widget.Toast.LENGTH_SHORT).show();
             return true;
         });
         // The medium with a volume lever standing beside it, like a mixer fader.
@@ -181,7 +181,7 @@ public class PlayerActivity extends Activity {
 
         TextView qh = mono(11, ink3);
         qh.setLetterSpacing(0.24f);
-        qh.setText("— ALS NÄCHSTES");
+        qh.setText(L.t("— ALS NÄCHSTES"));
         qh.setPadding(0, dp(24), 0, dp(8));
         col.addView(qh);
         queue = new LinearLayout(this);
@@ -217,7 +217,7 @@ public class PlayerActivity extends Activity {
             pick(sessions.getActiveSessions(listenerName));
         } catch (SecurityException e) {
             pick(null);
-            status.setText("ARC Player braucht den Benachrichtigungszugriff für ARC-DNA. Hier antippen.");
+            status.setText(L.t("ARC Player braucht den Benachrichtigungszugriff für ARC-DNA. Hier antippen."));
             status.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         }
         main.post(tick);
@@ -287,16 +287,16 @@ public class PlayerActivity extends Activity {
     private void render() {
         MediaMetadata m = controller == null ? null : controller.getMetadata();
         if (m == null) {
-            title.setText("Nichts läuft");
-            artist.setText("🎧 DJ antippen – ein Buddy legt auf.");
+            title.setText(L.t("Nichts läuft"));
+            artist.setText(L.t("🎧 DJ antippen – ein Buddy legt auf."));
             source.setText("");
-            disk.set(null, "LEER", 0);
+            disk.set(null, L.t("LEER"), 0);
         } else {
             String t = m.getString(MediaMetadata.METADATA_KEY_TITLE), a = m.getString(MediaMetadata.METADATA_KEY_ARTIST);
             if (a == null) a = m.getString(MediaMetadata.METADATA_KEY_ALBUM);
             title.setText(t != null ? t : "–");
             artist.setText(a != null ? a : "");
-            source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN) + " ↗ · DORT ÖFFNEN");
+            source.setText(appName(controller.getPackageName()).toUpperCase(Locale.GERMAN) + L.t(" ↗ · DORT ÖFFNEN"));
             Bitmap art = m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
             if (art == null) art = m.getBitmap(MediaMetadata.METADATA_KEY_ART);
             if (art == null) art = m.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
@@ -338,7 +338,7 @@ public class PlayerActivity extends Activity {
         long active = s == null ? -1 : s.getActiveQueueItemId();
         if (q == null || q.isEmpty()) {
             TextView none = text(14, ink3, false);
-            none.setText(controller == null ? "–" : "Diese App zeigt ihre Warteschlange nicht.");
+            none.setText(controller == null ? "–" : L.t("Diese App zeigt ihre Warteschlange nicht."));
             queue.addView(none);
         } else {
             int shown = 0;
@@ -353,7 +353,7 @@ public class PlayerActivity extends Activity {
             }
             if (shown == 0) {
                 TextView none = text(14, ink3, false);
-                none.setText("Ende der Warteschlange.");
+                none.setText(L.t("Ende der Warteschlange."));
                 queue.addView(none);
             }
         }
@@ -544,7 +544,7 @@ public class PlayerActivity extends Activity {
 
         Lever() {
             super(PlayerActivity.this);
-            setContentDescription("Lautstärke");
+            setContentDescription(L.t("Lautstärke"));
         }
 
         @Override protected void onAttachedToWindow() {
@@ -602,7 +602,7 @@ public class PlayerActivity extends Activity {
             int pct = Math.round(100 * level());
             getSharedPreferences("home", MODE_PRIVATE).edit().putInt("vol" + k, pct).apply();
             performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-            android.widget.Toast.makeText(PlayerActivity.this, k + " gespeichert: " + pct + "%", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(PlayerActivity.this, k + L.t(" gespeichert: ") + pct + "%", android.widget.Toast.LENGTH_SHORT).show();
             downAt = 0;
             invalidate();
         };
@@ -714,7 +714,7 @@ public class PlayerActivity extends Activity {
         /* ---- Eras: jukebox, vinyl, cassette, CD, floppy. Each song gets one; tap = next, hold = automatic again ---- */
 
         static final int JUKEBOX = 0, VINYL = 1, CASSETTE = 2, CD = 3, FLOPPY = 4;
-        private final String[] ERA = {"JUKEBOX · 50ER", "VINYL · 70ER", "KASSETTE · 80ER", "CD · 90ER", "DISKETTE · COMPUTER"};
+        private final String[] ERA = {L.t("JUKEBOX · 50ER"), L.t("VINYL · 70ER"), L.t("KASSETTE · 80ER"), L.t("CD · 90ER"), L.t("DISKETTE · COMPUTER")};
         private float spin, arm, lastT;
 
         int era() {
@@ -763,7 +763,7 @@ public class PlayerActivity extends Activity {
             p.setColor(ink3);
             p.setTextAlign(Paint.Align.CENTER);
             p.setAlpha(255);
-            c.drawText("♪ " + ERA[e] + " · TIPPEN = ÄRA WECHSELN", getWidth() / 2f, getHeight() - dp(2), p);
+            c.drawText("♪ " + ERA[e] + L.t(" · TIPPEN = ÄRA WECHSELN"), getWidth() / 2f, getHeight() - dp(2), p);
             p.setTextAlign(Paint.Align.LEFT);
             if (e != FLOPPY || in < 1) postInvalidateOnAnimation();
         }

@@ -36,7 +36,7 @@ public class TuneActivity extends Activity {
     private static final int RATE = 44100;
     private static final String[] NAMES = {"C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "H"};
     /** Melodies as MIDI notes (C4 = 60). */
-    private static final String[] SONG_NAMES = {"Tonleiter", "Alle meine Entchen", "Ode an die Freude", "Happy Birthday", "Echo"};
+    private static final String[] SONG_NAMES = {L.t("Tonleiter"), L.t("Alle meine Entchen"), L.t("Ode an die Freude"), "Happy Birthday", "Echo"};
     private static final int[][] SONGS = {
         {60, 62, 64, 65, 67, 69, 71, 72},
         {60, 62, 64, 65, 67, 67, 69, 69, 69, 69, 67, 69, 69, 69, 69, 67, 65, 65, 65, 65, 64, 64, 62, 62, 62, 62, 60},
@@ -276,7 +276,7 @@ public class TuneActivity extends Activity {
             p.setTextSize(dp(11));
             p.setLetterSpacing(0.24f);
             p.setColor(ink3);
-            c.drawText("— PFEIF- & KLAVIER-LEHRER", dp(20), top, p);
+            c.drawText(L.t("— PFEIF- & KLAVIER-LEHRER"), dp(20), top, p);
             p.setLetterSpacing(0);
             p.setTextSize(dp(22));
             p.setColor(ink);
@@ -342,7 +342,7 @@ public class TuneActivity extends Activity {
                 p.setTextSize(dp(14));
                 p.setTypeface(Typeface.MONOSPACE);
                 p.setColor(ink2);
-                c.drawText(notes.length + " TÖNE IN " + (doneAt - startAt) / 1000 + " S · TIPPEN = NOCHMAL", w / 2, bigY + dp(30), p);
+                c.drawText(notes.length + L.t(" TÖNE IN ") + (doneAt - startAt) / 1000 + L.t(" S · TIPPEN = NOCHMAL"), w / 2, bigY + dp(30), p);
             } else {
                 p.setColor(rust);
                 c.drawText(target >= 0 ? NAMES[target % 12] : "–", w * 0.3f, bigY, p);
@@ -351,8 +351,8 @@ public class TuneActivity extends Activity {
                 p.setTypeface(Typeface.MONOSPACE);
                 p.setTextSize(dp(11));
                 p.setColor(ink3);
-                c.drawText("ZIEL", w * 0.3f, bigY + dp(22), p);
-                c.drawText(hz > 0 ? String.format(Locale.ROOT, "DU · %.0f HZ", hz) : "PFEIF MAL …", w * 0.7f, bigY + dp(22), p);
+                c.drawText(L.t("ZIEL"), w * 0.3f, bigY + dp(22), p);
+                c.drawText(hz > 0 ? String.format(Locale.ROOT, L.t("DU · %.0f HZ"), hz) : L.t("PFEIF MAL …"), w * 0.7f, bigY + dp(22), p);
                 // Needle: how far off the target (any octave), in cents.
                 if (heardMidi > 0 && target >= 0) {
                     float off = ((heardMidi - target) % 12 + 18) % 12 - 6;      // -6 … +6 semitones
@@ -368,7 +368,7 @@ public class TuneActivity extends Activity {
                     p.setStyle(Paint.Style.FILL);
                     p.setTextSize(dp(10));
                     p.setColor(ink3);
-                    c.drawText(Math.abs(off) < 0.5f ? "TRIFFT" : off < 0 ? "HÖHER ↑" : "TIEFER ↓", w / 2, ny + dp(28), p);
+                    c.drawText(Math.abs(off) < 0.5f ? L.t("TRIFFT") : off < 0 ? L.t("HÖHER ↑") : L.t("TIEFER ↓"), w / 2, ny + dp(28), p);
                 }
                 // Hit and held for 0.25 s: next note.
                 boolean hit = heardNote >= 0 && target >= 0 && ((heardNote - target) % 12 + 12) % 12 == 0;
@@ -396,7 +396,7 @@ public class TuneActivity extends Activity {
             p.setColor(0xFFFFFFFF);
             p.setTextSize(dp(13));
             p.setTextAlign(Paint.Align.CENTER);
-            c.drawText(playing ? "♪ HÖR ZU …" : "▶ VORSPIELEN", playBtn.centerX(), playBtn.centerY() + dp(5), p);
+            c.drawText(playing ? L.t("♪ HÖR ZU …") : L.t("▶ VORSPIELEN"), playBtn.centerX(), playBtn.centerY() + dp(5), p);
             p.setTextAlign(Paint.Align.LEFT);
 
             // Keyboard: two octaves from C4; target rust, heard blue (shown in this octave range).

@@ -84,6 +84,7 @@
 
     <!-- No backups or device transfer of the app's data (update token, history, favourites stay on this phone). -->
     <application
+        android:localeConfig="@xml/locales_config"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/no_backup"
         android:fullBackupContent="false"

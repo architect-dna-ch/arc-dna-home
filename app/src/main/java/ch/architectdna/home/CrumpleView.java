@@ -275,7 +275,7 @@ final class CrumpleView extends View implements SensorEventListener {
                 p.setTextSize(dp(11));
                 p.setLetterSpacing(0.2f);
                 p.setTypeface(android.graphics.Typeface.MONOSPACE);
-                c.drawText("↗ IN DEN KORB WERFEN", holdX(), holdY() + dp(42), p);
+                c.drawText(L.t("↗ IN DEN KORB WERFEN"), holdX(), holdY() + dp(42), p);
                 p.setAlpha(255);
                 if (!grabbed && mt > HOLD_MAX) {
                     sx0 = bx;

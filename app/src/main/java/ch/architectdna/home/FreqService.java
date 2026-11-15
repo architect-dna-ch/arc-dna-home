@@ -122,7 +122,7 @@ public class FreqService extends Service {
         if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(new NotificationChannel(CHANNEL, "VOID FREQ", NotificationManager.IMPORTANCE_LOW));
         }
-        String text = "Läuft";
+        String text = L.t("Läuft");
         if (timerEnd > 0) {
             long rem = Math.max(0, timerEnd - System.currentTimeMillis()) / 1000;
             text = String.format(java.util.Locale.ROOT, "Timer %02d:%02d", rem / 60, rem % 60);

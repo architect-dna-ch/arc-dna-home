@@ -86,7 +86,7 @@ final class BtRace {
         thread = new Thread(() -> {
             try {
                 BluetoothAdapter a = adapter(c);
-                if (a == null) { fail(l, "Bluetooth aus"); return; }
+                if (a == null) { fail(l, L.t("Bluetooth aus")); return; }
                 serverSocket = a.listenUsingRfcommWithServiceRecord("ARC-DNA Race", ID);
                 BluetoothSocket s = serverSocket.accept();
                 try { serverSocket.close(); } catch (IOException ignored) {}
@@ -129,7 +129,7 @@ final class BtRace {
                 final String ln = line;
                 MAIN.post(() -> l.onMessage(ln));
             }
-            fail(l, "Verbindung beendet");
+            fail(l, L.t("Verbindung beendet"));
         } catch (IOException | SecurityException e) {
             fail(l, e.getMessage());
         } finally {

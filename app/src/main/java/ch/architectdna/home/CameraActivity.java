@@ -89,7 +89,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
         top.addView(dash, dl);
         TextView name = mono(11, 0xFFB8B8B2);
         name.setLetterSpacing(0.24f);
-        name.setText("ARC-DNA KAMERA");
+        name.setText(L.t("ARC-DNA KAMERA"));
         top.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = mono(18, 0xFFFFFFFF);
         close.setText("✕");
@@ -111,7 +111,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
         tb.setStroke(dp(2), rust);
         thumb.setBackground(tb);
         thumb.setPadding(dp(3), dp(3), dp(3), dp(3));
-        thumb.setContentDescription("Letztes Foto in der Galerie");
+        thumb.setContentDescription(L.t("Letztes Foto in der Galerie"));
         thumb.setOnClickListener(v -> {
             Intent g = new Intent(this, GalleryActivity.class);
             if (lastShot != null) g.putExtra("focus", lastShot.toString());
@@ -121,7 +121,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
         View sp1 = new View(this);
         bottom.addView(sp1, new LinearLayout.LayoutParams(0, 1, 1f));
         View shutter = new Shutter();
-        shutter.setContentDescription("Foto aufnehmen");
+        shutter.setContentDescription(L.t("Foto aufnehmen"));
         shutter.setOnClickListener(v -> shoot());
         bottom.addView(shutter, new LinearLayout.LayoutParams(dp(78), dp(78)));
         View sp2 = new View(this);
@@ -133,7 +133,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
         fb.setShape(GradientDrawable.OVAL);
         fb.setColor(0x33FFFFFF);
         flip.setBackground(fb);
-        flip.setContentDescription("Kamera wechseln");
+        flip.setContentDescription(L.t("Kamera wechseln"));
         flip.setOnClickListener(v -> {
             front = !front;
             engine.stop();
@@ -173,7 +173,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQ_CAM && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) engine.start(front, rotation());
-        else if (requestCode == REQ_CAM) Toast.makeText(this, "Ohne Kamera-Zugriff geht's nicht.", Toast.LENGTH_LONG).show();
+        else if (requestCode == REQ_CAM) Toast.makeText(this, L.t("Ohne Kamera-Zugriff geht's nicht."), Toast.LENGTH_LONG).show();
     }
 
     /** Volume keys take the photo, like the system camera. */
@@ -202,7 +202,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
         }
         engine.take(rotation(), uri -> {
             if (uri == null) {
-                Toast.makeText(this, "Foto konnte nicht gesichert werden.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("Foto konnte nicht gesichert werden."), Toast.LENGTH_SHORT).show();
                 return;
             }
             lastShot = uri;
@@ -268,22 +268,22 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
 
     /** {English labels (lower case) …} → {accusative, nominative}. */
     private static final String[][] WORDS = {
-        {"dog", "den Hund", "der Hund"}, {"cat", "die Katze", "die Katze"}, {"bird", "den Vogel", "der Vogel"},
-        {"horse", "das Pferd", "das Pferd"}, {"pet", "das Tier", "das Tier"}, {"flower", "die Blume", "die Blume"},
-        {"plant", "die Pflanze", "die Pflanze"}, {"tree", "den Baum", "der Baum"}, {"petal", "die Blüte", "die Blüte"},
-        {"food", "das Essen", "das Essen"}, {"cake", "den Kuchen", "der Kuchen"}, {"coffee", "den Kaffee", "der Kaffee"},
-        {"cup", "die Tasse", "die Tasse"}, {"fruit", "das Obst", "das Obst"}, {"bread", "das Brot", "das Brot"},
-        {"pizza", "die Pizza", "die Pizza"}, {"dessert", "das Dessert", "das Dessert"}, {"drink", "das Getränk", "das Getränk"},
-        {"car", "das Auto", "das Auto"}, {"vehicle", "das Fahrzeug", "das Fahrzeug"}, {"bicycle", "das Velo", "das Velo"},
-        {"motorcycle", "das Motorrad", "das Motorrad"}, {"wheel", "das Rad", "das Rad"}, {"bus", "den Bus", "der Bus"},
-        {"person", "die Person", "die Person"}, {"selfie", "dich", "du"}, {"smile", "das Lächeln", "das Lächeln"},
-        {"building", "das Gebäude", "das Gebäude"}, {"sky", "den Himmel", "der Himmel"}, {"lake", "den See", "der See"},
-        {"mountain", "den Berg", "der Berg"}, {"book", "das Buch", "das Buch"}, {"guitar", "die Gitarre", "die Gitarre"},
-        {"shoe", "den Schuh", "der Schuh"}, {"toy", "das Spielzeug", "das Spielzeug"}};
+        {"dog", L.t("den Hund"), L.t("der Hund")}, {"cat", L.t("die Katze"), L.t("die Katze")}, {"bird", L.t("den Vogel"), L.t("der Vogel")},
+        {"horse", L.t("das Pferd"), L.t("das Pferd")}, {"pet", L.t("das Tier"), L.t("das Tier")}, {"flower", L.t("die Blume"), L.t("die Blume")},
+        {"plant", L.t("die Pflanze"), L.t("die Pflanze")}, {"tree", L.t("den Baum"), L.t("der Baum")}, {"petal", L.t("die Blüte"), L.t("die Blüte")},
+        {"food", L.t("das Essen"), L.t("das Essen")}, {"cake", L.t("den Kuchen"), L.t("der Kuchen")}, {"coffee", L.t("den Kaffee"), L.t("der Kaffee")},
+        {"cup", L.t("die Tasse"), L.t("die Tasse")}, {"fruit", L.t("das Obst"), L.t("das Obst")}, {"bread", L.t("das Brot"), L.t("das Brot")},
+        {"pizza", L.t("die Pizza"), L.t("die Pizza")}, {"dessert", L.t("das Dessert"), L.t("das Dessert")}, {"drink", L.t("das Getränk"), L.t("das Getränk")},
+        {"car", L.t("das Auto"), L.t("das Auto")}, {"vehicle", L.t("das Fahrzeug"), L.t("das Fahrzeug")}, {"bicycle", L.t("das Velo"), L.t("das Velo")},
+        {"motorcycle", L.t("das Motorrad"), L.t("das Motorrad")}, {"wheel", L.t("das Rad"), L.t("das Rad")}, {"bus", L.t("den Bus"), L.t("der Bus")},
+        {"person", L.t("die Person"), L.t("die Person")}, {"selfie", "dich", "du"}, {"smile", L.t("das Lächeln"), L.t("das Lächeln")},
+        {"building", L.t("das Gebäude"), L.t("das Gebäude")}, {"sky", L.t("den Himmel"), L.t("der Himmel")}, {"lake", L.t("den See"), L.t("der See")},
+        {"mountain", L.t("den Berg"), L.t("der Berg")}, {"book", L.t("das Buch"), L.t("das Buch")}, {"guitar", L.t("die Gitarre"), L.t("die Gitarre")},
+        {"shoe", L.t("den Schuh"), L.t("der Schuh")}, {"toy", L.t("das Spielzeug"), L.t("das Spielzeug")}};
 
     /** Character per kind of subject: {drawable, voice}. */
     private static final int FOX = 0, RABBIT = 1, BEAR = 2, CAR = 3, BUNNY = 4;
-    private static final String[] VOICE = {"Yip! ", "Mümmel … ", "Brumm. ", "Box, box! ", "Hoppla – "};
+    private static final String[] VOICE = {"Yip! ", L.t("Mümmel … "), L.t("Brumm. "), "Box, box! ", L.t("Hoppla – ")};
 
     private static int characterFor(List<String> labels) {
         for (String l : labels) {
@@ -302,7 +302,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             String s = l.toLowerCase(Locale.ROOT);
             for (String[] w : WORDS) if (w[0].equals(s)) return new String[]{w[1], w[2]};
         }
-        return new String[]{"das Motiv", "das Motiv"};
+        return new String[]{L.t("das Motiv"), L.t("das Motiv")};
     }
 
     private final class Coach extends View {
@@ -384,14 +384,14 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             String[] w = wordFor(s.labels);
             good = false;
             tx = ty = -1;
-            if (s.brightness < 0.16f) return "Zu dunkel. Geh ans Licht oder halt ganz still.";
+            if (s.brightness < 0.16f) return L.t("Zu dunkel. Geh ans Licht oder halt ganz still.");
             if (upright && Math.abs(tiltSmooth) > 2.5f && Math.abs(tiltSmooth) < 40)
-                return String.format(Locale.GERMAN, "Horizont schief – %.0f° nach %s drehen.", Math.abs(tiltSmooth), tiltSmooth > 0 ? "links" : "rechts");
-            if (!hasBox) return s.labels.isEmpty() ? "Such dir ein Motiv – ich warte." : "Ich sehe " + w[0] + ". Halt drauf!";
+                return String.format(Locale.GERMAN, L.t("Horizont schief – %.0f° nach %s drehen."), Math.abs(tiltSmooth), tiltSmooth > 0 ? "links" : "rechts");
+            if (!hasBox) return s.labels.isEmpty() ? L.t("Such dir ein Motiv – ich warte.") : L.t("Ich sehe ") + w[0] + L.t(". Halt drauf!");
             float area = (br - bl) * (bb - bt), cx = (bl + br) / 2, cy = (bt + bb) / 2;
-            if (area < 0.05f) return "Näher an " + w[0] + " ran – füll das Bild!";
+            if (area < 0.05f) return L.t("Näher an ") + w[0] + L.t(" ran – füll das Bild!");
             boolean cut = bl < 0.015f || br > 0.985f || bt < 0.015f || bb > 0.985f;
-            if (cut && area > 0.45f) return "Ein Schritt zurück – sonst ist " + w[1] + " angeschnitten.";
+            if (cut && area > 0.45f) return L.t("Ein Schritt zurück – sonst ist ") + w[1] + L.t(" angeschnitten.");
             // Nearest grid crossing (rule of thirds); big subjects may also sit in the middle.
             float bestD = Float.MAX_VALUE;
             for (int i = 1; i <= 2; i++) {
@@ -407,14 +407,14 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             if (area > 0.35f && Math.hypot(cx - 0.5f, cy - 0.5f) < 0.08f) {
                 tx = ty = -1;
                 good = true;
-                return "Schön mittig und gross. Perfekt – jetzt!";
+                return L.t("Schön mittig und gross. Perfekt – jetzt!");
             }
             if (bestD > 0.09f) {
-                String where = (ty < 0.5f ? "oben " : "unten ") + (tx < 0.5f ? "links" : "rechts");
-                return "Bring " + w[0] + " auf den Kreuzpunkt " + where + " – dem Pfeil nach.";
+                String where = (ty < 0.5f ? L.t("oben ") : L.t("unten ")) + (tx < 0.5f ? "links" : "rechts");
+                return L.t("Bring ") + w[0] + L.t(" auf den Kreuzpunkt ") + where + L.t(" – dem Pfeil nach.");
             }
             good = true;
-            return "Genau so! " + capital(w[1]) + " sitzt auf dem Gitter. Jetzt!";
+            return L.t("Genau so! ") + capital(w[1]) + L.t(" sitzt auf dem Gitter. Jetzt!");
         }
 
         private String capital(String s) {
@@ -536,7 +536,7 @@ public class CameraActivity extends Activity implements CameraEngine.Listener, S
             drawZoomLook(c);
             drawMeta(c);
             // The character with its tip, above the controls.
-            String say = now - shotAt < 1600 ? "Hab's! Liegt schon auf dem Globus." : hint;
+            String say = now - shotAt < 1600 ? L.t("Hab's! Liegt schon auf dem Globus.") : hint;
             if (!say.isEmpty()) speak(c, w, h, VOICE[character] + say);
             if (animate || now - shotAt < 1600 || !upright || Math.abs(tiltSmooth) > 0.2f) postInvalidateOnAnimation();
             else postInvalidateDelayed(200);       // the 2× look and the numbers stay live

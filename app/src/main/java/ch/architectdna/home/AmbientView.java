@@ -57,7 +57,7 @@ public class AmbientView extends View {
         // label
         t.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL));
         t.setColor(ink3); t.setAlpha(140); t.setTextSize(dp(8.5f)); t.setLetterSpacing(0.14f);
-        String label = which == 0 ? "WETTER" : which == 1 ? "AKKU" : which == 2 ? "NETZ" : "SPEICHER";
+        String label = which == 0 ? L.t("WETTER") : which == 1 ? L.t("AKKU") : which == 2 ? L.t("NETZ") : L.t("SPEICHER");
         c.drawText(label, x, y, t);
         t.setLetterSpacing(0);
 

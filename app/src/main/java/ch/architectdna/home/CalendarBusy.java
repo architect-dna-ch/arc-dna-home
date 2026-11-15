@@ -52,11 +52,11 @@ final class CalendarBusy {
             CalendarContract.Instances.BEGIN + " ASC")) {
             if (cur == null) return out;
             while (cur.moveToNext()) {
-                String title = cur.isNull(0) ? "Termin" : cur.getString(0);
+                String title = cur.isNull(0) ? L.t("Termin") : cur.getString(0);
                 long s = cur.getLong(1), e = cur.getLong(2);
                 boolean allDay = cur.getInt(3) == 1;
                 if (e <= s) e = s + 30 * 60_000L;
-                out.add(new Event(title == null || title.isEmpty() ? "Termin" : title, s, e, allDay));
+                out.add(new Event(title == null || title.isEmpty() ? L.t("Termin") : title, s, e, allDay));
             }
         } catch (RuntimeException ex) {
             DiagLog.log("calendar read: " + ex.getMessage());

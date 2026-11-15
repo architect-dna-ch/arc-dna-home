@@ -92,15 +92,15 @@ public class VpnWarnActivity extends Activity {
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
             if (nm.getNotificationChannel(CHANNEL) == null) {
-                NotificationChannel ch = new NotificationChannel(CHANNEL, "VPN-Warnung", NotificationManager.IMPORTANCE_HIGH);
-                ch.setDescription("Warnt, wenn Tor Browser ohne VPN läuft.");
+                NotificationChannel ch = new NotificationChannel(CHANNEL, L.t("VPN-Warnung"), NotificationManager.IMPORTANCE_HIGH);
+                ch.setDescription(L.t("Warnt, wenn Tor Browser ohne VPN läuft."));
                 nm.createNotificationChannel(ch);
             }
             PendingIntent pi = PendingIntent.getActivity(ctx, 0, ring, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
             Notification n = new Notification.Builder(ctx, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
-                .setContentTitle("Ungeschützt: kein VPN aktiv")
-                .setContentText("Tor Browser ist offen, aber die VPN-Verbindung steht nicht.")
+                .setContentTitle(L.t("Ungeschützt: kein VPN aktiv"))
+                .setContentText(L.t("Tor Browser ist offen, aber die VPN-Verbindung steht nicht."))
                 .setCategory(Notification.CATEGORY_CALL)
                 .setContentIntent(pi)
                 .setFullScreenIntent(pi, true)
@@ -142,7 +142,7 @@ public class VpnWarnActivity extends Activity {
         col.setPadding(dp(28), dp(70), dp(28), dp(56));
         root.addView(col, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView caller = mono("ARC·DNA VPN · EINGEHEND", red, 12);
+        TextView caller = mono(L.t("ARC·DNA VPN · EINGEHEND"), red, 12);
         caller.setLetterSpacing(0.22f);
         col.addView(caller);
 
@@ -150,7 +150,7 @@ public class VpnWarnActivity extends Activity {
         col.addView(pulse, lp(dp(230), dp(230), dp(34)));
 
         title = new TextView(this);
-        title.setText("Ungeschützte Verbindung");
+        title.setText(L.t("Ungeschützte Verbindung"));
         title.setTextColor(ink);
         title.setTextSize(30);
         title.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
@@ -158,7 +158,7 @@ public class VpnWarnActivity extends Activity {
         col.addView(title, lp(-1, -2, dp(28)));
 
         sub = new TextView(this);
-        sub.setText("Tor Browser ist offen, aber kein VPN ist verbunden. Dein Netz sieht, dass du Tor nutzt, und andere Apps laufen unverschlüsselt am VPN vorbei.");
+        sub.setText(L.t("Tor Browser ist offen, aber kein VPN ist verbunden. Dein Netz sieht, dass du Tor nutzt, und andere Apps laufen unverschlüsselt am VPN vorbei."));
         sub.setTextColor(ink2);
         sub.setTextSize(15);
         sub.setGravity(Gravity.CENTER);
@@ -169,10 +169,10 @@ public class VpnWarnActivity extends Activity {
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.CENTER);
-        buttons.addView(callButton("✕", "Ignorieren\n10 Min", red, v -> snooze()));
+        buttons.addView(callButton("✕", L.t("Ignorieren\n10 Min"), red, v -> snooze()));
         View gap = new View(this);
         buttons.addView(gap, new LinearLayout.LayoutParams(dp(70), 1));
-        buttons.addView(callButton("🛡", "VPN\nverbinden", green, v -> openVpn()));
+        buttons.addView(callButton("🛡", L.t("VPN\nverbinden"), green, v -> openVpn()));
         col.addView(buttons);
 
         setContentView(root);
@@ -241,8 +241,8 @@ public class VpnWarnActivity extends Activity {
         stopRing();
         cancelNote(this);
         pulse.setColour(0xFF2BD96B);
-        title.setText("Geschützt ✓");
-        sub.setText("Das VPN steht. Weiter geht's.");
+        title.setText(L.t("Geschützt ✓"));
+        sub.setText(L.t("Das VPN steht. Weiter geht's."));
         main.postDelayed(this::finish, 1400);
     }
 

@@ -144,7 +144,7 @@ final class HeadTracker implements LifecycleOwner {
                     .build());
             }
         } catch (RuntimeException e) {
-            listener.onError(m == Mode.GAZE ? "Blick-Erkennung nicht verfügbar." : "Gesichtserkennung nicht verfügbar.");
+            listener.onError(m == Mode.GAZE ? L.t("Blick-Erkennung nicht verfügbar.") : L.t("Gesichtserkennung nicht verfügbar."));
             return;
         }
         running = true;
@@ -186,7 +186,7 @@ final class HeadTracker implements LifecycleOwner {
                 }
             } catch (Exception e) {
                 running = false;
-                listener.onError("Kamera nicht verfügbar.");
+                listener.onError(L.t("Kamera nicht verfügbar."));
             }
         }, mainExecutor);
     }
@@ -232,7 +232,7 @@ final class HeadTracker implements LifecycleOwner {
             .setNumFaces(1)
             .setOutputFaceBlendshapes(true)
             .setResultListener(this::onLandmarks)
-            .setErrorListener(e -> main.post(() -> listener.onError("Blick-Erkennung: " + e.getMessage())))
+            .setErrorListener(e -> main.post(() -> listener.onError(L.t("Blick-Erkennung: ") + e.getMessage())))
             .build();
         return FaceLandmarker.createFromOptions(context, options);
     }

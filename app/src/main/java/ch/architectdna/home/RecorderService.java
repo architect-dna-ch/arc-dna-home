@@ -69,11 +69,11 @@ public class RecorderService extends Service {
 
     static String relativePath() {
         return Build.VERSION.SDK_INT >= 31 ? Environment.DIRECTORY_RECORDINGS + "/" + FOLDER
-            : Environment.DIRECTORY_MUSIC + "/" + FOLDER + " Aufnahmen";
+            : Environment.DIRECTORY_MUSIC + "/" + FOLDER + L.t(" Aufnahmen");
     }
 
     static File legacyDir(Context c) {
-        File d = new File(c.getExternalFilesDir(Environment.DIRECTORY_MUSIC), "Aufnahmen");
+        File d = new File(c.getExternalFilesDir(Environment.DIRECTORY_MUSIC), L.t("Aufnahmen"));
         //noinspection ResultOfMethodCallIgnored
         d.mkdirs();
         return d;
@@ -97,9 +97,9 @@ public class RecorderService extends Service {
                 v.put(MediaStore.Audio.Media.RELATIVE_PATH, relativePath());
                 v.put(MediaStore.Audio.Media.IS_PENDING, 1);
                 uri = c.getContentResolver().insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, v);
-                if (uri == null) throw new IOException("Speicher nicht verfügbar");
+                if (uri == null) throw new IOException(L.t("Speicher nicht verfügbar"));
                 pfd = c.getContentResolver().openFileDescriptor(uri, "rw");
-                if (pfd == null) throw new IOException("Datei nicht beschreibbar");
+                if (pfd == null) throw new IOException(L.t("Datei nicht beschreibbar"));
                 r.setOutputFile(pfd.getFileDescriptor());
             } else {
                 legacy = new File(legacyDir(c), name);
@@ -220,13 +220,13 @@ public class RecorderService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_cube)
-            .setContentTitle("Aufnahme läuft")
-            .setContentText("Antippen = Rekorder öffnen")
+            .setContentTitle(L.t("Aufnahme läuft"))
+            .setContentText(L.t("Antippen = Rekorder öffnen"))
             .setContentIntent(open)
             .setOngoing(true)
             .setUsesChronometer(true)
             .setWhen(System.currentTimeMillis() - elapsed())
-            .addAction(new Notification.Action.Builder(null, "■ Stopp & sichern", stop).build())
+            .addAction(new Notification.Action.Builder(null, L.t("■ Stopp & sichern"), stop).build())
             .build();
         if (Build.VERSION.SDK_INT >= 30) startForeground(9, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
         else startForeground(9, n);

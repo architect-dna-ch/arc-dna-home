@@ -38,47 +38,47 @@ public class CalmActivity extends Activity {
 
     /** situation, then perspectives (several), then "what to do with it". */
     private static final String[][] SITUATIONS = {
-        {"🚌 Warten",
-            "Du wartest 10 Minuten in der Stadt. In vielen Dörfern fährt der Bus nur jede Stunde – am Sonntag manchmal gar nicht.",
-            "Irgendwo geht gerade jemand zu Fuss zur Arbeit, weil es keinen Bus gibt. Eine Stunde hin, eine zurück.",
-            "Wer im Rollstuhl sitzt, wartet manchmal auf den nächsten Bus, weil im ersten die Rampe nicht geht – und lächelt trotzdem dem Fahrer zu.",
-            "Der Bus kommt. Mit Fahrplan, Heizung und jemandem am Steuer, der für dich früh aufgestanden ist.",
-            "Zehn Minuten sind ein Geschenk, das du nicht bestellt hast: genug für eine Nachricht an jemanden, den du gern hast."},
-        {"🚗 Verspätung",
-            "Du kommst zu spät. Irgendwo hätte jemand gern überhaupt einen Ort, an den er zu spät kommen kann.",
-            "Ein Notarzt steht gerade im selben Stau – und ruft trotzdem ruhig an, dass er gleich da ist.",
-            "In vielen Ländern ist die Strasse zur Schule ein Fluss ohne Brücke. Dein Stau hat Asphalt.",
-            "Zu spät ist eine Zeitangabe, kein Urteil über dich. Schreib kurz Bescheid – und dann atme."},
-        {"🌧 Wetter",
-            "Es regnet auf deine Jacke. Irgendwo regnet es durch ein Dach, das es eigentlich gar nicht gibt.",
-            "Bauern, die seit Wochen auf Regen warten, würden jetzt mit dir tauschen.",
-            "Kalte Hände heute heisst: du hast ein Zuhause, in dem sie wieder warm werden.",
-            "Wetter ist das Einzige, das garantiert vorbeigeht."},
-        {"💼 Arbeit / Schule",
-            "Zu viel zu tun heisst: jemand traut dir etwas zu.",
-            "Viele Menschen suchen gerade Arbeit – oder dürfen gar nicht zur Schule gehen.",
-            "Eine schwierige Aufgabe ist nur eine Aufgabe, die du noch nicht in kleine Stücke geschnitten hast.",
-            "Mach den kleinsten nächsten Schritt. Nur den."},
-        {"📱 Handy / Akku / Netz",
-            "Dein Akku ist leer. Irgendwo lädt jemand sein Handy einmal pro Woche im Dorfladen – für die ganze Familie.",
-            "Langsames Internet ist immer noch ein Fenster in die ganze Welt.",
-            "Ohne Handy siehst du vielleicht etwas, das du sonst verpasst hättest. Schau hoch."},
-        {"🔊 Lärm & Leute",
-            "Laute Menschen um dich heisst: du bist nicht allein. Manche würden viel geben, um nicht allein zu sein.",
-            "Jede nervige Person hat heute auch etwas getragen, das du nicht siehst.",
-            "Ohren können nicht zu – aber du kannst dir einen ruhigen Satz denken und ihn wiederholen."},
-        {"😴 Müde",
-            "Müde sein heisst: du hast heute etwas gegeben.",
-            "Schichtarbeiter, junge Eltern, Pflegende – viele sind gerade müder als du und machen weiter.",
-            "Du darfst langsamer. Heute ist kein Wettrennen."},
-        {"💸 Geld",
-            "Du ärgerst dich über eine Ausgabe – also hattest du etwas, das du ausgeben konntest.",
-            "Viele Menschen rechnen gerade, ob es fürs Essen bis Monatsende reicht.",
-            "Geld kommt und geht. Was du heute für jemanden tust, bleibt."},
-        {"🔧 Kaputt",
-            "Etwas ist kaputt. Es war also etwas da, das funktioniert hat – die meiste Zeit.",
-            "Irgendwo repariert jemand mit Draht und Geduld, was du einfach ersetzen kannst.",
-            "Kaputt ist ein Zustand, kein Ende. Und vielleicht eine Geschichte für später."}};
+        {L.t("🚌 Warten"),
+            L.t("Du wartest 10 Minuten in der Stadt. In vielen Dörfern fährt der Bus nur jede Stunde – am Sonntag manchmal gar nicht."),
+            L.t("Irgendwo geht gerade jemand zu Fuss zur Arbeit, weil es keinen Bus gibt. Eine Stunde hin, eine zurück."),
+            L.t("Wer im Rollstuhl sitzt, wartet manchmal auf den nächsten Bus, weil im ersten die Rampe nicht geht – und lächelt trotzdem dem Fahrer zu."),
+            L.t("Der Bus kommt. Mit Fahrplan, Heizung und jemandem am Steuer, der für dich früh aufgestanden ist."),
+            L.t("Zehn Minuten sind ein Geschenk, das du nicht bestellt hast: genug für eine Nachricht an jemanden, den du gern hast.")},
+        {L.t("🚗 Verspätung"),
+            L.t("Du kommst zu spät. Irgendwo hätte jemand gern überhaupt einen Ort, an den er zu spät kommen kann."),
+            L.t("Ein Notarzt steht gerade im selben Stau – und ruft trotzdem ruhig an, dass er gleich da ist."),
+            L.t("In vielen Ländern ist die Strasse zur Schule ein Fluss ohne Brücke. Dein Stau hat Asphalt."),
+            L.t("Zu spät ist eine Zeitangabe, kein Urteil über dich. Schreib kurz Bescheid – und dann atme.")},
+        {L.t("🌧 Wetter"),
+            L.t("Es regnet auf deine Jacke. Irgendwo regnet es durch ein Dach, das es eigentlich gar nicht gibt."),
+            L.t("Bauern, die seit Wochen auf Regen warten, würden jetzt mit dir tauschen."),
+            L.t("Kalte Hände heute heisst: du hast ein Zuhause, in dem sie wieder warm werden."),
+            L.t("Wetter ist das Einzige, das garantiert vorbeigeht.")},
+        {L.t("💼 Arbeit / Schule"),
+            L.t("Zu viel zu tun heisst: jemand traut dir etwas zu."),
+            L.t("Viele Menschen suchen gerade Arbeit – oder dürfen gar nicht zur Schule gehen."),
+            L.t("Eine schwierige Aufgabe ist nur eine Aufgabe, die du noch nicht in kleine Stücke geschnitten hast."),
+            L.t("Mach den kleinsten nächsten Schritt. Nur den.")},
+        {L.t("📱 Handy / Akku / Netz"),
+            L.t("Dein Akku ist leer. Irgendwo lädt jemand sein Handy einmal pro Woche im Dorfladen – für die ganze Familie."),
+            L.t("Langsames Internet ist immer noch ein Fenster in die ganze Welt."),
+            L.t("Ohne Handy siehst du vielleicht etwas, das du sonst verpasst hättest. Schau hoch.")},
+        {L.t("🔊 Lärm & Leute"),
+            L.t("Laute Menschen um dich heisst: du bist nicht allein. Manche würden viel geben, um nicht allein zu sein."),
+            L.t("Jede nervige Person hat heute auch etwas getragen, das du nicht siehst."),
+            L.t("Ohren können nicht zu – aber du kannst dir einen ruhigen Satz denken und ihn wiederholen.")},
+        {L.t("😴 Müde"),
+            L.t("Müde sein heisst: du hast heute etwas gegeben."),
+            L.t("Schichtarbeiter, junge Eltern, Pflegende – viele sind gerade müder als du und machen weiter."),
+            L.t("Du darfst langsamer. Heute ist kein Wettrennen.")},
+        {L.t("💸 Geld"),
+            L.t("Du ärgerst dich über eine Ausgabe – also hattest du etwas, das du ausgeben konntest."),
+            L.t("Viele Menschen rechnen gerade, ob es fürs Essen bis Monatsende reicht."),
+            L.t("Geld kommt und geht. Was du heute für jemanden tust, bleibt.")},
+        {L.t("🔧 Kaputt"),
+            L.t("Etwas ist kaputt. Es war also etwas da, das funktioniert hat – die meiste Zeit."),
+            L.t("Irgendwo repariert jemand mit Draht und Geduld, was du einfach ersetzen kannst."),
+            L.t("Kaputt ist ein Zustand, kein Ende. Und vielleicht eine Geschichte für später.")}};
 
     private SharedPreferences prefs;
     private int bg, card, line, ink, ink2, ink3, rust, green = 0xFF2BBF6A;
@@ -133,7 +133,7 @@ public class CalmActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView label = mono(11, ink3);
-        label.setText("— GELASSEN");
+        label.setText(L.t("— GELASSEN"));
         label.setLetterSpacing(0.24f);
         head.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(22, ink, true);
@@ -144,7 +144,7 @@ public class CalmActivity extends Activity {
         col.addView(head);
 
         TextView ask = text(28, ink, true);
-        ask.setText("Was nervt gerade?");
+        ask.setText(L.t("Was nervt gerade?"));
         ask.setLetterSpacing(-0.03f);
         col.addView(ask, margins(-1, -2, dp(14)));
 
@@ -181,7 +181,7 @@ public class CalmActivity extends Activity {
         qr.setGravity(Gravity.CENTER_VERTICAL);
         qr.setPadding(0, dp(12), 0, 0);
         TextView more = mono(10, ink3);
-        more.setText("TIPPEN = NOCH EIN BLICK");
+        more.setText(L.t("TIPPEN = NOCH EIN BLICK"));
         qr.addView(more, new LinearLayout.LayoutParams(0, -2, 1f));
         // Keep this one: it goes onto the lock screen (ARC-DNA Live wallpaper) as your heart line.
         heart = mono(11, rust);
@@ -194,7 +194,7 @@ public class CalmActivity extends Activity {
 
         // One minute of breathing.
         TextView bh = mono(11, ink3);
-        bh.setText("— EINE MINUTE ATMEN");
+        bh.setText(L.t("— EINE MINUTE ATMEN"));
         bh.setLetterSpacing(0.2f);
         col.addView(bh, margins(-1, -2, dp(26)));
         Breath breath = new Breath();
@@ -203,11 +203,11 @@ public class CalmActivity extends Activity {
 
         // Gratitude.
         TextView gh = mono(11, ink3);
-        gh.setText("— DREI DINGE, FÜR DIE DU DANKBAR BIST");
+        gh.setText(L.t("— DREI DINGE, FÜR DIE DU DANKBAR BIST"));
         gh.setLetterSpacing(0.2f);
         col.addView(gh, margins(-1, -2, dp(26)));
         EditText[] fields = new EditText[3];
-        String[] hints = {"Etwas Kleines von heute …", "Ein Mensch …", "Etwas, das du sonst übersiehst …"};
+        String[] hints = {L.t("Etwas Kleines von heute …"), L.t("Ein Mensch …"), L.t("Etwas, das du sonst übersiehst …")};
         for (int i = 0; i < 3; i++) {
             EditText e = new EditText(this);
             e.setHint((i + 1) + ". " + hints[i]);
@@ -225,7 +225,7 @@ public class CalmActivity extends Activity {
         streak = mono(12, green);
         sr.addView(streak, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView save = mono(13, 0xFFFFFFFF);
-        save.setText("SPEICHERN ✓");
+        save.setText(L.t("SPEICHERN ✓"));
         save.setPadding(dp(18), dp(11), dp(18), dp(11));
         save.setBackground(box(rust, rust, 22));
         save.setOnClickListener(v -> {
@@ -241,8 +241,8 @@ public class CalmActivity extends Activity {
             remember(b.toString());
             for (EditText f : fields) f.setText("");
             paintDiary();
-            quoteTag.setText("DANKE");
-            quote.setText("Gespeichert. Lies es wieder, wenn der nächste Bus zu spät ist.");
+            quoteTag.setText(L.t("DANKE"));
+            quote.setText(L.t("Gespeichert. Lies es wieder, wenn der nächste Bus zu spät ist."));
         });
         sr.addView(save);
         col.addView(sr, margins(-1, -2, dp(12)));
@@ -290,20 +290,20 @@ public class CalmActivity extends Activity {
         home().edit().putString("heartQuote", pinned ? "" : now).apply();
         heart.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         paintHeart();
-        android.widget.Toast.makeText(this, pinned ? "Vom Sperrbildschirm genommen."
-            : "♥ Auf dem Sperrbildschirm – ARC-DNA erinnert dich daran.", android.widget.Toast.LENGTH_SHORT).show();
+        android.widget.Toast.makeText(this, pinned ? L.t("Vom Sperrbildschirm genommen.")
+            : L.t("♥ Auf dem Sperrbildschirm – ARC-DNA erinnert dich daran."), android.widget.Toast.LENGTH_SHORT).show();
     }
 
     private void paintHeart() {
         if (heart == null) return;
         boolean pinned = quote.getText().toString().equals(home().getString("heartQuote", ""));
-        heart.setText(pinned ? "♥ AUF DEM SPERRBILD" : "♡ AUFS SPERRBILD");
+        heart.setText(pinned ? L.t("♥ AUF DEM SPERRBILD") : L.t("♡ AUFS SPERRBILD"));
         heart.setTextColor(pinned ? 0xFFFFFFFF : rust);
         heart.setBackground(box(pinned ? rust : card, rust, 16));
     }
 
     private void showPerspective() {
-        quoteTag.setText("PERSPEKTIVE " + perspective + " / " + (SITUATIONS[situation].length - 1));
+        quoteTag.setText(L.t("PERSPEKTIVE ") + perspective + " / " + (SITUATIONS[situation].length - 1));
         quote.setAlpha(0f);
         quote.setText(SITUATIONS[situation][perspective]);
         quote.animate().alpha(1f).setDuration(300).start();
@@ -347,7 +347,7 @@ public class CalmActivity extends Activity {
     private void paintDiary() {
         JSONArray a = entries();
         int st = streakDays(a);
-        streak.setText(st == 0 ? "NOCH KEINE SERIE" : "🌱 " + st + (st == 1 ? " TAG" : " TAGE") + " IN FOLGE");
+        streak.setText(st == 0 ? L.t("NOCH KEINE SERIE") : "🌱 " + st + (st == 1 ? L.t(" TAG") : L.t(" TAGE")) + L.t(" IN FOLGE"));
         diary.removeAllViews();
         SimpleDateFormat f = new SimpleDateFormat("EEE d. MMM", Locale.GERMAN);
         for (int i = a.length() - 1; i >= Math.max(0, a.length() - 7); i--) {
@@ -388,24 +388,24 @@ public class CalmActivity extends Activity {
             float k;
             if (start < 0) {
                 k = 0.45f;
-                say = "TIPPEN = START";
+                say = L.t("TIPPEN = START");
             } else {
                 long t = SystemClock.uptimeMillis() - start;
                 if (t > 60_000) {
                     start = -1;
                     k = 0.45f;
-                    say = "GUT GEMACHT 🌿";
+                    say = L.t("GUT GEMACHT 🌿");
                 } else {
                     float cyc = (t % 14_000) / 1000f;
                     if (cyc < 4) {
                         k = 0.35f + 0.65f * ease(cyc / 4);
-                        say = "EINATMEN · " + (4 - (int) cyc);
+                        say = L.t("EINATMEN · ") + (4 - (int) cyc);
                     } else if (cyc < 8) {
                         k = 1f;
-                        say = "HALTEN · " + (8 - (int) cyc);
+                        say = L.t("HALTEN · ") + (8 - (int) cyc);
                     } else {
                         k = 1f - 0.65f * ease((cyc - 8) / 6);
-                        say = "AUSATMEN · " + (14 - (int) cyc);
+                        say = L.t("AUSATMEN · ") + (14 - (int) cyc);
                     }
                     p.setTypeface(Typeface.MONOSPACE);
                     p.setTextSize(dp(10));

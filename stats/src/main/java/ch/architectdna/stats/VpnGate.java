@@ -65,15 +65,15 @@ final class VpnGate {
         TextView lab = tv(a, "— ARC·DNA VPN", rust, 11);
         lab.setTypeface(Typeface.MONOSPACE); lab.setLetterSpacing(0.24f);
         col.addView(lab);
-        TextView t = tv(a, "Ungeschützte Verbindung", ink, 24);
+        TextView t = tv(a, L.t("Ungeschützte Verbindung"), ink, 24);
         t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         t.setPadding(0, (int) (10 * d), 0, (int) (6 * d));
         col.addView(t);
-        TextView s = tv(a, "Tor Browser startet, aber kein VPN ist verbunden. Dein Netz sieht, dass du Tor nutzt.", ink2, 15);
+        TextView s = tv(a, L.t("Tor Browser startet, aber kein VPN ist verbunden. Dein Netz sieht, dass du Tor nutzt."), ink2, 15);
         s.setLineSpacing(0, 1.2f);
         col.addView(s);
 
-        TextView vpn = btn(a, "🛡  VPN verbinden", 0xFFFFFFFF, rust, d);
+        TextView vpn = btn(a, L.t("🛡  VPN verbinden"), 0xFFFFFFFF, rust, d);
         vpn.setOnClickListener(x -> {
             dlg.dismiss();
             Intent pi = a.getPackageManager().getLaunchIntentForPackage(PROTON);
@@ -83,7 +83,7 @@ final class VpnGate {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, (int) (50 * d));
         lp.topMargin = (int) (20 * d);
         col.addView(vpn, lp);
-        TextView anyway = btn(a, "Trotzdem öffnen", ink2, 0, d);
+        TextView anyway = btn(a, L.t("Trotzdem öffnen"), ink2, 0, d);
         anyway.setOnClickListener(x -> {
             dlg.dismiss();
             try { a.startActivity(launch); } catch (RuntimeException ignored) { }

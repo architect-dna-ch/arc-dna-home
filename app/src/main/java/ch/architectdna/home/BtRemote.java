@@ -81,7 +81,7 @@ final class BtRemote {
             in = new DataInputStream(new java.io.BufferedInputStream(s.getInputStream(), 8192));
             String n;
             try { n = s.getRemoteDevice().getName(); } catch (SecurityException e) { n = null; }
-            peerName = n == null ? "Gerät" : n;
+            peerName = n == null ? L.t("Gerät") : n;
         }
 
         void readLoop(Handler2 h) {
@@ -430,16 +430,16 @@ final class BtRemote {
                 .setPackage(YT_MUSIC)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { c.startActivity(i); }
-            catch (RuntimeException e) { if (link != null) link.send("NOTE\tYouTube Music einmal auf dem Tablet öffnen, dann klappt's."); }
+            catch (RuntimeException e) { if (link != null) link.send(L.t("NOTE\tYouTube Music einmal auf dem Tablet öffnen, dann klappt's.")); }
         }
 
         private void startApp() {
             Intent i = c.getPackageManager().getLaunchIntentForPackage(YT_MUSIC);
             try {
                 if (i != null) c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                else if (link != null) link.send("NOTE\tKeine Musik-App aktiv auf dem Tablet.");
+                else if (link != null) link.send(L.t("NOTE\tKeine Musik-App aktiv auf dem Tablet."));
             } catch (RuntimeException e) {
-                if (link != null) link.send("NOTE\tYouTube Music einmal auf dem Tablet öffnen, dann klappt's.");
+                if (link != null) link.send(L.t("NOTE\tYouTube Music einmal auf dem Tablet öffnen, dann klappt's."));
             }
         }
 

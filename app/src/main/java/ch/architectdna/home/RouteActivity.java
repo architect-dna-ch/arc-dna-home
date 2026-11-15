@@ -102,7 +102,7 @@ public class RouteActivity extends Activity {
         head.addView(dash, dl);
         TextView name = mono(11, ink3);
         name.setLetterSpacing(0.24f);
-        name.setText("ROUTEN · ÖV SCHWEIZ");
+        name.setText(L.t("ROUTEN · ÖV SCHWEIZ"));
         head.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(18, ink, true);
         close.setText("✕");
@@ -124,8 +124,8 @@ public class RouteActivity extends Activity {
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
         sl.topMargin = dp(14);
         col.addView(search, sl);
-        fromE = field("Von");
-        toE = field("Nach");
+        fromE = field(L.t("Von"));
+        toE = field(L.t("Nach"));
         search.addView(fromE, new LinearLayout.LayoutParams(0, dp(48), 1f));
         TextView swap = text(18, ink2, true);
         swap.setText("⇄");
@@ -156,7 +156,7 @@ public class RouteActivity extends Activity {
 
         TextView rh = mono(11, ink3);
         rh.setLetterSpacing(0.22f);
-        rh.setText("— DEINE STRECKEN");
+        rh.setText(L.t("— DEINE STRECKEN"));
         rh.setPadding(0, dp(22), 0, dp(8));
         col.addView(rh);
         hint = text(14, ink3, false);
@@ -231,7 +231,7 @@ public class RouteActivity extends Activity {
                     map.invalidate();
                 });
             } catch (Exception e) {
-                main.post(() -> hint.setText("Fahrplan nicht erreichbar: " + e.getMessage()));
+                main.post(() -> hint.setText(L.t("Fahrplan nicht erreichbar: ") + e.getMessage()));
             }
             // Next connections for each of your routes.
             for (RouteLearner.Route r : new ArrayList<>(routes)) {
@@ -323,7 +323,7 @@ public class RouteActivity extends Activity {
         if (im != null) im.hideSoftInputFromWindow(toE.getWindowToken(), 0);
         results.removeAllViews();
         TextView wait = mono(11, ink3);
-        wait.setText("SUCHE …");
+        wait.setText(L.t("SUCHE …"));
         wait.setPadding(0, dp(12), 0, 0);
         results.addView(wait);
         new Thread(() -> {
@@ -332,7 +332,7 @@ public class RouteActivity extends Activity {
                 results.removeAllViews();
                 if (c == null || c.isEmpty()) {
                     TextView none = text(14, ink3, false);
-                    none.setText("Keine Verbindung gefunden.");
+                    none.setText(L.t("Keine Verbindung gefunden."));
                     none.setPadding(0, dp(12), 0, 0);
                     results.addView(none);
                     return;
@@ -359,8 +359,8 @@ public class RouteActivity extends Activity {
         list.removeAllViews();
         hint.setText(routes.isEmpty()
             ? (RouteLearner.allowed(this)
-            ? "ARC-DNA lernt ab jetzt deine Wege: jedes Mal, wenn du am Bahnhof das Home öffnest. Bis dahin: oben suchen – gesuchte Strecken zählen auch."
-            : "Mit Standort lernt ARC-DNA deine Wege (nur auf dem Handy). Ohne: oben suchen – gesuchte Strecken zählen auch.")
+            ? L.t("ARC-DNA lernt ab jetzt deine Wege: jedes Mal, wenn du am Bahnhof das Home öffnest. Bis dahin: oben suchen – gesuchte Strecken zählen auch.")
+            : L.t("Mit Standort lernt ARC-DNA deine Wege (nur auf dem Handy). Ohne: oben suchen – gesuchte Strecken zählen auch."))
             : "");
         int i = 0;
         for (RouteLearner.Route r : routes) {
@@ -394,10 +394,10 @@ public class RouteActivity extends Activity {
         top.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
         if (fromSearch) {
             TextView pin = mono(11, rust);
-            pin.setText("📌 MERKEN");
+            pin.setText(L.t("📌 MERKEN"));
             pin.setOnClickListener(v -> {
                 RouteLearner.searched(this, r.from, r.to, true);
-                pin.setText("✓ GEMERKT");
+                pin.setText(L.t("✓ GEMERKT"));
                 routes = RouteLearner.routes(this);
                 paintRoutes();
             });
@@ -407,14 +407,14 @@ public class RouteActivity extends Activity {
         if (!fromSearch) {
             TextView meta = mono(10, ink3);
             int h = r.usualHour();
-            meta.setText((r.pinned ? "📌 · " : "") + r.count + "× GEFAHREN" + (h >= 0 ? " · MEIST UM " + h + " UHR" : ""));
+            meta.setText((r.pinned ? "📌 · " : "") + r.count + L.t("× GEFAHREN") + (h >= 0 ? L.t(" · MEIST UM ") + h + L.t(" UHR") : ""));
             meta.setPadding(dp(20), dp(4), 0, 0);
             c.addView(meta);
         }
         List<Conn> cs = conns.get(r.key());
         if (cs == null) {
             TextView w = mono(10, ink3);
-            w.setText("LADE VERBINDUNGEN …");
+            w.setText(L.t("LADE VERBINDUNGEN …"));
             w.setPadding(dp(20), dp(8), 0, 0);
             c.addView(w);
         } else {
@@ -436,8 +436,8 @@ public class RouteActivity extends Activity {
                 }
                 TextView info = mono(10, ink2);
                 long in = (x.dep * 1000 - System.currentTimeMillis()) / 60_000;
-                info.setText("  " + (x.product.isEmpty() ? "" : x.product + " · ") + (x.platform.isEmpty() ? "" : "GL. " + x.platform + " · ")
-                    + x.duration + (x.transfers > 0 ? " · " + x.transfers + "× UMST." : " · DIREKT") + (in <= 30 ? " · IN " + Math.max(0, in) + "'" : ""));
+                info.setText("  " + (x.product.isEmpty() ? "" : x.product + " · ") + (x.platform.isEmpty() ? "" : L.t("GL. ") + x.platform + " · ")
+                    + x.duration + (x.transfers > 0 ? " · " + x.transfers + L.t("× UMST.") : L.t(" · DIREKT")) + (in <= 30 ? " · IN " + Math.max(0, in) + "'" : ""));
                 row.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
                 c.addView(row);
             }
@@ -611,7 +611,7 @@ public class RouteActivity extends Activity {
                 p.setColor(ink3);
                 p.setTextSize(dp(10));
                 p.setTextAlign(Paint.Align.CENTER);
-                c.drawText("ZIEHEN = VERSCHIEBEN · ZWEI FINGER = ZOOM", w / 2, h - dp(14), p);
+                c.drawText(L.t("ZIEHEN = VERSCHIEBEN · ZWEI FINGER = ZOOM"), w / 2, h - dp(14), p);
                 p.setTextAlign(Paint.Align.LEFT);
             }
         }

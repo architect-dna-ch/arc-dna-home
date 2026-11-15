@@ -27,40 +27,40 @@ public class BuecherActivity extends Activity {
 
     // {subject, platform, openUrl, redeemUrl, spineColorHex}
     private static final String[][] META = {
-        {"Rechnungswesen", "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
-        {"Mathematik", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "2E9AA6"},
-        {"Deutsch", "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B7A52E"},
-        {"Französisch", "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "5B9BC4"},
-        {"Englisch", "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "46A86E"},
-        {"Wirtschaft & Gesellschaft", "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "3E6B5E"},
+        {L.t("Rechnungswesen"), "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
+        {L.t("Mathematik"), "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "2E9AA6"},
+        {L.t("Deutsch"), "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B7A52E"},
+        {L.t("Französisch"), "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "5B9BC4"},
+        {L.t("Englisch"), "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "46A86E"},
+        {L.t("Wirtschaft & Gesellschaft"), "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "3E6B5E"},
     };
     // per subject: {title, subtitle, code}  (code "im Buch" = printed in the paper book)
     private static final String[][][] BOOKS = {
         {
-            {"Finanzbuchhaltung Grundlagen", "Theorie · Aufgaben · Lösungen", "im Buch"},
-            {"FiBu Repetition — Theorie", "Repetition & Vertiefung", "F211DEL1-UZPWYA"},
-            {"FiBu Repetition — Lösungen", "Repetition & Vertiefung", "F212DEL1-ZMWVCO"},
-            {"Mittelflussrechnung — Theorie", "Aufbau & Analyse", "M151DEL1-XBAOCR"},
-            {"Mittelflussrechnung — Lösungen", "Aufbau & Analyse", "M152DEL1-RKZPOF"},
-            {"Betriebsbuchhaltung — Theorie", "Grundlagen", "B161K1-BKOWHX"},
-            {"Betriebsbuchhaltung — Lösungen", "Grundlagen", "B162K1-PALOXI"},
+            {L.t("Finanzbuchhaltung Grundlagen"), L.t("Theorie · Aufgaben · Lösungen"), "im Buch"},
+            {L.t("FiBu Repetition — Theorie"), L.t("Repetition & Vertiefung"), "F211DEL1-UZPWYA"},
+            {L.t("FiBu Repetition — Lösungen"), L.t("Repetition & Vertiefung"), "F212DEL1-ZMWVCO"},
+            {L.t("Mittelflussrechnung — Theorie"), L.t("Aufbau & Analyse"), "M151DEL1-XBAOCR"},
+            {L.t("Mittelflussrechnung — Lösungen"), L.t("Aufbau & Analyse"), "M152DEL1-RKZPOF"},
+            {L.t("Betriebsbuchhaltung — Theorie"), L.t("Grundlagen"), "B161K1-BKOWHX"},
+            {L.t("Betriebsbuchhaltung — Lösungen"), L.t("Grundlagen"), "B162K1-PALOXI"},
         },
         {
-            {"Mathe Wirtschaftsschule — Band 1", "Aufgaben", "1fi6crwgwzze"},
-            {"Mathe Wirtschaftsschule — Band 2", "Aufgaben", "v1ro6vf2qvax"},
+            {L.t("Mathe Wirtschaftsschule — Band 1"), L.t("Aufgaben"), "1fi6crwgwzze"},
+            {L.t("Mathe Wirtschaftsschule — Band 2"), L.t("Aufgaben"), "v1ro6vf2qvax"},
         },
         {
-            {"Deutsch für die BM", "Grundlagenbuch", "3yjmvh8zqlot"},
+            {L.t("Deutsch für die BM"), L.t("Grundlagenbuch"), "3yjmvh8zqlot"},
         },
         {
-            {"abc DELF Junior B2", "3e édition · inkl. eBook", "74Q273F8"},
+            {"abc DELF Junior B2", L.t("3e édition · inkl. eBook"), "74Q273F8"},
         },
         {
             {"Complete First — Student's Book", "B2 · Student's Book + Digital Pack", "E8V8-9M8R3-VY6U-R6Z0"},
             {"Complete First — Workbook Audio", "B2 · Workbook Audio", "6X9X-XJQX-EL6F-9MKN"},
         },
         {
-            {"W&G BM Sonderedition", "Recht · VWL · BWL · Digitale LM · 3 Jahre", "LIC-NHPX2PJROQKNDEVPRNN1"},
+            {"W&G BM Sonderedition", L.t("Recht · VWL · BWL · Digitale LM · 3 Jahre"), "LIC-NHPX2PJROQKNDEVPRNN1"},
         },
     };
 
@@ -98,7 +98,7 @@ public class BuecherActivity extends Activity {
         }
         sv.addView(col);
 
-        TextView eye = mono("— BIBLIOTHEK", rust);
+        TextView eye = mono(L.t("— BIBLIOTHEK"), rust);
         eye.setLetterSpacing(0.22f);
         col.addView(eye);
         TextView h1 = new TextView(this);
@@ -109,7 +109,7 @@ public class BuecherActivity extends Activity {
         h1.setPadding(0, dp(6), 0, dp(4));
         col.addView(h1);
         TextView sub = new TextView(this);
-        sub.setText("Alle E-Books über edubase, RW-Lehrmittel und kv-edupool. Tippen öffnet die richtige Plattform – du bist dort schon eingeloggt.");
+        sub.setText(L.t("Alle E-Books über edubase, RW-Lehrmittel und kv-edupool. Tippen öffnet die richtige Plattform – du bist dort schon eingeloggt."));
         sub.setTextColor(ink2);
         sub.setTextSize(14);
         sub.setPadding(0, 0, 0, dp(10));
@@ -149,8 +149,8 @@ public class BuecherActivity extends Activity {
             row.setOnClickListener(v -> {
                 if (inBook) { open(openUrl); return; }
                 ClipboardManager cm = getSystemService(ClipboardManager.class);
-                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
-                toast("✓ Code kopiert: " + code);
+                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText(L.t("Aktivierungscode"), code));
+                toast(L.t("✓ Code kopiert: ") + code);
             });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
             clp.bottomMargin = dp(10);
@@ -178,7 +178,7 @@ public class BuecherActivity extends Activity {
             c.addView(st);
 
             if (inBook) {
-                TextView note = mono("📖  Code steht im gedruckten Buch", ink3);
+                TextView note = mono(L.t("📖  Code steht im gedruckten Buch"), ink3);
                 note.setTextSize(11.5f);
                 c.addView(note);
             } else {
@@ -188,23 +188,23 @@ public class BuecherActivity extends Activity {
                 codeRow.setClickable(true);
                 codeRow.setOnClickListener(v -> {
                     ClipboardManager cm = getSystemService(ClipboardManager.class);
-                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aktivierungscode", code));
-                    toast("Code kopiert: " + code);
+                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText(L.t("Aktivierungscode"), code));
+                    toast(L.t("Code kopiert: ") + code);
                 });
                 c.addView(codeRow);
 
                 LinearLayout actions = new LinearLayout(this);
                 actions.setPadding(0, dp(9), 0, 0);
                 if (!redeemUrl.isEmpty()) {
-                    TextView red = pill(done ? "Nochmal einlösen ↗" : "Einlösen ↗", rust, 0xFFFFFFFF);
+                    TextView red = pill(done ? L.t("Nochmal einlösen ↗") : L.t("Einlösen ↗"), rust, 0xFFFFFFFF);
                     red.setOnClickListener(v -> open(redeemUrl));
                     actions.addView(red);
                 }
-                final TextView akt = pill(done ? "✓ aktiviert" : "Als aktiviert markieren", 0x00000000, done ? rust : ink2);
+                final TextView akt = pill(done ? L.t("✓ aktiviert") : L.t("Als aktiviert markieren"), 0x00000000, done ? rust : ink2);
                 akt.setOnClickListener(v -> {
                     boolean now = !prefs.getBoolean("bookAkt:" + code, false);
                     prefs.edit().putBoolean("bookAkt:" + code, now).apply();
-                    akt.setText(now ? "✓ aktiviert" : "Als aktiviert markieren");
+                    akt.setText(now ? L.t("✓ aktiviert") : L.t("Als aktiviert markieren"));
                     akt.setTextColor(now ? rust : ink2);
                 });
                 LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-2, -2);
@@ -213,7 +213,7 @@ public class BuecherActivity extends Activity {
                 c.addView(actions);
             }
 
-            TextView openRow = mono("ÖFFNEN  ↗", rust);
+            TextView openRow = mono(L.t("ÖFFNEN  ↗"), rust);
             openRow.setTextSize(11f);
             openRow.setLetterSpacing(0.08f);
             openRow.setPadding(0, dp(10), dp(8), dp(4));
@@ -225,7 +225,7 @@ public class BuecherActivity extends Activity {
         }
 
         if (!redeemUrl.isEmpty()) {
-            TextView all = mono("Alle " + subject + " öffnen ↗", ink3);
+            TextView all = mono(L.t("Alle ") + subject + L.t(" öffnen ↗"), ink3);
             all.setTextSize(11.5f);
             all.setPadding(dp(2), 0, 0, dp(2));
             all.setOnClickListener(v -> open(openUrl));
@@ -281,7 +281,7 @@ public class BuecherActivity extends Activity {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (RuntimeException e) {
-            toast("Kein Browser gefunden");
+            toast(L.t("Kein Browser gefunden"));
         }
     }
 

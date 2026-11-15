@@ -94,7 +94,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final int REQ_AUDIO = 8;
     private static final int REQ_NOTIFY = 9;
     private static final String[][] PROJECTS = {
-        {"VOID FREQ", " · Fokus", "https://freq.architect-dna.ch"},
+        {"VOID FREQ", L.t(" · Fokus"), "https://freq.architect-dna.ch"},
         {"Einspruch", "", "https://einspruch.architect-dna.ch"},
         {"LIA", "", "https://architect-dna.ch/lia"},
         {"DORA", "", "https://architect-dna-ch.github.io/dora/"},
@@ -395,7 +395,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             });
             list.addView(rowv, margins(-1, -2, 0, dp(8), 0, 0));
         }
-        arcSheet("Theme", "Home + Sperrbildschirm · mehr kommen dazu", null, list, new String[]{"Schliessen"}, k -> { });
+        arcSheet("Theme", L.t("Home + Sperrbildschirm · mehr kommen dazu"), null, list, new String[]{L.t("Schliessen")}, k -> { });
     }
 
     private void pickColours() {
@@ -465,7 +465,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.addView(net);
         TextView full = monoText(12, rust);
         full.setText("✨ ARC  ");
-        full.setContentDescription("Volle ARC-DNA einschalten");
+        full.setContentDescription(L.t("Volle ARC-DNA einschalten"));
         full.setOnClickListener(v -> {
             prefs.edit().putBoolean("minimal", false).apply();
             recreate();
@@ -491,7 +491,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(appTiles(), margins(-1, -2, 0, dp(14), 0, 0));
 
         TextView all = text(15, ink, true);
-        all.setText("▦   Alle Apps");
+        all.setText(L.t("▦   Alle Apps"));
         all.setGravity(Gravity.CENTER);
         all.setPadding(dp(16), dp(15), dp(16), dp(15));
         all.setBackground(box(card, line, 16));
@@ -538,7 +538,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.addView(sos);
         TextView full = monoText(12, rust);
         full.setText("✨ ARC  ");
-        full.setContentDescription("Volle ARC-DNA");
+        full.setContentDescription(L.t("Volle ARC-DNA"));
         full.setOnClickListener(v -> {
             prefs.edit().putBoolean("minimal", false).apply();
             recreate();
@@ -564,7 +564,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         c.addView(appTiles(), margins(-1, -2, 0, dp(14), 0, 0));
 
         TextView all = text(15, ink, true);
-        all.setText("▦   Alle Apps");
+        all.setText(L.t("▦   Alle Apps"));
         all.setGravity(Gravity.CENTER);
         all.setPadding(dp(16), dp(15), dp(16), dp(15));
         all.setBackground(box(card, line, 16));
@@ -631,7 +631,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.addView(label("Architect · DNA"), new LinearLayout.LayoutParams(0, -2, 1f));
         headLabel = monoText(11, rust);
-        headLabel.setText("◉ KOPF  ");
+        headLabel.setText(L.t("◉ KOPF  "));
         headLabel.setVisibility(View.GONE);
         // Long hold on the camera ◉: calibrate the nod by hand (live camera, guided dots, confirm / redo).
         headLabel.setOnLongClickListener(v -> {
@@ -640,8 +640,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         });
         top.addView(headLabel);
         torchChip = monoText(11, rust);
-        torchChip.setText("🔦 AUS  ");
-        torchChip.setContentDescription("Taschenlampe ausschalten");
+        torchChip.setText(L.t("🔦 AUS  "));
+        torchChip.setContentDescription(L.t("Taschenlampe ausschalten"));
         torchChip.setVisibility(View.GONE);
         torchChip.setOnClickListener(v -> {
             torchDeclined = true;       // not again until you come back home
@@ -650,11 +650,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         top.addView(torchChip);
         // Under 15 %: what's paused, and that it comes back by itself.
         lowChip = monoText(11, rust);
-        lowChip.setText("🔋 SPART  ");
+        lowChip.setText(L.t("🔋 SPART  "));
         lowChip.setVisibility(View.GONE);
-        lowChip.setOnClickListener(v -> arcSheet("Akku-Schutz", "Unter " + LowPower.LIMIT + " % ohne Ladekabel",
-            "Pausiert: Kopf-Scroll und Gesichts-Wache (Kamera), Diebstahl-Wache (Kamera, Mikro, GPS), "
-                + "Musik-Analyse im Hintergrund und das Glühen. Alles kommt von selbst zurück, sobald du lädst.",
+        lowChip.setOnClickListener(v -> arcSheet(L.t("Akku-Schutz"), L.t("Unter ") + LowPower.LIMIT + L.t(" % ohne Ladekabel"),
+            L.t("Pausiert: Kopf-Scroll und Gesichts-Wache (Kamera), Diebstahl-Wache (Kamera, Mikro, GPS), ")
+                + L.t("Musik-Analyse im Hintergrund und das Glühen. Alles kommt von selbst zurück, sobald du lädst."),
             null, new String[]{"Okay"}, k -> { }));
         top.addView(lowChip);
         net = monoText(11, ink3);
@@ -662,14 +662,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView calmBtn = monoText(16, rust);
         calmBtn.setText("🆘 ");
         calmBtn.setPadding(dp(8), dp(2), dp(8), dp(2));
-        calmBtn.setContentDescription("Ruheinsel – wenn alles zu viel ist");
+        calmBtn.setContentDescription(L.t("Ruheinsel – wenn alles zu viel ist"));
         calmBtn.setOnClickListener(v -> openCrisis());
         top.addView(calmBtn);
         top.addView(gearButton());
         top.setOnLongClickListener(v -> {       // long-press the header toggles the mockup-clean home
             prefs.edit().putBoolean("mockHome", !mockHome()).apply();
             applyMockHome();
-            pop(mockHome() ? "Mock-Home · lang drücken = voller Home" : "Voller Home · lang drücken = Mock");
+            pop(mockHome() ? L.t("Mock-Home · lang drücken = voller Home") : L.t("Voller Home · lang drücken = Mock"));
             return true;
         });
         content.addView(top);
@@ -758,7 +758,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 if (passMs >= 650) return;
                 fox.dizzy(1500);
                 if (random.nextInt(3) == 0) {
-                    String[] l = {"Wo ist er hin?!", "Zu schnell …", "Mir ist schwindlig."};
+                    String[] l = {L.t("Wo ist er hin?!"), L.t("Zu schnell …"), L.t("Mir ist schwindlig.")};
                     say(l[random.nextInt(l.length)], 1300);
                 }
             }
@@ -792,7 +792,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         widgetStrip = new LinearLayout(this);
         widgetStrip.setOrientation(LinearLayout.VERTICAL);
         content.addView(widgetStrip, margins(-1, -2, 0, dp(4), 0, 0));
-        foldable("Suche", "search", true, searchRow(), dp(20));
+        foldable(L.t("Suche"), "search", true, searchRow(), dp(20));
         // Tablet: the dashboard from the sketch; Apps, ARC-DNA and Zuletzt move into its folder dock.
         if (Dashboard.wanted(this)) {
             dashboard = new Dashboard(this, new int[]{ink, ink2, ink3, rust, card, line}, new Dashboard.Host() {
@@ -841,7 +841,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         recentHome.setOrientation(LinearLayout.VERTICAL);
         // Keep the row's last height while the apps load (theme switch, restart), so nothing jumps.
         recentHome.setMinimumHeight(prefs.getInt("recentH", 0));
-        foldable("Zuletzt", "recentRow", true, recentHome, dp(22));   // new key: the old "recent" fold was closed by default
+        foldable(L.t("Zuletzt"), "recentRow", true, recentHome, dp(22));   // new key: the old "recent" fold was closed by default
         intoFolder(2);
 
         music = new MusicCard(this, new int[]{ink, ink2, ink3, rust, card, line}, new MusicCard.Host() {
@@ -877,30 +877,30 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // Mediathek inline: all apps, folded by default.
         homeLib = new LinearLayout(this);
         homeLib.setOrientation(LinearLayout.VERTICAL);
-        foldable("Mediathek", "lib", false, homeLib, dp(26));
+        foldable(L.t("Mediathek"), "lib", false, homeLib, dp(26));
 
         LinearLayout today = new LinearLayout(this);
         today.setOrientation(LinearLayout.VERTICAL);
         today.addView(alarmCard, margins(-1, -2, 0, dp(6), 0, 0));
         today.addView(focusCard(), margins(-1, -2, 0, dp(12), 0, 0));
-        foldable("Heute & Wecker", "today", false, today, dp(22));
+        foldable(L.t("Heute & Wecker"), "today", false, today, dp(22));
 
 
-        foldable("Projekte", "projects", false, projectChips(), dp(22));
+        foldable(L.t("Projekte"), "projects", false, projectChips(), dp(22));
 
         TextView hint = monoText(11, ink3);
-        hint.setText("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Buddy (Fuchs, Bär, Hase oder F1 – in den Einstellungen): tippen = Wecker, Akku, Musik, Heute zählt · halten = Tritt ins Glas · schütteln = Erdbeben");
+        hint.setText(L.t("Abschnitt-Titel tippen = auf/zu · leere Fläche halten = volle Mediathek · Hasen-Knopf unten links = Fuchsjagd · wischen ← dunkel, → hell · Kreis = drehen · Buddy (Fuchs, Bär, Hase oder F1 – in den Einstellungen): tippen = Wecker, Akku, Musik, Heute zählt · halten = Tritt ins Glas · schütteln = Erdbeben"));
         hint.setLineSpacing(0, 1.3f);
         hint.setTextColor(ink2);
         hint.setPadding(dp(14), dp(12), dp(14), dp(12));
         hint.setBackground(box(card, line, 16));          // its own card, like the music player
-        foldable("Tipps", "hints", false, hint, dp(20));
+        foldable(L.t("Tipps"), "hints", false, hint, dp(20));
 
         // While hidden, this transparent layer takes the tap that brings everything back,
         // so the faded tiles underneath can't be opened by accident.
         shield = new View(this);
         shield.setVisibility(View.GONE);
-        shield.setContentDescription("Apps einblenden");
+        shield.setContentDescription(L.t("Apps einblenden"));
         shield.setOnClickListener(v -> setHidden(false));
         shield.setOnLongClickListener(v -> {
             setHidden(false);
@@ -936,7 +936,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         round.setStroke(dp(1.5f), rust);
         gameButton.setBackground(round);
         gameButton.setElevation(dp(4));
-        gameButton.setContentDescription("Fuchsjagd starten");
+        gameButton.setContentDescription(L.t("Fuchsjagd starten"));
         gameButton.setOnClickListener(v -> startGame());
         root.addView(gameButton, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM | Gravity.START));
         gameButton.setVisibility(View.GONE);
@@ -952,7 +952,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         cr.setStroke(dp(1.5f), rust);
         claudeFab.setBackground(cr);
         claudeFab.setElevation(dp(4));
-        claudeFab.setContentDescription("Menü: Claude, Mediathek, Aufräumen");
+        claudeFab.setContentDescription(L.t("Menü: Claude, Mediathek, Aufräumen"));
         // Tap: bubbles float up (Claude, Mediathek, buddy, broom). Hold: straight to Claude.
         claudeFab.setOnClickListener(v -> toggleFabMenu());
         claudeFab.setOnLongClickListener(v -> {
@@ -1168,7 +1168,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(alarmRow);
         box.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView hint = monoText(10, ink3);
-        hint.setText("HALTEN = AN/AUS");
+        hint.setText(L.t("HALTEN = AN/AUS"));
         box.addView(hint);
         box.setOnClickListener(v -> openApp(new Intent(this, WeckerActivity.class), getDrawable(R.drawable.ic_line_alarm)));
         box.setOnLongClickListener(v -> {
@@ -1186,7 +1186,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         TextView k = monoText(10, ink3);
         k.setLetterSpacing(0.16f);
-        k.setText("HEUTE ZÄHLT");
+        k.setText(L.t("HEUTE ZÄHLT"));
         box.addView(k);
 
         focus = new EditText(this);
@@ -1194,7 +1194,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         focus.setPadding(0, dp(6), 0, 0);
         focus.setTextColor(ink);
         focus.setHintTextColor(ink3);
-        focus.setHint("Eine Sache für heute…");
+        focus.setHint(L.t("Eine Sache für heute…"));
         focus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         focus.setTypeface(Typeface.DEFAULT_BOLD);
         // Wraps onto up to 4 lines instead of scrolling sideways; Enter still means done.
@@ -1221,7 +1221,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout row = new LinearLayout(this);
         row.setPadding(0, 0, 0, dp(4));       // room for the field's lower edge (it was clipped)
         row.setClipToPadding(false);
-        webQuery = field("Apps suchen…");
+        webQuery = field(L.t("Apps suchen…"));
         webQuery.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         webQuery.setOnEditorActionListener((v, actionId, event) -> {
             webSearch();
@@ -1234,7 +1234,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         go.setText("→");
         go.setGravity(Gravity.CENTER);
         go.setBackground(box(LIGHT_RED, LIGHT_RED, 16));
-        go.setContentDescription("Apps suchen");
+        go.setContentDescription(L.t("Apps suchen"));
         go.setOnClickListener(v -> webSearch());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(50), dp(50));
         lp.leftMargin = dp(8);
@@ -1266,13 +1266,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** The APPS row's entries {label, icon, intent}: the mode's, else the standard eight. */
     private Object[][] mainItems() {
         Object[][] items = {
-            {"Telefon", R.drawable.ic_phone, new Intent(this, DialerActivity.class)},
+            {L.t("Telefon"), R.drawable.ic_phone, new Intent(this, DialerActivity.class)},
             {"SMS", R.drawable.ic_sms, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)},
             {"Mail", R.drawable.ic_mail, appOr("ch.protonmail.android",
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL))},
-            {"Kalender", R.drawable.ic_calendar, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)},
-            {"Karten", R.drawable.ic_map, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS)},
-            {"Kamera", R.drawable.ic_camera, new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)},
+            {L.t("Kalender"), R.drawable.ic_calendar, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)},
+            {L.t("Karten"), R.drawable.ic_map, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS)},
+            {L.t("Kamera"), R.drawable.ic_camera, new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)},
             {"SBB", R.drawable.ic_train, appOr("ch.sbb.mobile.android.b2c",
                 new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.sbb.ch")))},
             {"Claude", R.drawable.ic_claude, appOr("com.anthropic.claude",
@@ -1302,7 +1302,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             // Telefon: long-press = the system phone app (favourites, voicemail, settings).
             if (i == 0) tile.setOnLongClickListener(v -> {
                 Intent system = getPackageManager().getLaunchIntentForPackage("com.google.android.dialer");
-                open(system != null ? system : Intent.createChooser(new Intent(Intent.ACTION_DIAL), "Telefon-App"));
+                open(system != null ? system : Intent.createChooser(new Intent(Intent.ACTION_DIAL), L.t("Telefon-App")));
                 return true;
             });
             row.addView(tile, weighted(i % cols != 0));
@@ -1356,7 +1356,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Mediathek"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("Mediathek")), new LinearLayout.LayoutParams(0, -2, 1f));
         headToggle = monoText(11, ink2);
         headToggle.setPadding(dp(10), dp(8), dp(10), dp(8));
         headToggle.setBackground(box(card, line, 20));
@@ -1371,13 +1371,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(14), dp(4), dp(4), dp(4));
-        close.setContentDescription("Mediathek schliessen");
+        close.setContentDescription(L.t("Mediathek schliessen"));
         close.setOnClickListener(v -> closeLibrary());
         head.addView(close);
         body.addView(head);
         paintHeadToggle();
 
-        libSearch = field("Apps suchen…");
+        libSearch = field(L.t("Apps suchen…"));
         libSearch.setImeOptions(EditorInfo.IME_ACTION_GO);
         libSearch.addTextChangedListener(new SimpleWatcher() {
             @Override
@@ -1393,11 +1393,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         col.addView(libSearch, new LinearLayout.LayoutParams(-1, dp(50)));
         col.addView(libScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        body.addView(label("Zuletzt"), margins(-1, -2, 0, dp(20), 0, 0));
+        body.addView(label(L.t("Zuletzt")), margins(-1, -2, 0, dp(20), 0, 0));
         recentLib = new LinearLayout(this);
         recentLib.setOrientation(LinearLayout.VERTICAL);
         body.addView(recentLib, margins(-1, -2, 0, dp(10), 0, 0));
-        body.addView(label("Alle Apps"), margins(-1, -2, 0, dp(20), 0, 0));
+        body.addView(label(L.t("Alle Apps")), margins(-1, -2, 0, dp(20), 0, 0));
 
         libGrid = new LinearLayout(this);
         libGrid.setOrientation(LinearLayout.VERTICAL);
@@ -1405,7 +1405,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         body.addView(libGrid);
 
         updateLib = monoText(11, ink2);
-        updateLib.setText("UPDATES EINRICHTEN");
+        updateLib.setText(L.t("UPDATES EINRICHTEN"));
         updateLib.setPadding(dp(4), dp(12), dp(4), dp(8));
         updateLib.setOnClickListener(v -> {
             if (updater.token().isEmpty()) showTokenDialog();
@@ -1417,7 +1417,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return true;
         });
         TextView settingsLink = monoText(11, ink2);
-        settingsLink.setText("⚙ EINSTELLUNGEN →");
+        settingsLink.setText(L.t("⚙ EINSTELLUNGEN →"));
         settingsLink.setPadding(dp(4), dp(16), dp(4), dp(8));
         settingsLink.setOnClickListener(v -> showSettings());
         body.addView(settingsLink, margins(-1, -2, 0, dp(16), 0, 0));
@@ -1432,7 +1432,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView g = text(18, ink2, false);
         g.setText("⚙");
         g.setPadding(dp(14), dp(2), dp(4), dp(2));
-        g.setContentDescription("Einstellungen");
+        g.setContentDescription(L.t("Einstellungen"));
         g.setOnClickListener(v -> showSettings());
         return g;
     }
@@ -1456,53 +1456,53 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Einstellungen"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("Einstellungen")), new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(14), dp(4), dp(4), dp(4));
-        close.setContentDescription("Einstellungen schliessen");
+        close.setContentDescription(L.t("Einstellungen schliessen"));
         close.setOnClickListener(v -> closeSettings());
         head.addView(close);
         col.addView(head);
 
-        LinearLayout home = settingsGroup(col, "Startseite");
-        settingsRow(home, "ARC·Tap · Theme/Buddy teilen", () -> "An dein Partner-Gerät senden (Bluetooth)", v -> showArcTap(), null);
+        LinearLayout home = settingsGroup(col, L.t("Startseite"));
+        settingsRow(home, L.t("ARC·Tap · Theme/Buddy teilen"), () -> L.t("An dein Partner-Gerät senden (Bluetooth)"), v -> showArcTap(), null);
         if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
-            settingsRow(home, "Tablet-Dashboard", () -> prefs.getBoolean("dashboard", true) ? "AN · Wetter, Uhr, Garten, Ordner" : "AUS · Listen", v -> {
+            settingsRow(home, L.t("Tablet-Dashboard"), () -> prefs.getBoolean("dashboard", true) ? L.t("AN · Wetter, Uhr, Garten, Ordner") : L.t("AUS · Listen"), v -> {
                 prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
                 recreate();
             }, null);
         }
-        settingsRow(home, "Zuletzt-Karussell", () -> prefs.getInt("recentCount", 8) + " Apps", v -> {
+        settingsRow(home, L.t("Zuletzt-Karussell"), () -> prefs.getInt("recentCount", 8) + " Apps", v -> {
             int[] steps = {4, 8, 12, 16, 24};
             int now = prefs.getInt("recentCount", 8), next = steps[0];
             for (int i = 0; i < steps.length; i++) if (steps[i] == now) next = steps[(i + 1) % steps.length];
             prefs.edit().putInt("recentCount", next).apply();
             refreshRecents();
         }, null);
-        settingsRow(home, "Gesichts-Sperre nach dem Entsperren", () -> prefs.getBoolean("faceLock", false) ? "An" : "Aus", v -> {
+        settingsRow(home, L.t("Gesichts-Sperre nach dem Entsperren"), () -> prefs.getBoolean("faceLock", false) ? L.t("An") : "Aus", v -> {
             boolean on = !prefs.getBoolean("faceLock", false);
             if (on && !biometricReady()) {
-                pop("Erst Gesichtsentsperrung oder Fingerabdruck in Android einrichten");
+                pop(L.t("Erst Gesichtsentsperrung oder Fingerabdruck in Android einrichten"));
                 return;
             }
             prefs.edit().putBoolean("faceLock", on).apply();
         }, null);
-        settingsRow(home, "Taschenlampe im Dunkeln", () -> prefs.getBoolean("autoTorch", true) ? "Automatisch" : "Aus",
+        settingsRow(home, L.t("Taschenlampe im Dunkeln"), () -> prefs.getBoolean("autoTorch", true) ? L.t("Automatisch") : "Aus",
             v -> prefs.edit().putBoolean("autoTorch", !prefs.getBoolean("autoTorch", true)).apply(), null);
 
-        LinearLayout type = settingsGroup(col, "Typografie");
-        settingsRow(type, "Schrift", () -> FONTS[Math.max(0, Math.min(FONTS.length - 1, prefs.getInt("font", 0)))], v -> {
+        LinearLayout type = settingsGroup(col, L.t("Typografie"));
+        settingsRow(type, L.t("Schrift"), () -> FONTS[Math.max(0, Math.min(FONTS.length - 1, prefs.getInt("font", 0)))], v -> {
             prefs.edit().putInt("font", (prefs.getInt("font", 0) + 1) % FONTS.length).apply();
             applyTypography();
         }, null);
-        settingsRow(type, "Textgrösse", () -> SIZES[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))], v -> {
+        settingsRow(type, L.t("Textgrösse"), () -> SIZES[Math.max(0, Math.min(SIZES.length - 1, prefs.getInt("fontSize", 1)))], v -> {
             prefs.edit().putInt("fontSize", (prefs.getInt("fontSize", 1) + 1) % SIZES.length).apply();
             applyTypography();
         }, null);
 
-        LinearLayout sync = settingsGroup(col, "Musik-Sync · Bluetooth");
-        settingsRow(sync, "Mit Tablet / Handy abgleichen", () -> {
+        LinearLayout sync = settingsGroup(col, L.t("Musik-Sync · Bluetooth"));
+        settingsRow(sync, L.t("Mit Tablet / Handy abgleichen"), () -> {
             String n = BtSync.peerName(this);
             long at = BtSync.peer(this).getLong("at", 0);
             return n == null ? "Jetzt ›" : n + " · " + new java.text.SimpleDateFormat("HH:mm", Locale.GERMAN).format(new java.util.Date(at));
@@ -1511,22 +1511,22 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 31);
                 return;
             }
-            pop("Suche gekoppelte Geräte mit ARC-DNA …");
+            pop(L.t("Suche gekoppelte Geräte mit ARC-DNA …"));
             BtSync.syncSoon(this, 0, name -> {
-                pop(name != null ? "Abgeglichen mit " + name + "." : "Kein Partner gefunden.\nBeide Geräte koppeln, Bluetooth an und ARC-DNA auf beiden öffnen.");
+                pop(name != null ? L.t("Abgeglichen mit ") + name + "." : L.t("Kein Partner gefunden.\nBeide Geräte koppeln, Bluetooth an und ARC-DNA auf beiden öffnen."));
                 if (music != null) music.refreshStats();
             });
         }, null);
 
-        LinearLayout head2 = settingsGroup(col, "Kopf-Scroll");
-        settingsRow(head2, "In der Mediathek", () -> {
+        LinearLayout head2 = settingsGroup(col, L.t("Kopf-Scroll"));
+        settingsRow(head2, L.t("In der Mediathek"), () -> {
             String m = headMode();
             return m.equals("nod") ? "Nicken" : "Aus";
         }, v -> cycleHeadMode(), null);
         settingsRow(head2, "Nicken kalibrieren", () -> prefs.contains("nodMid") ? "kalibriert" : "noch nie", v -> calibrate("nod"), null);
-        settingsRow(head2, "Bei jedem Start neu zentrieren", () -> prefs.getBoolean("nodAlwaysCalib", true) ? "Still, automatisch" : "Aus",
+        settingsRow(head2, L.t("Bei jedem Start neu zentrieren"), () -> prefs.getBoolean("nodAlwaysCalib", true) ? L.t("Still, automatisch") : "Aus",
             v -> prefs.edit().putBoolean("nodAlwaysCalib", !prefs.getBoolean("nodAlwaysCalib", true)).apply(), null);
-        settingsRow(head2, "In anderen Apps · pro App", () -> prefs.getBoolean("scrollOutside", false) ? "An" : "Aus",
+        settingsRow(head2, L.t("In anderen Apps · pro App"), () -> prefs.getBoolean("scrollOutside", false) ? L.t("An") : "Aus",
             v -> showAppScrollSettings(), null);
 
         LinearLayout sys = settingsGroup(col, "System");
@@ -1534,7 +1534,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             showTokenDialog();
             return true;
         });
-        settingsRow(sys, "Kamera-Debug", () -> prefs.getBoolean("camDebug", false) ? "an · ● nimmt auf · aus = teilen" : "aus · an = aufnehmen", v -> {
+        settingsRow(sys, L.t("Kamera-Debug"), () -> prefs.getBoolean("camDebug", false) ? L.t("an · ● nimmt auf · aus = teilen") : L.t("aus · an = aufnehmen"), v -> {
             boolean off = prefs.getBoolean("camDebug", false);
             prefs.edit().putBoolean("camDebug", !off).apply();
             if (off && HeadDebugView.hasRecording()) handler.postDelayed(() -> HeadDebugView.saveAndShare(this), 300);
@@ -1543,8 +1543,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 startHead();
             }
         }, null);
-        settingsRow(sys, "Tipps", () -> Coach.seenCount(this) + "/" + Coach.TIPS.length + (Coach.isOff(this) ? " · pausiert" : " · wächst mit der Zeit"), v -> showTipsList(), null);
-        settingsRow(sys, "Diagnose an Claude senden", () -> "anonym · halten = teilen", v -> uploadDiagnostics(), v -> {
+        settingsRow(sys, L.t("Tipps"), () -> Coach.seenCount(this) + "/" + Coach.TIPS.length + (Coach.isOff(this) ? L.t(" · pausiert") : L.t(" · wächst mit der Zeit")), v -> showTipsList(), null);
+        settingsRow(sys, L.t("Diagnose an Claude senden"), () -> L.t("anonym · halten = teilen"), v -> uploadDiagnostics(), v -> {
             shareDiagnostics();
             return true;
         });
@@ -1577,21 +1577,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Android's own page where it can be changed or taken away. Nothing here leaves the phone.
      */
     private void permissionsGroup(LinearLayout col) {
-        LinearLayout g = settingsGroup(col, "Berechtigungen");
+        LinearLayout g = settingsGroup(col, L.t("Berechtigungen"));
         TextView note = monoText(10, ink3);
         note.setSingleLine(false);
-        note.setText("ALLES BLEIBT AUF DEM HANDY · ANTIPPEN = IN ANDROID ÄNDERN ODER ENTZIEHEN");
+        note.setText(L.t("ALLES BLEIBT AUF DEM HANDY · ANTIPPEN = IN ANDROID ÄNDERN ODER ENTZIEHEN"));
         note.setPadding(dp(16), dp(12), dp(16), dp(4));
         g.addView(note);
         Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
         Object[][] runtime = {
-            {"Kamera", "Kopf-Scroll, Taschenlampe im Dunkeln", Manifest.permission.CAMERA},
-            {"Mikrofon", "Musik-Visualizer (nur Pegel, keine Aufnahme)", Manifest.permission.RECORD_AUDIO},
-            {"Kontakte", "Namen im Telefon", Manifest.permission.READ_CONTACTS},
-            {"Anrufliste", "Letzte Anrufe im Telefon", Manifest.permission.READ_CALL_LOG},
-            {"Telefonieren", "Anrufen per Tipp im Telefon", Manifest.permission.CALL_PHONE},
-            {"Bluetooth", "Kopfhörer-Name, Akku, Musik-Sync mit eigenen Geräten", Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_CONNECT : null},
-            {"Benachrichtigungen", "Wecker, VOID FREQ, Kopf-Scroll", Build.VERSION.SDK_INT >= 33 ? Manifest.permission.POST_NOTIFICATIONS : null}};
+            {L.t("Kamera"), L.t("Kopf-Scroll, Taschenlampe im Dunkeln"), Manifest.permission.CAMERA},
+            {L.t("Mikrofon"), L.t("Musik-Visualizer (nur Pegel, keine Aufnahme)"), Manifest.permission.RECORD_AUDIO},
+            {L.t("Kontakte"), L.t("Namen im Telefon"), Manifest.permission.READ_CONTACTS},
+            {L.t("Anrufliste"), L.t("Letzte Anrufe im Telefon"), Manifest.permission.READ_CALL_LOG},
+            {L.t("Telefonieren"), L.t("Anrufen per Tipp im Telefon"), Manifest.permission.CALL_PHONE},
+            {"Bluetooth", L.t("Kopfhörer-Name, Akku, Musik-Sync mit eigenen Geräten"), Build.VERSION.SDK_INT >= 31 ? Manifest.permission.BLUETOOTH_CONNECT : null},
+            {L.t("Benachrichtigungen"), L.t("Wecker, VOID FREQ, Kopf-Scroll"), Build.VERSION.SDK_INT >= 33 ? Manifest.permission.POST_NOTIFICATIONS : null}};
         for (Object[] p : runtime) {
             String perm = (String) p[2];
             if (perm == null) continue;
@@ -1599,21 +1599,21 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 () -> checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED, details);
         }
         android.app.AlarmManager am = getSystemService(android.app.AlarmManager.class);
-        permissionRow(g, "Nutzungszugriff", "Zuletzt benutzte Apps", this::hasUsageAccess,
+        permissionRow(g, L.t("Nutzungszugriff"), L.t("Zuletzt benutzte Apps"), this::hasUsageAccess,
             new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
-        permissionRow(g, "Systemeinstellungen", "Helligkeits-Hebel", () -> Settings.System.canWrite(this),
+        permissionRow(g, L.t("Systemeinstellungen"), L.t("Helligkeits-Hebel"), () -> Settings.System.canWrite(this),
             new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
-        permissionRow(g, "Bedienungshilfe", "Kopf-Scroll in Apps (liest keine Inhalte)", this::scrollAssistOn,
+        permissionRow(g, L.t("Bedienungshilfe"), L.t("Kopf-Scroll in Apps (liest keine Inhalte)"), this::scrollAssistOn,
             new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-        permissionRow(g, "Benachrichtigungszugriff", "Musik-Karte, Statistik (nur Mediensitzungen)", () -> {
+        permissionRow(g, L.t("Benachrichtigungszugriff"), L.t("Musik-Karte, Statistik (nur Mediensitzungen)"), () -> {
             String on = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
             return on != null && on.contains(getPackageName());
         }, new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-        permissionRow(g, "Apps installieren", "Nur ARC-DNA-Updates (Android prüft die Signatur)",
+        permissionRow(g, L.t("Apps installieren"), L.t("Nur ARC-DNA-Updates (Android prüft die Signatur)"),
             () -> getPackageManager().canRequestPackageInstalls(),
             new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
         if (Build.VERSION.SDK_INT >= 31) {
-            permissionRow(g, "Exakte Wecker", "Bären-Wecker auf die Minute", () -> am == null || am.canScheduleExactAlarms(),
+            permissionRow(g, L.t("Exakte Wecker"), L.t("Bären-Wecker auf die Minute"), () -> am == null || am.canScheduleExactAlarms(),
                 new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + getPackageName())));
         }
     }
@@ -1637,7 +1637,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         TextView val = monoText(11, rust);
         Runnable paint = () -> {
             boolean on = granted.getAsBoolean();
-            val.setText(on ? "ERLAUBT ›" : "AUS ›");
+            val.setText(on ? L.t("ERLAUBT ›") : L.t("AUS ›"));
             val.setTextColor(on ? rust : ink3);
         };
         paint.run();
@@ -1819,12 +1819,12 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         head.setPadding(0, dp(8), 0, dp(8));
         boolean open = prefs.getBoolean("fold:" + key, openByDefault);
         block.setVisibility(open ? View.VISIBLE : View.GONE);
-        arrow.setText(open ? "▾ ZU" : "▸ AUF");
+        arrow.setText(open ? L.t("▾ ZU") : L.t("▸ AUF"));
         head.setOnClickListener(v -> {
             boolean now = block.getVisibility() != View.VISIBLE;
             prefs.edit().putBoolean("fold:" + key, now).apply();
             if (java.util.Arrays.asList(TINT_FOLDS).contains(key)) recolour();
-            arrow.setText(now ? "▾ ZU" : "▸ AUF");
+            arrow.setText(now ? L.t("▾ ZU") : L.t("▸ AUF"));
             v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
             if (now) {
                 block.setVisibility(View.VISIBLE);
@@ -1864,7 +1864,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(box(card, line, 16));
         TextView close = monoText(11, rust);
-        close.setText("▴ ZUKLAPPEN");
+        close.setText(L.t("▴ ZUKLAPPEN"));
         close.setPadding(dp(14), dp(12), dp(14), dp(12));
         close.setOnClickListener(v -> {
             if (libFoldHead == null) return;
@@ -1874,7 +1874,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         bar.addView(close);
         bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         TextView more = monoText(11, ink2);
-        more.setText("VOLLE MEDIATHEK →");
+        more.setText(L.t("VOLLE MEDIATHEK →"));
         more.setPadding(dp(14), dp(12), dp(14), dp(12));
         more.setOnClickListener(v -> openLibrary());
         bar.addView(more);
@@ -1911,7 +1911,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         if (list.isEmpty()) {
             TextView none = text(14, ink3, false);
-            none.setText(apps.isEmpty() ? "Apps werden geladen…" : "Keine App gefunden.");
+            none.setText(apps.isEmpty() ? L.t("Apps werden geladen…") : L.t("Keine App gefunden."));
             grid.addView(none);
         }
     }
@@ -1985,7 +1985,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void askOverlayOnce() {
         if (prefs.getBoolean("askedKbdOverlay", false)) return;
         prefs.edit().putBoolean("askedKbdOverlay", true).apply();
-        pop("ARC Link: Overlay-Recht für Tastatur-Akku aktivieren");
+        pop(L.t("ARC Link: Overlay-Recht für Tastatur-Akku aktivieren"));
         try {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName())));
@@ -2050,7 +2050,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             leftAt = System.currentTimeMillis();
             crumplePending = true;
         } catch (ActivityNotFoundException | SecurityException e) {
-            pop("Keine passende App gefunden.");
+            pop(L.t("Keine passende App gefunden."));
         }
     }
 
@@ -2094,13 +2094,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         String name = BUDDIES[buddy()][1];
         Object[][] items = {
             {"✳  Claude", (Runnable) this::openClaude},
-            {"▦  Mediathek", (Runnable) this::openLibrary},
-            {swept() ? "↺  Alles zurück" : "🧹  Aufräumen", (Runnable) () -> {
+            {L.t("▦  Mediathek"), (Runnable) this::openLibrary},
+            {swept() ? L.t("↺  Alles zurück") : L.t("🧹  Aufräumen"), (Runnable) () -> {
                 if (swept()) unsweep();
                 else sweep();
             }},
-            {"💬  " + name + " fragen", (Runnable) this::openChat},
-            {"🆘  Ruheinsel", (Runnable) this::openCrisis},
+            {"💬  " + name + L.t(" fragen"), (Runnable) this::openChat},
+            {L.t("🆘  Ruheinsel"), (Runnable) this::openCrisis},
         };
         FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) claudeFab.getLayoutParams();
         for (int i = 0; i < items.length; i++) {
@@ -2199,7 +2199,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         CrumpleView[] holder = new CrumpleView[1];
         holder[0] = new CrumpleView(this, leftIcon, binX, binY, paper, line, ink, rust,
             () -> rootFrame.removeView(holder[0]));
-        String[] lines = {"Weg damit!", "Tschüss!", "Treffer.", "Aufgeräumt.", "Und tschüss."};
+        String[] lines = {L.t("Weg damit!"), L.t("Tschüss!"), L.t("Treffer."), L.t("Aufgeräumt."), L.t("Und tschüss.")};
         holder[0].hooks(() -> voice.crumple(), () -> {
             voice.thud();
             hop();
@@ -2208,7 +2208,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // About one automatic throw in four misses, and the buddy takes it out on you.
         // A miss by hand gets the same treatment.
         {
-            String[] angry = {"Echt jetzt?!", "Echt jetzt?!", "Im Ernst?!", "Alter?!", "Daneben?! Echt jetzt?!", "Triff doch mal!", "Na warte …"};
+            String[] angry = {L.t("Echt jetzt?!"), L.t("Echt jetzt?!"), L.t("Im Ernst?!"), L.t("Alter?!"), L.t("Daneben?! Echt jetzt?!"), L.t("Triff doch mal!"), L.t("Na warte …")};
             holder[0].miss(random.nextInt(4) == 0, () -> {
                 voice.thud();
                 hop();
@@ -2226,7 +2226,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Intent again = leftIntent;
         Drawable againIcon = leftIcon;
         if (again != null) holder[0].reopen(() -> {
-            say("Doch nicht? Bitte schön.", 1200);
+            say(L.t("Doch nicht? Bitte schön."), 1200);
             openApp(again, againIcon);
         });
         rootFrame.addView(holder[0], new FrameLayout.LayoutParams(-1, -1));
@@ -2237,7 +2237,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         try {
             startActivity(new Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (ActivityNotFoundException | SecurityException e) {
-            pop("Keine passende App gefunden.");
+            pop(L.t("Keine passende App gefunden."));
         }
     }
 
@@ -2293,7 +2293,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (cm != null) {
                 android.net.NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
                 if (nc != null) net = nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ? "WLAN"
-                    : nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ? "Mobil" : "Netz";
+                    : nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ? L.t("Mobil") : L.t("Netz");
             }
             ambient.setNet(net);
         } catch (Exception ignored) { }
@@ -2321,11 +2321,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private String skyWord(int code) {
         if (code == 0) return "klar";
         if (code <= 3) return "wolkig";
-        if (code <= 48) return "Nebel";
-        if (code <= 67) return "Regen";
-        if (code <= 77) return "Schnee";
-        if (code <= 82) return "Schauer";
-        if (code <= 99) return "Gewitter";
+        if (code <= 48) return L.t("Nebel");
+        if (code <= 67) return L.t("Regen");
+        if (code <= 77) return L.t("Schnee");
+        if (code <= 82) return L.t("Schauer");
+        if (code <= 99) return L.t("Gewitter");
         return "";
     }
 
@@ -2339,31 +2339,31 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         final String LERN = "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY";
         ThumbFanView.Item[] left = {
             new ThumbFanView.Item("Claude", dr(R.drawable.ic_claude), this::openClaude),
-            new ThumbFanView.Item("Telefon", null, () -> safe(new Intent(Intent.ACTION_DIAL))),
+            new ThumbFanView.Item(L.t("Telefon"), null, () -> safe(new Intent(Intent.ACTION_DIAL))),
             new ThumbFanView.Item("SMS", null, () -> safe(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING))),
             new ThumbFanView.Item("Mail", null, () -> safe(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_EMAIL))),
-            new ThumbFanView.Item("Kamera", dr(R.drawable.ic_line_arccam), () -> startAct(CameraActivity.class)),
+            new ThumbFanView.Item(L.t("Kamera"), dr(R.drawable.ic_line_arccam), () -> startAct(CameraActivity.class)),
         };
         ThumbFanView.Cat[] right = {
-            new ThumbFanView.Cat("Ruhe", new ThumbFanView.Item[]{
+            new ThumbFanView.Cat(L.t("Ruhe"), new ThumbFanView.Item[]{
                 new ThumbFanView.Item("Musik", dr(R.drawable.ic_line_player), () -> startAct(PlayerActivity.class)),
                 new ThumbFanView.Item("Globus", dr(R.drawable.ic_line_globus), () -> startAct(GlobusActivity.class)),
                 new ThumbFanView.Item("VOID FREQ", dr(R.drawable.ic_line_freq), () -> startAct(FreqActivity.class)),
             }, this::openArcWorld),
-            new ThumbFanView.Cat("Spiel", new ThumbFanView.Item[]{
+            new ThumbFanView.Cat(L.t("Spiel"), new ThumbFanView.Item[]{
                 new ThumbFanView.Item("Fuchsjagd", null, () -> startAct(RaceActivity.class)),
                 new ThumbFanView.Item("Nexus", dr(R.drawable.ic_line_nexus), () -> startAct(NexusActivity.class)),
                 new ThumbFanView.Item("Board", dr(R.drawable.ic_line_board), () -> startAct(BoardActivity.class)),
             }, this::openArcWorld),
-            new ThumbFanView.Cat("Schule", new ThumbFanView.Item[]{
+            new ThumbFanView.Cat(L.t("Schule"), new ThumbFanView.Item[]{
                 new ThumbFanView.Item("Lernen", null, () -> safe(new Intent(Intent.ACTION_VIEW, Uri.parse(LERN)))),
                 new ThumbFanView.Item("Bücher", dr(R.drawable.ic_line_buecher), () -> startAct(BuecherActivity.class)),
                 new ThumbFanView.Item("Wecker", null, () -> startAct(WeckerActivity.class)),
             }, this::openArcWorld),
-            new ThumbFanView.Cat("Arbeit", new ThumbFanView.Item[]{
+            new ThumbFanView.Cat(L.t("Arbeit"), new ThumbFanView.Item[]{
                 new ThumbFanView.Item("Board", dr(R.drawable.ic_line_board), () -> startAct(BoardActivity.class)),
                 new ThumbFanView.Item("Aufnahme", dr(R.drawable.ic_line_recorder), () -> startAct(RecorderActivity.class)),
-                new ThumbFanView.Item("Werkzeuge", dr(R.drawable.ic_line_werkzeuge), () -> startAct(WerkzeugeActivity.class)),
+                new ThumbFanView.Item(L.t("Werkzeuge"), dr(R.drawable.ic_line_werkzeuge), () -> startAct(WerkzeugeActivity.class)),
             }, this::openArcWorld),
         };
         thumbFan = new ThumbFanView(this);
@@ -2458,7 +2458,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         into.removeAllViews();
         if (recent.isEmpty()) {
             TextView none = text(13, ink3, false);
-            none.setText("Noch keine Apps verwendet.");
+            none.setText(L.t("Noch keine Apps verwendet."));
             into.addView(none);
             return;
         }
@@ -2685,20 +2685,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void showRecentsPrompt(LinearLayout into) {
         into.removeAllViews();
         TextView ask = text(13, ink, true);
-        ask.setText("Zuletzt verwendete Apps anzeigen →");
+        ask.setText(L.t("Zuletzt verwendete Apps anzeigen →"));
         ask.setPadding(dp(14), dp(12), dp(14), dp(12));
         ask.setBackground(box(card, line, 16));
         ask.setOnClickListener(v -> {
-            pop("ARC-DNA antippen und Zugriff erlauben");
+            pop(L.t("ARC-DNA antippen und Zugriff erlauben"));
             open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
         });
         into.addView(ask);
 
         // Sideloaded apps get "App was denied access" until restricted settings are allowed once.
         TextView blocked = text(12, ink2, false);
-        blocked.setText("„Zugriff verweigert“? Android sperrt das bei Apps ausserhalb des Play Store: "
-            + "hier tippen → App-Info → ⋮ oben rechts → „Eingeschränkte Einstellungen zulassen“, "
-            + "dann oben nochmal.");
+        blocked.setText(L.t("„Zugriff verweigert“? Android sperrt das bei Apps ausserhalb des Play Store: ")
+            + L.t("hier tippen → App-Info → ⋮ oben rechts → „Eingeschränkte Einstellungen zulassen“, ")
+            + L.t("dann oben nochmal."));
         blocked.setLineSpacing(0, 1.25f);
         blocked.setPadding(dp(2), dp(8), dp(2), 0);
         blocked.setOnClickListener(v -> open(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -2885,7 +2885,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ghosts.start();
         voice.say("Whoa-whoa!");
         hop();
-        say("Geister-Level 👻 – Finger = Taschenlampe. Hebel hoch oder → wischen = raus.", 2600);
+        say(L.t("Geister-Level 👻 – Finger = Taschenlampe. Hebel hoch oder → wischen = raus."), 2600);
         if (lever != null) lever.setLevel(0, true);
         DiagLog.log("ghost level on");
     }
@@ -2929,13 +2929,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, BRIGHTNESS[0]);
         }
         systemBarIcons(paperIsLight());
-        say("Licht an. Die Geister sind weg.", 1600);
+        say(L.t("Licht an. Die Geister sind weg."), 1600);
         syncLever();
     }
 
     private void switchNight(boolean dark, float x, float y) {
         if (Build.VERSION.SDK_INT < 31) {
-            pop("Braucht Android 12 oder neuer.");
+            pop(L.t("Braucht Android 12 oder neuer."));
             return;
         }
         // Already dark: one more ← opens the Geister-Level; → leaves it first.
@@ -2949,7 +2949,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         if (dark == isNight()) {
             hop();
-            say(dark ? "Schon dunkel." : "Schon hell.", 1000);
+            say(dark ? L.t("Schon dunkel.") : L.t("Schon hell."), 1000);
             return;
         }
         View veil = new View(this);
@@ -2986,7 +2986,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             android.provider.Settings.Secure.putInt(getContentResolver(), "ui_night_mode", dark ? 2 : 1);  // 2=yes 1=no
         } catch (Exception e) {
             setAppNight(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
-            pop("Für echten System-Dark: WRITE_SECURE_SETTINGS per ARC Link freigeben.");
+            pop(L.t("Für echten System-Dark: WRITE_SECURE_SETTINGS per ARC Link freigeben."));
         }
     }
 
@@ -3087,15 +3087,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         TextView status = text(13, scrollAssistOn() ? ink2 : rust, true);
         status.setText(scrollAssistOn()
-            ? "Bedienungshilfe „ARC-DNA Scroll“ ist an."
-            : "Zuerst einmalig einschalten: Bedienungshilfen → Installierte Apps → ARC-DNA Scroll → An →");
+            ? L.t("Bedienungshilfe „ARC-DNA Scroll“ ist an.")
+            : L.t("Zuerst einmalig einschalten: Bedienungshilfen → Installierte Apps → ARC-DNA Scroll → An →"));
         status.setPadding(0, 0, 0, dp(8));
         status.setOnClickListener(v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         list.addView(status);
 
         TextView hint = text(12, ink3, false);
-        hint.setText("Pro App antippen: AUS ↔ NICKEN. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause. "
-            + "Kalibrieren: ⚙ Einstellungen → Kopf-Scroll → Nicken kalibrieren.");
+        hint.setText(L.t("Pro App antippen: AUS ↔ NICKEN. In der App zeigt ein oranger Ring um die Frontkamera den Zustand – 3× tippen = Pause. ")
+            + L.t("Kalibrieren: ⚙ Einstellungen → Kopf-Scroll → Nicken kalibrieren."));
         hint.setLineSpacing(0, 1.2f);
         hint.setPadding(0, 0, 0, dp(10));
         list.addView(hint);
@@ -3108,11 +3108,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout mainTexts = new LinearLayout(this);
         mainTexts.setOrientation(LinearLayout.VERTICAL);
         TextView mainName = text(14, ink, true);
-        mainName.setText("Kopf-Scroll in anderen Apps");
+        mainName.setText(L.t("Kopf-Scroll in anderen Apps"));
         mainTexts.addView(mainName);
         TextView mainHint = text(11, ink3, false);
-        mainHint.setText("Aus = die Kamera startet nie ausserhalb von ARC-DNA, egal was unten steht. "
-            + "An = nur in den Apps, die du unten wählst; Android zeigt dann den grünen Kamera-Punkt.");
+        mainHint.setText(L.t("Aus = die Kamera startet nie ausserhalb von ARC-DNA, egal was unten steht. ")
+            + L.t("An = nur in den Apps, die du unten wählst; Android zeigt dann den grünen Kamera-Punkt."));
         mainHint.setLineSpacing(0, 1.15f);
         mainTexts.addView(mainHint);
         mainRow.addView(mainTexts, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -3120,7 +3120,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         mainChip.setPadding(dp(12), dp(7), dp(12), dp(7));
         Runnable paintMain = () -> {
             boolean on = prefs.getBoolean("scrollOutside", false);
-            mainChip.setText(on ? "AN" : "AUS");
+            mainChip.setText(on ? L.t("AN") : "AUS");
             mainChip.setTextColor(on ? 0xFFFFFFFF : ink2);
             mainChip.setBackground(on ? box(rust, rust, 20) : box(card, line, 20));
         };
@@ -3141,7 +3141,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         allRow.setGravity(Gravity.CENTER_VERTICAL);
         allRow.setPadding(0, dp(4), 0, dp(10));
         TextView allName = text(14, ink, true);
-        allName.setText("Alle Apps");
+        allName.setText(L.t("Alle Apps"));
         allRow.addView(allName, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView allChip = monoText(11, ink2);
         allChip.setPadding(dp(12), dp(7), dp(12), dp(7));
@@ -3203,7 +3203,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         ScrollView sv = new ScrollView(this);
         sv.addView(list);
         sv.setLayoutParams(new LinearLayout.LayoutParams(-1, Math.min(dp(420), (int) (rootFrame.getHeight() * 0.55f))));
-        arcSheet("Kopf-Scroll pro App", "Wo soll Nicken scrollen?", null, sv, new String[]{"Fertig"}, i -> { });
+        arcSheet(L.t("Kopf-Scroll pro App"), L.t("Wo soll Nicken scrollen?"), null, sv, new String[]{L.t("Fertig")}, i -> { });
     }
 
     /** The app's own setting, else the "Alle Apps" switch. */
@@ -3270,10 +3270,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         wrap.addView(input);
         input.setTextColor(ink);
         input.setHintTextColor(ink3);
-        arcSheet("Updates einrichten", "Token einfügen",
-            "GitHub → Fine-grained token: Resource owner architect-dna-ch, nur „arc-dna-home“, Contents: Read-only. "
-                + "Er bleibt nur auf diesem Handy.", wrap,
-            new String[]{"Speichern & prüfen", "Token auf GitHub erstellen", "Abbrechen"}, i -> {
+        arcSheet(L.t("Updates einrichten"), L.t("Token einfügen"),
+            L.t("GitHub → Fine-grained token: Resource owner architect-dna-ch, nur „arc-dna-home“, Contents: Read-only. ")
+                + L.t("Er bleibt nur auf diesem Handy."), wrap,
+            new String[]{L.t("Speichern & prüfen"), L.t("Token auf GitHub erstellen"), L.t("Abbrechen")}, i -> {
                 if (i == 0) {
                     updater.setToken(input.getText().toString());
                     updater.check(true);
@@ -3315,7 +3315,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         String m = headMode();
         if (m.equals("off")) return;
         if (LowPower.active(this)) {
-            pop("🔋 Unter " + LowPower.LIMIT + " % – Kopf-Scroll pausiert, bis du lädst");
+            pop(L.t("🔋 Unter ") + LowPower.LIMIT + L.t(" % – Kopf-Scroll pausiert, bis du lädst"));
             return;
         }
         faceWatch = false;          // head scroll takes the camera over
@@ -3375,7 +3375,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void showHeadState(int dir) {
         String arrow = dir == 2 ? "‖" : dir < 0 ? "↑" : dir > 0 ? "↓" : "·";
         String mode = headMode().equals("gaze") ? "BLICK" : "NICKEN";
-        headToggle.setText("KOPF-SCROLL: " + mode + " " + arrow);
+        headToggle.setText(L.t("KOPF-SCROLL: ") + mode + " " + arrow);
         headLabel.setText("◉ " + mode + " " + arrow + "  ");
     }
 
@@ -3388,7 +3388,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         AlarmScheduler.Deadline next = AlarmScheduler.nextDeadline(this);
         String nd = next == null ? "" : "\n🐻 " + new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(new java.util.Date(next.at)).toUpperCase(Locale.GERMAN)
             + " · " + next.label.toUpperCase(Locale.GERMAN);
-        alarmRow.setText((on ? "WECKER · BÄR AUS DER HÖHLE" : "WECKER AUS · TIPPEN = BÄR-WECKER") + nd);
+        alarmRow.setText((on ? L.t("WECKER · BÄR AUS DER HÖHLE") : L.t("WECKER AUS · TIPPEN = BÄR-WECKER")) + nd);
         alarmRow.setTextColor(on ? rust : ink3);
         if (alarmTime != null) {
             alarmTime.setText(t);
@@ -3415,11 +3415,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (!on) AlarmScheduler.cancelSnooze(this);
         paintAlarm();
         if (!on) {
-            pop("Wecker aus. Der Bär schläft.");
+            pop(L.t("Wecker aus. Der Bär schläft."));
             return;
         }
         long in = AlarmScheduler.next(prefs) - System.currentTimeMillis();
-        Toast.makeText(this, String.format(Locale.ROOT, "Der Bär kommt in %d h %02d min.",
+        Toast.makeText(this, String.format(Locale.ROOT, L.t("Der Bär kommt in %d h %02d min."),
             in / 3_600_000, in / 60_000 % 60), Toast.LENGTH_LONG).show();
         // Ringing over the lock screen needs notifications and, on Android 14+, full-screen access.
         if (Build.VERSION.SDK_INT >= 33
@@ -3434,16 +3434,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (Build.VERSION.SDK_INT < 34) return;
         android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
         if (nm == null || nm.canUseFullScreenIntent()) return;
-        arcSheet("Bär-Wecker", "🐻 Über dem Sperrbildschirm",
-            "Damit der Wecker bei gesperrtem Handy im Vollbild klingelt, erlaube „Vollbild-Benachrichtigungen“ für ARC-DNA. "
-                + "Android nimmt das nach jedem Update wieder weg.", null,
-            new String[]{"Jetzt erlauben", "Später"}, i -> {
+        arcSheet("Bär-Wecker", L.t("🐻 Über dem Sperrbildschirm"),
+            L.t("Damit der Wecker bei gesperrtem Handy im Vollbild klingelt, erlaube „Vollbild-Benachrichtigungen“ für ARC-DNA. ")
+                + L.t("Android nimmt das nach jedem Update wieder weg."), null,
+            new String[]{L.t("Jetzt erlauben"), L.t("Später")}, i -> {
                 if (i != 0) return;
                 try {
                     startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
                         Uri.parse("package:" + getPackageName())));
                 } catch (RuntimeException e) {
-                    pop("Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen");
+                    pop(L.t("Einstellungen → Apps → ARC-DNA → Vollbild-Benachrichtigungen"));
                 }
             });
     }
@@ -3453,7 +3453,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQ_NOTIFY) {
             if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) checkFullScreenAccess();
-            else pop("Ohne Benachrichtigungen klingelt der Bär nur, wenn ARC-DNA offen ist.");
+            else pop(L.t("Ohne Benachrichtigungen klingelt der Bär nur, wenn ARC-DNA offen ist."));
             return;
         }
         if (requestCode == REQ_AUDIO) {
@@ -3466,7 +3466,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         } else {
             prefs.edit().putString("headMode", "off").apply();
             paintHeadToggle();
-            pop("Ohne Kamera kein Kopf-Scroll.");
+            pop(L.t("Ohne Kamera kein Kopf-Scroll."));
         }
     }
 
@@ -3602,11 +3602,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     private void runCalibStage() {
         int stage = calibStage;
-        String[] where = {"oben", "in der Mitte", "unten"};
+        String[] where = {"oben", L.t("in der Mitte"), "unten"};
         boolean nod = headMode().equals("nod");
         calibText.setText(nod
-            ? new String[]{"Nick mit dem Kopf zum Punkt oben – so weit wie du später scrollen willst", "Kopf ganz normal halten", "Nick mit dem Kopf zum Punkt unten"}[stage]
-            : "Schau auf den Punkt " + where[stage]);
+            ? new String[]{L.t("Nick mit dem Kopf zum Punkt oben – so weit wie du später scrollen willst"), L.t("Kopf ganz normal halten"), L.t("Nick mit dem Kopf zum Punkt unten")}[stage]
+            : L.t("Schau auf den Punkt ") + where[stage]);
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) calibDot.getLayoutParams();
         lp.gravity = Gravity.CENTER_HORIZONTAL | (stage == 0 ? Gravity.TOP : stage == 1 ? Gravity.CENTER_VERTICAL : Gravity.BOTTOM);
         calibDot.setLayoutParams(lp);
@@ -3624,7 +3624,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibCollect = false;
         if (calibN[calibStage] < 5 && calibRetries < 2) {
             calibRetries++;
-            calibText.setText("Gesicht nicht erkannt – nochmal");
+            calibText.setText(L.t("Gesicht nicht erkannt – nochmal"));
             handler.postAtTime(this::runCalibStage, calibToken, android.os.SystemClock.uptimeMillis() + 700);
             return;
         }
@@ -3643,8 +3643,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (calibN[0] < 5 || calibN[2] < 5 || up - down < 4f) {
                 // Hardly any movement (or no face) between the dots: don't save a useless calibration.
                 DiagLog.log(String.format(Locale.ROOT, "nod calibration rejected: up %+.1f°, down %+.1f°", up - mid, down - mid));
-                calibText.setText("Kein Nicken erkannt – deutlicher nicken");
-                calibLive.setText(String.format(Locale.ROOT, "OBEN %+.1f°  ·  UNTEN %+.1f°", up - mid, down - mid));
+                calibText.setText(L.t("Kein Nicken erkannt – deutlicher nicken"));
+                calibLive.setText(String.format(Locale.ROOT, L.t("OBEN %+.1f°  ·  UNTEN %+.1f°"), up - mid, down - mid));
                 showCalibButtons(false, null);
                 return;
             }
@@ -3657,15 +3657,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putFloat("gazeTop", top).putFloat("gazeMid", mid).putFloat("gazeBottom", bottom).apply();
         endGazeCalibration();
         smoothTilt = mid;
-        pop("Blick kalibriert – Neu kalibrieren: Knopf lange drücken");
+        pop(L.t("Blick kalibriert – Neu kalibrieren: Knopf lange drücken"));
     }
 
     /** Manual check before saving: your three positions, then ✓ Übernehmen or ↻ Nochmal. */
     private void showCalibResult(float up, float mid, float down) {
         calibStage = 3;              // results on screen: the cursor keeps following, nothing is sampled
         calibCollect = false;
-        calibText.setText("Passt das?");
-        calibLive.setText(String.format(Locale.ROOT, "OBEN %+.1f°  ·  MITTE  ·  UNTEN %+.1f°", up - mid, down - mid));
+        calibText.setText(L.t("Passt das?"));
+        calibLive.setText(String.format(Locale.ROOT, L.t("OBEN %+.1f°  ·  MITTE  ·  UNTEN %+.1f°"), up - mid, down - mid));
         showCalibButtons(true, () -> {
             prefs.edit().putFloat("nodUp", up).putFloat("nodMid", mid).putFloat("nodDown", down).apply();
             DiagLog.log(String.format(java.util.Locale.ROOT, "nod calibrated: up %+.1f°, down %+.1f° from neutral", up - mid, down - mid));
@@ -3673,7 +3673,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             basePitch = mid;
             calibFrames = 6;
             smoothTilt = 0;
-            pop("Nicken übernommen");
+            pop(L.t("Nicken übernommen"));
         });
     }
 
@@ -3684,7 +3684,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         calibResult.removeAllViews();
         if (canSave) {
             TextView ok = text(15, card, true);
-            ok.setText("✓ ÜBERNEHMEN");
+            ok.setText(L.t("✓ ÜBERNEHMEN"));
             ok.setGravity(Gravity.CENTER);
             ok.setPadding(dp(20), dp(12), dp(20), dp(12));
             ok.setBackground(box(rust, rust, 24));
@@ -3692,7 +3692,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             calibResult.addView(ok);
         }
         TextView again = text(15, ink, true);
-        again.setText("↻ NOCHMAL");
+        again.setText(L.t("↻ NOCHMAL"));
         again.setGravity(Gravity.CENTER);
         again.setPadding(dp(20), dp(12), dp(20), dp(12));
         again.setBackground(box(card, line, 24));
@@ -3709,7 +3709,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         float range = calibOverlay.getHeight() / 2f - dp(80);
         float y = Math.max(-range, Math.min(range, -(pitch - calibRef) / 10f * range));
         calibCursor.setTranslationY(y);
-        if (calibStage < 3) calibLive.setText(String.format(Locale.ROOT, "KOPF %+.1f°", pitch - calibRef));
+        if (calibStage < 3) calibLive.setText(String.format(Locale.ROOT, L.t("KOPF %+.1f°"), pitch - calibRef));
     }
 
     private void endGazeCalibration() {
@@ -3736,7 +3736,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         o.setVisibility(View.GONE);
         o.setOnClickListener(v -> {
             endGazeCalibration();
-            pop("Kalibrierung abgebrochen");
+            pop(L.t("Kalibrierung abgebrochen"));
         });
 
         calibDot = new View(this);
@@ -3779,7 +3779,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         o.addView(calibDebug, clp);
 
         TextView skip = monoText(11, ink3);
-        skip.setText("KALIBRIERUNG · DANEBEN TIPPEN = ABBRECHEN");
+        skip.setText(L.t("KALIBRIERUNG · DANEBEN TIPPEN = ABBRECHEN"));
         skip.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
         slp.topMargin = dp(120);
@@ -3789,15 +3789,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     @Override
     public void onDebug(HeadTracker.Debug d) {
-        if (calibStage >= 0 && calibDebug != null) calibDebug.update(d, d.face ? "GESICHT ✓" : "KEIN GESICHT");
+        if (calibStage >= 0 && calibDebug != null) calibDebug.update(d, d.face ? L.t("GESICHT ✓") : L.t("KEIN GESICHT"));
         if (headDebug == null) return;
         String dec;
-        if (calibStage >= 0) dec = "KALIBRIERT …";
-        else if (!d.face) dec = "→ STOPP (KEIN GESICHT)";
+        if (calibStage >= 0) dec = L.t("KALIBRIERT …");
+        else if (!d.face) dec = L.t("→ STOPP (KEIN GESICHT)");
         else {
             float frac = nodFraction(prefs, smoothTilt);
-            dec = String.format(Locale.ROOT, "NICK %3.0f%%  %s", frac * 100,
-                headSpeed < 0 ? "→ SCROLL ↑" : headSpeed > 0 ? "→ SCROLL ↓" : "→ STEHT");
+            dec = String.format(Locale.ROOT, L.t("NICK %3.0f%%  %s"), frac * 100,
+                headSpeed < 0 ? "→ SCROLL ↑" : headSpeed > 0 ? "→ SCROLL ↓" : L.t("→ STEHT"));
         }
         headDebug.update(d, dec);
     }
@@ -3856,7 +3856,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (tip != null) showCoachCard(tip);
     }
 
-    private static final int WHATS_NEW_REV = 1;  // bump to show the "Was ist neu" overlay again
+    private static final int WHATS_NEW_REV = 1;  // bump to show the L.t("Was ist neu") overlay again
     private FrameLayout coachCard;
 
     private void showCoachCard(Coach.Tip tip) {
@@ -3871,7 +3871,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         box.setClickable(true);
         TextView tag = monoText(10, rust);
         tag.setLetterSpacing(0.18f);
-        tag.setText("— TIPP " + Coach.seenCount(this) + "/" + Coach.TIPS.length);
+        tag.setText(L.t("— TIPP ") + Coach.seenCount(this) + "/" + Coach.TIPS.length);
         box.addView(tag);
         TextView title = text(18, ink, true);
         title.setText(tip.title);
@@ -3883,16 +3883,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.END);
         TextView stop = text(13, ink3, false);
-        stop.setText("Tipps aus");
+        stop.setText(L.t("Tipps aus"));
         stop.setPadding(dp(14), dp(8), dp(14), dp(8));
         stop.setOnClickListener(v -> {
             Coach.setOff(this, true);
             closeCoachCard();
-            pop("Tipps aus · wieder an in Einstellungen → Tipps");
+            pop(L.t("Tipps aus · wieder an in Einstellungen → Tipps"));
         });
         row.addView(stop);
         TextView ok = text(14, 0xFFFFFFFF, true);
-        ok.setText("Verstanden");
+        ok.setText(L.t("Verstanden"));
         ok.setPadding(dp(18), dp(8), dp(18), dp(8));
         ok.setBackground(box(rust, rust, 14));
         ok.setOnClickListener(v -> closeCoachCard());
@@ -3927,18 +3927,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(26), dp(46), dp(26), dp(34));
 
-        TextView eye = monoText(11, rust); eye.setLetterSpacing(0.2f); eye.setText("— WAS IST NEU"); box.addView(eye);
-        TextView h = text(30, ink, true); h.setText("Dein ARC·DNA wächst"); box.addView(h, margins(-1, -2, 0, dp(6), 0, dp(4)));
-        TextView sub = text(14, ink2, false); sub.setText("Das steckt jetzt drin. Tippen öffnet es."); box.addView(sub, margins(-1, -2, 0, 0, 0, dp(16)));
+        TextView eye = monoText(11, rust); eye.setLetterSpacing(0.2f); eye.setText(L.t("— WAS IST NEU")); box.addView(eye);
+        TextView h = text(30, ink, true); h.setText(L.t("Dein ARC·DNA wächst")); box.addView(h, margins(-1, -2, 0, dp(6), 0, dp(4)));
+        TextView sub = text(14, ink2, false); sub.setText(L.t("Das steckt jetzt drin. Tippen öffnet es.")); box.addView(sub, margins(-1, -2, 0, 0, 0, dp(16)));
 
-        addNew(box, "Fokus", "Zwei Entscheidungen, bis nur noch 3 Apps bleiben — kein App-Wald mehr.", FokusActivity.class, null);
-        addNew(box, "Bücher", "Alle E-Books + Codes an einem Ort. Tippen kopiert den Code.", BuecherActivity.class, null);
-        addNew(box, "Globus", "Neig das Handy — peile Regionen, springt zurück wie ein Controller-Stick.", GlobusActivity.class, null);
-        addNew(box, "Lernbegleiter", "Übt mit dir. Theorie erst NACH dem Fehler — kein Volldump.", null, "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY");
-        addNew(box, "Antrieb", "Checkt aktiv bei dir ein und wirft dir Funken. Du pickst, was zieht.", null, "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ");
-        addNew(box, "Startbildschirm", "Nur noch ARC auf dem Home. Bunte Apps liegen in der Mediathek — Würfel-Knopf unten rechts.", null, null);
+        addNew(box, "Fokus", L.t("Zwei Entscheidungen, bis nur noch 3 Apps bleiben — kein App-Wald mehr."), FokusActivity.class, null);
+        addNew(box, "Bücher", L.t("Alle E-Books + Codes an einem Ort. Tippen kopiert den Code."), BuecherActivity.class, null);
+        addNew(box, "Globus", L.t("Neig das Handy — peile Regionen, springt zurück wie ein Controller-Stick."), GlobusActivity.class, null);
+        addNew(box, "Lernbegleiter", L.t("Übt mit dir. Theorie erst NACH dem Fehler — kein Volldump."), null, "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY");
+        addNew(box, L.t("Antrieb"), L.t("Checkt aktiv bei dir ein und wirft dir Funken. Du pickst, was zieht."), null, "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ");
+        addNew(box, L.t("Startbildschirm"), L.t("Nur noch ARC auf dem Home. Bunte Apps liegen in der Mediathek — Würfel-Knopf unten rechts."), null, null);
 
-        TextView go = text(15, 0xFFFFFFFF, true); go.setText("Los geht's"); go.setGravity(Gravity.CENTER);
+        TextView go = text(15, 0xFFFFFFFF, true); go.setText(L.t("Los geht's")); go.setGravity(Gravity.CENTER);
         go.setPadding(dp(18), dp(14), dp(18), dp(14)); go.setBackground(box(rust, rust, 40));
         go.setOnClickListener(v -> closeCoachCard());
         box.addView(go, margins(-1, -2, 0, dp(12), 0, 0));
@@ -3961,7 +3961,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView t = text(16, ink, true); t.setText(name);
         head.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-        if (opens) { TextView a = monoText(11, rust); a.setText("ÖFFNEN ↗"); head.addView(a); }
+        if (opens) { TextView a = monoText(11, rust); a.setText(L.t("ÖFFNEN ↗")); head.addView(a); }
         c.addView(head);
         TextView d = text(13, ink2, false); d.setText(desc); d.setLineSpacing(0, 1.15f);
         c.addView(d, margins(-1, -2, 0, dp(3), 0, 0));
@@ -3980,18 +3980,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         java.util.List<Coach.Tip> ul = Coach.unlocked(this);
         String[] rows = new String[ul.size() + 2];
         for (int i = 0; i < ul.size(); i++) rows[i] = ul.get(i).title;
-        rows[ul.size()] = Coach.isOff(this) ? "▶︎ Tipps wieder einschalten" : "⏸ Tipps pausieren";
-        rows[ul.size() + 1] = "↺ Tutorial von vorn";
-        arcSheet("Tipps", Coach.seenCount(this) + " von " + Coach.TIPS.length + " entdeckt · der Rest kommt mit der Zeit", rows, pick -> {
+        rows[ul.size()] = Coach.isOff(this) ? L.t("▶︎ Tipps wieder einschalten") : L.t("⏸ Tipps pausieren");
+        rows[ul.size() + 1] = L.t("↺ Tutorial von vorn");
+        arcSheet(L.t("Tipps"), Coach.seenCount(this) + L.t(" von ") + Coach.TIPS.length + L.t(" entdeckt · der Rest kommt mit der Zeit"), rows, pick -> {
             if (pick < ul.size()) {
                 Coach.Tip t = ul.get(pick);
                 arcSheet(t.title, null, t.body, null, new String[]{"Okay"}, k -> { });
             } else if (pick == ul.size()) {
                 Coach.setOff(this, !Coach.isOff(this));
-                pop(Coach.isOff(this) ? "Tipps pausiert" : "Tipps wieder an");
+                pop(Coach.isOff(this) ? L.t("Tipps pausiert") : L.t("Tipps wieder an"));
             } else {
                 Coach.reset(this);
-                pop("Tutorial startet von vorn");
+                pop(L.t("Tutorial startet von vorn"));
             }
         });
     }
@@ -4002,9 +4002,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void showArcTap() {
         final java.util.List<CharSequence> labels = new java.util.ArrayList<>();
         final java.util.List<Runnable> acts = new java.util.ArrayList<>();
-        labels.add("🏁 Fuchs-Rennen (Bluetooth)");
+        labels.add(L.t("🏁 Fuchs-Rennen (Bluetooth)"));
         acts.add(() -> startActivity(new Intent(this, RaceActivity.class)));
-        labels.add("📲 Auf NFC-Tag schreiben …");
+        labels.add(L.t("📲 Auf NFC-Tag schreiben …"));
         acts.add(this::showArcTapNfc);
         for (Themes.Theme t : Themes.ALL) {
             final String id = t.id, nm = t.name;
@@ -4017,17 +4017,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             acts.add(() -> arcTapSend(null, idx, "Buddy " + BUDDIES[idx][0]));
         }
         new android.app.AlertDialog.Builder(this)
-            .setTitle("ARC·Tap · teilen")
+            .setTitle(L.t("ARC·Tap · teilen"))
             .setItems(labels.toArray(new CharSequence[0]), (d, w) -> acts.get(w).run())
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(L.t("Abbrechen"), null)
             .show();
     }
 
     private void arcTapSend(String themeId, int buddyIdx, String what) {
         BtSync.queueShare(themeId, buddyIdx);
-        pop("ARC·Tap: " + what + " senden …");
-        BtSync.syncSoon(this, 0, name -> pop(name != null ? "Geteilt mit " + name
-            : "Sende beim nächsten Abgleich – ist ARC-DNA auf dem Partner-Gerät offen?"));
+        pop("ARC·Tap: " + what + L.t(" senden …"));
+        BtSync.syncSoon(this, 0, name -> pop(name != null ? L.t("Geteilt mit ") + name
+            : L.t("Sende beim nächsten Abgleich – ist ARC-DNA auf dem Partner-Gerät offen?")));
     }
 
     /** A theme/buddy the partner shared arrived via BtSync — offer to apply it. */
@@ -4054,15 +4054,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (what.length() == 0) return;
         new android.app.AlertDialog.Builder(this)
             .setTitle("ARC·Tap")
-            .setMessage("Dein Partner teilt:\n" + what + "\n\nÜbernehmen?")
-            .setPositiveButton("Übernehmen", (d, w) -> {
+            .setMessage(L.t("Dein Partner teilt:\n") + what + L.t("\n\nÜbernehmen?"))
+            .setPositiveButton(L.t("Übernehmen"), (d, w) -> {
                 SharedPreferences.Editor e = prefs.edit();
                 if (!themeId.isEmpty()) e.putString("theme", themeId);
                 if (buddyIdx >= 0) { e.putInt("buddy", buddyIdx); e.putBoolean("pro", false); }
                 e.apply();
                 recreate();
             })
-            .setNegativeButton("Nein", null)
+            .setNegativeButton(L.t("Nein"), null)
             .show();
     }
 
@@ -4091,11 +4091,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     }
 
     private void armNfcWrite(String themeId, int buddyIdx, String what) {
-        if (arcNfc == null) { pop("Dieses Gerät hat kein NFC"); return; }
-        if (!arcNfc.isEnabled()) { pop("NFC ist aus – oben in den Schnelleinstellungen einschalten"); return; }
+        if (arcNfc == null) { pop(L.t("Dieses Gerät hat kein NFC")); return; }
+        if (!arcNfc.isEnabled()) { pop(L.t("NFC ist aus – oben in den Schnelleinstellungen einschalten")); return; }
         nfcWrite = (themeId == null ? "" : themeId) + "|" + buddyIdx;
         nfcResume();
-        pop("NFC: " + what + " – Tag jetzt an die Rückseite des Geräts halten");
+        pop("NFC: " + what + L.t(" – Tag jetzt an die Rückseite des Geräts halten"));
     }
 
     private void showArcTapNfc() {
@@ -4111,9 +4111,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             labels.add("Buddy · " + BUDDIES[i][0]);
             acts.add(() -> armNfcWrite(null, idx, "Buddy " + BUDDIES[idx][0]));
         }
-        new android.app.AlertDialog.Builder(this).setTitle("Auf NFC-Tag schreiben")
+        new android.app.AlertDialog.Builder(this).setTitle(L.t("Auf NFC-Tag schreiben"))
             .setItems(labels.toArray(new CharSequence[0]), (d, w) -> acts.get(w).run())
-            .setNegativeButton("Abbrechen", null).show();
+            .setNegativeButton(L.t("Abbrechen"), null).show();
     }
 
     private void handleNfc(Intent intent) {
@@ -4121,7 +4121,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         android.nfc.Tag tag = intent.getParcelableExtra(android.nfc.NfcAdapter.EXTRA_TAG);
         if (nfcWrite != null && tag != null) {                   // writing a tag we armed
             boolean ok = writeTag(tag, nfcWrite);
-            pop(ok ? "Auf NFC-Tag geschrieben ✓" : "Schreiben fehlgeschlagen – Tag nochmal halten");
+            pop(ok ? L.t("Auf NFC-Tag geschrieben ✓") : L.t("Schreiben fehlgeschlagen – Tag nochmal halten"));
             if (ok) { nfcWrite = null; nfcPause(); }
             return;
         }
@@ -4247,7 +4247,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // The chip only once it's clear (away for over 1 s), so a glance aside doesn't flash it.
         if (now - faceLostAt > 1000 && blackHoleAllowed(now)) {
             long left = Math.max(1, 5 - (now - faceLostAt) / 1000);
-            showAwayChip("◉ WEGGESCHAUT · DINO IN " + left);
+            showAwayChip(L.t("◉ WEGGESCHAUT · DINO IN ") + left);
         }
         // Looking away for 5 s: the black-hole dino swallows the home and locks the phone.
         if (now - faceLostAt > 5000 && blackHoleAllowed(now)) {
@@ -4271,7 +4271,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         headRetries = 0;
-        pop(message + " – Kopf-Scroll pausiert. Mediathek schliessen und wieder öffnen startet neu.");
+        pop(message + L.t(" – Kopf-Scroll pausiert. Mediathek schliessen und wieder öffnen startet neu."));
     }
 
     private int headRetries;
@@ -4316,7 +4316,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 DiagLog.log("static wallpaper " + mode + " written, flags=" + which);
                 prefs.edit().putString("wallpaperMode", mode).apply();
             } catch (java.io.IOException | RuntimeException e) {
-                handler.post(() -> Toast.makeText(app, "Wallpaper konnte nicht gesetzt werden.", Toast.LENGTH_SHORT).show());
+                handler.post(() -> Toast.makeText(app, L.t("Wallpaper konnte nicht gesetzt werden."), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
@@ -4340,7 +4340,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Sends the same anonymous report to the private drop on architect-dna.ch, where Claude reads it. */
     private void uploadDiagnostics() {
         String report = diagnosticsText();
-        pop("Diagnose wird gesendet …");
+        pop(L.t("Diagnose wird gesendet …"));
         new Thread(() -> {
             int code = -1;
             try {
@@ -4360,43 +4360,43 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 DiagLog.log("diag upload failed: " + e.getClass().getSimpleName());
             }
             int result = code;
-            runOnUiThread(() -> pop(result == 200 ? "Gesendet ✓ — sag Claude: „check the log“" : "Senden fehlgeschlagen (" + result + ") — lang drücken zum Teilen"));
+            runOnUiThread(() -> pop(result == 200 ? L.t("Gesendet ✓ — sag Claude: „check the log“") : L.t("Senden fehlgeschlagen (") + result + L.t(") — lang drücken zum Teilen")));
         }).start();
     }
 
     /** Technical state + the log, as plain text to share (e.g. into the Claude chat). Nothing personal. */
     private void shareDiagnostics() {
         Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
-            .putExtra(Intent.EXTRA_SUBJECT, "ARC-DNA Diagnose")
+            .putExtra(Intent.EXTRA_SUBJECT, L.t("ARC-DNA Diagnose"))
             .putExtra(Intent.EXTRA_TEXT, diagnosticsText());
-        open(Intent.createChooser(send, "Diagnose teilen"));
+        open(Intent.createChooser(send, L.t("Diagnose teilen")));
     }
 
     private String diagnosticsText() {
-        StringBuilder b = new StringBuilder("ARC-DNA Home Diagnose\n");
+        StringBuilder b = new StringBuilder(L.t("ARC-DNA Home Diagnose\n"));
         try {
             b.append("Version: ").append(getPackageManager().getPackageInfo(getPackageName(), 0).versionName).append('\n');
         } catch (PackageManager.NameNotFoundException ignored) {
         }
-        b.append("Gerät: ").append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
+        b.append(L.t("Gerät: ")).append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE)
             .append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n");
         b.append(wallpaperStatusSafe()).append('\n');
-        b.append("Mikrofon/Visualizer: ").append(checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED).append('\n');
-        b.append("Kamera: ").append(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED).append('\n');
-        b.append("Nutzungszugriff: ").append(hasUsageAccess()).append('\n');
+        b.append(L.t("Mikrofon/Visualizer: ")).append(checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED).append('\n');
+        b.append(L.t("Kamera: ")).append(checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED).append('\n');
+        b.append(L.t("Nutzungszugriff: ")).append(hasUsageAccess()).append('\n');
         if (Build.VERSION.SDK_INT >= 33) {
-            b.append("Benachrichtigungen: ").append(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED).append('\n');
+            b.append(L.t("Benachrichtigungen: ")).append(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED).append('\n');
         }
         if (Build.VERSION.SDK_INT >= 34) {
             android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
-            b.append("Vollbild-Benachrichtigungen: ").append(nm != null && nm.canUseFullScreenIntent()).append('\n');
+            b.append(L.t("Vollbild-Benachrichtigungen: ")).append(nm != null && nm.canUseFullScreenIntent()).append('\n');
         }
-        b.append("Bluetooth-Sync: ").append(BtSync.status).append(" · Partner: ").append(BtSync.peerName(this)).append('\n');
-        b.append("Helligkeit schreiben: ").append(Settings.System.canWrite(this)).append('\n');
-        b.append("Wecker: ").append(prefs.getBoolean("alarmOn", false) ? "an" : "aus").append('\n');
-        b.append("Kopf-Scroll: ").append(headMode()).append(", Update-Token gesetzt: ").append(!updater.token().isEmpty()).append('\n');
-        b.append("Nachtmodus: ").append(isNight()).append(", Bildschirm ").append(getResources().getConfiguration().screenWidthDp)
-            .append("×").append(getResources().getConfiguration().screenHeightDp).append(" dp\n\n--- Log · neueste zuerst ---\n");
+        b.append(L.t("Bluetooth-Sync: ")).append(BtSync.status).append(" · Partner: ").append(BtSync.peerName(this)).append('\n');
+        b.append(L.t("Helligkeit schreiben: ")).append(Settings.System.canWrite(this)).append('\n');
+        b.append(L.t("Wecker: ")).append(prefs.getBoolean("alarmOn", false) ? "an" : "aus").append('\n');
+        b.append(L.t("Kopf-Scroll: ")).append(headMode()).append(L.t(", Update-Token gesetzt: ")).append(!updater.token().isEmpty()).append('\n');
+        b.append(L.t("Nachtmodus: ")).append(isNight()).append(L.t(", Bildschirm ")).append(getResources().getConfiguration().screenWidthDp)
+            .append("×").append(getResources().getConfiguration().screenHeightDp).append(L.t(" dp\n\n--- Log · neueste zuerst ---\n"));
         // Newest first and only the last ~300 lines, so a shortened paste still has what just happened.
         String[] lines = DiagLog.read().split("\n");
         for (int i = lines.length - 1, n = 0; i >= 0 && n < 300; i--, n++) b.append(lines[i]).append('\n');
@@ -4417,13 +4417,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** What Android actually shows on home and lock screen (the lock screen part needs Android 14+). */
     private String wallpaperStatus() {
         WallpaperManager wm = WallpaperManager.getInstance(this);
-        String home = liveWallpaperActive() ? "ARC-DNA Live" : wm.getWallpaperInfo() != null ? "andere Live" : "statisch";
+        String home = liveWallpaperActive() ? "ARC-DNA Live" : wm.getWallpaperInfo() != null ? L.t("andere Live") : "statisch";
         String lock = "?";
         if (Build.VERSION.SDK_INT >= 34) {
             android.app.WallpaperInfo info = wm.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
-            lock = liveOnLock() ? "ARC-DNA Live" : info != null ? "andere Live" : "statisch ✗";
+            lock = liveOnLock() ? "ARC-DNA Live" : info != null ? L.t("andere Live") : L.t("statisch ✗");
         }
-        return "Start: " + home + " · Sperre: " + lock;
+        return "Start: " + home + L.t(" · Sperre: ") + lock;
     }
 
     /**
@@ -4435,16 +4435,16 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         boolean live = liveOnLock() || liveWallpaperActive();
         boolean lockLive = liveOnLock();
         boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-        String msg = "Wenn das Handy gesperrt ist, lebt der Hintergrund:\n\n"
-            + "🌈  Regenbogen-Ring mit Glitzer um den Fingerabdruck-Sensor – pulsiert sanft\n"
-            + "📷  Drehender Regenbogen-Ring um die Frontkamera\n"
-            + "🔊  Rave-Kreise bei jedem Bass-Beat deiner Musik\n"
-            + "🌗  Hell/Dunkel folgt dem System\n\n"
-            + (live ? "✓" : "✗") + "  ARC-DNA Live gewählt\n"
-            + (lockLive ? "✓" : "✗") + "  Auch für den Sperrbildschirm\n"
-            + (mic ? "✓" : "✗") + "  Mikrofon für den Beat (nichts wird aufgenommen)\n\n"
-            + (lockLive && mic ? "Alles bereit – sperr das Handy und spiel Musik."
-            : "Tippe auf den Knopf. Bei der Frage wo: \"Startbildschirm und Sperrbildschirm\".");
+        String msg = L.t("Wenn das Handy gesperrt ist, lebt der Hintergrund:\n\n")
+            + L.t("🌈  Regenbogen-Ring mit Glitzer um den Fingerabdruck-Sensor – pulsiert sanft\n")
+            + L.t("📷  Drehender Regenbogen-Ring um die Frontkamera\n")
+            + L.t("🔊  Rave-Kreise bei jedem Bass-Beat deiner Musik\n")
+            + L.t("🌗  Hell/Dunkel folgt dem System\n\n")
+            + (live ? "✓" : "✗") + L.t("  ARC-DNA Live gewählt\n")
+            + (lockLive ? "✓" : "✗") + L.t("  Auch für den Sperrbildschirm\n")
+            + (mic ? "✓" : "✗") + L.t("  Mikrofon für den Beat (nichts wird aufgenommen)\n\n")
+            + (lockLive && mic ? L.t("Alles bereit – sperr das Handy und spiel Musik.")
+            : L.t("Tippe auf den Knopf. Bei der Frage wo: \"Startbildschirm und Sperrbildschirm\"."));
         Runnable setup = () -> {
             Intent in = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                 .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
@@ -4455,8 +4455,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             }
             if (!mic) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
         };
-        String[] rows = !lockLive ? new String[]{"Einrichten", "Später"} : !mic ? new String[]{"Mikrofon erlauben", "Später"} : new String[]{"Fertig"};
-        arcSheet("Sperrbildschirm", "Dynamischer Sperrbildschirm", msg, null, rows, k -> {
+        String[] rows = !lockLive ? new String[]{L.t("Einrichten"), L.t("Später")} : !mic ? new String[]{L.t("Mikrofon erlauben"), L.t("Später")} : new String[]{L.t("Fertig")};
+        arcSheet(L.t("Sperrbildschirm"), L.t("Dynamischer Sperrbildschirm"), msg, null, rows, k -> {
             if (k != 0 || rows.length == 1) return;
             if (!lockLive) setup.run();
             else requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
@@ -4466,23 +4466,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Long-press the clock: ARC-DNA Live, static light/dark, or leave the wallpaper alone. */
     private void showWallpaperChoice() {
         String[] items = {
-            "Dynamischer Sperrbildschirm – Einführung",
-            "ARC-DNA Live – Regenbogen, Glitzer & Rave (Sperrbildschirm)",
-            "Statisch – hell/dunkel automatisch",
-            "Aus – eigenes Wallpaper behalten",
-            "Hell/Dunkel wieder dem System folgen",
-            prefs.getBoolean("stealMe", true) ? "Sperrbildschirm-Spruch „STEAL ME.“ ausblenden" : "Sperrbildschirm-Spruch „STEAL ME.“ zeigen",
-            prefs.getBoolean("theftCam", true) ? "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) aus" : "Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) an",
-            prefs.getBoolean("wallpaperCalm", true) ? "Wallpaper-Energie: RUHIG · auf Rave umstellen" : "Wallpaper-Energie: RAVE · auf ruhig umstellen",
+            L.t("Dynamischer Sperrbildschirm – Einführung"),
+            L.t("ARC-DNA Live – Regenbogen, Glitzer & Rave (Sperrbildschirm)"),
+            L.t("Statisch – hell/dunkel automatisch"),
+            L.t("Aus – eigenes Wallpaper behalten"),
+            L.t("Hell/Dunkel wieder dem System folgen"),
+            prefs.getBoolean("stealMe", true) ? L.t("Sperrbildschirm-Spruch „STEAL ME.“ ausblenden") : L.t("Sperrbildschirm-Spruch „STEAL ME.“ zeigen"),
+            prefs.getBoolean("theftCam", true) ? L.t("Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) aus") : L.t("Diebstahl-Wache (Selfie-Kamera, GPS, Mikro) an"),
+            prefs.getBoolean("wallpaperCalm", true) ? L.t("Wallpaper-Energie: RUHIG · auf Rave umstellen") : L.t("Wallpaper-Energie: RAVE · auf ruhig umstellen"),
         };
-        arcSheet("Wallpaper & Farben", wallpaperStatus(), items, pick -> {
+        arcSheet(L.t("Wallpaper & Farben"), wallpaperStatus(), items, pick -> {
                 if (pick == 0) {
                     showLockIntro();
                     return;
                 }
                 int which = pick - 1;
                 if (which == 0) {
-                    pop("Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“");
+                    pop(L.t("Wallpaper festlegen → „Startbildschirm und Sperrbildschirm“"));
                     Intent live = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                         .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, new ComponentName(this, ArcWallpaper.class));
                     try {
@@ -4502,29 +4502,29 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                         }
                     }
                     applyWallpaperIfNeeded();
-                    pop("Statisches Wallpaper: hell/dunkel automatisch");
+                    pop(L.t("Statisches Wallpaper: hell/dunkel automatisch"));
                 } else if (which == 2) {
                     prefs.edit().putBoolean("autoWallpaper", false).apply();
-                    pop("Wallpaper bleibt, wie es ist");
+                    pop(L.t("Wallpaper bleibt, wie es ist"));
                 } else if (which == 3) {
                     setAppNight(UiModeManager.MODE_NIGHT_AUTO);
-                    pop("Hell/Dunkel folgt wieder dem System");
+                    pop(L.t("Hell/Dunkel folgt wieder dem System"));
                 } else if (which == 6) {
                     boolean calm = !prefs.getBoolean("wallpaperCalm", true);
                     prefs.edit().putBoolean("wallpaperCalm", calm).apply();
-                    pop(calm ? "Ruhig: atmet mit dem Beat, kein Ring-Gewitter" : "Rave: volle Ringe, Glitzer & Konfetti");
+                    pop(calm ? L.t("Ruhig: atmet mit dem Beat, kein Ring-Gewitter") : L.t("Rave: volle Ringe, Glitzer & Konfetti"));
                 } else if (which == 5) {
                     boolean on = !prefs.getBoolean("theftCam", true);
                     prefs.edit().putBoolean("theftCam", on).apply();
                     if (on && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 77);
                     }
-                    pop(on ? "📷 Wache an: Sperrbildschirm zeigt Selfie-Kamera, GPS & Mikro – nur lokal, nichts gespeichert"
-                        : "Wache aus");
+                    pop(on ? L.t("📷 Wache an: Sperrbildschirm zeigt Selfie-Kamera, GPS & Mikro – nur lokal, nichts gespeichert")
+                        : L.t("Wache aus"));
                 } else {
                     boolean on = !prefs.getBoolean("stealMe", true);
                     prefs.edit().putBoolean("stealMe", on).apply();
-                    pop(on ? "😈 STEAL ME. YES, FINALLY. – auf dem Sperrbildschirm" : "Spruch weg vom Sperrbildschirm");
+                    pop(on ? L.t("😈 STEAL ME. YES, FINALLY. – auf dem Sperrbildschirm") : L.t("Spruch weg vom Sperrbildschirm"));
                 }
         });
     }
@@ -4637,8 +4637,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hm.setTimeZone(tz);
         String to = hm.format(new java.util.Date(hi));
         String wd = new SimpleDateFormat("EE", Locale.GERMAN).format(new java.util.Date(hi)).replace(".", "");
-        oldTime.setText((wasSummer ? "UHR ZURÜCKGESTELLT " : "UHR VORGESTELLT ") + wd.toUpperCase(Locale.GERMAN) + " "
-            + day.format(new java.util.Date(hi)) + " (" + from + " → " + to + ")  ·  NACH " + (wasSummer ? "SOMMERZEIT" : "WINTERZEIT") + " WÄRE ES " + old);
+        oldTime.setText((wasSummer ? L.t("UHR ZURÜCKGESTELLT ") : L.t("UHR VORGESTELLT ")) + wd.toUpperCase(Locale.GERMAN) + " "
+            + day.format(new java.util.Date(hi)) + " (" + from + " → " + to + L.t(")  ·  NACH ") + (wasSummer ? L.t("SOMMERZEIT") : L.t("WINTERZEIT")) + L.t(" WÄRE ES ") + old);
         oldTime.setVisibility(prefs.getLong("dstHidden", 0) == hi / 60_000 ? View.GONE : View.VISIBLE);
         final long change = hi / 60_000;
         oldTime.setOnClickListener(v -> {                 // tap = got it, gone for this change
@@ -4705,7 +4705,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         clock.setText(s);
         date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(c.getTime()));
         // (The big clock no longer flips to the old summer time – it read like a wrong clock.)
-        String hello = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Hallo" : h < 22 ? "Guten Abend" : "Gute Nacht";
+        String hello = h < 5 ? L.t("Gute Nacht") : h < 11 ? L.t("Guten Morgen") : h < 17 ? L.t("Hallo") : h < 22 ? L.t("Guten Abend") : L.t("Gute Nacht");
         greet.setText(hello + ", Muharrem.");
         if (minimalClock != null) { minimalClock.setText(s); minimalDate.setText(date.getText()); minimalGreet.setText(greet.getText()); }
 
@@ -4850,7 +4850,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         cracks.bringToFront();
         cracks.crack(x, y);
         handler.postDelayed(() -> {
-            say("Hey, wir leben, Mann – das Leben ist gut! Tschiiuuu!", 2600);
+            say(L.t("Hey, wir leben, Mann – das Leben ist gut! Tschiiuuu!"), 2600);
             voice.say("Nyeeoow!");
         }, 450);
     }
@@ -5008,7 +5008,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** Changing system brightness needs "Modify system settings"; ask once, then it just works. */
     private boolean canWriteSettings() {
         if (Settings.System.canWrite(this)) return true;
-        pop("ARC-DNA erlauben, Systemeinstellungen zu ändern – dann nochmal schieben");
+        pop(L.t("ARC-DNA erlauben, Systemeinstellungen zu ändern – dann nochmal schieben"));
         open(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
         return false;
     }
@@ -5041,7 +5041,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
             Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
-        say("Auto-Helligkeit", 1200);
+        say(L.t("Auto-Helligkeit"), 1200);
     }
 
     /** Puts the knob on the level nearest to the current brightness, or "A" when automatic. */
@@ -5135,10 +5135,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         game.animate().alpha(1f).setDuration(300).start();
         setSoftRotation(0);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        voice.say(buddy() == 2 ? "Hüpf!" : "Yip-yip!");
+        voice.say(buddy() == 2 ? L.t("Hüpf!") : "Yip-yip!");
         game.resume();
         startGameNod();
-        pop("Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück");
+        pop(L.t("Tippen oder Kopf hoch = springen · 3× tippen oder 2× Home = zurück"));
     }
 
     /* A head bump up = jump: a fast reading vs. a slow baseline; a lift of ~2.5° jumps, re-armed once the head is back. */
@@ -5401,7 +5401,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         torchOurs = true;
         torch.set(true);
         hop();
-        say("Dunkel hier – Licht an. 🔦", 1800);
+        say(L.t("Dunkel hier – Licht an. 🔦"), 1800);
     }
 
     private void paintTorchChip() {
@@ -5507,18 +5507,18 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** {name, "der/die …" for the greeting, its calls}. Drawables and eyes in BUDDY_ART. */
     private static final String[][] BUDDIES = {
-        {"Fuchs", "der Fuchs"}, {"Bär", "der Bär"}, {"Hase", "der Hase"}, {"F1-Racer", "der F1-Racer"}, {"Ente", "die Ente Erwin"},
-        {"Panda", "der Panda"}, {"Eisbär", "der Eisbär"}, {"Eule", "die Eule"}, {"Drache", "der Drache"}};
+        {L.t("Fuchs"), L.t("der Fuchs")}, {L.t("Bär"), L.t("der Bär")}, {L.t("Hase"), L.t("der Hase")}, {"F1-Racer", L.t("der F1-Racer")}, {L.t("Ente"), L.t("die Ente Erwin")},
+        {"Panda", L.t("der Panda")}, {L.t("Eisbär"), L.t("der Eisbär")}, {L.t("Eule"), L.t("die Eule")}, {L.t("Drache"), L.t("der Drache")}};
     private static final String[][] BUDDY_CALLS = {
         {"Yip!", "Yip-yip!", "Gekk-gekk-gekk!", "Wow-wow!", "Ack-ack-ack!", "Mrrp?", "Wa-pa-pa-pa!", "Huff."},
-        {"Brumm.", "Hrrmm?", "Grrmpf!", "Mmmh, Honig."},
-        {"Mümmel!", "Tipp-tapp!", "Snff?", "Hüpf!"},
+        {L.t("Brumm."), "Hrrmm?", "Grrmpf!", L.t("Mmmh, Honig.")},
+        {L.t("Mümmel!"), L.t("Tipp-tapp!"), "Snff?", L.t("Hüpf!")},
         {"Brrm!", "Nyeeoow!", "Box, box!", "Vroom."},
-        {"Quak!", "Quak-quak!", "Wak?", "Quaaak."},
-        {"Mampf.", "Bambus?", "Hmpf-hmpf!", "Kuschelzeit."},
-        {"Eisbär ist da.", "Eisbär sagt Hallo.", "Brrr.", "Eisbär macht Tee."},
-        {"Huhu!", "Uhu-uhu!", "Schuhu?", "Ich seh alles."},
-        {"Rawrr!", "Fffshhh!", "Grrooar.", "Kleines Feuer?"}};
+        {L.t("Quak!"), L.t("Quak-quak!"), "Wak?", L.t("Quaaak.")},
+        {L.t("Mampf."), L.t("Bambus?"), "Hmpf-hmpf!", L.t("Kuschelzeit.")},
+        {L.t("Eisbär ist da."), L.t("Eisbär sagt Hallo."), "Brrr.", L.t("Eisbär macht Tee.")},
+        {L.t("Huhu!"), "Uhu-uhu!", L.t("Schuhu?"), L.t("Ich seh alles.")},
+        {"Rawrr!", "Fffshhh!", "Grrooar.", L.t("Kleines Feuer?")}};
     private static final float[][] BUDDY_EYES = {{75f, 31f, 3.6f, 1.8f}, {75f, 26f, 3.4f, 1.8f}, {70.3f, 33.8f, 2.8f, 1.4f}, {0f, 0f, 0f, 0f}, {74.5f, 20.5f, 2.3f, 1.2f},
         {76f, 27f, 3.2f, 1.7f}, {76f, 28f, 3f, 1.6f}, {58f, 25f, 4.6f, 2.4f}, {75f, 18f, 3f, 1.6f}};      // the racer has no eye: its helmet is the face
     private static final int[] BUDDY_ART = {R.drawable.fox, R.drawable.bear, R.drawable.bunnybuddy, R.drawable.f1buddy, R.drawable.duckbuddy,
@@ -5541,10 +5541,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Erwin the duck: unflappable, loves rain, philosophises a little, and every tap spreads ripples
      * over the home like a pond (a feather floats down now and then).
      */
-    private static final String[] DUCK_TRAITS = {"Regen? Herrlich. Für mich ist jeder Tag Badetag.",
-        "Alles perlt an mir ab. Probier's mal.", "Oben ruhig, unten paddeln wie verrückt. Wie du.",
-        "Brot? Nein danke, ich bin auf Wasserlinsen.", "Ich watschel nur kurz durch, mach weiter.",
-        "Gleichmut ist mein Superkraft-Gefieder.", "Wenn's stürmt: Kopf unter den Flügel. Fünf Minuten."};
+    private static final String[] DUCK_TRAITS = {L.t("Regen? Herrlich. Für mich ist jeder Tag Badetag."),
+        L.t("Alles perlt an mir ab. Probier's mal."), L.t("Oben ruhig, unten paddeln wie verrückt. Wie du."),
+        L.t("Brot? Nein danke, ich bin auf Wasserlinsen."), L.t("Ich watschel nur kurz durch, mach weiter."),
+        L.t("Gleichmut ist mein Superkraft-Gefieder."), L.t("Wenn's stürmt: Kopf unter den Flügel. Fünf Minuten.")};
 
     private void duckRipples() {
         if (rootFrame == null || fox == null || pro()) return;
@@ -5598,7 +5598,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
             duckRipples();
             voice.say(BUDDY_CALLS[4][random.nextInt(BUDDY_CALLS[4].length)]);
-            say("Quak! " + DUCK_TRAITS[tipIndex++ % DUCK_TRAITS.length], 3200);
+            say(L.t("Quak! ") + DUCK_TRAITS[tipIndex++ % DUCK_TRAITS.length], 3200);
             return;
         }
         hop();
@@ -5614,15 +5614,15 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         java.util.List<String> out = new java.util.ArrayList<>();
         if (prefs.getBoolean("alarmOn", false)) {
             long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
-            out.add("Wecker in " + (in / 60) + " h " + (in % 60) + " min.");
+            out.add(L.t("Wecker in ") + (in / 60) + " h " + (in % 60) + " min.");
         }
         android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
         if (bm != null) {
             int pct = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            if (pct > 0) out.add("Akku " + pct + " %" + (bm.isCharging() ? ", lädt." : pct <= 20 ? " – bald laden!" : "."));
+            if (pct > 0) out.add(L.t("Akku ") + pct + " %" + (bm.isCharging() ? L.t(", lädt.") : pct <= 20 ? L.t(" – bald laden!") : "."));
         }
         long[] week = MusicStats.week(this);
-        if (week[6] > 0) out.add("Heute " + (week[6] / 60 > 0 ? week[6] / 60 + " h " : "") + week[6] % 60 + " min Musik.");
+        if (week[6] > 0) out.add(L.t("Heute ") + (week[6] / 60 > 0 ? week[6] / 60 + " h " : "") + week[6] % 60 + L.t(" min Musik."));
         String f = prefs.getString("focus", "");
         if (!f.isEmpty() && today().equals(prefs.getString("focusDay", ""))) out.add("Heute zählt: " + f);
         return out;
@@ -5632,11 +5632,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private void assistantArrived(String who) {
         if (!homeInFront || isFinishing() || bubble == null || fox == null || game != null) return;
         String[] lines = who.equals("claude")
-            ? new String[]{"Claude! Der hat mich gebaut. Benimm dich.", "Psst – Claude ist da. Tu so, als wär alles fertig.", "Oh, der Chef. Ich war nur kurz Pause."}
+            ? new String[]{L.t("Claude! Der hat mich gebaut. Benimm dich."), L.t("Psst – Claude ist da. Tu so, als wär alles fertig."), L.t("Oh, der Chef. Ich war nur kurz Pause.")}
             : who.equals("chatgpt")
-            ? new String[]{"Die Konkurrenz? Hier drin?!", "Ich sag nichts. Ich bin nur Deko."}
-            : new String[]{"Psst, Gemini hört mit. Ich sag nix.", "Gemini! Frag mal, ob der Dino echt ist.", "Ein Kollege! Aber ich bin der mit dem Fell.",
-                "Hey Gemini – nicht meine Kacheln essen, das macht schon der Dino."};
+            ? new String[]{L.t("Die Konkurrenz? Hier drin?!"), L.t("Ich sag nichts. Ich bin nur Deko.")}
+            : new String[]{L.t("Psst, Gemini hört mit. Ich sag nix."), L.t("Gemini! Frag mal, ob der Dino echt ist."), L.t("Ein Kollege! Aber ich bin der mit dem Fell."),
+                L.t("Hey Gemini – nicht meine Kacheln essen, das macht schon der Dino.")};
         handler.postDelayed(() -> {
             if (!homeInFront || bubble == null) return;
             say(lines[random.nextInt(lines.length)], 3600);
@@ -5651,7 +5651,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * Now and then (at most every 2 h, then 1 in 3 home visits) the buddy points out one of
      * ARC-DNA's own apps you haven't opened for the longest time; tap the bubble to open it.
      */
-    private static final String[] SUGGEST = {"Schon vergessen? ", "Lange nicht gesehen: ", "Probier mal wieder ", "Kennst du noch "};
+    private static final String[] SUGGEST = {L.t("Schon vergessen? "), L.t("Lange nicht gesehen: "), L.t("Probier mal wieder "), L.t("Kennst du noch ")};
 
     private void suggestArc() {
         long now = System.currentTimeMillis();
@@ -5670,7 +5670,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         prefs.edit().putLong("arcSuggestAt", now).apply();
         Object[] app = pick;
         hop();
-        say(SUGGEST[random.nextInt(SUGGEST.length)] + app[0] + "? → antippen", 6000);
+        say(SUGGEST[random.nextInt(SUGGEST.length)] + app[0] + L.t("? → antippen"), 6000);
         bubble.setOnClickListener(v -> {
             bubble.setOnClickListener(null);
             bubble.setVisibility(View.GONE);
@@ -5703,7 +5703,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 playFromSearch(dj.query);
                 handler.postDelayed(() -> {
                     removeDjPicker();
-                    say(dj.name + " legt auf: " + dj.kind.toLowerCase(Locale.GERMAN) + " 🎧", 2600);
+                    say(dj.name + L.t(" legt auf: ") + dj.kind.toLowerCase(Locale.GERMAN) + " 🎧", 2600);
                 }, 700);
             }
 
@@ -5745,7 +5745,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(query)))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (RuntimeException ignored) {
-                pop("Keine Musik-App gefunden.");
+                pop(L.t("Keine Musik-App gefunden."));
                 return;
             }
         }
@@ -5771,8 +5771,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         long now = System.currentTimeMillis();
         if (h < 7 || h >= 23 || now - prefs.getLong("djSuggestAt", 0) < 3 * 3600_000L) return;
         prefs.edit().putLong("djSuggestAt", now).apply();
-        String[] lines = {"🎧 Stille? Soll ich auflegen? Musik-Titel antippen.", "🎧 Ich hätt da was. Titel im Musik-Kärtchen antippen.",
-            "🎧 DJ gesucht – tipp den Musik-Titel an."};
+        String[] lines = {L.t("🎧 Stille? Soll ich auflegen? Musik-Titel antippen."), L.t("🎧 Ich hätt da was. Titel im Musik-Kärtchen antippen."),
+            L.t("🎧 DJ gesucht – tipp den Musik-Titel an.")};
         say(lines[random.nextInt(lines.length)], 3600);
     }
 
@@ -5879,7 +5879,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                         .setInterpolator(new android.view.animation.OvershootInterpolator(3f))
                         .withEndAction(MainActivity.this::hop).start()).start();
                 voice.say(BUDDY_CALLS[next][0]);
-                handler.postDelayed(() -> say("Tadaa! Ich bin " + BUDDIES[next][1] + ". " + afterLine, 2800), 600);
+                handler.postDelayed(() -> say(L.t("Tadaa! Ich bin ") + BUDDIES[next][1] + ". " + afterLine, 2800), 600);
             }
 
             @Override
@@ -5975,7 +5975,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 DiagLog.log("dino lock: " + (ok ? "locked" : "accessibility service not running"));
                 if (!ok) {
                     blackHoleRestUntil = android.os.SystemClock.uptimeMillis() + 180_000;
-                    pop("Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen). Pause für 3 Minuten.");
+                    pop(L.t("Zum Sperren braucht der Dino die Bedienungshilfe (⚙ → Berechtigungen). Pause für 3 Minuten."));
                 }
                 DiagLog.log("dino black hole → lock");
             }
@@ -6061,7 +6061,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         for (int b = STARTERS; b < BUDDIES.length; b++) {
             if (buddyOwned(b) || xp < UNLOCK[b][0]) continue;
             prefs.edit().putBoolean("buddyOwned" + b, true).apply();
-            pop("🎉 Neuer Buddy: " + BUDDIES[b][0] + " – Einstellungen → Buddy-Galerie");
+            pop(L.t("🎉 Neuer Buddy: ") + BUDDIES[b][0] + L.t(" – Einstellungen → Buddy-Galerie"));
             DiagLog.log("buddy unlocked: " + BUDDIES[b][0] + " at " + xp + " friendship");
             if (fox != null) hop();
         }
@@ -6104,9 +6104,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             TextView st = monoText(9, active ? rust : ink3);
             st.setGravity(Gravity.CENTER);
             st.setLetterSpacing(0.04f);
-            if (active) st.setText("● DEIN BUDDY");
-            else if (owned) st.setText("TIPPEN = WÄHLEN");
-            else st.setText("♥ " + friendship() + "/" + UNLOCK[b][0] + "\noder 🪙 " + UNLOCK[b][1]);
+            if (active) st.setText(L.t("● DEIN BUDDY"));
+            else if (owned) st.setText(L.t("TIPPEN = WÄHLEN"));
+            else st.setText("♥ " + friendship() + "/" + UNLOCK[b][0] + L.t("\noder 🪙 ") + UNLOCK[b][1]);
             cell.addView(st, margins(-1, -2, 0, dp(2), 0, 0));
             if (!owned) {
                 // How close: a little friendship bar.
@@ -6125,9 +6125,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             lp.setMargins(dp(4), dp(4), dp(4), dp(4));
             grid.addView(cell, lp);
         }
-        arcSheet("Buddy-Galerie", "♥ " + friendship() + " Freundschaft · 🪙 " + coins() + " Münzen",
-            "Freundschaft wächst mit Antippen, Spielen, Chatten und Zeit zusammen. Oder kauf einen frei – mit Münzen aus Nexus Breach.",
-            grid, new String[]{"Fertig"}, pick -> { });
+        arcSheet(L.t("Buddy-Galerie"), "♥ " + friendship() + L.t(" Freundschaft · 🪙 ") + coins() + L.t(" Münzen"),
+            L.t("Freundschaft wächst mit Antippen, Spielen, Chatten und Zeit zusammen. Oder kauf einen frei – mit Münzen aus Nexus Breach."),
+            grid, new String[]{L.t("Fertig")}, pick -> { });
     }
 
     private void pickBuddy(int b) {
@@ -6136,7 +6136,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             prefs.edit().putInt("buddy", b).apply();
             applyBuddy();
             hop();
-            say("Hi, ich bin " + BUDDIES[b][1] + ".", 1600);
+            say(L.t("Hi, ich bin ") + BUDDIES[b][1] + ".", 1600);
             return;
         }
         int price = UNLOCK[b][1];
@@ -6144,11 +6144,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             bankPrefs().edit().putInt("bank", coins() - price).apply();
             prefs.edit().putBoolean("buddyOwned" + b, true).apply();
             DiagLog.log("buddy bought: " + BUDDIES[b][0] + " for " + price);
-            pop("🪙 " + price + " → " + BUDDIES[b][0] + " ist frei!");
+            pop("🪙 " + price + " → " + BUDDIES[b][0] + L.t(" ist frei!"));
             showBuddyGallery();
             return;
         }
-        pop("Noch " + Math.max(0, UNLOCK[b][0] - friendship()) + " ♥ – oder " + (price - coins()) + " 🪙 mehr");
+        pop(L.t("Noch ") + Math.max(0, UNLOCK[b][0] - friendship()) + L.t(" ♥ – oder ") + (price - coins()) + L.t(" 🪙 mehr"));
     }
 
     private void buddyComment() {
@@ -6159,7 +6159,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         int pick = random.nextInt(3);
         if (buddy() == 4 && pick == 0) line = DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)];
         else if (pick == 1 && !tips.isEmpty()) line = tips.get(tipIndex++ % tips.size());
-        else line = calls[random.nextInt(calls.length)] + " Doppeltipp = Spiel · halten = Chat.";
+        else line = calls[random.nextInt(calls.length)] + L.t(" Doppeltipp = Spiel · halten = Chat.");
         voice.say(calls[random.nextInt(calls.length)]);
         say(line, 3800);
     }
@@ -6540,7 +6540,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         lock.setGravity(Gravity.CENTER);
         v.addView(lock);
         TextView hint = monoText(12, ink2);
-        hint.setText("GESICHT ZEIGEN · TIPPEN = NOCHMAL");
+        hint.setText(L.t("GESICHT ZEIGEN · TIPPEN = NOCHMAL"));
         hint.setGravity(Gravity.CENTER);
         hint.setPadding(0, dp(12), 0, 0);
         v.addView(hint);
@@ -6554,10 +6554,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (Build.VERSION.SDK_INT < 30) return;
         android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
             .setTitle("ARC-DNA")
-            .setSubtitle("Startseite entsperren")
+            .setSubtitle(L.t("Startseite entsperren"))
             .setConfirmationRequired(false)
             .setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK)
-            .setNegativeButton("Später", getMainExecutor(), (d, w) -> { })
+            .setNegativeButton(L.t("Später"), getMainExecutor(), (d, w) -> { })
             .build();
         prompt.authenticate(new android.os.CancellationSignal(), getMainExecutor(),
             new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
@@ -6629,7 +6629,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (game != null) {
             long now = android.os.SystemClock.uptimeMillis();
             if (now - lastHomePress < 1500) exitGame();
-            else pop("Nochmal Home = Fuchsjagd beenden");
+            else pop(L.t("Nochmal Home = Fuchsjagd beenden"));
             lastHomePress = now;
             return;
         }
@@ -6671,7 +6671,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             return;
         }
         if (game != null) {
-            pop("3× tippen oder 2× Home = zurück");
+            pop(L.t("3× tippen oder 2× Home = zurück"));
             return;
         }
         if (settingsSheet != null) closeSettings();
@@ -6739,32 +6739,32 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** ARC-DNA's own apps {name, activity, line icon, launcher icon}. */
     private static Object[][] arcList() {
         return new Object[][]{{"Fokus", FokusActivity.class, R.drawable.ic_line_fokus, R.drawable.ic_line_fokus},
-            {"Werkzeuge", WerkzeugeActivity.class, R.drawable.ic_line_werkzeuge, R.drawable.ic_line_werkzeuge},
+            {L.t("Werkzeuge"), WerkzeugeActivity.class, R.drawable.ic_line_werkzeuge, R.drawable.ic_line_werkzeuge},
             {"VOID FREQ", FreqActivity.class, R.drawable.ic_line_freq, R.drawable.ic_voidfreq},
             {"Bücher", BuecherActivity.class, R.drawable.ic_line_buecher, R.drawable.ic_line_buecher},
             {"Globus", GlobusActivity.class, R.drawable.ic_line_globus, R.drawable.ic_globus},
-            {"Sonne & Welt", SunActivity.class, R.drawable.ic_line_sonne, R.drawable.ic_line_sonne},
-            {"Faktencheck", FaktenActivity.class, R.drawable.ic_line_fakten, R.drawable.ic_line_fakten},
+            {L.t("Sonne & Welt"), SunActivity.class, R.drawable.ic_line_sonne, R.drawable.ic_line_sonne},
+            {L.t("Faktencheck"), FaktenActivity.class, R.drawable.ic_line_fakten, R.drawable.ic_line_fakten},
             {"Nexus Breach", NexusActivity.class, R.drawable.ic_line_nexus, R.drawable.ic_nexus},
             {"Dr. Overloaded", BoardActivity.class, R.drawable.ic_line_board, R.drawable.ic_board},
             {"Rekorder", RecorderActivity.class, R.drawable.ic_line_recorder, R.drawable.ic_recorder},
             {"Galerie", GalleryActivity.class, R.drawable.ic_line_gallery, R.drawable.ic_gallery},
             {"ARC Kamera", CameraActivity.class, R.drawable.ic_line_arccam, R.drawable.ic_arccam},
-            {"Dezibel", DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel},
+            {L.t("Dezibel"), DecibelActivity.class, R.drawable.ic_line_decibel, R.drawable.ic_decibel},
             {"ARC Player", PlayerActivity.class, R.drawable.ic_line_player, R.drawable.ic_player},
             {"Energie", EnergyActivity.class, R.drawable.ic_line_energy, R.drawable.ic_energy},
             {"VPN", VpnActivity.class, R.drawable.ic_line_vpn, R.drawable.ic_vpn},
             {"Routen", RouteActivity.class, R.drawable.ic_line_routes, R.drawable.ic_routes},
             {"Bär-Wecker", WeckerActivity.class, R.drawable.ic_line_alarm, R.drawable.ic_alarm},
-            {"Pfeifen", TuneActivity.class, R.drawable.ic_music, R.drawable.ic_music},
+            {L.t("Pfeifen"), TuneActivity.class, R.drawable.ic_music, R.drawable.ic_music},
             {"Pixel-Art", PixelActivity.class, R.drawable.ic_line_pixel, R.drawable.ic_line_pixel},
             {"Gelassen", CalmActivity.class, R.drawable.ic_line_calm, R.drawable.ic_line_calm},
-            {"Spielothek", SpielothekActivity.class, R.drawable.ic_line_games, R.drawable.ic_line_games},
-            {"Stimmung", MoodActivity.class, R.drawable.ic_line_mood, R.drawable.ic_line_mood},
-            {"Kompass", KompassActivity.class, R.drawable.ic_line_kompass, R.drawable.ic_line_kompass},
+            {L.t("Spielothek"), SpielothekActivity.class, R.drawable.ic_line_games, R.drawable.ic_line_games},
+            {L.t("Stimmung"), MoodActivity.class, R.drawable.ic_line_mood, R.drawable.ic_line_mood},
+            {L.t("Kompass"), KompassActivity.class, R.drawable.ic_line_kompass, R.drawable.ic_line_kompass},
             {"Flexplan", PlanActivity.class, R.drawable.ic_line_plan, R.drawable.ic_line_plan},
             // Not built yet: greyed out, a tap says what's coming.
-            {"Eigenes VPN", null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
+            {L.t("Eigenes VPN"), null, R.drawable.ic_line_vpn, R.drawable.ic_vpn}};
     }
 
     private View arcGrid(Object[][] own) {
@@ -6784,8 +6784,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             tileTint = 0;
             if (a[1] == null) {
                 t.setAlpha(0.35f);
-                t.setOnClickListener(v -> pop("Kommt bald: dein eigenes ARC-DNA-VPN mit deinen Proton-Servern (WireGuard) – "
-                    + "verbinden direkt hier, ohne Proton-App."));
+                t.setOnClickListener(v -> pop(L.t("Kommt bald: dein eigenes ARC-DNA-VPN mit deinen Proton-Servern (WireGuard) – ")
+                    + L.t("verbinden direkt hier, ohne Proton-App.")));
             } else {
                 t.setOnClickListener(v -> openApp(new Intent(this, (Class<?>) a[1]), getDrawable((Integer) a[2])));
             }
@@ -6868,9 +6868,9 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /* ---- Typografie (⚙): the home's font family and text size ---- */
 
-    static final String[] FONTS = {"Grotesk", "Kondensiert", "Serif", "Mono"};
+    static final String[] FONTS = {"Grotesk", L.t("Kondensiert"), "Serif", "Mono"};
     static final String[] FONT_FAMILIES = {"sans-serif", "sans-serif-condensed", "serif", "monospace"};
-    static final String[] SIZES = {"Kompakt", "Normal", "Gross"};
+    static final String[] SIZES = {L.t("Kompakt"), "Normal", L.t("Gross")};
     static final float[] SIZE_SCALE = {0.9f, 1f, 1.12f};
 
     private Typeface face(boolean bold) {
@@ -6946,7 +6946,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
      * it reads something else: battery, the day, the week or the time to the alarm. Tap = next.
      */
     private final class PeekDial extends View {
-        private final String[] modes = {"AKKU", "TAG", "WOCHE", "WECKER"};
+        private final String[] modes = {L.t("AKKU"), "TAG", L.t("WOCHE"), L.t("WECKER")};
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private boolean shown;
         private float shownV = -1;
@@ -7168,23 +7168,23 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (m == 0 || overdrive) {                 // charging: the battery takes over, in overdrive
                 android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
                 int pct = bm == null ? 0 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                String sub = "AKKU";
+                String sub = L.t("AKKU");
                 if (overdrive) {
                     long full = bm != null && Build.VERSION.SDK_INT >= 28 ? bm.computeChargeTimeRemaining() : -1;
-                    sub = full > 0 ? String.format(Locale.ROOT, "⚡ VOLL IN %d:%02d", full / 3600_000, full / 60_000 % 60) : pct >= 100 ? "⚡ VOLL" : "⚡ LÄDT";
+                    sub = full > 0 ? String.format(Locale.ROOT, L.t("⚡ VOLL IN %d:%02d"), full / 3600_000, full / 60_000 % 60) : pct >= 100 ? L.t("⚡ VOLL") : L.t("⚡ LÄDT");
                 }
                 return new Object[]{pct / 100f, pct + "%", sub};
             }
             if (m == 1) {
                 float f = (c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)) / 1440f;
-                return new Object[]{f, Math.round(f * 100) + "%", "TAG VORBEI"};
+                return new Object[]{f, Math.round(f * 100) + "%", L.t("TAG VORBEI")};
             }
             if (m == 2) {
                 int d = (c.get(Calendar.DAY_OF_WEEK) + 5) % 7;           // Monday 0
                 float f = (d * 1440 + c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)) / (7f * 1440);
                 return new Object[]{f, Math.round(f * 100) + "%", "WOCHE · " + new SimpleDateFormat("EE", Locale.GERMAN).format(c.getTime()).replace(".", "").toUpperCase(Locale.GERMAN)};
             }
-            if (!prefs.getBoolean("alarmOn", false)) return new Object[]{0f, "AUS", "WECKER"};
+            if (!prefs.getBoolean("alarmOn", false)) return new Object[]{0f, "AUS", L.t("WECKER")};
             long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
             return new Object[]{1 - Math.min(1f, in / 1440f), in / 60 + "h " + String.format(Locale.ROOT, "%02d", in % 60), "BIS WECKER"};
         }
@@ -7484,7 +7484,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
             // Label on the right, clear of the fox: magnitude plus a word for the mood.
             float m = amp * 6;
-            String mood = m < 0.1f ? "RUHIG ♥" : m < 1.5f ? "LEICHT" : m < 3.5f ? "SPÜRBAR" : "BEBEN!";
+            String mood = m < 0.1f ? L.t("RUHIG ♥") : m < 1.5f ? L.t("LEICHT") : m < 3.5f ? L.t("SPÜRBAR") : L.t("BEBEN!");
             String label = String.format(Locale.ROOT, "SEISMO · M %.1f · %s", m, mood);
             textPaint.setColor(hot ? rust : ink3);
             canvas.drawText(label, w - dp(16) - textPaint.measureText(label), dp(11), textPaint);
@@ -7504,7 +7504,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             if (Settings.Global.getInt(getContentResolver(), "force_fsg_nav_bar", 0) != 1) {
                 Settings.Global.putInt(getContentResolver(), "force_fsg_nav_bar", 1);
                 DiagLog.log("xiaomi: full-screen gestures forced on");
-                pop("Gesten an – die Wischleiste ist zurück.");
+                pop(L.t("Gesten an – die Wischleiste ist zurück."));
             }
         } catch (RuntimeException e) {
             DiagLog.log("xiaomi gestures: " + e.getMessage());
@@ -7554,7 +7554,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView t = text(26, ink, true);
-        t.setText(new String[]{"Apps", "ARC-DNA", "Zuletzt"}[which]);
+        t.setText(new String[]{"Apps", "ARC-DNA", L.t("Zuletzt")}[which]);
         head.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView x = text(20, ink, true);
         x.setText("✕");
@@ -7608,20 +7608,20 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private static final String[][] MODES = {
         // name, emoji, widgets, calm, apps (package or own activity, first installed wins per slot)
         {"Standard", "◎", "", "0", ""},
-        {"Schule", "📚", "clock,weather", "1",
+        {L.t("Schule"), "📚", "clock,weather", "1",
             "calendar|com.google.android.calendar|com.android.calendar;BoardActivity;RecorderActivity;com.anthropic.claude;"
                 + "com.google.android.apps.bard|com.google.android.apps.gemini;com.google.android.keep|com.miui.notes;"
                 + "com.google.android.apps.docs;WeckerActivity"},
-        {"Arbeit", "💼", "clock,live", "1",
+        {L.t("Arbeit"), "💼", "clock,live", "1",
             "ch.protonmail.android|com.google.android.gm;calendar|com.google.android.calendar;com.anthropic.claude;"
                 + "com.microsoft.teams;com.google.android.apps.docs;com.github.android;BoardActivity;phone"},
-        {"Draussen", "🧭", "weather,live", "0",
+        {L.t("Draussen"), "🧭", "weather,live", "0",
             "maps|com.google.android.apps.maps;ch.sbb.mobile.android.b2c;RouteActivity;CameraActivity;GlobusActivity;"
                 + "phone;GalleryActivity;EnergyActivity"},
-        {"Entspannen", "🌿", "garden,clock", "0",
+        {L.t("Entspannen"), "🌿", "garden,clock", "0",
             "com.google.android.apps.youtube.music;PlayerActivity;GalleryActivity;FreqActivity;com.google.android.youtube;"
                 + "com.instagram.android;com.spotify.music;CalmActivity"},
-        {"Zuhause", "🏠", "clock,garden", "0",
+        {L.t("Zuhause"), "🏠", "clock,garden", "0",
             "phone;sms;calendar|com.google.android.calendar;EnergyActivity;WeckerActivity;GalleryActivity;"
                 + "com.google.android.apps.youtube.music;com.android.chrome"},
         {"Social", "💬", "clock,weather", "0",
@@ -7674,7 +7674,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         appTilesBox.removeAllViews();
         appTilesBox.addView(appTiles());
         renderWidgets();
-        if (m > 0) say(MODES[m][1] + " " + MODES[m][0] + "-Modus.", 1200);
+        if (m > 0) say(MODES[m][1] + " " + MODES[m][0] + L.t("-Modus."), 1200);
         // Kino: popcorn first – the microwave runs 2:30, full screen.
         if ("Kino".equals(MODES[m][0])) startActivity(new Intent(this, PopcornActivity.class));
         if (calm()) {
@@ -7736,13 +7736,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private Object[] resolveModeApp(PackageManager pm, String c) {
         switch (c) {
             case "phone":
-                return new Object[]{"Telefon", R.drawable.ic_phone, new Intent(this, DialerActivity.class)};
+                return new Object[]{L.t("Telefon"), R.drawable.ic_phone, new Intent(this, DialerActivity.class)};
             case "sms":
                 return new Object[]{"SMS", R.drawable.ic_sms, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)};
             case "calendar":
-                return new Object[]{"Kalender", R.drawable.ic_calendar, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)};
+                return new Object[]{L.t("Kalender"), R.drawable.ic_calendar, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)};
             case "maps":
-                return new Object[]{"Karten", R.drawable.ic_map, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS)};
+                return new Object[]{L.t("Karten"), R.drawable.ic_map, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS)};
             default:
                 break;
         }
@@ -7876,7 +7876,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         hs.setHorizontalScrollBarEnabled(false);
         LinearLayout chips = new LinearLayout(this);
         hs.addView(chips);
-        for (String q : new String[]{"Wecker?", "Akku?", "Aufräumen 🧹", "Musik heute?", "Witz", "Öffne Gelassen", "Termin morgen 13:10 Arzt"}) {
+        for (String q : new String[]{L.t("Wecker?"), L.t("Akku?"), L.t("Aufräumen 🧹"), L.t("Musik heute?"), L.t("Witz"), L.t("Öffne Gelassen"), L.t("Termin morgen 13:10 Arzt")}) {
             TextView c = text(13, 0xFF1A1A1A, true);
             c.setText(q);
             c.setPadding(dp(14), dp(9), dp(14), dp(9));
@@ -7897,7 +7897,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         plus.setOnClickListener(v -> askClaude(chatInput.getText().toString()));
         pill.addView(plus);
         chatInput = new EditText(this);
-        chatInput.setHint("Frag " + BUDDIES[buddy()][1].replaceFirst("^(der|die|das) ", "") + " …");
+        chatInput.setHint(L.t("Frag ") + BUDDIES[buddy()][1].replaceFirst("^(der|die|das) ", "") + " …");
         chatInput.setHintTextColor(0xFF6F6E69);
         chatInput.setTextColor(0xFF1A1A1A);
         chatInput.setTextSize(19);
@@ -7943,7 +7943,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         // The buddy opens with its call and something useful.
         String[] calls = BUDDY_CALLS[buddy()];
         java.util.List<String> tips = buddyTips();
-        String tip = buddy() == 4 ? DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)] : tips.isEmpty() ? "Was kann ich für dich tun?" : tips.get(tipIndex++ % tips.size());
+        String tip = buddy() == 4 ? DUCK_TRAITS[random.nextInt(DUCK_TRAITS.length)] : tips.isEmpty() ? L.t("Was kann ich für dich tun?") : tips.get(tipIndex++ % tips.size());
         voice.say(calls[random.nextInt(calls.length)]);
         bubbleMsg(calls[random.nextInt(calls.length)] + " " + tip, false);
     }
@@ -8002,7 +8002,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             hop();
         }
         scroll.smoothScrollTo(0, 0);
-        say("☕ Aufgeräumt! ↺ unten holt alles zurück.", 5000);
+        say(L.t("☕ Aufgeräumt! ↺ unten holt alles zurück."), 5000);
     }
 
     /** Hide the clutter while swept (again after every resume: applyPro shows it otherwise). */
@@ -8016,7 +8016,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (on && sweptChip == null && rootFrame != null) {
             sweptChip = text(10, ink2, true);
             sweptChip.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-            sweptChip.setText("☕ ↺ ALLES ZURÜCK");
+            sweptChip.setText(L.t("☕ ↺ ALLES ZURÜCK"));
             sweptChip.setPadding(dp(12), dp(5), dp(12), dp(5));
             sweptChip.setBackground(box(card, line, 18));
             sweptChip.setElevation(dp(6));
@@ -8098,7 +8098,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         }
         box.addView(apps);
         LinearLayout folders = new LinearLayout(this);
-        String[] names = {"▦  Apps", "◆  ARC-DNA", "◷  Zuletzt"};
+        String[] names = {"▦  Apps", "◆  ARC-DNA", L.t("◷  Zuletzt")};
         for (int i = 0; i < 3; i++) {
             TextView f = monoText(12, ink);
             f.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -8125,7 +8125,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         applySwept();
         if (pixelLayer != null) pixelLayer.setAlpha(1f);
         hop();
-        say("Alles wieder da. Volles Programm! 🎉", 2500);
+        say(L.t("Alles wieder da. Volles Programm! 🎉"), 2500);
     }
 
     private static final float COFFEE = 7f;        // walk in, pour slowly, a sip – then the broom
@@ -8227,7 +8227,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             p.setTextSize(dp(15));
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextAlign(Paint.Align.CENTER);
-            String line = t < 5.2f ? "Erst mal Kaffee ☕" : "Ahh. So – jetzt wird aufgeräumt! 🧹";
+            String line = t < 5.2f ? L.t("Erst mal Kaffee ☕") : L.t("Ahh. So – jetzt wird aufgeräumt! 🧹");
             float tw = p.measureText(line) + dp(24), tx = w * 0.32f, ty = ground - size * 1.2f - dp(14);
             tx = Math.max(tw / 2 + dp(8), Math.min(w - tw / 2 - dp(8), tx));
             p.setColor(0xF2FFFFFF);
@@ -8324,7 +8324,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 p.setTextSize(dp(15));
                 p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
                 p.setTextAlign(Paint.Align.CENTER);
-                String line = "Hier ist's mir zu voll! 🧹";
+                String line = L.t("Hier ist's mir zu voll! 🧹");
                 float tw = p.measureText(line) + dp(24), ty = ground - size * 1.25f - dp(10), tx = Math.max(tw / 2 + dp(8), Math.min(w - tw / 2 - dp(8), bx));
                 p.setColor(0xF2FFFFFF);
                 c.drawRoundRect(tx - tw / 2, ty - dp(26), tx + tw / 2, ty + dp(10), dp(16), dp(16), p);
@@ -8451,19 +8451,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
     /** The buddy's joke book: the joke, and what's funny about it if you ask. */
     private static final String[][] JOKES = {
-        {"Warum können Geister so schlecht lügen? Man sieht durch sie hindurch.", "\"Durchschauen\" heisst auch: eine Lüge erkennen. Geister sind durchsichtig – doppelt ertappt."},
-        {"Treffen sich zwei Magnete. Sagt der eine: Was soll ich heute bloss anziehen?", "Magnete ziehen an – und \"anziehen\" heisst auch Kleider wählen."},
-        {"Was macht ein Pirat am Computer? Er drückt die Enter-Taste.", "Enter klingt wie \"Entern\" – das, was Piraten mit Schiffen machen."},
-        {"Wie nennt man einen Bären ohne Ohren? B.", "\"Bär\" klingt wie B + \"är\". Nimm die \"Ohren\" (das \"är\") weg – bleibt nur B. Reiner Klang-Kalauer."},
-        {"Was sagt die Ente zum Regen? Endlich Wetter!", "Für Menschen ist Regen schlechtes Wetter – für eine Ente ist's genau ihr Ding."},
-        {"Was ist orange und läuft durch den Wald? Eine Wanderine.", "Mandarine + wandern = Wanderine."},
-        {"Was ist grün und klopft an die Tür? Ein Klopfsalat.", "Kopfsalat mit einem L mehr – und schon klopft er."},
-        {"Wie heisst ein Spanier ohne Auto? Carlos.", "\"Car los\" – das Auto ist los, also weg."},
-        {"Was liegt am Strand und spricht undeutlich? Eine Nuschel.", "Muschel + nuscheln (undeutlich reden)."},
-        {"Was ist ein Keks unter einem Baum? Ein schattiges Plätzchen.", "Plätzchen = Keks und auch ein gemütlicher Ort im Schatten."},
-        {"Was macht ein Clown im Büro? Faxen.", "Faxen = Blödsinn machen, aber auch das alte Büro-Fax."},
-        {"Was ist rot und schlecht für die Zähne? Ein Ziegelstein.", "Man erwartet Süssigkeiten – aber es ist ein Ziegelstein. Der Witz ist, dass er wörtlich stimmt."},
-        {"Sitzen zwei Kühe auf der Weide. Sagt die eine: Muh. Sagt die andere: Ich wollt's gerade sagen.", "Kühe sagen eh nur Muh – darum ist das so trocken."},
+        {L.t("Warum können Geister so schlecht lügen? Man sieht durch sie hindurch."), L.t("\"Durchschauen\" heisst auch: eine Lüge erkennen. Geister sind durchsichtig – doppelt ertappt.")},
+        {L.t("Treffen sich zwei Magnete. Sagt der eine: Was soll ich heute bloss anziehen?"), L.t("Magnete ziehen an – und \"anziehen\" heisst auch Kleider wählen.")},
+        {L.t("Was macht ein Pirat am Computer? Er drückt die Enter-Taste."), L.t("Enter klingt wie \"Entern\" – das, was Piraten mit Schiffen machen.")},
+        {L.t("Wie nennt man einen Bären ohne Ohren? B."), L.t("\"Bär\" klingt wie B + \"är\". Nimm die \"Ohren\" (das \"är\") weg – bleibt nur B. Reiner Klang-Kalauer.")},
+        {L.t("Was sagt die Ente zum Regen? Endlich Wetter!"), L.t("Für Menschen ist Regen schlechtes Wetter – für eine Ente ist's genau ihr Ding.")},
+        {L.t("Was ist orange und läuft durch den Wald? Eine Wanderine."), L.t("Mandarine + wandern = Wanderine.")},
+        {L.t("Was ist grün und klopft an die Tür? Ein Klopfsalat."), L.t("Kopfsalat mit einem L mehr – und schon klopft er.")},
+        {L.t("Wie heisst ein Spanier ohne Auto? Carlos."), L.t("\"Car los\" – das Auto ist los, also weg.")},
+        {L.t("Was liegt am Strand und spricht undeutlich? Eine Nuschel."), L.t("Muschel + nuscheln (undeutlich reden).")},
+        {L.t("Was ist ein Keks unter einem Baum? Ein schattiges Plätzchen."), L.t("Plätzchen = Keks und auch ein gemütlicher Ort im Schatten.")},
+        {L.t("Was macht ein Clown im Büro? Faxen."), L.t("Faxen = Blödsinn machen, aber auch das alte Büro-Fax.")},
+        {L.t("Was ist rot und schlecht für die Zähne? Ein Ziegelstein."), L.t("Man erwartet Süssigkeiten – aber es ist ein Ziegelstein. Der Witz ist, dass er wörtlich stimmt.")},
+        {L.t("Sitzen zwei Kühe auf der Weide. Sagt die eine: Muh. Sagt die andere: Ich wollt's gerade sagen."), L.t("Kühe sagen eh nur Muh – darum ist das so trocken.")},
     };
     private final java.util.ArrayList<Integer> jokeBag = new java.util.ArrayList<>();
     private int lastJoke = -1;
@@ -8472,19 +8472,19 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private String jokeFollowUp(String l) {
         if (lastJoke < 0) return null;
         if (l.contains("woher") || l.contains("quelle") || l.contains("wer hat") || l.contains("selbst ausgedacht") || l.contains("erfunden")) {
-            String[] who = {"Aus meinem kleinen Witzebuch – fest in ARC-DNA eingebaut, ganz offline. Klassiker vom Pausenhof, ich hab sie nur gesammelt.",
-                "Ehrlich? Uralte Kalauer. Die erzählt man sich in der Schweiz und in Deutschland seit Jahrzehnten – ich hab sie in mein Notizbuch geschrieben.",
-                "Nicht selbst erfunden – " + JOKES.length + " Stück stehen in meinem eingebauten Witzebuch. Willst du noch einen?"};
+            String[] who = {L.t("Aus meinem kleinen Witzebuch – fest in ARC-DNA eingebaut, ganz offline. Klassiker vom Pausenhof, ich hab sie nur gesammelt."),
+                L.t("Ehrlich? Uralte Kalauer. Die erzählt man sich in der Schweiz und in Deutschland seit Jahrzehnten – ich hab sie in mein Notizbuch geschrieben."),
+                L.t("Nicht selbst erfunden – ") + JOKES.length + L.t(" Stück stehen in meinem eingebauten Witzebuch. Willst du noch einen?")};
             return who[random.nextInt(who.length)];
         }
         if (l.contains("versteh") || l.contains("warum") || l.contains("wieso") || l.contains("erklär") || l.contains("was heisst") || l.contains("check")) {
             return JOKES[lastJoke][1];
         }
         if (l.contains("schlecht") || l.contains("flach") || l.contains("lahm") || l.contains("nicht lustig") || l.contains("cringe")) {
-            return "Autsch. 😅 Okay, der war flach. Sag \"noch einen\" – der nächste wird besser. Vielleicht.";
+            return L.t("Autsch. 😅 Okay, der war flach. Sag \"noch einen\" – der nächste wird besser. Vielleicht.");
         }
         if (l.contains("haha") || l.contains("lol") || l.contains("😂") || l.contains("gut") || l.contains("nice")) {
-            return "Hehe, freut mich! Noch einen?";
+            return L.t("Hehe, freut mich! Noch einen?");
         }
         return null;
     }
@@ -8506,7 +8506,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                         closeChat();
                         openApp(new Intent(this, (Class<?>) app[1]), getDrawable((Integer) app[2]));
                     }, 700);
-                    return "Mach ich – " + a[0] + " geht auf.";
+                    return L.t("Mach ich – ") + a[0] + L.t(" geht auf.");
                 }
             }
             for (AppEntry a : apps) {
@@ -8515,10 +8515,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                         closeChat();
                         launch(a);
                     }, 700);
-                    return "Los geht's: " + a.label + ".";
+                    return L.t("Los geht's: ") + a.label + ".";
                 }
             }
-            return "\"" + want + "\" finde ich nicht. Wie heisst die App genau?";
+            return "\"" + want + L.t("\" finde ich nicht. Wie heisst die App genau?");
         }
         // One-time reminder: "termin [heute|morgen] HH:MM text".
         java.util.regex.Matcher tm = java.util.regex.Pattern.compile("(termin|erinner)\\D*?(heute|morgen|übermorgen)?\\s*(\\d{1,2})[:.](\\d{2})\\s*(.*)").matcher(l);
@@ -8530,7 +8530,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             cal.set(Calendar.MINUTE, Integer.parseInt(tm.group(4)));
             cal.set(Calendar.SECOND, 0);
             if (tm.group(2) == null && cal.getTimeInMillis() < System.currentTimeMillis()) cal.add(Calendar.DAY_OF_YEAR, 1);
-            String what = tm.group(5).trim().isEmpty() ? "Termin" : Character.toUpperCase(tm.group(5).trim().charAt(0)) + tm.group(5).trim().substring(1);
+            String what = tm.group(5).trim().isEmpty() ? L.t("Termin") : Character.toUpperCase(tm.group(5).trim().charAt(0)) + tm.group(5).trim().substring(1);
             AlarmScheduler.addDeadline(this, cal.getTimeInMillis(), what);
             paintAlarm();
             return "Notiert 🐻 " + new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(cal.getTime()) + " – " + what + ". Der Bär weckt dich.";
@@ -8539,8 +8539,8 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             StringBuilder b = new StringBuilder();
             if (prefs.getBoolean("alarmOn", false)) {
                 long in = Math.max(0, AlarmScheduler.next(prefs) - System.currentTimeMillis()) / 60_000;
-                b.append("Wecker in ").append(in / 60).append(" h ").append(in % 60).append(" min.");
-            } else b.append("Der tägliche Wecker ist aus.");
+                b.append(L.t("Wecker in ")).append(in / 60).append(" h ").append(in % 60).append(" min.");
+            } else b.append(L.t("Der tägliche Wecker ist aus."));
             AlarmScheduler.Deadline d = AlarmScheduler.nextDeadline(this);
             if (d != null) b.append(" Nächster Termin: ").append(new java.text.SimpleDateFormat("EEE HH:mm", Locale.GERMAN).format(new java.util.Date(d.at)))
                 .append(" – ").append(d.label).append('.');
@@ -8549,11 +8549,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (l.contains("akku") || l.contains("batter")) {
             android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
             int pct = bm == null ? -1 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            return "Akku " + pct + " %" + (bm != null && bm.isCharging() ? ", lädt gerade." : pct <= 20 ? " – bitte bald laden!" : ".");
+            return L.t("Akku ") + pct + " %" + (bm != null && bm.isCharging() ? L.t(", lädt gerade.") : pct <= 20 ? L.t(" – bitte bald laden!") : ".");
         }
         if (l.contains("musik") || l.contains("gehört") || l.contains("song")) {
             long[] week = MusicStats.week(this);
-            return "Heute " + week[6] / 60 + " h " + week[6] % 60 + " min Musik. Meist gehört: " + MusicStats.favoriteArtist(this) + ".";
+            return L.t("Heute ") + week[6] / 60 + " h " + week[6] % 60 + L.t(" min Musik. Meist gehört: ") + MusicStats.favoriteArtist(this) + ".";
         }
         if (l.contains("leiser") || l.contains("lauter")) {
             android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
@@ -8580,13 +8580,13 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                 closeChat();
                 handler.postDelayed(this::sweep, 400);
             }, 900);
-            return "Ich hol den Besen! 🧹";
+            return L.t("Ich hol den Besen! 🧹");
         }
         if (l.contains("danke")) return "Gern! " + BUDDY_CALLS[buddy()][1];
         // Anything else: Claude knows more.
         String quest = q;
         handler.postDelayed(() -> askClaude(quest), 1200);
-        return "Das weiss Claude besser – ich frag ihn für dich …";
+        return L.t("Das weiss Claude besser – ich frag ihn für dich …");
     }
 
     /** Hand the question to the Claude app (or claude.ai). */
@@ -8605,11 +8605,11 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "de-CH")
-            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Sag's " + BUDDIES[buddy()][1] + " …");
+            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, L.t("Sag's ") + BUDDIES[buddy()][1] + " …");
         try {
             startActivityForResult(i, REQ_SPEAK);
         } catch (RuntimeException e) {
-            bubbleMsg("Keine Spracherkennung auf diesem Gerät – tipp's lieber.", false);
+            bubbleMsg(L.t("Keine Spracherkennung auf diesem Gerät – tipp's lieber."), false);
         }
     }
 

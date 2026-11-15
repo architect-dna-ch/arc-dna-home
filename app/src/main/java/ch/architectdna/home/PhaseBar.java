@@ -189,9 +189,9 @@ final class PhaseBar extends View {
         }
         paint.setTextSize(dp(10));
         paint.setColor(ink3);
-        String t = duration > 0 ? time(position) + " / " + time(duration) : "ZEIT UNBEKANNT";
+        String t = duration > 0 ? time(position) + " / " + time(duration) : L.t("ZEIT UNBEKANNT");
         c.drawText(t, 0, barTop + barH + dp(14), paint);
-        String hint = (plays > 1 ? plays + "× GEHÖRT · " : "") + "TIPPEN = SPRINGEN";
+        String hint = (plays > 1 ? plays + L.t("× GEHÖRT · ") : "") + L.t("TIPPEN = SPRINGEN");
         c.drawText(hint, w - paint.measureText(hint), barTop + barH + dp(14), paint);
     }
 

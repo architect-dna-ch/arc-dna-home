@@ -27,9 +27,9 @@ public class RaceActivity extends Activity {
 
     private final BtRace.Listener listener = new BtRace.Listener() {
         @Override public void onConnected(String name) {
-            toast("Verbunden mit " + name);
+            toast(L.t("Verbunden mit ") + name);
             if (hosting) { seed = new Random().nextLong(); BtRace.send("START " + seed); begin(seed); }
-            else if (status != null) status.setText("Verbunden – warte auf Start …");
+            else if (status != null) status.setText(L.t("Verbunden – warte auf Start …"));
         }
         @Override public void onMessage(String line) { handle(line); }
         @Override public void onClosed(String why) { toast("Rennen getrennt: " + why); if (!started) chooser(); }
@@ -54,16 +54,16 @@ public class RaceActivity extends Activity {
         col.setPadding(pad, pad * 2, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("Fuchs-Rennen");
+        title.setText(L.t("Fuchs-Rennen"));
         title.setTextColor(ink); title.setTextSize(28); title.setTypeface(Typeface.DEFAULT_BOLD);
         col.addView(title);
         TextView sub = new TextView(this);
-        sub.setText("Beide Geräte: ARC-DNA offen, Bluetooth an, gekoppelt. Einer hostet, einer tritt bei.");
+        sub.setText(L.t("Beide Geräte: ARC-DNA offen, Bluetooth an, gekoppelt. Einer hostet, einer tritt bei."));
         sub.setTextColor(ink2); sub.setTextSize(14); sub.setPadding(0, pad / 3, 0, pad);
         col.addView(sub);
 
-        col.addView(button("🏁  Rennen hosten (warten)", rust, 0xFFFFFFFF, v -> {
-            hosting = true; status.setText("Warte auf Partner …"); BtRace.host(this, listener);
+        col.addView(button(L.t("🏁  Rennen hosten (warten)"), rust, 0xFFFFFFFF, v -> {
+            hosting = true; status.setText(L.t("Warte auf Partner …")); BtRace.host(this, listener);
         }));
 
         status = new TextView(this);
@@ -71,20 +71,20 @@ public class RaceActivity extends Activity {
         col.addView(status);
 
         TextView join = new TextView(this);
-        join.setText("… oder einem Partner beitreten:");
+        join.setText(L.t("… oder einem Partner beitreten:"));
         join.setTextColor(ink); join.setTextSize(15); join.setPadding(0, pad / 2, 0, pad / 3);
         col.addView(join);
 
         java.util.List<BluetoothDevice> parts = BtRace.partners(this);
         if (parts.isEmpty()) {
             TextView none = new TextView(this);
-            none.setText("Keine gekoppelten Geräte gefunden.");
+            none.setText(L.t("Keine gekoppelten Geräte gefunden."));
             none.setTextColor(ink2); none.setTextSize(13);
             col.addView(none);
         }
         for (BluetoothDevice d : parts) {
             col.addView(button("↗  " + BtRace.safeName(d), 0x00000000, ink, v -> {
-                hosting = false; status.setText("Verbinde …"); BtRace.join(this, d, listener);
+                hosting = false; status.setText(L.t("Verbinde …")); BtRace.join(this, d, listener);
             }));
         }
         sv.addView(col);

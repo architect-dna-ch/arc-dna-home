@@ -23,17 +23,17 @@ public class WerkzeugeActivity extends Activity {
 
     // {name, subtitle, url, accentHex}
     private static final String[][] TOOLS = {
-        {"Lernbegleiter", "Übt mit dir — Theorie erst nach dem Fehler", "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY", "B5271E"},
-        {"Antrieb", "Checkt bei dir ein & wirft dir Funken", "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ", "C8643B"},
-        {"Puls", "Wachheit im Unterricht — nicht absitzen", "https://claude.ai/artifact/Bt4Jkje111WSshedwsBqN2", "3E7C7B"},
-        {"Bär", "Zwei feste Säulen: Schlaf & Aufwachen", "https://claude.ai/artifact/98afjmwppVJkPpVMXBLjp2", "2E3A52"},
-        {"Takt", "Dein Tag, um deinen Körper geplant · in der App", "app:takt", "2E9AA6"},
-        {"ARC Remote", "Musik auf dem Tablet vom Handy steuern · Bluetooth", "app:remote", "D9472F"},
-        {"Fundament", "Grundlinie, Anker & deine Wurzeln", "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
-        {"Einspruch", "Formeller Brief an Krankenkasse, Vermieter, Behörde", "app:einspruch", "C89B4A"},
-        {"Anchor", "Begleiter, der deine Situation kennt · Notfall-Modus", "app:anchor", "C4A882"},
-        {"Wellness", "Erlaubnis zur Ruhe · 9 geführte Rituale", "https://architect-dna.ch/wellness/", "3E7C5A"},
-        {"Health", "Hausmittel mit Herkunft · und wann zum Arzt", "https://architect-dna.ch/health/", "B5271E"},
+        {"Lernbegleiter", L.t("Übt mit dir — Theorie erst nach dem Fehler"), "https://claude.ai/artifact/KjKSrDurQdhPhGEzZQtUhY", "B5271E"},
+        {L.t("Antrieb"), L.t("Checkt bei dir ein & wirft dir Funken"), "https://claude.ai/artifact/4r5tzLALZwBnjcZrjMcrmQ", "C8643B"},
+        {L.t("Puls"), L.t("Wachheit im Unterricht — nicht absitzen"), "https://claude.ai/artifact/Bt4Jkje111WSshedwsBqN2", "3E7C7B"},
+        {L.t("Bär"), L.t("Zwei feste Säulen: Schlaf & Aufwachen"), "https://claude.ai/artifact/98afjmwppVJkPpVMXBLjp2", "2E3A52"},
+        {"Takt", L.t("Dein Tag, um deinen Körper geplant · in der App"), "app:takt", "2E9AA6"},
+        {"ARC Remote", L.t("Musik auf dem Tablet vom Handy steuern · Bluetooth"), "app:remote", "D9472F"},
+        {L.t("Fundament"), L.t("Grundlinie, Anker & deine Wurzeln"), "https://claude.ai/artifact/Gm9Vpr61vHwaNa9EmKzN7y", "A7853F"},
+        {"Einspruch", L.t("Formeller Brief an Krankenkasse, Vermieter, Behörde"), "app:einspruch", "C89B4A"},
+        {"Anchor", L.t("Begleiter, der deine Situation kennt · Notfall-Modus"), "app:anchor", "C4A882"},
+        {"Wellness", L.t("Erlaubnis zur Ruhe · 9 geführte Rituale"), "https://architect-dna.ch/wellness/", "3E7C5A"},
+        {"Health", L.t("Hausmittel mit Herkunft · und wann zum Arzt"), "https://architect-dna.ch/health/", "B5271E"},
     };
 
     private int bg, card, line, ink, ink2, ink3, rust;
@@ -68,18 +68,18 @@ public class WerkzeugeActivity extends Activity {
         }
         sv.addView(col);
 
-        TextView eye = mono("— ARC·DNA WERKZEUGE", rust);
+        TextView eye = mono(L.t("— ARC·DNA WERKZEUGE"), rust);
         eye.setLetterSpacing(0.22f);
         col.addView(eye);
         TextView h1 = new TextView(this);
-        h1.setText("Werkzeuge");
+        h1.setText(L.t("Werkzeuge"));
         h1.setTextColor(ink);
         h1.setTextSize(34);
         h1.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         h1.setPadding(0, dp(6), 0, dp(4));
         col.addView(h1);
         TextView sub = new TextView(this);
-        sub.setText("Deine KI-Begleiter. Takt läuft direkt in der App. Die anderen laufen auf claude.ai – Tippen öffnet sie im Browser, wo du schon eingeloggt bist.");
+        sub.setText(L.t("Deine KI-Begleiter. Takt läuft direkt in der App. Die anderen laufen auf claude.ai – Tippen öffnet sie im Browser, wo du schon eingeloggt bist."));
         sub.setTextColor(ink2);
         sub.setTextSize(14);
         sub.setPadding(0, 0, 0, dp(12));
@@ -148,7 +148,7 @@ public class WerkzeugeActivity extends Activity {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (RuntimeException e) {
-            Toast.makeText(this, "Kein Browser gefunden", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Kein Browser gefunden"), Toast.LENGTH_SHORT).show();
         }
     }
 

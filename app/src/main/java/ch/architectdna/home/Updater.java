@@ -117,14 +117,14 @@ final class Updater {
             return;
         }
         busy = true;
-        ui.onUpdateState("Suche Updates …", false);
+        ui.onUpdateState(L.t("Suche Updates …"), false);
         new Thread(() -> {
             try {
                 HttpURLConnection c = open(REPO + "/releases/latest", "application/vnd.github+json", true);
                 int code = c.getResponseCode();
-                if (code == 401) throw new IOException("Token ungültig oder abgelaufen (401) – neu kopieren");
-                if (code == 403 || code == 404) throw new IOException("Token ohne Zugriff (" + code + ") – Resource owner architect-dna-ch und Freigabe prüfen");
-                if (code != 200) throw new IOException("GitHub antwortet " + code);
+                if (code == 401) throw new IOException(L.t("Token ungültig oder abgelaufen (401) – neu kopieren"));
+                if (code == 403 || code == 404) throw new IOException(L.t("Token ohne Zugriff (") + code + L.t(") – Resource owner architect-dna-ch und Freigabe prüfen"));
+                if (code != 200) throw new IOException(L.t("GitHub antwortet ") + code);
                 JSONObject release = new JSONObject(readAll(c.getInputStream()));
                 String tag = release.getString("tag_name");                 // e.g. v1.0.12
                 int n = Integer.parseInt(tag.substring(tag.lastIndexOf('.') + 1));
@@ -143,16 +143,16 @@ final class Updater {
                     .putLong("updateAsset", id).putLong("updateDelta", delta).putInt("updateDeltaFor", current()).apply();
                 main.post(() -> {
                     showState();
-                    if (manual && n <= current()) toast("ARC-DNA ist aktuell (1.0." + current() + ").");
+                    if (manual && n <= current()) toast(L.t("ARC-DNA ist aktuell (1.0.") + current() + ").");
                 });
             } catch (Exception e) {
                 DiagLog.log("update check failed: " + e.getMessage());
                 // Not again on every unlock: try once an hour until it works.
                 prefs.edit().putLong("updateChecked", System.currentTimeMillis() - CHECK_EVERY_MS + 3_600_000L).apply();
                 main.post(() -> {
-                    ui.onUpdateState("Update-Prüfung fehlgeschlagen · tippen = im Browser laden", false);
+                    ui.onUpdateState(L.t("Update-Prüfung fehlgeschlagen · tippen = im Browser laden"), false);
                     if (manual) {
-                        toast(e.getMessage() + " – lade im Browser");
+                        toast(e.getMessage() + L.t(" – lade im Browser"));
                         openInBrowser();
                     }
                 });
@@ -168,21 +168,21 @@ final class Updater {
             assetId = prefs.getLong("updateAsset", 0);
             deltaId = prefs.getInt("updateDeltaFor", -1) == current() ? prefs.getLong("updateDelta", 0) : 0;
         }
-        if (latest > current() && assetId != 0) ui.onUpdateState("Update 1.0." + latest + " → installieren", true);
-        else ui.onUpdateState("ARC-DNA 1.0." + current() + " · aktuell", false);
+        if (latest > current() && assetId != 0) ui.onUpdateState("Update 1.0." + latest + L.t(" → installieren"), true);
+        else ui.onUpdateState("ARC-DNA 1.0." + current() + L.t(" · aktuell"), false);
     }
 
     /** Downloads the APK into a PackageInstaller session; Android then asks for confirmation. */
     void install() {
         if (busy || assetId == 0) return;
         if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) {
-            toast("ARC-DNA erlauben, Apps zu installieren – dann nochmal tippen.");
+            toast(L.t("ARC-DNA erlauben, Apps zu installieren – dann nochmal tippen."));
             activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                 Uri.parse("package:" + activity.getPackageName())));
             return;
         }
         busy = true;
-        ui.onUpdateState("Lädt Update …", false);
+        ui.onUpdateState(L.t("Lädt Update …"), false);
         prog(deltaId != 0 ? 0 : 2, 0, 0, true);
         new Thread(() -> {
             PackageInstaller.Session session = null;
@@ -222,7 +222,7 @@ final class Updater {
                         prog(built != null ? 1 : 2, done, length, false);
                         if (pct != lastPct) {
                             lastPct = pct;
-                            main.post(() -> ui.onUpdateState((built != null ? "Installiert Update … " : "Lädt Update … ") + pct + " %", false));
+                            main.post(() -> ui.onUpdateState((built != null ? L.t("Installiert Update … ") : L.t("Lädt Update … ")) + pct + " %", false));
                         }
                     }
                     session.fsync(out);
@@ -234,7 +234,7 @@ final class Updater {
                 session.close();
                 session = null;
                 prog(3, 1, 1, true);
-                main.post(() -> ui.onUpdateState("Installation bestätigen …", false));
+                main.post(() -> ui.onUpdateState(L.t("Installation bestätigen …"), false));
             } catch (Exception e) {
                 if (session != null) session.abandon();
                 prog(-1, 0, 0, true);
@@ -261,7 +261,7 @@ final class Updater {
             c = open(location, "application/octet-stream", false);
             code = c.getResponseCode();
         }
-        if (code != 200) throw new IOException("Download fehlgeschlagen (" + code + ")");
+        if (code != 200) throw new IOException(L.t("Download fehlgeschlagen (") + code + ")");
         return c;
     }
 
@@ -275,7 +275,7 @@ final class Updater {
         try {
             HttpURLConnection c = download(deltaId);
             long total = c.getContentLengthLong();
-            main.post(() -> ui.onUpdateState("Lädt kleines Update (" + Math.max(1, total / 1_000_000) + " MB) …", false));
+            main.post(() -> ui.onUpdateState(L.t("Lädt kleines Update (") + Math.max(1, total / 1_000_000) + " MB) …", false));
             java.io.File patch = new java.io.File(activity.getCacheDir(), "update.delta");
             try (InputStream in = c.getInputStream(); OutputStream o = new java.io.FileOutputStream(patch)) {
                 byte[] buf = new byte[64 * 1024];
@@ -308,7 +308,7 @@ final class Updater {
                         old.seek(off);
                         while (n > 0) {
                             int r = old.read(buf, 0, Math.min(n, buf.length));
-                            if (r < 0) throw new IOException("Basis zu kurz");
+                            if (r < 0) throw new IOException(L.t("Basis zu kurz"));
                             o.write(buf, 0, r);
                             sha.update(buf, 0, r);
                             n -= r;
@@ -317,19 +317,19 @@ final class Updater {
                         int n = in.readInt();
                         while (n > 0) {
                             int r = in.read(buf, 0, Math.min(n, buf.length));
-                            if (r < 0) throw new IOException("Patch zu kurz");
+                            if (r < 0) throw new IOException(L.t("Patch zu kurz"));
                             o.write(buf, 0, r);
                             sha.update(buf, 0, r);
                             n -= r;
                         }
                     } else {
-                        throw new IOException("Patch kaputt");
+                        throw new IOException(L.t("Patch kaputt"));
                     }
                 }
             }
             //noinspection ResultOfMethodCallIgnored
             patch.delete();
-            if (out.length() != size || !java.security.MessageDigest.isEqual(sha.digest(), want)) throw new IOException("Prüfsumme falsch");
+            if (out.length() != size || !java.security.MessageDigest.isEqual(sha.digest(), want)) throw new IOException(L.t("Prüfsumme falsch"));
             DiagLog.log("update: patch " + total / 1000 + " kB instead of the full APK");
             return out;
         } catch (Exception e) {
@@ -348,11 +348,11 @@ final class Updater {
             Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
             if (confirm != null) activity.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } else if (status == PackageInstaller.STATUS_SUCCESS) {
-            toast("Update installiert.");
+            toast(L.t("Update installiert."));
             showState();
         } else {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            toast("Update abgebrochen" + (msg != null ? ": " + msg : "."));
+            toast(L.t("Update abgebrochen") + (msg != null ? ": " + msg : "."));
             showState();
         }
     }

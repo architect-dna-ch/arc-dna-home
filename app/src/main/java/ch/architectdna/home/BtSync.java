@@ -36,7 +36,7 @@ final class BtSync {
     private static volatile boolean busy;
     private static long lastTry;
     /** One line for the diagnosis header: what the sync is doing / last did. */
-    static volatile String status = "noch nicht gestartet";
+    static volatile String status = L.t("noch nicht gestartet");
 
     /** ARC·Tap: a theme id and/or buddy index to hand the partner on the next exchange (one-shot). */
     private static volatile String pendingShare;
@@ -72,13 +72,13 @@ final class BtSync {
     private static BluetoothAdapter adapter(Context c) {
         if (Build.VERSION.SDK_INT >= 31
             && c.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            why = "keine Bluetooth-Berechtigung";
+            why = L.t("keine Bluetooth-Berechtigung");
             return null;
         }
         BluetoothManager m = c.getSystemService(BluetoothManager.class);
         BluetoothAdapter a = m == null ? null : m.getAdapter();
         if (a == null || !a.isEnabled()) {
-            why = "Bluetooth aus";
+            why = L.t("Bluetooth aus");
             return null;
         }
         return a;

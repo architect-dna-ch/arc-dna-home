@@ -149,7 +149,7 @@ final class RaceView extends View {
         p.setTextAlign(Paint.Align.LEFT);
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         p.setColor(ink); p.setTextSize(dp(15));
-        c.drawText(String.format(Locale.ROOT, "DU  %05d m", distance()), dp(20), dp(44), p);
+        c.drawText(String.format(Locale.ROOT, L.t("DU  %05d m"), distance()), dp(20), dp(44), p);
         p.setColor(rust);
         String opp = oppDone ? String.format(Locale.ROOT, "PARTNER  %05d m ✓", oppFinal) : String.format(Locale.ROOT, "PARTNER  %05d m", (int) oppDist);
         c.drawText(opp, dp(20), dp(66), p);
@@ -158,9 +158,9 @@ final class RaceView extends View {
             String msg = resultMsg();
             if (msg != null) { p.setColor(rust); p.setTextSize(dp(20)); p.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
                 p.setTextAlign(Paint.Align.CENTER); c.drawText(msg, w / 2f, h * 0.5f, p); p.setTextAlign(Paint.Align.LEFT); }
-            else { c.drawText("Warte auf Partner …", dp(20), h - dp(26), p); }
+            else { c.drawText(L.t("Warte auf Partner …"), dp(20), h - dp(26), p); }
         } else {
-            c.drawText("TIPPEN = SPRINGEN", dp(20), h - dp(26), p);
+            c.drawText(L.t("TIPPEN = SPRINGEN"), dp(20), h - dp(26), p);
         }
 
         if (running || !bothDone()) postInvalidateOnAnimation();
@@ -177,8 +177,8 @@ final class RaceView extends View {
     private String resultMsg() {
         if (!bothDone()) return null;
         int me = distance(), them = oppFinal;
-        if (me > them) return "DU GEWINNST! " + me + " m";
-        if (them > me) return "PARTNER GEWINNT · " + them + " m";
-        return "UNENTSCHIEDEN · " + me + " m";
+        if (me > them) return L.t("DU GEWINNST! ") + me + " m";
+        if (them > me) return L.t("PARTNER GEWINNT · ") + them + " m";
+        return L.t("UNENTSCHIEDEN · ") + me + " m";
     }
 }

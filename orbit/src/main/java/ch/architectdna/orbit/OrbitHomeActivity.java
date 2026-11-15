@@ -161,7 +161,7 @@ public class OrbitHomeActivity extends Activity {
         glance = text(15, ink2, false);
         homePage.addView(glance);
         accessLink = text(14, rust, true);
-        accessLink.setText("Nutzungszugriff erlauben →");
+        accessLink.setText(L.t("Nutzungszugriff erlauben →"));
         accessLink.setPadding(0, dp(12), 0, dp(12));
         accessLink.setOnClickListener(v -> openUsageSettings());
         accessLink.setVisibility(View.GONE);
@@ -174,7 +174,7 @@ public class OrbitHomeActivity extends Activity {
         orbit = new OrbitView();
         homePage.addView(orbit, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        sugLabel = label("VORSCHLÄGE FÜR JETZT", ink3);
+        sugLabel = label(L.t("VORSCHLÄGE FÜR JETZT"), ink3);
         homePage.addView(sugLabel, lp(-1, -2, 0, 0, 0, dp(10)));
         suggestBox = new LinearLayout(this);
         suggestBox.setOrientation(LinearLayout.VERTICAL);
@@ -193,13 +193,13 @@ public class OrbitHomeActivity extends Activity {
         tools2.addView(tgap2, new LinearLayout.LayoutParams(dp(8), 1));
         tools2.addView(toolChip("🧅 Health", "https://architect-dna.ch/health/"), new LinearLayout.LayoutParams(0, -2, 1f));
         homePage.addView(tools2, lp(-1, -2, 0, dp(8), 0, 0));
-        TextView remote = toolChip("🔊 Musik aufs Tablet", "");
+        TextView remote = toolChip(L.t("🔊 Musik aufs Tablet"), "");
         remote.setOnClickListener(v -> {
             try {
                 startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity")
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (RuntimeException e) {
-                android.widget.Toast.makeText(this, "Dafür ARC-DNA Home installieren.", android.widget.Toast.LENGTH_SHORT).show();
+                android.widget.Toast.makeText(this, L.t("Dafür ARC-DNA Home installieren."), android.widget.Toast.LENGTH_SHORT).show();
             }
         });
         homePage.addView(remote, lp(-1, -2, 0, dp(8), 0, 0));
@@ -211,7 +211,7 @@ public class OrbitHomeActivity extends Activity {
         homePage.addView(dock, lp(-1, -2, 0, dp(18), 0, 0));
 
         TextView pill = text(14, ink3, false);
-        pill.setText("Suchen   ·   ↑ alle Apps   ·   ← Statistik");
+        pill.setText(L.t("Suchen   ·   ↑ alle Apps   ·   ← Statistik"));
         pill.setGravity(Gravity.CENTER);
         pill.setPadding(dp(16), dp(13), dp(16), dp(13));
         pill.setBackground(box(card, line, 40));
@@ -229,17 +229,17 @@ public class OrbitHomeActivity extends Activity {
         statsPage.addView(statsCol, new ScrollView.LayoutParams(-1, -2));
         LinearLayout col = statsCol;
 
-        col.addView(label("STATISTIK   ·   → zurück", rust));
+        col.addView(label(L.t("STATISTIK   ·   → zurück"), rust));
 
         accessCard = cardBox();
         TextView at = text(15, ink, true);
-        at.setText("Nutzungszugriff fehlt");
+        at.setText(L.t("Nutzungszugriff fehlt"));
         accessCard.addView(at);
         TextView ab = text(13, ink2, false);
-        ab.setText("Damit das Zuhause deine Muster modellieren kann, braucht es den Nutzungszugriff. Die Zahlen bleiben auf diesem Gerät.");
+        ab.setText(L.t("Damit das Zuhause deine Muster modellieren kann, braucht es den Nutzungszugriff. Die Zahlen bleiben auf diesem Gerät."));
         accessCard.addView(ab, lp(-1, -2, 0, dp(4), 0, dp(10)));
         TextView btn = text(14, 0xFFFFFFFF, true);
-        btn.setText("Zugriff erlauben");
+        btn.setText(L.t("Zugriff erlauben"));
         btn.setGravity(Gravity.CENTER);
         btn.setPadding(dp(18), dp(11), dp(18), dp(11));
         btn.setBackground(box(rust, rust, 40));
@@ -249,14 +249,14 @@ public class OrbitHomeActivity extends Activity {
         col.addView(accessCard, lp(-1, -2, 0, dp(16), 0, 0));
 
         LinearLayout model = cardBox();
-        model.addView(label("MODELL — AUSTÜFTELN", ink3));
-        model.addView(slider("Häufigkeit", "wF", 45));
-        model.addView(slider("Kürzlich", "wR", 25));
-        model.addView(slider("Tageszeit", "wH", 30));
+        model.addView(label(L.t("MODELL — AUSTÜFTELN"), ink3));
+        model.addView(slider(L.t("Häufigkeit"), "wF", 45));
+        model.addView(slider(L.t("Kürzlich"), "wR", 25));
+        model.addView(slider(L.t("Tageszeit"), "wH", 30));
         col.addView(model, lp(-1, -2, 0, dp(14), 0, 0));
 
         LinearLayout today = cardBox();
-        today.addView(label("HEUTE AM BILDSCHIRM", ink3));
+        today.addView(label(L.t("HEUTE AM BILDSCHIRM"), ink3));
         screenTv = text(32, ink, true);
         screenTv.setText("—");
         today.addView(screenTv);
@@ -266,7 +266,7 @@ public class OrbitHomeActivity extends Activity {
         col.addView(today, lp(-1, -2, 0, dp(14), 0, 0));
 
         LinearLayout hourCard = cardBox();
-        hourCard.addView(label("NUTZUNG NACH STUNDE · 7 TAGE", ink3));
+        hourCard.addView(label(L.t("NUTZUNG NACH STUNDE · 7 TAGE"), ink3));
         chart = new HourChart();
         hourCard.addView(chart, lp(-1, dp(96), 0, dp(10), 0, 0));
         hourHint = text(11, ink3, false);
@@ -285,7 +285,7 @@ public class OrbitHomeActivity extends Activity {
         drawer.setFocusableInTouchMode(true);
 
         search = new EditText(this);
-        search.setHint("Apps suchen");
+        search.setHint(L.t("Apps suchen"));
         search.setHintTextColor(ink3);
         search.setTextColor(ink);
         search.setTextSize(17);
@@ -665,11 +665,11 @@ public class OrbitHomeActivity extends Activity {
             p.setTypeface(Typeface.MONOSPACE);
             p.setTextSize(dp(10.5f));
             p.setColor(ink3);
-            c.drawText(today > 0 ? dur(today) + " heute" : "ARC·DNA", cx, cy + dp(24), p);
+            c.drawText(today > 0 ? dur(today) + L.t(" heute") : "ARC·DNA", cx, cy + dp(24), p);
             if (shownApps.isEmpty()) {
                 p.setColor(ink2);
                 p.setTextSize(dp(12));
-                c.drawText("Noch keine Nutzungsdaten", cx, cy + R * 0.6f, p);
+                c.drawText(L.t("Noch keine Nutzungsdaten"), cx, cy + R * 0.6f, p);
             }
             postInvalidateDelayed(30_000);
         }
@@ -822,10 +822,10 @@ public class OrbitHomeActivity extends Activity {
             for (long v : a.hours) mx = Math.max(mx, v);
             double ph = mx > 0 ? h * (a.hours[nowHour] / (double) mx) : 0;
             a.score = pf + pr + ph;
-            if (a.score <= 0) a.why = "noch keine Daten";
-            else if (ph >= pf && ph >= pr) a.why = "um diese Zeit meistens";
-            else if (pr >= pf) a.why = "gerade erst offen gehabt";
-            else a.why = "dein Dauer-Begleiter";
+            if (a.score <= 0) a.why = L.t("noch keine Daten");
+            else if (ph >= pf && ph >= pr) a.why = L.t("um diese Zeit meistens");
+            else if (pr >= pf) a.why = L.t("gerade erst offen gehabt");
+            else a.why = L.t("dein Dauer-Begleiter");
         }
         Collections.sort(apps, (x, y) -> {
             int cmp = Double.compare(y.score, x.score);
@@ -880,7 +880,7 @@ public class OrbitHomeActivity extends Activity {
         for (App a : apps) { todayAll += a.today; if (a.today > 0) byToday.add(a); }
         Collections.sort(byToday, (x, y) -> Long.compare(y.today, x.today));
         String date = new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date());
-        glance.setText(todayAll > 0 ? date + "  ·  " + dur(todayAll) + " am Bildschirm" : date);
+        glance.setText(todayAll > 0 ? date + "  ·  " + dur(todayAll) + L.t(" am Bildschirm") : date);
         screenTv.setText(todayAll > 0 ? dur(todayAll) : "—");
         topBox.removeAllViews();
         long topMax = byToday.isEmpty() ? 1 : byToday.get(0).today;
@@ -909,8 +909,8 @@ public class OrbitHomeActivity extends Activity {
         for (int i = 1; i < 24; i++) if (hours[i] > hours[peak]) peak = i;
         chart.set(hours, nowHour);
         hourHint.setText(hours[peak] > 0
-            ? String.format(Locale.ROOT, "Peak um %02d:00 · jetzt (%02d:00) rot", peak, nowHour)
-            : "Noch keine Nutzungsdaten.");
+            ? String.format(Locale.ROOT, L.t("Peak um %02d:00 · jetzt (%02d:00) rot"), peak, nowHour)
+            : L.t("Noch keine Nutzungsdaten."));
 
         if (drawerOpen) filter(search.getText().toString());
     }

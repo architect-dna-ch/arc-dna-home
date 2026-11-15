@@ -115,7 +115,7 @@ public class GalleryActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Galerie · Globus"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("Galerie · Globus")), new LinearLayout.LayoutParams(0, -2, 1f));
         count = mono(11, rust);
         head.addView(count);
         TextView close = text(18, ink, true);
@@ -126,7 +126,7 @@ public class GalleryActivity extends Activity {
         col.addView(head);
 
         TextView hint = mono(10, ink3);
-        hint.setText("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · FOTO = ANSEHEN");
+        hint.setText(L.t("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · FOTO = ANSEHEN"));
         hint.setPadding(0, dp(10), 0, dp(10));
         col.addView(hint);
 
@@ -137,7 +137,7 @@ public class GalleryActivity extends Activity {
         hs.addView(chips);
         col.addView(hs, new LinearLayout.LayoutParams(-1, -2));
 
-        allow = chip("MEHR FOTOS ERLAUBEN", rust);
+        allow = chip(L.t("MEHR FOTOS ERLAUBEN"), rust);
         allow.setVisibility(View.GONE);
         allow.setOnClickListener(v -> ask());
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2);
@@ -168,15 +168,15 @@ public class GalleryActivity extends Activity {
         sheetSub.setPadding(0, dp(4), 0, dp(10));
         info.addView(sheetSub);
         LinearLayout actions = new LinearLayout(this);
-        TextView openC = chip("ÖFFNEN", rust);
+        TextView openC = chip(L.t("ÖFFNEN"), rust);
         openC.setOnClickListener(v -> open());
         actions.addView(openC);
-        TextView share = chip("TEILEN", ink3);
+        TextView share = chip(L.t("TEILEN"), ink3);
         share.setOnClickListener(v -> {
             if (selected == null) return;
             Intent s = new Intent(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, selected.uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(s, "Foto teilen"));
+            startActivity(Intent.createChooser(s, L.t("Foto teilen")));
         });
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2);
         sl.leftMargin = dp(8);
@@ -258,7 +258,7 @@ public class GalleryActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode != REQ_PHOTOS) return;
         if (hasAccess()) load();
-        else count.setText("KEIN ZUGRIFF");
+        else count.setText(L.t("KEIN ZUGRIFF"));
     }
 
     private void load() {
@@ -291,7 +291,7 @@ public class GalleryActivity extends Activity {
                 photos.addAll(found);
                 place();
                 buildChips();
-                count.setText(photos.size() + " FOTOS");
+                count.setText(photos.size() + L.t(" FOTOS"));
                 globe.invalidate();
                 loadThumbs();
                 focusFromIntent();
@@ -436,7 +436,7 @@ public class GalleryActivity extends Activity {
     private void openElsewhere(Photo p) {
         try {
             startActivity(Intent.createChooser(new Intent(Intent.ACTION_VIEW).setDataAndType(p.uri, "image/*")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Öffnen mit"));
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), L.t("Öffnen mit")));
         } catch (RuntimeException ignored) {
         }
     }
@@ -497,11 +497,11 @@ public class GalleryActivity extends Activity {
             sub.setPadding(0, dp(3), 0, 0);
             texts.addView(sub);
             bar.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-            bar.addView(barButton("TEILEN", v -> {
+            bar.addView(barButton(L.t("TEILEN"), v -> {
                 Photo p = current();
                 if (p == null) return;
                 startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, p.uri)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Foto teilen"));
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), L.t("Foto teilen")));
             }));
             bar.addView(barButton("↗", v -> {
                 Photo p = current();
@@ -933,7 +933,7 @@ public class GalleryActivity extends Activity {
             if (photos.isEmpty()) {
                 p.setColor(ink3);
                 p.setTextAlign(Paint.Align.CENTER);
-                c.drawText(hasAccess() ? "LADE FOTOS …" : "ZUGRIFF AUF FOTOS NÖTIG", cx, cy, p);
+                c.drawText(hasAccess() ? L.t("LADE FOTOS …") : L.t("ZUGRIFF AUF FOTOS NÖTIG"), cx, cy, p);
                 p.setTextAlign(Paint.Align.LEFT);
             }
             if (moving) postInvalidateOnAnimation();

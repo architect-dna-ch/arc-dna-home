@@ -27,11 +27,11 @@ final class PlanStore {
     static final Object[][] KINDS = {
         {"lernen", "📚", "Lernen", 50, 3, 0xFF3C8DFF},
         {"sport", "🏃", "Sport", 45, 3, 0xFF2BBF6A},
-        {"arbeit", "💼", "Arbeit", 90, 2, 0xFFD9472F},
-        {"kreativ", "🎨", "Kreativ", 60, 2, 0xFFA77BFF},
-        {"haushalt", "🧹", "Haushalt", 30, 1, 0xFFE8B931},
-        {"admin", "📨", "Admin / Mails", 30, 1, 0xFF9A9A98},
-        {"erholung", "🌿", "Erholung", 30, 1, 0xFF6FC3F2},
+        {"arbeit", "💼", L.t("Arbeit"), 90, 2, 0xFFD9472F},
+        {"kreativ", "🎨", L.t("Kreativ"), 60, 2, 0xFFA77BFF},
+        {"haushalt", "🧹", L.t("Haushalt"), 30, 1, 0xFFE8B931},
+        {"admin", "📨", L.t("Admin / Mails"), 30, 1, 0xFF9A9A98},
+        {"erholung", "🌿", L.t("Erholung"), 30, 1, 0xFF6FC3F2},
     };
     static final int[] DEFAULT_TARGET = {4, 3, 0, 1, 2, 1, 5};
     static final int DAY_FROM = 7, DAY_TO = 22, TASK_COLOUR = 0xFFFF7A2B;
@@ -85,7 +85,7 @@ final class PlanStore {
                 Task k = new Task();
                 k.id = o.optLong("id");
                 k.due = o.optLong("due");
-                k.name = o.optString("name", "Aufgabe");
+                k.name = o.optString("name", L.t("Aufgabe"));
                 k.emoji = o.optString("emoji", "📌");
                 k.sessions = o.optInt("n", 1);
                 k.min = o.optInt("min", 30);
@@ -316,8 +316,8 @@ final class PlanStore {
         b.at = at;
         b.moved++;
         String why = emoji(b) + " " + name(b) + " → " + when(at)
-            + String.format(Locale.GERMAN, " · da geht's dir meist %s (Ø %.1f).", m >= 3.6 ? "gut" : m >= 3 ? "okay" : "eher mau, aber besser als jetzt", m);
-        if (single && b.moved >= 3) why += " Schon " + b.moved + "× verschoben – mach's kürzer? Kleinster Schritt zählt.";
+            + String.format(Locale.GERMAN, L.t(" · da geht's dir meist %s (Ø %.1f)."), m >= 3.6 ? "gut" : m >= 3 ? "okay" : L.t("eher mau, aber besser als jetzt"), m);
+        if (single && b.moved >= 3) why += L.t(" Schon ") + b.moved + L.t("× verschoben – mach's kürzer? Kleinster Schritt zählt.");
         return why;
     }
 

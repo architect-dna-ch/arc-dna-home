@@ -335,7 +335,7 @@ final class BuddyWorldView extends View {
         p.setColor(0xFFF4F2EC);
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         p.setTextSize(dp(13));
-        String name = kind == DUCK ? "🦆 TEICH" : "🐻 FLUSS";
+        String name = kind == DUCK ? L.t("🦆 TEICH") : L.t("🐻 FLUSS");
         String clock = kind == BEAR ? "  ·  0:" + String.format(Locale.ROOT, "%02d", Math.max(0, 60 - (int) t())) : "";
         c.drawText(name + "  ·  " + score + clock + "  ·  BEST " + Math.max(score, prefs.getInt(bestKey(), 0)), dp(28), top, p);
         String hs = "♥♥♥".substring(0, Math.max(0, hearts)) + "♡♡♡".substring(0, 3 - Math.max(0, hearts));
@@ -350,7 +350,7 @@ final class BuddyWorldView extends View {
             p.setTextAlign(Paint.Align.CENTER);
             p.setTextSize(dp(15));
             p.setColor(0xEEFFFFFF);
-            String tip = kind == DUCK ? "Wischen = schwimmen · Brot fangen 🍞 · Steinen ausweichen 🪨" : "Lachse antippen 🐟 · Bienen in Ruhe lassen 🐝 · Honig = +3 🍯";
+            String tip = kind == DUCK ? L.t("Wischen = schwimmen · Brot fangen 🍞 · Steinen ausweichen 🪨") : L.t("Lachse antippen 🐟 · Bienen in Ruhe lassen 🐝 · Honig = +3 🍯");
             r.set(dp(20), h * 0.4f - dp(26), w - dp(20), h * 0.4f + dp(12));
             p.setColor(0xCC121211);
             c.drawRoundRect(r, dp(16), dp(16), p);
@@ -367,10 +367,10 @@ final class BuddyWorldView extends View {
         p.setColor(0xFFF4F2EC);
         p.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
         p.setTextSize(dp(34));
-        c.drawText(kind == DUCK ? "Satt! 🦆" : "Genug gefischt! 🐻", w / 2, h * 0.36f, p);
+        c.drawText(kind == DUCK ? L.t("Satt! 🦆") : L.t("Genug gefischt! 🐻"), w / 2, h * 0.36f, p);
         p.setTypeface(Typeface.MONOSPACE);
         p.setTextSize(dp(15));
-        c.drawText(score + (kind == DUCK ? " Brotkrumen" : " Lachse") + " · Bestwert " + prefs.getInt(bestKey(), 0), w / 2, h * 0.36f + dp(36), p);
+        c.drawText(score + (kind == DUCK ? L.t(" Brotkrumen") : L.t(" Lachse")) + L.t(" · Bestwert ") + prefs.getInt(bestKey(), 0), w / 2, h * 0.36f + dp(36), p);
         againR.set(dp(40), h * 0.5f, w - dp(40), h * 0.5f + dp(56));
         backR.set(dp(40), h * 0.5f + dp(68), w - dp(40), h * 0.5f + dp(118));
         p.setColor(0xFFB5271E);
@@ -379,8 +379,8 @@ final class BuddyWorldView extends View {
         c.drawRoundRect(backR, dp(16), dp(16), p);
         p.setColor(0xFFFFFFFF);
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        c.drawText("NOCHMAL", againR.centerX(), againR.centerY() + dp(5), p);
-        c.drawText("ZURÜCK ZUM HOME", backR.centerX(), backR.centerY() + dp(5), p);
+        c.drawText(L.t("NOCHMAL"), againR.centerX(), againR.centerY() + dp(5), p);
+        c.drawText(L.t("ZURÜCK ZUM HOME"), backR.centerX(), backR.centerY() + dp(5), p);
         p.setTextAlign(Paint.Align.LEFT);
         p.setTypeface(Typeface.DEFAULT);
     }

@@ -357,19 +357,19 @@ public class PopcornActivity extends Activity {
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(12));
             p.setLetterSpacing(0.24f);
-            c.drawText("🍿 KINO-MODUS", dp(22), dp(48), p);
+            c.drawText(L.t("🍿 KINO-MODUS"), dp(22), dp(48), p);
             p.setLetterSpacing(0);
             close.set(w - dp(64), dp(18), w - dp(12), dp(66));
             p.setTextSize(dp(24));
             c.drawText("✕", w - dp(48), dp(52), p);
             p.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
             p.setTextSize(dp(30));
-            String headline = done ? "Popcorn fertig! 🍿" : t < 40 ? "Mikrowelle läuft …" : t < 100 ? "Es fängt an zu poppen!" : t < 125 ? "Popcorn-Sturm!" : "Gleich fertig …";
+            String headline = done ? L.t("Popcorn fertig! 🍿") : t < 40 ? L.t("Mikrowelle läuft …") : t < 100 ? L.t("Es fängt an zu poppen!") : t < 125 ? L.t("Popcorn-Sturm!") : L.t("Gleich fertig …");
             c.drawText(headline, dp(22), dp(96), p);
             p.setTypeface(Typeface.MONOSPACE);
             p.setTextSize(dp(12));
             p.setColor(0xFFA5A5A0);
-            c.drawText(done ? "FILM AB – VIEL SPASS" : "MACH'S DIR GEMÜTLICH · LICHT DIMMEN · HANDY LEISE", dp(22), dp(120), p);
+            c.drawText(done ? L.t("FILM AB – VIEL SPASS") : L.t("MACH'S DIR GEMÜTLICH · LICHT DIMMEN · HANDY LEISE"), dp(22), dp(120), p);
 
             if (done) {
                 if (!buzzed) {
@@ -410,8 +410,8 @@ public class PopcornActivity extends Activity {
                     p.setTextAlign(Paint.Align.CENTER);
                     p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
                     p.setTextSize(dp(15));
-                    c.drawText("▶ FILM STARTEN", startBtn.centerX(), startBtn.centerY() + dp(5), p);
-                    c.drawText("ZURÜCK ZUM HOME", backBtn.centerX(), backBtn.centerY() + dp(5), p);
+                    c.drawText(L.t("▶ FILM STARTEN"), startBtn.centerX(), startBtn.centerY() + dp(5), p);
+                    c.drawText(L.t("ZURÜCK ZUM HOME"), backBtn.centerX(), backBtn.centerY() + dp(5), p);
                     p.setTextAlign(Paint.Align.LEFT);
                 }
             } else {

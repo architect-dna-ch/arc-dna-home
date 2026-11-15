@@ -186,7 +186,7 @@ public class NexusActivity extends Activity {
                     drawWorld(c);
                     overlay(c, 0x94000000);
                     big(c, "PAUSE", CY - 10 * S, 40, INK);
-                    small(c, "TIPPEN = WEITER", CY + 26 * S, 12, INK3);
+                    small(c, L.t("TIPPEN = WEITER"), CY + 26 * S, 12, INK3);
                     break;
                 case "shop":
                     shopTimer -= dt;
@@ -280,8 +280,8 @@ public class NexusActivity extends Activity {
                 waveTimer = 0;
                 int bonus = 3 + wave * 2;
                 coins += bonus;
-                text(CX, CY - 50 * S, "WELLE GESCHAFFT!", GREEN, 2, 20);
-                text(CX, CY - 24 * S, "+" + bonus + " MÜNZEN", GOLD, 2, 14);
+                text(CX, CY - 50 * S, L.t("WELLE GESCHAFFT!"), GREEN, 2, 20);
+                text(CX, CY - 24 * S, "+" + bonus + L.t(" MÜNZEN"), GOLD, 2, 14);
                 boolean shop = wave == 2 || (wave > 2 && wave % 3 == 0);
                 if (shop) after(1.4f, () -> {
                     if (state.equals("playing")) openShop();
@@ -351,7 +351,7 @@ public class NexusActivity extends Activity {
             if (boss) {
                 double a = rnd.nextFloat() * Math.PI * 2;
                 enemies.add(new Enemy(CX + (float) Math.cos(a) * (ARENA_R - 32 * S), CY + (float) Math.sin(a) * (ARENA_R - 32 * S), "boss"));
-                text(CX, CY - 90 * S, "★ BOSS-WELLE " + wave + " ★", LILAC, 3, 24);
+                text(CX, CY - 90 * S, L.t("★ BOSS-WELLE ") + wave + " ★", LILAC, 3, 24);
             } else {
                 int nc = Math.min(2 + wave, 14), na = Math.max(0, wave / 2 - 1), nb = Math.max(0, wave / 3 - 1);
                 for (int i = 0; i < nc; i++) spawn("grunt");
@@ -359,7 +359,7 @@ public class NexusActivity extends Activity {
                 for (int i = 0; i < nb; i++) spawn("brute");
                 if (wave >= 4) spawn("shielded");
                 if (wave >= 6) spawn("healer");
-                text(CX, CY - 90 * S, "WELLE " + wave, BLUE, 2.2f, 22);
+                text(CX, CY - 90 * S, L.t("WELLE ") + wave, BLUE, 2.2f, 22);
                 if (rnd.nextFloat() < 0.4f) after(1.5f, this::arenaEvent);
                 after(8, this::spawnPower);
             }
@@ -445,7 +445,7 @@ public class NexusActivity extends Activity {
         }
 
         void applyPower(int pw, float x, float y) {
-            String[] names = {"MAGNET", "BLITZ", "GHOST", "OVERLOAD"};
+            String[] names = {"MAGNET", L.t("BLITZ"), "GHOST", "OVERLOAD"};
             int[] cols = {0xFF00E5FF, GOLD, INK, RUST};
             if (pw == BLITZ) {
                 float o = player.atkCd;
@@ -480,13 +480,13 @@ public class NexusActivity extends Activity {
                 event = "meteor";
                 eventTimer = 12;
                 eventSpawn = 1.5f;
-                text(CX, CY - 80 * S, "☄ METEORITENSCHAUER!", ORANGE, 2.5f, 18);
+                text(CX, CY - 80 * S, L.t("☄ METEORITENSCHAUER!"), ORANGE, 2.5f, 18);
             } else if (t == 1) {
                 event = "pulse";
                 eventTimer = 0.8f;
                 pulseRings = null;
                 pulseHit.clear();
-                text(CX, CY - 80 * S, "⚡ VOID-PULS!", LILAC, 2.5f, 18);
+                text(CX, CY - 80 * S, L.t("⚡ VOID-PULS!"), LILAC, 2.5f, 18);
             } else {
                 event = "frenzy";
                 eventTimer = 10;
@@ -495,7 +495,7 @@ public class NexusActivity extends Activity {
                     e.dmg *= 1.5f;
                     e.frenzied = true;
                 }
-                text(CX, CY - 80 * S, "⚡ RASEREI!", RUST, 2.5f, 18);
+                text(CX, CY - 80 * S, L.t("⚡ RASEREI!"), RUST, 2.5f, 18);
             }
             shake(10);
         }
@@ -585,20 +585,20 @@ public class NexusActivity extends Activity {
 
         void openShop() {
             List<Shop> pool = new ArrayList<>();
-            pool.add(new Shop("REPARATUR", "50 HP zurück", 10, GREEN, () -> player.hp = Math.min(player.maxHp, player.hp + 50)));
-            pool.add(new Shop("FESTUNG", "+60 Max-HP und heilen", 25, BLUE, () -> {
+            pool.add(new Shop(L.t("REPARATUR"), L.t("50 HP zurück"), 10, GREEN, () -> player.hp = Math.min(player.maxHp, player.hp + 50)));
+            pool.add(new Shop(L.t("FESTUNG"), L.t("+60 Max-HP und heilen"), 25, BLUE, () -> {
                 player.maxHp += 60;
                 player.hp = Math.min(player.maxHp, player.hp + 60);
             }));
-            pool.add(new Shop("OVERDRIVE", "Schaden +30 %", 30, ORANGE, () -> player.dmg = Math.round(player.dmg * 1.3f)));
-            pool.add(new Shop("NITRO", "Tempo +20 %", 20, 0xFF00E5FF, () -> player.speed *= 1.2f));
-            pool.add(new Shop("SCHNELLFEUER", "Angriffstempo +25 %", 28, LILAC, () -> player.atkCd = Math.max(0.12f, player.atkCd * 0.75f)));
-            pool.add(new Shop("ABKLINGEN", "Fähigkeiten −30 %", 40, INK2, () -> {
+            pool.add(new Shop("OVERDRIVE", L.t("Schaden +30 %"), 30, ORANGE, () -> player.dmg = Math.round(player.dmg * 1.3f)));
+            pool.add(new Shop("NITRO", L.t("Tempo +20 %"), 20, 0xFF00E5FF, () -> player.speed *= 1.2f));
+            pool.add(new Shop(L.t("SCHNELLFEUER"), L.t("Angriffstempo +25 %"), 28, LILAC, () -> player.atkCd = Math.max(0.12f, player.atkCd * 0.75f)));
+            pool.add(new Shop(L.t("ABKLINGEN"), L.t("Fähigkeiten −30 %"), 40, INK2, () -> {
                 for (int i = 0; i < 4; i++) player.cd[i] = Math.max(1, player.cd[i] * 0.7f);
             }));
-            pool.add(new Shop("SCHILD", "8 s unverwundbar", 35, INK, () -> player.inv += 8));
-            pool.add(new Shop("DOPPELSCHUSS", "+1 Geschoss pro Angriff", 45, RUST, () -> player.multi++));
-            pool.add(new Shop("VAMPIR", "5 % Lebensraub", 50, 0xFFFF5AA5, () -> player.lifesteal += 0.05f));
+            pool.add(new Shop(L.t("SCHILD"), L.t("8 s unverwundbar"), 35, INK, () -> player.inv += 8));
+            pool.add(new Shop(L.t("DOPPELSCHUSS"), L.t("+1 Geschoss pro Angriff"), 45, RUST, () -> player.multi++));
+            pool.add(new Shop(L.t("VAMPIR"), L.t("5 % Lebensraub"), 50, 0xFFFF5AA5, () -> player.lifesteal += 0.05f));
             Collections.shuffle(pool, rnd);
             shopItems = new ArrayList<>(pool.subList(0, 3));
             shopTimer = SHOP_TIME;
@@ -745,7 +745,7 @@ public class NexusActivity extends Activity {
                     vortex = 1.8f;
                     shake(14);
                     ring(x, y, 32, 250, 8, 0xFFFF5AE0);
-                    text(x, y - 40 * S, "SINGULARITÄT", 0xFFFF5AE0, 1.2f, 18);
+                    text(x, y - 40 * S, L.t("SINGULARITÄT"), 0xFFFF5AE0, 1.2f, 18);
                 }
             }
 
@@ -894,7 +894,7 @@ public class NexusActivity extends Activity {
                         atkCd *= 0.55f;
                         burst(x, y, 45, 220, 11, LILAC);
                         shake(18);
-                        text(x, y - 50 * S, "☠ RASEND!", LILAC, 2.5f, 24);
+                        text(x, y - 50 * S, L.t("☠ RASEND!"), LILAC, 2.5f, 24);
                     }
                     specialCd -= dt;
                     if (warnTime <= 0 && specialCd <= 0) {
@@ -1349,14 +1349,14 @@ public class NexusActivity extends Activity {
             p.setTextAlign(Paint.Align.RIGHT);
             p.setColor(INK);
             p.setTextSize(13 * d);
-            c.drawText("WELLE " + wave, W - pad, top + 10 * d, p);
+            c.drawText(L.t("WELLE ") + wave, W - pad, top + 10 * d, p);
             p.setTextSize(10 * d);
             p.setColor(INK2);
-            c.drawText(score + " PUNKTE", W - pad, top + 28 * d, p);
+            c.drawText(score + L.t(" PUNKTE"), W - pad, top + 28 * d, p);
             p.setColor(GOLD);
             c.drawText("⬡ " + coins, W - pad, top + 44 * d, p);
             p.setColor(RUST);
-            c.drawText(enemies.size() + " GEGNER", W - pad, top + 60 * d, p);
+            c.drawText(enemies.size() + L.t(" GEGNER"), W - pad, top + 60 * d, p);
             if (streak >= 3) {
                 p.setTextAlign(Paint.Align.CENTER);
                 p.setColor(GOLD);
@@ -1367,7 +1367,7 @@ public class NexusActivity extends Activity {
                 p.setTextAlign(Paint.Align.CENTER);
                 p.setColor(INK3);
                 p.setTextSize(11 * d);
-                c.drawText("Nächste Welle in " + (int) Math.ceil(waveTimer) + " …", CX, CY + ARENA_R * 0.6f, p);
+                c.drawText(L.t("Nächste Welle in ") + (int) Math.ceil(waveTimer) + " …", CX, CY + ARENA_R * 0.6f, p);
             }
             // Ability buttons, bottom right, ARC pills.
             String[] names = {"DASH", "NOVA", "STORM", "PULL"};
@@ -1473,16 +1473,16 @@ public class NexusActivity extends Activity {
             small(c, "— ARCHITECT · DNA", H * 0.12f, 11, INK3);
             big(c, "NEXUS", H * 0.34f, 60, INK);
             big(c, "BREACH", H * 0.34f + 56 * S, 60, RUST);
-            small(c, "BESTER: " + best + " PUNKTE", H * 0.62f, 12, GOLD);
-            small(c, "LINKER DAUMEN = BEWEGEN · RECHTS = DASH · NOVA · STORM · PULL", H * 0.68f, 10, INK3);
+            small(c, L.t("BESTER: ") + best + L.t(" PUNKTE"), H * 0.62f, 12, GOLD);
+            small(c, L.t("LINKER DAUMEN = BEWEGEN · RECHTS = DASH · NOVA · STORM · PULL"), H * 0.68f, 10, INK3);
             float pp = 0.5f + 0.5f * (float) Math.sin(t * 3);
-            small(c, "TIPPEN = START", H * 0.76f, 14, (pp > 0.5f) ? INK : INK2);
-            small(c, "BANK ⬡ " + bank() + "  ·  BESTES LEVEL " + prefs.getInt("bestLevel", 1), H * 0.81f, 11, GOLD);
+            small(c, L.t("TIPPEN = START"), H * 0.76f, 14, (pp > 0.5f) ? INK : INK2);
+            small(c, "BANK ⬡ " + bank() + L.t("  ·  BESTES LEVEL ") + prefs.getInt("bestLevel", 1), H * 0.81f, 11, GOLD);
             float bw = Math.min(W * 0.42f, 190 * d), by = H * 0.85f;
             arsenalBtn.set(CX - bw - 6 * d, by, CX - 6 * d, by + 46 * d);
             scoresBtn.set(CX + 6 * d, by, CX + bw + 6 * d, by + 46 * d);
             button(c, arsenalBtn, "⬡ ARSENAL", GOLD);
-            button(c, scoresBtn, "🏆 BESTENLISTE", INK);
+            button(c, scoresBtn, L.t("🏆 BESTENLISTE"), INK);
             small(c, "✕", 30 * d, 16, INK2);
         }
 
@@ -1511,13 +1511,13 @@ public class NexusActivity extends Activity {
 
         /** {key, name, what it does per level, base price, max level} */
         final String[][] ARSENAL = {
-            {"hp", "PANZER", "+20 Max-HP pro Stufe", "80", "5"},
-            {"dmg", "KALIBER", "+10 % Schaden pro Stufe", "100", "5"},
-            {"spd", "TRIEBWERK", "+6 % Tempo pro Stufe", "70", "5"},
-            {"rate", "SCHNELLFEUER", "−7 % Nachladezeit pro Stufe", "110", "5"},
-            {"coin", "STARTKAPITAL", "+15 Münzen zum Start pro Stufe", "60", "5"},
-            {"multi", "ZWILLINGSLAUF", "+1 Geschoss pro Stufe", "400", "2"},
-            {"steal", "VAMPIR-KERN", "+3 % Lebensraub pro Stufe", "150", "3"}};
+            {"hp", L.t("PANZER"), L.t("+20 Max-HP pro Stufe"), "80", "5"},
+            {"dmg", L.t("KALIBER"), L.t("+10 % Schaden pro Stufe"), "100", "5"},
+            {"spd", L.t("TRIEBWERK"), L.t("+6 % Tempo pro Stufe"), "70", "5"},
+            {"rate", L.t("SCHNELLFEUER"), L.t("−7 % Nachladezeit pro Stufe"), "110", "5"},
+            {"coin", L.t("STARTKAPITAL"), L.t("+15 Münzen zum Start pro Stufe"), "60", "5"},
+            {"multi", L.t("ZWILLINGSLAUF"), L.t("+1 Geschoss pro Stufe"), "400", "2"},
+            {"steal", L.t("VAMPIR-KERN"), L.t("+3 % Lebensraub pro Stufe"), "150", "3"}};
 
         int lvl(String key) {
             return prefs.getInt("ars:" + key, 0);
@@ -1569,8 +1569,8 @@ public class NexusActivity extends Activity {
         void drawArsenal(Canvas c) {
             readInsets();
             overlay(c, 0xF2121211);
-            small(c, "— ARSENAL · FÜR JEDEN NEUEN LAUF", H * 0.08f + insT, 11, INK3);
-            small(c, "⬡ " + bank() + " AUF DER BANK", H * 0.08f + insT + 28 * d, 16, GOLD);
+            small(c, L.t("— ARSENAL · FÜR JEDEN NEUEN LAUF"), H * 0.08f + insT, 11, INK3);
+            small(c, "⬡ " + bank() + L.t(" AUF DER BANK"), H * 0.08f + insT + 28 * d, 16, GOLD);
             float top = H * 0.08f + insT + 50 * d, rowH = Math.min(70 * d, (H - top - 110 * d - insB) / ARSENAL.length), w = Math.min(W - 32 * d, 520 * d);
             float t = SystemClock.uptimeMillis() / 1000f;
             for (int i = 0; i < ARSENAL.length; i++) {
@@ -1608,7 +1608,7 @@ public class NexusActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             float by = H - 70 * d - insB;
             backBtn.set(CX - 100 * d, by, CX + 100 * d, by + 46 * d);
-            button(c, backBtn, "← ZURÜCK", RUST);
+            button(c, backBtn, L.t("← ZURÜCK"), RUST);
         }
 
         void arsenalTap(float x, float y) {
@@ -1633,13 +1633,13 @@ public class NexusActivity extends Activity {
         void drawScores(Canvas c) {
             readInsets();
             overlay(c, 0xF2121211);
-            small(c, "— BESTENLISTE", H * 0.1f + insT, 11, INK3);
+            small(c, L.t("— BESTENLISTE"), H * 0.1f + insT, 11, INK3);
             big(c, "TOP 10", H * 0.1f + insT + 44 * S, 34, GOLD);
             float y = H * 0.1f + insT + 90 * d, w = Math.min(W - 32 * d, 520 * d), lx = CX - w / 2;
             java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("d.M.yy", java.util.Locale.GERMAN);
             try {
                 org.json.JSONArray a = new org.json.JSONArray(prefs.getString("scores", "[]"));
-                if (a.length() == 0) small(c, "NOCH KEINE LÄUFE – SPIEL EINEN!", y + 20 * d, 12, INK3);
+                if (a.length() == 0) small(c, L.t("NOCH KEINE LÄUFE – SPIEL EINEN!"), y + 20 * d, 12, INK3);
                 for (int i = 0; i < a.length(); i++) {
                     org.json.JSONObject o = a.getJSONObject(i);
                     float ry = y + i * 34 * d;
@@ -1650,7 +1650,7 @@ public class NexusActivity extends Activity {
                     c.drawText(o.optInt("s") + "", lx + 40 * d, ry, p);
                     p.setColor(INK3);
                     p.setTextSize(11 * d);
-                    c.drawText("WELLE " + o.optInt("w") + " · LV " + o.optInt("l"), lx + 130 * d, ry, p);
+                    c.drawText(L.t("WELLE ") + o.optInt("w") + " · LV " + o.optInt("l"), lx + 130 * d, ry, p);
                     p.setTextAlign(Paint.Align.RIGHT);
                     c.drawText(f.format(new java.util.Date(o.optLong("at"))), lx + w, ry, p);
                 }
@@ -1659,7 +1659,7 @@ public class NexusActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             float by = H - 70 * d - insB;
             backBtn.set(CX - 100 * d, by, CX + 100 * d, by + 46 * d);
-            button(c, backBtn, "← ZURÜCK", RUST);
+            button(c, backBtn, L.t("← ZURÜCK"), RUST);
         }
 
         // Shop feedback per card: flash after a buy, shake when too expensive, bought marker; coins roll down.
@@ -1681,7 +1681,7 @@ public class NexusActivity extends Activity {
             shownCoins += (coins - shownCoins) * Math.min(1, dt * 10);
             if (Math.abs(coins - shownCoins) < 0.5f) shownCoins = coins;
             small(c, "— SHOP", H * 0.12f, 12, INK3);
-            small(c, "⬡ " + Math.round(shownCoins) + " MÜNZEN", H * 0.12f + 26 * d, 15, GOLD);
+            small(c, "⬡ " + Math.round(shownCoins) + L.t(" MÜNZEN"), H * 0.12f + 26 * d, 15, GOLD);
             float bw = Math.min(W * 0.8f, 360 * d);
             boolean hurry = shopTimer < 5 && ((int) (shopTimer * 4) & 1) == 0;
             bar(c, CX - bw / 2, H * 0.12f + 40 * d, bw, 4 * d, shopTimer / SHOP_TIME, hurry ? GOLD : RUST);
@@ -1718,15 +1718,15 @@ public class NexusActivity extends Activity {
                 p.setColor(INK3);
                 fit(s.desc, 11, cw - 2 * pad);
                 c.drawText(s.desc, cx0 + pad, y + ch * 0.3f + 22 * d, p);
-                String price = bought ? "✓ GEKAUFT" : "⬡ " + s.cost + (can ? "" : " · FEHLEN " + (s.cost - coins));
+                String price = bought ? L.t("✓ GEKAUFT") : "⬡ " + s.cost + (can ? "" : L.t(" · FEHLEN ") + (s.cost - coins));
                 p.setColor(bought ? s.col : can ? GOLD : shopShake[i] > 0 ? RUST : INK3);
                 fit(price, 14, can ? cw * 0.55f : cw - 2 * pad);
                 c.drawText(price, cx0 + pad, y + ch - 16 * d, p);
                 if (can) {
                     p.setTextAlign(Paint.Align.RIGHT);
                     p.setColor(s.col);
-                    fit("KAUFEN", 14, cw * 0.35f);
-                    c.drawText("KAUFEN", cx0 + cw - pad, y + ch - 16 * d, p);
+                    fit(L.t("KAUFEN"), 14, cw * 0.35f);
+                    c.drawText(L.t("KAUFEN"), cx0 + cw - pad, y + ch - 16 * d, p);
                 }
                 c.restore();
             }
@@ -1753,7 +1753,7 @@ public class NexusActivity extends Activity {
             p.setStrokeWidth(1.5f * d);
             p.setColor(RUST);
             c.drawRoundRect(rect, 16 * d, 16 * d, p);
-            small(c, "WEITER →  " + (int) Math.ceil(shopTimer) + " S", rect.centerY() + 5 * d, 14, shopPressed == 3 ? INK : RUST);
+            small(c, L.t("WEITER →  ") + (int) Math.ceil(shopTimer) + " S", rect.centerY() + 5 * d, 14, shopPressed == 3 ? INK : RUST);
         }
 
         void weiterRect(RectF out) {
@@ -1765,10 +1765,10 @@ public class NexusActivity extends Activity {
             overlay(c, 0xB3121211);
             small(c, "— GAME OVER", CY - 90 * S, 12, INK3);
             big(c, score + "", CY - 20 * S, 54, INK);
-            small(c, "PUNKTE · WELLE " + wave + " · LEVEL " + player.level, CY + 14 * S, 12, INK2);
-            small(c, score >= best && score > 0 ? "NEUER REKORD!" : "BESTER: " + best, CY + 40 * S, 13, score >= best && score > 0 ? RUST : GOLD);
-            small(c, "+" + bankedNow + " ⬡ AUF DIE BANK · JETZT " + bank() + " ⬡", CY + 62 * S, 12, GOLD);
-            small(c, "TIPPEN = NOCHMAL · OBEN TIPPEN = MENÜ", CY + 92 * S, 13, INK);
+            small(c, L.t("PUNKTE · WELLE ") + wave + " · LEVEL " + player.level, CY + 14 * S, 12, INK2);
+            small(c, score >= best && score > 0 ? L.t("NEUER REKORD!") : L.t("BESTER: ") + best, CY + 40 * S, 13, score >= best && score > 0 ? RUST : GOLD);
+            small(c, "+" + bankedNow + L.t(" ⬡ AUF DIE BANK · JETZT ") + bank() + " ⬡", CY + 62 * S, 12, GOLD);
+            small(c, L.t("TIPPEN = NOCHMAL · OBEN TIPPEN = MENÜ"), CY + 92 * S, 13, INK);
         }
 
         /* ----------------------------------- touch ----------------------------------- */
@@ -1896,7 +1896,7 @@ public class NexusActivity extends Activity {
             performHapticFeedback(Build.VERSION.SDK_INT >= 30 ? android.view.HapticFeedbackConstants.CONFIRM : android.view.HapticFeedbackConstants.VIRTUAL_KEY);
             burst(rect.centerX(), rect.centerY(), 30, 180, 6, s.col);
             burst(rect.centerX(), rect.centerY(), 12, 90, 4, GOLD);
-            text(rect.centerX(), rect.top - 10 * d, s.name + " AKTIV!", s.col, 1.4f, 16);
+            text(rect.centerX(), rect.top - 10 * d, s.name + L.t(" AKTIV!"), s.col, 1.4f, 16);
         }
     }
 }

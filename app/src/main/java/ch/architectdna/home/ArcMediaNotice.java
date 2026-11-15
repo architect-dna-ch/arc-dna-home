@@ -34,7 +34,7 @@ final class ArcMediaNotice {
 
     private static final String CHANNEL = "arc_player";
     private static final int ID = 7300;
-    private static final String[] ERA = {"JUKEBOX", "VINYL", "KASSETTE", "CD", "DISKETTE"};
+    private static final String[] ERA = {"JUKEBOX", "VINYL", L.t("KASSETTE"), "CD", L.t("DISKETTE")};
 
     private static String artFor;
     private static int artEra = -1;

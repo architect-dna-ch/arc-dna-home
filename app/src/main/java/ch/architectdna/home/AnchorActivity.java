@@ -362,7 +362,7 @@ public class AnchorActivity extends Activity {
         LinearLayout col = page(t("← Back", "← Zurück"), v -> home());
         col.addView(ui.title(t("This week", "Diese Woche"), 36), ui.lp(-1, -2, ui.dp(30)));
         JSONArray logs = logs();
-        DateFormat df = new java.text.SimpleDateFormat("EEE d. MMM", ArcUi.DE ? Locale.GERMAN : Locale.ENGLISH);
+        DateFormat df = new java.text.SimpleDateFormat("EEE d. MMM", ArcUi.de() ? Locale.GERMAN : Locale.ENGLISH);
         for (int i = 0; i < Math.min(7, logs.length()); i++) {
             JSONObject o = logs.optJSONObject(i);
             if (o == null) continue;

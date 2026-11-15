@@ -60,8 +60,8 @@ public class DecibelActivity extends Activity {
     private boolean paused;
 
     private static final String[][] LEVELS = {
-        {"30", "Flüstern"}, {"45", "Ruhiges Zimmer"}, {"60", "Gespräch"}, {"70", "Staubsauger"},
-        {"85", "Verkehr · ab hier Gehörschutz"}, {"100", "Konzert, Club"}, {"120", "Schmerzgrenze"}};
+        {"30", L.t("Flüstern")}, {"45", L.t("Ruhiges Zimmer")}, {"60", L.t("Gespräch")}, {"70", L.t("Staubsauger")},
+        {"85", L.t("Verkehr · ab hier Gehörschutz")}, {"100", L.t("Konzert, Club")}, {"120", L.t("Schmerzgrenze")}};
 
     @Override
     protected void onCreate(Bundle state) {
@@ -92,7 +92,7 @@ public class DecibelActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Dezibel"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("Dezibel")), new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(16), dp(4), dp(2), dp(4));
@@ -112,7 +112,7 @@ public class DecibelActivity extends Activity {
         gc.addView(gauge, new LinearLayout.LayoutParams(-1, dp(250)));
         status = mono(11, ink3);
         status.setGravity(Gravity.CENTER);
-        status.setText("MIKROFON STARTET …");
+        status.setText(L.t("MIKROFON STARTET …"));
         gc.addView(status, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout stats = new LinearLayout(this);
@@ -128,11 +128,11 @@ public class DecibelActivity extends Activity {
         pauseB = chip("PAUSE", rust);
         pauseB.setOnClickListener(v -> {
             paused = !paused;
-            pauseB.setText(paused ? "WEITER" : "PAUSE");
+            pauseB.setText(paused ? L.t("WEITER") : "PAUSE");
             paint();
         });
         actions.addView(pauseB);
-        TextView reset = chip("ZURÜCKSETZEN", ink3);
+        TextView reset = chip(L.t("ZURÜCKSETZEN"), ink3);
         reset.setOnClickListener(v -> resetStats());
         LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-2, -2);
         rl.leftMargin = dp(8);
@@ -142,7 +142,7 @@ public class DecibelActivity extends Activity {
         // Last minute.
         LinearLayout lh = new LinearLayout(this);
         lh.setPadding(0, dp(22), 0, dp(10));
-        lh.addView(label("Letzte Minute"));
+        lh.addView(label(L.t("Letzte Minute")));
         col.addView(lh);
         curve = new Curve();
         curve.setBackground(box(card, line, 16));
@@ -151,7 +151,7 @@ public class DecibelActivity extends Activity {
         // Reference scale.
         LinearLayout sh = new LinearLayout(this);
         sh.setPadding(0, dp(22), 0, dp(10));
-        sh.addView(label("Wie laut ist das?"));
+        sh.addView(label(L.t("Wie laut ist das?")));
         col.addView(sh);
         scale = new LinearLayout(this);
         scale.setOrientation(LinearLayout.VERTICAL);
@@ -174,14 +174,14 @@ public class DecibelActivity extends Activity {
         // Calibration.
         LinearLayout ch = new LinearLayout(this);
         ch.setPadding(0, dp(22), 0, dp(10));
-        ch.addView(label("Kalibrieren"));
+        ch.addView(label(L.t("Kalibrieren")));
         col.addView(ch);
         LinearLayout cal = new LinearLayout(this);
         cal.setGravity(Gravity.CENTER_VERTICAL);
         cal.setBackground(box(card, line, 16));
         cal.setPadding(dp(16), dp(10), dp(10), dp(10));
         TextView ct = text(14, ink2, false);
-        ct.setText("Handy-Mikrofone sind verschieden. Mit einem echten Messgerät vergleichen und anpassen.");
+        ct.setText(L.t("Handy-Mikrofone sind verschieden. Mit einem echten Messgerät vergleichen und anpassen."));
         cal.addView(ct, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView minus = chip("−", ink);
         minus.setOnClickListener(v -> shiftOffset(-1));
@@ -195,7 +195,7 @@ public class DecibelActivity extends Activity {
         col.addView(cal, new LinearLayout.LayoutParams(-1, -2));
         TextView note = mono(10, ink3);
         note.setSingleLine(false);
-        note.setText("NUR PEGEL, NICHTS WIRD AUFGENOMMEN ODER GESPEICHERT.");
+        note.setText(L.t("NUR PEGEL, NICHTS WIRD AUFGENOMMEN ODER GESPEICHERT."));
         note.setPadding(0, dp(14), 0, 0);
         col.addView(note);
 
@@ -227,8 +227,8 @@ public class DecibelActivity extends Activity {
         if (requestCode != REQ_MIC) return;
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) start();
         else {
-            status.setText("OHNE MIKROFON KEINE MESSUNG");
-            Toast.makeText(this, "Dezibel braucht das Mikrofon (nur der Pegel, nichts wird gespeichert).", Toast.LENGTH_LONG).show();
+            status.setText(L.t("OHNE MIKROFON KEINE MESSUNG"));
+            Toast.makeText(this, L.t("Dezibel braucht das Mikrofon (nur der Pegel, nichts wird gespeichert)."), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -280,7 +280,7 @@ public class DecibelActivity extends Activity {
                 }
             }
             if (rec == null) {
-                main.post(() -> status.setText("MIKROFON NICHT VERFÜGBAR"));
+                main.post(() -> status.setText(L.t("MIKROFON NICHT VERFÜGBAR")));
                 running = false;
                 return;
             }
@@ -298,7 +298,7 @@ public class DecibelActivity extends Activity {
                     main.post(() -> onLevel(clamped));
                 }
             } catch (RuntimeException e) {
-                main.post(() -> status.setText("MESSUNG UNTERBROCHEN"));
+                main.post(() -> status.setText(L.t("MESSUNG UNTERBROCHEN")));
             } finally {
                 try {
                     rec.stop();
@@ -342,7 +342,7 @@ public class DecibelActivity extends Activity {
         maxT.setText(Float.isNaN(max) ? "–" : String.valueOf(Math.round(max)));
         avgT.setText(sumN == 0 ? "–" : String.valueOf(Math.round(10 * Math.log10(sum / sumN))));
         if (paused) status.setText("PAUSE");
-        else if (Float.isNaN(level)) status.setText("MIKROFON STARTET …");
+        else if (Float.isNaN(level)) status.setText(L.t("MIKROFON STARTET …"));
         else status.setText(describe(level).toUpperCase(Locale.GERMAN));
         status.setTextColor(!Float.isNaN(level) && level >= 85 && !paused ? rust : ink3);
         // Highlight the nearest line of the reference scale.
@@ -366,13 +366,13 @@ public class DecibelActivity extends Activity {
     }
 
     private static String describe(float db) {
-        if (db < 35) return "Sehr still";
-        if (db < 50) return "Ruhig";
-        if (db < 65) return "Gespräch";
-        if (db < 80) return "Laut";
-        if (db < 85) return "Sehr laut";
-        if (db < 100) return "Gehörschutz empfohlen";
-        return "Gefährlich laut – Ohren schützen!";
+        if (db < 35) return L.t("Sehr still");
+        if (db < 50) return L.t("Ruhig");
+        if (db < 65) return L.t("Gespräch");
+        if (db < 80) return L.t("Laut");
+        if (db < 85) return L.t("Sehr laut");
+        if (db < 100) return L.t("Gehörschutz empfohlen");
+        return L.t("Gefährlich laut – Ohren schützen!");
     }
 
     /** Colour along the scale: green → yellow → rust. */
@@ -436,7 +436,7 @@ public class DecibelActivity extends Activity {
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(12));
             p.setColor(ink3);
-            c.drawText("dB (ca.)", cx, cy + dp(44), p);
+            c.drawText(L.t("dB (ca.)"), cx, cy + dp(44), p);
             p.setTextAlign(Paint.Align.LEFT);
         }
     }

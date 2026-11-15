@@ -94,7 +94,7 @@ public class RemoteActivity extends Activity {
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView lab = mono("— ARC REMOTE", rust, 11);
         head.addView(lab, new LinearLayout.LayoutParams(0, -2, 1f));
-        peer = mono("SUCHT …", ink3, 11);
+        peer = mono(L.t("SUCHT …"), ink3, 11);
         head.addView(peer);
         dot = new TextView(this);
         dot.setText(" ●");
@@ -126,7 +126,7 @@ public class RemoteActivity extends Activity {
         title.setLetterSpacing(-0.02f);
         title.setMaxLines(2);
         title.setEllipsize(TextUtils.TruncateAt.END);
-        title.setText("Verbinde mit dem Tablet …");
+        title.setText(L.t("Verbinde mit dem Tablet …"));
         col.addView(title, lp(-1, -2, dp(4)));
         artist = new TextView(this);
         artist.setTextColor(ink2);
@@ -165,7 +165,7 @@ public class RemoteActivity extends Activity {
         vr.addView(volBar, vlp);
         vr.addView(circle("+", card, ink, 52, v -> send("VOLSTEP\t1")));
         col.addView(vr, lp(-1, -2, dp(24)));
-        TextView keys = mono("LAUTSTÄRKETASTEN DES HANDYS STEUERN DAS TABLET", ink3, 9.5f);
+        TextView keys = mono(L.t("LAUTSTÄRKETASTEN DES HANDYS STEUERN DAS TABLET"), ink3, 9.5f);
         keys.setGravity(Gravity.CENTER);
         col.addView(keys, lp(-1, -2, dp(8)));
 
@@ -176,11 +176,11 @@ public class RemoteActivity extends Activity {
         col.addView(note, lp(-1, -2, dp(12)));
 
         // hand over what plays on this phone
-        TextView hand = pill("📱 → 🔊   Vom Handy übernehmen", v -> handOver());
+        TextView hand = pill(L.t("📱 → 🔊   Vom Handy übernehmen"), v -> handOver());
         col.addView(hand, lp(-1, dp(54), dp(16)));
 
         // search → plays on the tablet
-        col.addView(mono("— AUF DEM TABLET SPIELEN", ink3, 11), lp(-1, -2, dp(26)));
+        col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));
         LinearLayout sr = new LinearLayout(this);
         search = new EditText(this);
         search.setHint("Song, Artist, Playlist …");
@@ -198,7 +198,7 @@ public class RemoteActivity extends Activity {
         sr.addView(go, glp);
         col.addView(sr, lp(-1, -2, dp(10)));
 
-        col.addView(mono("— ALS NÄCHSTES", ink3, 11), lp(-1, -2, dp(26)));
+        col.addView(mono(L.t("— ALS NÄCHSTES"), ink3, 11), lp(-1, -2, dp(26)));
         queue = new LinearLayout(this);
         queue.setOrientation(LinearLayout.VERTICAL);
         col.addView(queue, lp(-1, -2, dp(8)));
@@ -249,18 +249,18 @@ public class RemoteActivity extends Activity {
     private void connect() {
         if (link != null || (connecting != null && connecting.isAlive())) return;
         if (BtRemote.adapter(this) == null) {
-            status(false, "BLUETOOTH AUS");
-            note.setText("Bluetooth einschalten (und ARC-DNA die Berechtigung geben).");
+            status(false, L.t("BLUETOOTH AUS"));
+            note.setText(L.t("Bluetooth einschalten (und ARC-DNA die Berechtigung geben)."));
             return;
         }
-        status(false, "SUCHT …");
+        status(false, L.t("SUCHT …"));
         String addr = getSharedPreferences("home", MODE_PRIVATE).getString("remoteAddr", "");
         connecting = new Thread(() -> {
             BtRemote.Link l = BtRemote.connect(this, addr);
             main.post(() -> {
                 if (l == null) {
-                    status(false, "NICHT ERREICHBAR");
-                    note.setText("Tablet nicht gefunden. Beide gekoppelt? Auf dem Tablet ARC-DNA mit Benachrichtigungszugriff?");
+                    status(false, L.t("NICHT ERREICHBAR"));
+                    note.setText(L.t("Tablet nicht gefunden. Beide gekoppelt? Auf dem Tablet ARC-DNA mit Benachrichtigungszugriff?"));
                     if (started) main.postDelayed(this::connect, 4000);
                     return;
                 }
@@ -273,7 +273,7 @@ public class RemoteActivity extends Activity {
                     @Override public void onClosed() {
                         main.post(() -> {
                             if (link == l) link = null;
-                            status(false, "GETRENNT");
+                            status(false, L.t("GETRENNT"));
                             if (started) main.postDelayed(RemoteActivity.this::connect, 1200);
                         });
                     }
@@ -302,7 +302,7 @@ public class RemoteActivity extends Activity {
             case "STATE":
                 if (p.length < 10) return;
                 String t = p[1];
-                title.setText(t.isEmpty() ? "Nichts läuft auf dem Tablet" : t);
+                title.setText(t.isEmpty() ? L.t("Nichts läuft auf dem Tablet") : t);
                 artist.setText(p[2]);
                 app.setText(p[3].isEmpty() ? "" : ("— " + p[3]).toUpperCase(Locale.GERMAN));
                 playing = "1".equals(p[4]);
@@ -338,7 +338,7 @@ public class RemoteActivity extends Activity {
                     long id = parseL(q[0]);
                     queue.addView(queueRow(q[1], q.length > 2 ? q[2] : "", () -> send("QITEM\t" + id)));
                 }
-                if (queue.getChildCount() == 0) queue.addView(mono("KEINE WARTESCHLANGE", ink3, 10.5f));
+                if (queue.getChildCount() == 0) queue.addView(mono(L.t("KEINE WARTESCHLANGE"), ink3, 10.5f));
                 break;
             case "NOTE":
                 if (p.length > 1) note.setText(p[1]);
@@ -375,7 +375,7 @@ public class RemoteActivity extends Activity {
         String q = search.getText().toString().trim();
         if (q.isEmpty()) return;
         send("SEARCH\t" + q.replace('\t', ' '));
-        note.setText("Spielt auf dem Tablet: " + q);
+        note.setText(L.t("Spielt auf dem Tablet: ") + q);
         search.setText("");
         search.clearFocus();
         try {
@@ -394,13 +394,13 @@ public class RemoteActivity extends Activity {
                 if (c.getMetadata() != null && (mine == null || s != null && s.getState() == PlaybackState.STATE_PLAYING)) mine = c;
             }
         } catch (SecurityException e) {
-            note.setText("Dafür braucht ARC-DNA den Benachrichtigungszugriff auf dem Handy.");
+            note.setText(L.t("Dafür braucht ARC-DNA den Benachrichtigungszugriff auf dem Handy."));
             return;
         }
-        if (mine == null || mine.getMetadata() == null) { note.setText("Auf dem Handy läuft gerade nichts."); return; }
+        if (mine == null || mine.getMetadata() == null) { note.setText(L.t("Auf dem Handy läuft gerade nichts.")); return; }
         MediaMetadata md = mine.getMetadata();
         String t = md.getString(MediaMetadata.METADATA_KEY_TITLE), a = md.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        if (t == null) { note.setText("Auf dem Handy läuft gerade nichts."); return; }
+        if (t == null) { note.setText(L.t("Auf dem Handy läuft gerade nichts.")); return; }
         PlaybackState s = mine.getPlaybackState();
         long p = s == null ? 0 : s.getPosition() + (s.getState() == PlaybackState.STATE_PLAYING && s.getLastPositionUpdateTime() > 0
             ? SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime() : 0);
@@ -409,12 +409,12 @@ public class RemoteActivity extends Activity {
         send("SEARCH\t" + q);
         long target = p + 2600;     // the tablet needs a moment to find and start the song
         if (p > 8000) main.postDelayed(() -> send("SEEK\t" + target), 2600);
-        note.setText("Übernommen: " + t);
+        note.setText(L.t("Übernommen: ") + t);
     }
 
     private void pickDevice() {
         BluetoothAdapter a = BtRemote.adapter(this);
-        if (a == null) { note.setText("Bluetooth einschalten."); return; }
+        if (a == null) { note.setText(L.t("Bluetooth einschalten.")); return; }
         List<BluetoothDevice> list = new ArrayList<>();
         List<String> names = new ArrayList<>();
         try {
@@ -423,9 +423,9 @@ public class RemoteActivity extends Activity {
                 names.add(d.getName() == null ? d.getAddress() : d.getName());
             }
         } catch (SecurityException e) { return; }
-        if (list.isEmpty()) { note.setText("Erst Handy und Tablet per Bluetooth koppeln."); return; }
+        if (list.isEmpty()) { note.setText(L.t("Erst Handy und Tablet per Bluetooth koppeln.")); return; }
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Welches Gerät spielt?")
+            .setTitle(L.t("Welches Gerät spielt?"))
             .setItems(names.toArray(new String[0]), (dlg, i) -> {
                 getSharedPreferences("home", MODE_PRIVATE).edit().putString("remoteAddr", list.get(i).getAddress()).apply();
                 BtRemote.Link l = link;

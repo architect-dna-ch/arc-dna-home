@@ -195,8 +195,8 @@ public class ThumbFanView extends View {
     private void drawChrome(Canvas c) {
         int w = getWidth(), h = getHeight();
         tp.setColor(orange); tp.setTextSize(11 * dens); tp.setLetterSpacing(0.16f);
-        c.save(); c.rotate(-90, 20 * dens, h / 2f); c.drawText("MEDIATHEK", 20 * dens, h / 2f, tp); c.restore();
-        c.save(); c.rotate(90, w - 20 * dens, h / 2f); c.drawText("FOKUS", w - 20 * dens, h / 2f, tp); c.restore();
+        c.save(); c.rotate(-90, 20 * dens, h / 2f); c.drawText(L.t("MEDIATHEK"), 20 * dens, h / 2f, tp); c.restore();
+        c.save(); c.rotate(90, w - 20 * dens, h / 2f); c.drawText(L.t("FOKUS"), w - 20 * dens, h / 2f, tp); c.restore();
         tp.setLetterSpacing(0);
         // Center hint removed — the ambient data cells own the middle now, and each nub says "halten".
     }

@@ -33,9 +33,9 @@ import java.util.Locale;
 public class MoodActivity extends Activity {
 
     private static final String[] FACES = {"😣", "😕", "😐", "🙂", "😄"};
-    private static final String[] WORDS = {"Mies", "Naja", "Okay", "Gut", "Super"};
+    private static final String[] WORDS = {L.t("Mies"), L.t("Naja"), "Okay", "Gut", "Super"};
     private static final int[] COLS = {0xFFD9472F, 0xFFF29A1F, 0xFFFFC400, 0xFF8BD14A, 0xFF2BBF6A};
-    private static final String[] DAYS = {"MO", "DI", "MI", "DO", "FR", "SA", "SO"};
+    private static final String[] DAYS = {"MO", L.t("DI"), L.t("MI"), L.t("DO"), "FR", "SA", L.t("SO")};
 
     private SharedPreferences prefs;
     private int bg, card, line, ink, ink2, ink3, rust;
@@ -80,7 +80,7 @@ public class MoodActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView label = mono(11, ink3);
-        label.setText("— STIMMUNG");
+        label.setText(L.t("— STIMMUNG"));
         label.setLetterSpacing(0.24f);
         head.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(22, ink, true);
@@ -90,7 +90,7 @@ public class MoodActivity extends Activity {
         head.addView(close);
         col.addView(head);
         TextView ask = text(28, ink, true);
-        ask.setText("Wie geht's dir gerade?");
+        ask.setText(L.t("Wie geht's dir gerade?"));
         ask.setLetterSpacing(-0.03f);
         col.addView(ask, margins(-1, -2, dp(12)));
 
@@ -121,7 +121,7 @@ public class MoodActivity extends Activity {
         }
         col.addView(faces, margins(-1, -2, dp(4)));
         note = new EditText(this);
-        note.setHint("Ein Wort dazu? (vorher oder gleich danach)");
+        note.setHint(L.t("Ein Wort dazu? (vorher oder gleich danach)"));
         note.setTextColor(ink);
         note.setHintTextColor(ink3);
         note.setTextSize(15);
@@ -135,7 +135,7 @@ public class MoodActivity extends Activity {
         note.setPadding(dp(14), dp(10), dp(14), dp(10));
         col.addView(note, margins(-1, -2, dp(10)));
 
-        col.addView(section("— WANN GEHT'S DIR WIE · WOCHENTAG × UHRZEIT"), margins(-1, -2, dp(26)));
+        col.addView(section(L.t("— WANN GEHT'S DIR WIE · WOCHENTAG × UHRZEIT")), margins(-1, -2, dp(26)));
         heat = new Heat();
         heat.setBackground(box(card, line, 18));
         col.addView(heat, margins(-1, dp(250), dp(8)));
@@ -145,12 +145,12 @@ public class MoodActivity extends Activity {
         insight.setBackground(box(card, rust, 18));
         col.addView(insight, margins(-1, -2, dp(10)));
 
-        col.addView(section("— DIE LETZTEN 14 TAGE"), margins(-1, -2, dp(26)));
+        col.addView(section(L.t("— DIE LETZTEN 14 TAGE")), margins(-1, -2, dp(26)));
         trend = new Trend();
         trend.setBackground(box(card, line, 18));
         col.addView(trend, margins(-1, dp(160), dp(8)));
 
-        col.addView(section("— ZULETZT"), margins(-1, -2, dp(26)));
+        col.addView(section(L.t("— ZULETZT")), margins(-1, -2, dp(26)));
         recent = text(14, ink2, false);
         recent.setLineSpacing(0, 1.35f);
         col.addView(recent, margins(-1, -2, dp(8)));
@@ -237,10 +237,10 @@ public class MoodActivity extends Activity {
                 last.insert(0, FACES[m - 1] + "  " + f.format(new Date(at)) + (n.isEmpty() ? "" : " · " + n) + "\n");
             }
         }
-        recent.setText(a.length() == 0 ? "Noch nichts – tipp oben auf ein Gesicht." : last.toString().trim());
+        recent.setText(a.length() == 0 ? L.t("Noch nichts – tipp oben auf ein Gesicht.") : last.toString().trim());
         // Insight.
         if (a.length() < 5) {
-            insight.setText("Ab 5 Einträgen zeige ich dir Muster. Tipp ein paar Mal am Tag – morgens, mittags, abends. (" + a.length() + "/5)");
+            insight.setText(L.t("Ab 5 Einträgen zeige ich dir Muster. Tipp ein paar Mal am Tag – morgens, mittags, abends. (") + a.length() + "/5)");
         } else {
             int best = -1, worst = -1;
             for (int d = 0; d < 7; d++) {
@@ -255,17 +255,17 @@ public class MoodActivity extends Activity {
                 if (bs < 0 || slot[i] / sn[i] > slot[bs] / sn[bs]) bs = i;
                 if (ws < 0 || slot[i] / sn[i] < slot[ws] / sn[ws]) ws = i;
             }
-            String[] full = {"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"};
+            String[] full = {L.t("Montag"), L.t("Dienstag"), L.t("Mittwoch"), L.t("Donnerstag"), L.t("Freitag"), L.t("Samstag"), L.t("Sonntag")};
             StringBuilder b = new StringBuilder();
             b.append("Am besten geht's dir ").append(full[best].equals(full[worst]) ? "" : "am " + full[best] + " ").append(bs >= 0 ? slots[bs] : "").append(" (")
                 .append(String.format(Locale.GERMAN, "%.1f", wd[best] / wn[best])).append(" ").append(FACES[Math.round(wd[best] / wn[best]) - 1]).append(").\n");
-            if (worst != best) b.append("Schwerer: ").append(full[worst]).append(ws >= 0 && ws != bs ? ", eher " + slots[ws] : "").append(" (")
+            if (worst != best) b.append(L.t("Schwerer: ")).append(full[worst]).append(ws >= 0 && ws != bs ? L.t(", eher ") + slots[ws] : "").append(" (")
                 .append(String.format(Locale.GERMAN, "%.1f", wd[worst] / wn[worst])).append(").\n");
             long[] week = MusicStats.week(this);
             long musicToday = week[6];
             float todayMood = dayCnt[13] == 0 ? -1 : daySum[13] / dayCnt[13];
-            if (todayMood > 0) b.append("Heute: ").append(String.format(Locale.GERMAN, "%.1f", todayMood)).append(" bei ").append(musicToday / 60).append(" h ")
-                .append(musicToday % 60).append(" min Musik.");
+            if (todayMood > 0) b.append(L.t("Heute: ")).append(String.format(Locale.GERMAN, "%.1f", todayMood)).append(L.t(" bei ")).append(musicToday / 60).append(" h ")
+                .append(musicToday % 60).append(L.t(" min Musik."));
             insight.setText(b.toString().trim());
         }
         heat.invalidate();
@@ -354,9 +354,9 @@ public class MoodActivity extends Activity {
             p.setColor(ink3);
             p.setTypeface(Typeface.MONOSPACE);
             p.setTextSize(dp(9));
-            c.drawText("VOR 2 WOCHEN", l, h - dp(8), p);
+            c.drawText(L.t("VOR 2 WOCHEN"), l, h - dp(8), p);
             p.setTextAlign(Paint.Align.RIGHT);
-            c.drawText("HEUTE", r, h - dp(8), p);
+            c.drawText(L.t("HEUTE"), r, h - dp(8), p);
             p.setTextAlign(Paint.Align.LEFT);
         }
     }

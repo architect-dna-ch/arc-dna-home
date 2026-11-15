@@ -453,8 +453,8 @@ public class BearAlarmActivity extends Activity {
             float top = dp(118);        // below the heads-up notification
             long ring = (long) ((now - born) / 1000f);
             String run = "KLINGELT SEIT " + ring / 60 + ":" + String.format(Locale.ROOT, "%02d", ring % 60)
-                + (angry ? " · WÜTEND" : "") + (boosted ? " · LAUT" : "");
-            c.drawText("ARC-DNA · WECKER", dp(24), top, paint);
+                + (angry ? L.t(" · WÜTEND") : "") + (boosted ? L.t(" · LAUT") : "");
+            c.drawText(L.t("ARC-DNA · WECKER"), dp(24), top, paint);
             paint.setTextAlign(Paint.Align.RIGHT);
             paint.setColor(angry ? 0xFFE8B931 : 0xFF9A9A98);
             paint.setTextSize(dp(10));
@@ -473,7 +473,7 @@ public class BearAlarmActivity extends Activity {
             paint.setTextSize(dp(12));
             paint.setColor(0xFF9A9A98);
             String label = getIntent().getStringExtra("label");
-            c.drawText(label != null && !label.isEmpty() ? "🐻 " + label.toUpperCase(Locale.GERMAN) : "DER BÄR KOMMT AUS DER HÖHLE …", dp(24), top + dp(110), paint);
+            c.drawText(label != null && !label.isEmpty() ? "🐻 " + label.toUpperCase(Locale.GERMAN) : L.t("DER BÄR KOMMT AUS DER HÖHLE …"), dp(24), top + dp(110), paint);
 
             // Snooze (tap) and wake up (hold 1 s, fills up).
             float pad = dp(24), bh = dp(60), bottom = h - dp(48);
@@ -493,8 +493,8 @@ public class BearAlarmActivity extends Activity {
             }
             paint.setTextSize(dp(14));
             paint.setColor(0xFFF2EFE8);
-            String s1 = "SNOOZE 5 MIN · BÄR ZURÜCK IN DIE HÖHLE";
-            String s2 = holdStart >= 0 ? "HALTEN …" : "AUFWACHEN · 1 S HALTEN";
+            String s1 = L.t("SNOOZE 5 MIN · BÄR ZURÜCK IN DIE HÖHLE");
+            String s2 = holdStart >= 0 ? L.t("HALTEN …") : L.t("AUFWACHEN · 1 S HALTEN");
             if (paint.measureText(s1) > snoozeBtn.width() - dp(20)) s1 = "SNOOZE 5 MIN";
             c.drawText(s1, snoozeBtn.centerX() - paint.measureText(s1) / 2, snoozeBtn.centerY() + dp(5), paint);
             c.drawText(s2, wakeBtn.centerX() - paint.measureText(s2) / 2, wakeBtn.centerY() + dp(5), paint);

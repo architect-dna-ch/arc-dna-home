@@ -47,11 +47,11 @@ public class PlanActivity extends Activity {
     private static final String[] FACES = {"😣", "😕", "😐", "🙂", "😄"};
     /** Quick tasks: name, emoji, sessions, minutes each. */
     private static final Object[][] TASK_PRESETS = {
-        {"Steuererklärung", "🧾", 4, 45},
-        {"Rechnungen zahlen", "💸", 1, 30},
-        {"Bewerbung schreiben", "📄", 3, 45},
-        {"Wohnung putzen", "🧽", 2, 45},
-        {"Papierkram / Post", "📬", 2, 30},
+        {L.t("Steuererklärung"), "🧾", 4, 45},
+        {L.t("Rechnungen zahlen"), "💸", 1, 30},
+        {L.t("Bewerbung schreiben"), "📄", 3, 45},
+        {L.t("Wohnung putzen"), "🧽", 2, 45},
+        {L.t("Papierkram / Post"), "📬", 2, 30},
     };
 
     private PlanStore st;
@@ -122,7 +122,7 @@ public class PlanActivity extends Activity {
         col.addView(nowBox, margins(-1, -2, dp(10)));
 
         TextView q = text(28, ink, true);
-        q.setText("Wie geht's dir gerade?");
+        q.setText(L.t("Wie geht's dir gerade?"));
         q.setLetterSpacing(-0.03f);
         col.addView(q, margins(-1, -2, dp(14)));
         faces = new LinearLayout(this);
@@ -148,10 +148,10 @@ public class PlanActivity extends Activity {
         LinearLayout th = new LinearLayout(this);
         th.setGravity(Gravity.CENTER_VERTICAL);
         TextView tl = mono(11, ink3);
-        tl.setText("— AUFGABEN MIT FRIST");
+        tl.setText(L.t("— AUFGABEN MIT FRIST"));
         tl.setLetterSpacing(0.2f);
         th.addView(tl, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView addT = chip("＋ AUFGABE", rust, false);
+        TextView addT = chip(L.t("＋ AUFGABE"), rust, false);
         addT.setPadding(dp(12), dp(8), dp(12), dp(8));
         addT.setOnClickListener(v -> taskSheet());
         th.addView(addT);
@@ -161,7 +161,7 @@ public class PlanActivity extends Activity {
         col.addView(taskList, margins(-1, -2, dp(8)));
 
         TextView gh = mono(11, ink3);
-        gh.setText("— DIESE WOCHE");
+        gh.setText(L.t("— DIESE WOCHE"));
         gh.setLetterSpacing(0.2f);
         col.addView(gh, margins(-1, -2, dp(22)));
         goals = new LinearLayout(this);
@@ -169,13 +169,13 @@ public class PlanActivity extends Activity {
         col.addView(goals, margins(-1, -2, dp(8)));
 
         LinearLayout acts = new LinearLayout(this);
-        TextView auto = chip("✨ WOCHE PLANEN", rust, true);
+        TextView auto = chip(L.t("✨ WOCHE PLANEN"), rust, true);
         auto.setOnClickListener(v -> autoPlan());
         acts.addView(auto, weighted(dp(8)));
         TextView add = chip("＋ BLOCK", ink, false);
         add.setOnClickListener(v -> addSheet(-1));
         acts.addView(add, weighted(dp(8)));
-        TextView tpl = chip("VORLAGEN", ink, false);
+        TextView tpl = chip(L.t("VORLAGEN"), ink, false);
         tpl.setOnClickListener(v -> targetsSheet());
         acts.addView(tpl, weighted(0));
         col.addView(acts, margins(-1, -2, dp(14)));
@@ -188,7 +188,7 @@ public class PlanActivity extends Activity {
         dayTitle = text(20, ink, true);
         col.addView(dayTitle, margins(-1, -2, dp(14)));
         TextView hint = mono(10, ink3);
-        hint.setText("FREIE ZEIT ANTIPPEN = BLOCK · BLOCK ANTIPPEN = ERLEDIGT / NICHT JETZT");
+        hint.setText(L.t("FREIE ZEIT ANTIPPEN = BLOCK · BLOCK ANTIPPEN = ERLEDIGT / NICHT JETZT"));
         col.addView(hint, margins(-1, -2, dp(4)));
         day = new DayView();
         col.addView(day, margins(-1, dp(60) * (DAY_TO - DAY_FROM) + dp(20), dp(10)));
@@ -227,7 +227,7 @@ public class PlanActivity extends Activity {
 
     private void paintLiveToggle(TextView t) {
         boolean on = st.prefs.getBoolean("checkins", true);
-        t.setText(on ? "🔔 LIVE-NACHFRAGE AN · BEIM START: „JETZT?“  (ANTIPPEN = AUS)" : "🔕 LIVE-NACHFRAGE AUS  (ANTIPPEN = AN)");
+        t.setText(on ? L.t("🔔 LIVE-NACHFRAGE AN · BEIM START: „JETZT?“  (ANTIPPEN = AUS)") : L.t("🔕 LIVE-NACHFRAGE AUS  (ANTIPPEN = AN)"));
         t.setTextColor(on ? rust : ink3);
     }
 
@@ -246,7 +246,7 @@ public class PlanActivity extends Activity {
         st.forgetMood();
         paintFaces();
         if (m <= 2) offerLighter();
-        else if (m >= 4) say("Schön! Gute Zeit für was Schweres – " + nextHeavyHint());
+        else if (m >= 4) say(L.t("Schön! Gute Zeit für was Schweres – ") + nextHeavyHint());
         else banner.setVisibility(View.GONE);
     }
 
@@ -256,12 +256,12 @@ public class PlanActivity extends Activity {
         for (PlanStore.Block b : st.blocks)
             if (b.state == 0 && st.energy(b) >= 2 && b.at + b.min * 60_000L > now && b.at < now + 3 * 3600_000L) heavy.add(b);
         if (heavy.isEmpty()) {
-            say("Okay. Nichts Schweres in den nächsten Stunden – gönn dir 🌿 Erholung.");
+            say(L.t("Okay. Nichts Schweres in den nächsten Stunden – gönn dir 🌿 Erholung."));
             return;
         }
-        StringBuilder sb = new StringBuilder("Heute schwer? Ich schieb dir ");
+        StringBuilder sb = new StringBuilder(L.t("Heute schwer? Ich schieb dir "));
         for (int i = 0; i < heavy.size(); i++) sb.append(i > 0 ? ", " : "").append(st.emoji(heavy.get(i))).append(' ').append(st.name(heavy.get(i)));
-        sb.append(" auf Zeiten, wo's dir meist leichter fällt. Antippen = verschieben.");
+        sb.append(L.t(" auf Zeiten, wo's dir meist leichter fällt. Antippen = verschieben."));
         say(sb.toString());
         banner.setOnClickListener(v -> {
             StringBuilder done = new StringBuilder();
@@ -271,7 +271,7 @@ public class PlanActivity extends Activity {
             }
             st.save();
             paint();
-            say(done.length() == 0 ? "Nichts Leichteres frei – vielleicht kürzer machen?" : done.toString().trim());
+            say(done.length() == 0 ? L.t("Nichts Leichteres frei – vielleicht kürzer machen?") : done.toString().trim());
         });
     }
 
@@ -279,8 +279,8 @@ public class PlanActivity extends Activity {
         long now = System.currentTimeMillis();
         for (PlanStore.Block b : st.blocks)
             if (b.state == 0 && st.energy(b) >= 2 && b.at > now - 30 * 60_000L && b.at < now + 4 * 3600_000L)
-                return st.emoji(b) + " " + st.name(b) + " um " + hm(b.at) + " passt.";
-        return "vielleicht jetzt was von den Aufgaben?";
+                return st.emoji(b) + " " + st.name(b) + L.t(" um ") + hm(b.at) + L.t(" passt.");
+        return L.t("vielleicht jetzt was von den Aufgaben?");
     }
 
     /** Pull this week's busy times from the phone calendar so planning avoids them. */
@@ -301,7 +301,7 @@ public class PlanActivity extends Activity {
         if (req == 91 && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) {
             loadBusy();
             paint();
-            say("Kalender verbunden – ich plane um deine Termine herum.");
+            say(L.t("Kalender verbunden – ich plane um deine Termine herum."));
         }
     }
 
@@ -309,8 +309,8 @@ public class PlanActivity extends Activity {
         loadBusy();
         int added = st.autoPlan();
         paint();
-        say(added == 0 ? "Alles steht schon – Ziele und Aufgaben sind eingeplant."
-            : "✨ " + added + " Blöcke eingeplant – schwere dorthin, wo du dich meist gut fühlst. Passt was nicht? Antippen → Nicht jetzt.");
+        say(added == 0 ? L.t("Alles steht schon – Ziele und Aufgaben sind eingeplant.")
+            : "✨ " + added + L.t(" Blöcke eingeplant – schwere dorthin, wo du dich meist gut fühlst. Passt was nicht? Antippen → Nicht jetzt."));
     }
 
     /** Answer for the block that's on now (same as the notification buttons). */
@@ -318,14 +318,14 @@ public class PlanActivity extends Activity {
         String said;
         if (how == 0) {
             st.markDone(b);
-            said = "Stark! " + st.emoji(b) + " eingetragen.";
+            said = L.t("Stark! ") + st.emoji(b) + L.t(" eingetragen.");
         } else if (how == 2) {
             b.min = 10;
             st.markDone(b);
-            said = "Nur 10 Minuten " + st.emoji(b) + " – kleinster Schritt, zählt trotzdem.";
+            said = L.t("Nur 10 Minuten ") + st.emoji(b) + L.t(" – kleinster Schritt, zählt trotzdem.");
         } else {
             String r = st.notNow(b, true);
-            said = r != null ? r : "Nichts Leichteres frei – mach nur 10 Minuten?";
+            said = r != null ? r : L.t("Nichts Leichteres frei – mach nur 10 Minuten?");
             if (r != null) shown.setTimeInMillis(b.at);
         }
         st.save();
@@ -403,14 +403,14 @@ public class PlanActivity extends Activity {
         c.setPadding(dp(18), dp(16), dp(18), dp(16));
         c.setBackground(box(card, st.colour(b), 22));
         TextView tag = mono(10, st.colour(b));
-        tag.setText("JETZT · " + hm(b.at) + "–" + hm(b.at + b.min * 60_000L));
+        tag.setText(L.t("JETZT · ") + hm(b.at) + "–" + hm(b.at + b.min * 60_000L));
         tag.setLetterSpacing(0.2f);
         c.addView(tag);
         TextView t = text(22, ink, true);
-        t.setText(st.emoji(b) + " " + st.name(b) + " – bist du dabei?");
+        t.setText(st.emoji(b) + " " + st.name(b) + L.t(" – bist du dabei?"));
         c.addView(t, margins(-1, -2, dp(6)));
         LinearLayout row = new LinearLayout(this);
-        String[] opts = {"✓ MACH ICH", "😮‍💨 NOPE", "⏱ 10 MIN"};
+        String[] opts = {L.t("✓ MACH ICH"), "😮‍💨 NOPE", "⏱ 10 MIN"};
         for (int i = 0; i < 3; i++) {
             TextView o = chip(opts[i], i == 0 ? rust : ink, i == 0);
             int how = i;
@@ -425,7 +425,7 @@ public class PlanActivity extends Activity {
         taskList.removeAllViews();
         if (st.tasks.isEmpty()) {
             TextView none = text(14, ink3, false);
-            none.setText("Steuern, Rechnungen, Bewerbung … alles mit Frist. Ich teil's in kleine Etappen und frag dich zur richtigen Zeit.");
+            none.setText(L.t("Steuern, Rechnungen, Bewerbung … alles mit Frist. Ich teil's in kleine Etappen und frag dich zur richtigen Zeit."));
             taskList.addView(none);
             return;
         }
@@ -443,9 +443,9 @@ public class PlanActivity extends Activity {
             PlanStore.Block next = st.nextFor(t);
             long left = t.due > 0 ? (t.due - System.currentTimeMillis()) / (24 * 3600_000L) : -1;
             TextView sub = mono(11, !done && t.due > 0 && left <= 3 ? rust : ink3);
-            sub.setText(t.done + "/" + t.sessions + " ETAPPEN · " + t.min + " MIN" + (t.due > 0 ? " · FRIST " + f.format(new Date(t.due)).toUpperCase(Locale.GERMAN)
-                + (t.due > System.currentTimeMillis() ? " (" + left + " T)" : " (ÜBERFÄLLIG)") : "")
-                + (done ? " · GESCHAFFT" : next != null ? " · NÄCHSTE " + st.when(next.at).toUpperCase(Locale.GERMAN) : " · NOCH NICHT EINGEPLANT"));
+            sub.setText(t.done + "/" + t.sessions + L.t(" ETAPPEN · ") + t.min + " MIN" + (t.due > 0 ? L.t(" · FRIST ") + f.format(new Date(t.due)).toUpperCase(Locale.GERMAN)
+                + (t.due > System.currentTimeMillis() ? " (" + left + " T)" : L.t(" (ÜBERFÄLLIG)")) : "")
+                + (done ? L.t(" · GESCHAFFT") : next != null ? " · NÄCHSTE " + st.when(next.at).toUpperCase(Locale.GERMAN) : L.t(" · NOCH NICHT EINGEPLANT")));
             row.addView(sub, margins(-1, -2, dp(4)));
             row.setOnClickListener(v -> taskActions(t));
             taskList.addView(row, margins(-1, -2, dp(8)));
@@ -532,14 +532,14 @@ public class PlanActivity extends Activity {
     private void addSheet(long at) {
         String[] rows = new String[KINDS.length];
         for (int k = 0; k < KINDS.length; k++) rows[k] = KINDS[k][1] + "  " + KINDS[k][2] + " · " + KINDS[k][3] + " min";
-        sheet(at < 0 ? "Was planen? (ich such die beste Zeit)" : "Um " + hm(at) + ":", null, rows, k -> {
+        sheet(at < 0 ? L.t("Was planen? (ich such die beste Zeit)") : L.t("Um ") + hm(at) + ":", null, rows, k -> {
             int min = (Integer) KINDS[k][3];
             long t = at;
             if (t < 0) {
                 long now = System.currentTimeMillis(), d0 = PlanStore.dayStart(shown.getTimeInMillis());
                 t = st.bestSlot(k, 0, (Integer) KINDS[k][4], min, Math.max(now, d0), PlanStore.weekStart(now) + 14L * 24 * 3600_000, Math.max(now, d0 + 9 * 3600_000L), null);
                 if (t < 0) {
-                    say("Kein freier Platz gefunden – nimm einen Tag mit weniger Punkten.");
+                    say(L.t("Kein freier Platz gefunden – nimm einen Tag mit weniger Punkten."));
                     return;
                 }
             }
@@ -553,14 +553,14 @@ public class PlanActivity extends Activity {
             shown.setTimeInMillis(t);
             paint();
             if (at < 0) say(KINDS[k][1] + " " + KINDS[k][2] + " → " + st.when(t)
-                + String.format(Locale.GERMAN, " (da meist Ø %.1f).", st.predicted(PlanStore.dow(t), PlanStore.hour(t))));
+                + String.format(Locale.GERMAN, L.t(" (da meist Ø %.1f)."), st.predicted(PlanStore.dow(t), PlanStore.hour(t))));
         });
     }
 
     private void blockSheet(PlanStore.Block b) {
         String title = st.emoji(b) + " " + st.name(b) + " · " + st.when(b.at) + "–" + hm(b.at + b.min * 60_000L);
         if (b.state == 1) {
-            sheet(title, null, new String[]{"↺ Doch nicht erledigt", "🗑 Entfernen"}, i -> {
+            sheet(title, null, new String[]{L.t("↺ Doch nicht erledigt"), L.t("🗑 Entfernen")}, i -> {
                 if (i == 0) st.unDone(b);
                 else st.blocks.remove(b);
                 st.save();
@@ -568,23 +568,23 @@ public class PlanActivity extends Activity {
             });
             return;
         }
-        sheet(title, null, new String[]{"✓ Erledigt", "😮‍💨 Nicht jetzt – leichtere Zeit finden", "⏱ Kürzer: nur " + Math.max(10, b.min / 2) + " min", "🗑 Entfernen"}, i -> {
+        sheet(title, null, new String[]{L.t("✓ Erledigt"), L.t("😮‍💨 Nicht jetzt – leichtere Zeit finden"), L.t("⏱ Kürzer: nur ") + Math.max(10, b.min / 2) + " min", L.t("🗑 Entfernen")}, i -> {
             if (i == 0) {
                 st.markDone(b);
                 st.save();
                 paint();
-                say(b.task != 0 ? "Stark! Eine Etappe weniger." : "Stark! " + st.emoji(b) + " " + st.countWeek(b.kind, true) + "/" + st.target(b.kind) + " diese Woche.");
+                say(b.task != 0 ? L.t("Stark! Eine Etappe weniger.") : L.t("Stark! ") + st.emoji(b) + " " + st.countWeek(b.kind, true) + "/" + st.target(b.kind) + L.t(" diese Woche."));
             } else if (i == 1) {
                 String r = st.notNow(b, true);
                 st.save();
                 if (r != null) shown.setTimeInMillis(b.at);
                 paint();
-                say(r != null ? r : "Kein besserer Platz frei. Mach's kürzer – 10 Minuten zählen auch.");
+                say(r != null ? r : L.t("Kein besserer Platz frei. Mach's kürzer – 10 Minuten zählen auch."));
             } else if (i == 2) {
                 b.min = Math.max(10, b.min / 2);
                 st.save();
                 paint();
-                say("Okay, nur " + b.min + " min. Kleiner Schritt, trotzdem geschafft.");
+                say(L.t("Okay, nur ") + b.min + L.t(" min. Kleiner Schritt, trotzdem geschafft."));
             } else {
                 st.blocks.remove(b);
                 st.save();
@@ -596,23 +596,23 @@ public class PlanActivity extends Activity {
     /** New task: pick a preset or type your own, then the deadline. */
     private void taskSheet() {
         EditText name = new EditText(this);
-        name.setHint("Eigene Aufgabe … (z. B. Steuern Kanton Bern)");
+        name.setHint(L.t("Eigene Aufgabe … (z. B. Steuern Kanton Bern)"));
         name.setTextColor(ink);
         name.setHintTextColor(ink3);
         name.setSingleLine(true);
         name.setBackground(box(bg, line, 14));
         name.setPadding(dp(14), dp(12), dp(14), dp(12));
         String[] rows = new String[TASK_PRESETS.length + 1];
-        rows[0] = "→ Eigene Aufgabe übernehmen (3 Etappen à 30 min)";
+        rows[0] = L.t("→ Eigene Aufgabe übernehmen (3 Etappen à 30 min)");
         for (int i = 0; i < TASK_PRESETS.length; i++)
             rows[i + 1] = TASK_PRESETS[i][1] + "  " + TASK_PRESETS[i][0] + " · " + TASK_PRESETS[i][2] + "× " + TASK_PRESETS[i][3] + " min";
-        sheet("Was steht an?", name, rows, i -> {
+        sheet(L.t("Was steht an?"), name, rows, i -> {
             String n, e;
             int ses, min;
             if (i == 0) {
                 n = name.getText().toString().trim();
                 if (n.isEmpty()) {
-                    say("Gib der Aufgabe einen Namen – oder nimm eine Vorlage.");
+                    say(L.t("Gib der Aufgabe einen Namen – oder nimm eine Vorlage."));
                     return;
                 }
                 e = n.toLowerCase(Locale.GERMAN).contains("steuer") ? "🧾" : "📌";
@@ -638,9 +638,9 @@ public class PlanActivity extends Activity {
         long monthEnd = c.getTimeInMillis();
         long[] dues = {weekEnd, now + 14L * 24 * 3600_000, monthEnd, now + 60L * 24 * 3600_000, 0};
         SimpleDateFormat f = new SimpleDateFormat("EE d. MMM", Locale.GERMAN);
-        String[] rows = {"Diese Woche (" + f.format(new Date(weekEnd)) + ")", "In 2 Wochen", "Ende Monat (" + f.format(new Date(monthEnd)) + ")",
-            "In 2 Monaten", "Keine Frist – in den nächsten 10 Tagen verteilen"};
-        sheet(e + " " + n + " – bis wann?", null, rows, i -> {
+        String[] rows = {L.t("Diese Woche (") + f.format(new Date(weekEnd)) + ")", L.t("In 2 Wochen"), L.t("Ende Monat (") + f.format(new Date(monthEnd)) + ")",
+            L.t("In 2 Monaten"), L.t("Keine Frist – in den nächsten 10 Tagen verteilen")};
+        sheet(e + " " + n + L.t(" – bis wann?"), null, rows, i -> {
             PlanStore.Task t = new PlanStore.Task();
             t.id = System.nanoTime();
             t.name = n;
@@ -653,13 +653,13 @@ public class PlanActivity extends Activity {
             st.save();
             paint();
             PlanStore.Block next = st.nextFor(t);
-            say(e + " " + n + ": " + added + " Etappen eingeplant" + (next != null ? ", erste " + st.when(next.at) : "")
-                + ". Ich frag dich dann live – „Nope“ schiebt sie in eine leichtere Zeit, die Frist bleibt im Blick.");
+            say(e + " " + n + ": " + added + L.t(" Etappen eingeplant") + (next != null ? L.t(", erste ") + st.when(next.at) : "")
+                + L.t(". Ich frag dich dann live – „Nope“ schiebt sie in eine leichtere Zeit, die Frist bleibt im Blick."));
         });
     }
 
     private void taskActions(PlanStore.Task t) {
-        sheet(t.emoji + " " + t.name, null, new String[]{"＋ Eine Etappe mehr", "✨ Fehlende Etappen neu einplanen", "✓ Ganz erledigt", "🗑 Aufgabe löschen"}, i -> {
+        sheet(t.emoji + " " + t.name, null, new String[]{L.t("＋ Eine Etappe mehr"), L.t("✨ Fehlende Etappen neu einplanen"), L.t("✓ Ganz erledigt"), L.t("🗑 Aufgabe löschen")}, i -> {
             if (i == 0) {
                 t.sessions++;
                 st.planTasks();
@@ -668,7 +668,7 @@ public class PlanActivity extends Activity {
             } else if (i == 2) {
                 t.done = t.sessions;
                 for (PlanStore.Block b : st.blocks) if (b.task == t.id && b.state == 0) b.state = 2;
-                say("🎉 " + t.name + " erledigt! Endlich vom Tisch.");
+                say("🎉 " + t.name + L.t(" erledigt! Endlich vom Tisch."));
             } else {
                 st.tasks.remove(t);
                 st.blocks.removeIf(b -> b.task == t.id && b.state != 1);
@@ -680,9 +680,9 @@ public class PlanActivity extends Activity {
 
     private void targetsSheet() {
         String[] rows = new String[KINDS.length + 1];
-        for (int k = 0; k < KINDS.length; k++) rows[k] = KINDS[k][1] + "  " + KINDS[k][2] + " · " + st.target(k) + "× pro Woche  ＋";
-        rows[KINDS.length] = "Fertig";
-        sheet("Wochenziele (antippen = +1, nach 7 wieder 0)", null, rows, i -> {
+        for (int k = 0; k < KINDS.length; k++) rows[k] = KINDS[k][1] + "  " + KINDS[k][2] + " · " + st.target(k) + L.t("× pro Woche  ＋");
+        rows[KINDS.length] = L.t("Fertig");
+        sheet(L.t("Wochenziele (antippen = +1, nach 7 wieder 0)"), null, rows, i -> {
             if (i == KINDS.length) {
                 paint();
                 return;

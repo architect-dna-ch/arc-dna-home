@@ -145,7 +145,7 @@ final class Dashboard {
         col.addView(garden, lp(-1, dp(170), 0, 0, dp(12), 0, 0));
         // The dock: main app folders.
         LinearLayout dock = new LinearLayout(ctx);
-        String[] names = {"Apps", "ARC-DNA", "Zuletzt"};
+        String[] names = {"Apps", "ARC-DNA", L.t("Zuletzt")};
         for (int i = 0; i < names.length; i++) {
             int which = i;
             View f = folder(names[i], which);
@@ -207,7 +207,7 @@ final class Dashboard {
         t.setOrientation(LinearLayout.VERTICAL);
         t.setPadding(dp(14), 0, 0, 0);
         TextView small = new TextView(ctx);
-        small.setText("— ORDNER");
+        small.setText(L.t("— ORDNER"));
         small.setTextColor(ink3);
         small.setTextSize(10);
         small.setTypeface(Typeface.MONOSPACE);
@@ -414,14 +414,14 @@ final class Dashboard {
         }
 
         private String words(int c) {
-            if (c == 0) return "Klar";
-            if (c <= 2) return "Leicht bewölkt";
-            if (c == 3) return "Bedeckt";
-            if (c == 45 || c == 48) return "Nebel";
-            if (c >= 51 && c <= 57) return "Niesel";
-            if (c >= 61 && c <= 67 || c >= 80 && c <= 82) return "Regen";
-            if (c >= 71 && c <= 77 || c == 85 || c == 86) return "Schnee";
-            if (c >= 95) return "Gewitter";
+            if (c == 0) return L.t("Klar");
+            if (c <= 2) return L.t("Leicht bewölkt");
+            if (c == 3) return L.t("Bedeckt");
+            if (c == 45 || c == 48) return L.t("Nebel");
+            if (c >= 51 && c <= 57) return L.t("Niesel");
+            if (c >= 61 && c <= 67 || c >= 80 && c <= 82) return L.t("Regen");
+            if (c >= 71 && c <= 77 || c == 85 || c == 86) return L.t("Schnee");
+            if (c >= 95) return L.t("Gewitter");
             return "–";
         }
 
@@ -433,12 +433,12 @@ final class Dashboard {
             p.setTextSize(dp(10));
             p.setColor(ink3);
             p.setLetterSpacing(0.2f);
-            c.drawText("— WETTER" + (place.isEmpty() ? "" : " · " + place.toUpperCase(Locale.GERMAN)), dp(20), dp(30), p);
+            c.drawText(L.t("— WETTER") + (place.isEmpty() ? "" : " · " + place.toUpperCase(Locale.GERMAN)), dp(20), dp(30), p);
             p.setLetterSpacing(0);
             if (Float.isNaN(temp)) {
                 p.setTextSize(dp(16));
                 p.setColor(ink3);
-                c.drawText("lädt …", dp(20), dp(80), p);
+                c.drawText(L.t("lädt …"), dp(20), dp(80), p);
                 postInvalidateDelayed(1000);
                 return;
             }
@@ -579,7 +579,7 @@ final class Dashboard {
             p.setTextSize(dp(10));
             p.setColor(ink3);
             p.setLetterSpacing(0.2f);
-            c.drawText("— LIVE-STANDORT", dp(20), dp(30), p);
+            c.drawText(L.t("— LIVE-STANDORT"), dp(20), dp(30), p);
             p.setLetterSpacing(0);
             // Radar on the right: you in the middle (pulsing), the nearest stop where it is.
             float rr = Math.min(h * 0.38f, w * 0.2f), cx = w - rr - dp(24), cy = h / 2f + dp(6);
@@ -607,7 +607,7 @@ final class Dashboard {
             p.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
             p.setTextSize(dp(22));
             p.setColor(ink);
-            String pl = place.isEmpty() ? (here == null ? "Standort unbekannt" : "…") : place;
+            String pl = place.isEmpty() ? (here == null ? L.t("Standort unbekannt") : "…") : place;
             c.drawText(ellipsize(pl, maxW), tx, dp(70), p);
             p.setTypeface(Typeface.MONOSPACE);
             p.setTextSize(dp(11));
@@ -616,7 +616,7 @@ final class Dashboard {
                 c.drawText(String.format(Locale.ROOT, "%.5f, %.5f", here.getLatitude(), here.getLongitude()), tx, dp(96), p);
                 c.drawText("± " + Math.round(here.getAccuracy()) + " M · " + ago(here.getTime()), tx, dp(116), p);
             } else {
-                c.drawText(RouteLearner.allowed(ctx) ? "WARTE AUF GPS …" : "TIPPEN = STANDORT ERLAUBEN", tx, dp(96), p);
+                c.drawText(RouteLearner.allowed(ctx) ? L.t("WARTE AUF GPS …") : L.t("TIPPEN = STANDORT ERLAUBEN"), tx, dp(96), p);
             }
             if (!stop.isEmpty()) {
                 p.setColor(0xFF3C8DFF);
@@ -628,14 +628,14 @@ final class Dashboard {
                 p.setTypeface(Typeface.MONOSPACE);
                 p.setTextSize(dp(11));
                 p.setColor(ink3);
-                c.drawText("NÄCHSTE HALTESTELLE · " + Math.round(stopDist) + " M", tx + dp(20), dp(172), p);
+                c.drawText(L.t("NÄCHSTE HALTESTELLE · ") + Math.round(stopDist) + " M", tx + dp(20), dp(172), p);
             }
             postInvalidateDelayed(40);
         }
 
         private String ago(long t) {
             long s = Math.max(0, (System.currentTimeMillis() - t) / 1000);
-            return s < 60 ? "GERADE" : s < 3600 ? "VOR " + s / 60 + " MIN" : "VOR " + s / 3600 + " H";
+            return s < 60 ? L.t("GERADE") : s < 3600 ? L.t("VOR ") + s / 60 + " MIN" : L.t("VOR ") + s / 3600 + " H";
         }
 
         private String ellipsize(String s, float max) {
@@ -735,7 +735,7 @@ final class Dashboard {
             p.setLetterSpacing(0.2f);
             p.setColor(ink3);
             int grown = Math.max(0, Math.min(14, (int) Math.floor(hour - 6) + 1));
-            c.drawText("— GARTEN · " + (night ? "SCHLÄFT" : grown + " PFLANZEN HEUTE"), dp(20), dp(26), p);
+            c.drawText(L.t("— GARTEN · ") + (night ? L.t("SCHLÄFT") : grown + L.t(" PFLANZEN HEUTE")), dp(20), dp(26), p);
             p.setLetterSpacing(0);
             float ground = h - dp(20);
             p.setStyle(Paint.Style.STROKE);

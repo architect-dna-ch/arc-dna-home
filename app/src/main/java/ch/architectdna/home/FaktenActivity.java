@@ -34,20 +34,20 @@ public class FaktenActivity extends Activity {
 
     // Manipulation markers (lowercased substrings) → why.
     private static final String[][] FLAGS = {
-        {"teilen bevor", "„Teilen, bevor es gelöscht wird“ – Dringlichkeit ist ein Trick, kein Beweis."},
-        {"bevor es gelöscht", "Künstliche Dringlichkeit soll dich zum Teilen drängen, ohne zu prüfen."},
-        {"verschweigen", "„Die Medien verschweigen …“ – spielt mit Misstrauen statt mit Belegen."},
-        {"mainstream", "„Mainstream-Medien“ als Feindbild ersetzt oft echte Quellen."},
-        {"sie wollen nicht", "„Sie wollen nicht, dass du das weißt“ – klassischer Verschwörungs-Haken."},
-        {"wacht auf", "Aufrufe wie „Wacht auf!“ zielen auf Emotion, nicht auf Fakten."},
-        {"schockierend", "Schock-Wörter sollen dich empören, bevor du nachdenkst."},
-        {"unglaublich", "Reiz-Wörter ersetzen keine Belege."},
-        {"skandal", "„Skandal“ ohne benannte Quelle ist ein Warnsignal."},
-        {"100%", "Absolute Sicherheit („100 %“) gibt es bei echten Nachrichten selten."},
-        {"beweist endlich", "„Beweist endlich …“ – große Behauptung, prüf die Quelle."},
-        {"ärzte hassen", "„Ärzte/Experten hassen diesen Trick“ ist ein Werbe-/Fake-Muster."},
-        {"geheim", "„Geheim“ / „verheimlicht“ – appelliert an Misstrauen."},
-        {"!!!", "Mehrere Ausrufezeichen = Emotion, nicht Information."},
+        {"teilen bevor", L.t("„Teilen, bevor es gelöscht wird“ – Dringlichkeit ist ein Trick, kein Beweis.")},
+        {"bevor es gelöscht", L.t("Künstliche Dringlichkeit soll dich zum Teilen drängen, ohne zu prüfen.")},
+        {"verschweigen", L.t("„Die Medien verschweigen …“ – spielt mit Misstrauen statt mit Belegen.")},
+        {"mainstream", L.t("„Mainstream-Medien“ als Feindbild ersetzt oft echte Quellen.")},
+        {"sie wollen nicht", L.t("„Sie wollen nicht, dass du das weißt“ – klassischer Verschwörungs-Haken.")},
+        {"wacht auf", L.t("Aufrufe wie „Wacht auf!“ zielen auf Emotion, nicht auf Fakten.")},
+        {"schockierend", L.t("Schock-Wörter sollen dich empören, bevor du nachdenkst.")},
+        {"unglaublich", L.t("Reiz-Wörter ersetzen keine Belege.")},
+        {"skandal", L.t("„Skandal“ ohne benannte Quelle ist ein Warnsignal.")},
+        {"100%", L.t("Absolute Sicherheit („100 %“) gibt es bei echten Nachrichten selten.")},
+        {"beweist endlich", L.t("„Beweist endlich …“ – große Behauptung, prüf die Quelle.")},
+        {"ärzte hassen", L.t("„Ärzte/Experten hassen diesen Trick“ ist ein Werbe-/Fake-Muster.")},
+        {"geheim", L.t("„Geheim“ / „verheimlicht“ – appelliert an Misstrauen.")},
+        {"!!!", L.t("Mehrere Ausrufezeichen = Emotion, nicht Information.")},
     };
     private static final String[] ABS = {"immer", "nie", "alle", "niemand", "jeder", "komplett", "total"};
 
@@ -86,7 +86,7 @@ public class FaktenActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView tag = mono(11, accent);
-        tag.setText("— FAKTENCHECK");
+        tag.setText(L.t("— FAKTENCHECK"));
         tag.setLetterSpacing(0.2f);
         head.addView(tag, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView x = text(20, ink, true);
@@ -97,12 +97,12 @@ public class FaktenActivity extends Activity {
         col.addView(head);
 
         TextView sub = text(14, ink2, false);
-        sub.setText("Kein Orakel – ein Schutz. Ich prüfe nicht, ob etwas wahr ist, aber ich zeige dir die Tricks und schicke dich zu echten Faktenchecks.");
+        sub.setText(L.t("Kein Orakel – ein Schutz. Ich prüfe nicht, ob etwas wahr ist, aber ich zeige dir die Tricks und schicke dich zu echten Faktenchecks."));
         sub.setLineSpacing(0, 1.25f);
         col.addView(sub, mt(dp(6)));
 
         input = new EditText(this);
-        input.setHint("Schlagzeile / Behauptung / Nachricht hier einfügen …");
+        input.setHint(L.t("Schlagzeile / Behauptung / Nachricht hier einfügen …"));
         input.setHintTextColor(ink3);
         input.setTextColor(ink);
         input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -113,7 +113,7 @@ public class FaktenActivity extends Activity {
         input.setPadding(dp(14), dp(12), dp(14), dp(12));
         col.addView(input, mt(dp(14)));
 
-        col.addView(button("Prüfen", true, () -> analyse()), mt(dp(10)));
+        col.addView(button(L.t("Prüfen"), true, () -> analyse()), mt(dp(10)));
 
         result = new LinearLayout(this);
         result.setOrientation(LinearLayout.VERTICAL);
@@ -143,19 +143,19 @@ public class FaktenActivity extends Activity {
         // ALL-CAPS words (manipulative shouting).
         int caps = 0;
         for (String w : raw.split("\\s+")) if (w.length() >= 4 && w.equals(w.toUpperCase(Locale.GERMAN)) && w.matches(".*[A-ZÄÖÜ].*")) caps++;
-        if (caps >= 2) found.add(caps + " Wörter in GROSSBUCHSTABEN – Schreien statt Belegen.");
+        if (caps >= 2) found.add(caps + L.t(" Wörter in GROSSBUCHSTABEN – Schreien statt Belegen."));
         int excl = raw.length() - raw.replace("!", "").length();
-        if (excl >= 3) found.add(excl + " Ausrufezeichen – zielt auf Emotion.");
+        if (excl >= 3) found.add(excl + L.t(" Ausrufezeichen – zielt auf Emotion."));
         List<String> absHit = new ArrayList<>();
         for (String a : ABS) if (t.matches(".*\\b" + a + "\\b.*")) absHit.add(a);
-        if (!absHit.isEmpty()) found.add("Absolute Wörter (" + String.join(", ", absHit) + ") – echte Nachrichten sind selten so eindeutig.");
+        if (!absHit.isEmpty()) found.add(L.t("Absolute Wörter (") + String.join(", ", absHit) + L.t(") – echte Nachrichten sind selten so eindeutig."));
         boolean looksUrl = t.contains("http") || t.contains("www.");
 
         // Risk meter.
         int score = Math.min(5, found.size());
         int col = score >= 3 ? red : score >= 1 ? amber : green;
-        String verdict = score >= 3 ? "VIELE WARNZEICHEN · besonders vorsichtig"
-            : score >= 1 ? "EINZELNE WARNZEICHEN · gegenprüfen" : "KEINE TYPISCHEN TRICKS · trotzdem Quelle prüfen";
+        String verdict = score >= 3 ? L.t("VIELE WARNZEICHEN · besonders vorsichtig")
+            : score >= 1 ? L.t("EINZELNE WARNZEICHEN · gegenprüfen") : L.t("KEINE TYPISCHEN TRICKS · trotzdem Quelle prüfen");
         LinearLayout meter = cardBox();
         TextView mv = text(16, col, true);
         mv.setText("● " + verdict);
@@ -169,7 +169,7 @@ public class FaktenActivity extends Activity {
 
         if (!found.isEmpty()) {
             LinearLayout fl = cardBox();
-            fl.addView(cardTag("GEFUNDENE TRICKS"));
+            fl.addView(cardTag(L.t("GEFUNDENE TRICKS")));
             for (String f : found) {
                 TextView tv = text(13, ink2, false);
                 tv.setText("• " + f);
@@ -181,26 +181,26 @@ public class FaktenActivity extends Activity {
 
         // The three questions.
         LinearLayout q = cardBox();
-        q.addView(cardTag("DIE 3 FRAGEN · HAK AB"));
-        q.addView(check("Wer sagt das? Eine Quelle, die ich kenne und nachschlagen kann?"));
-        q.addView(check("Wann? Ist es aktuell – oder alte Nachricht neu aufgewärmt?"));
-        q.addView(check("Zweite Quelle? Berichtet ein unabhängiges, seriöses Medium dasselbe?"));
+        q.addView(cardTag(L.t("DIE 3 FRAGEN · HAK AB")));
+        q.addView(check(L.t("Wer sagt das? Eine Quelle, die ich kenne und nachschlagen kann?")));
+        q.addView(check(L.t("Wann? Ist es aktuell – oder alte Nachricht neu aufgewärmt?")));
+        q.addView(check(L.t("Zweite Quelle? Berichtet ein unabhängiges, seriöses Medium dasselbe?")));
         result.addView(q);
 
         // Cross-check buttons.
         String query = Uri.encode(raw.length() > 120 ? raw.substring(0, 120) : raw);
         LinearLayout checks = cardBox();
-        checks.addView(cardTag("GEGENCHECK · ANTIPPEN"));
-        checks.addView(button("🔎 Behauptung googeln", false, () -> web("https://www.google.com/search?q=" + query)));
-        checks.addView(button("✓ Correctiv Faktencheck", false, () -> web("https://correctiv.org/?s=" + query)), mt(dp(8)));
+        checks.addView(cardTag(L.t("GEGENCHECK · ANTIPPEN")));
+        checks.addView(button(L.t("🔎 Behauptung googeln"), false, () -> web("https://www.google.com/search?q=" + query)));
+        checks.addView(button(L.t("✓ Correctiv Faktencheck"), false, () -> web("https://correctiv.org/?s=" + query)), mt(dp(8)));
         checks.addView(button("✓ Mimikama", false, () -> web("https://www.mimikama.org/?s=" + query)), mt(dp(8)));
-        checks.addView(button("✓ AFP Faktencheck", false, () -> web("https://faktencheck.afp.com/list/all/all/all/" + query)), mt(dp(8)));
-        checks.addView(button("🖼 Bild rückwärts suchen (Google Lens)", false, () -> web("https://images.google.com/")), mt(dp(8)));
+        checks.addView(button(L.t("✓ AFP Faktencheck"), false, () -> web("https://faktencheck.afp.com/list/all/all/all/" + query)), mt(dp(8)));
+        checks.addView(button(L.t("🖼 Bild rückwärts suchen (Google Lens)"), false, () -> web("https://images.google.com/")), mt(dp(8)));
         result.addView(checks);
 
         LinearLayout tipc = cardBox();
-        tipc.addView(cardTag("MERKSATZ"));
-        tipc.addView(info("Empörung ist ein Gefühl, kein Beweis – genau wie bei Zweifeln. Je stärker etwas dich sofort wütend oder ängstlich macht, desto eher will es dich packen, nicht informieren. Kurz durchatmen, dann prüfen."));
+        tipc.addView(cardTag(L.t("MERKSATZ")));
+        tipc.addView(info(L.t("Empörung ist ein Gefühl, kein Beweis – genau wie bei Zweifeln. Je stärker etwas dich sofort wütend oder ängstlich macht, desto eher will es dich packen, nicht informieren. Kurz durchatmen, dann prüfen.")));
         result.addView(tipc);
     }
 

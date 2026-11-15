@@ -79,11 +79,11 @@ final class DinoView extends View {
     static final int REX = 0, STEGO = 1, RAPTOR = 2, TRIKE = 3, PTERO = 4;
     private static final String[] TYPE_NAME = {"T-REX", "STEGOSAURUS", "RAPTOR", "TRICERATOPS", "PTERO-REX"};
     private static final String[] TYPE_TIP = {
-        "🤖 T-Rex! Unter 40 % wird er wütend und schneller.",
-        "🤖 Stegosaurus! Panzerplatten: jeder Tritt zählt nur halb.",
-        "🤖 Raptor! Klein und blitzschnell – zielen!",
-        "🤖 Triceratops! Wenn er anrennt, blocken die Hörner.",
-        "🤖 Ptero-Rex! Er fliegt hoch und runter."};
+        L.t("🤖 T-Rex! Unter 40 % wird er wütend und schneller."),
+        L.t("🤖 Stegosaurus! Panzerplatten: jeder Tritt zählt nur halb."),
+        L.t("🤖 Raptor! Klein und blitzschnell – zielen!"),
+        L.t("🤖 Triceratops! Wenn er anrennt, blocken die Hörner."),
+        L.t("🤖 Ptero-Rex! Er fliegt hoch und runter.")};
     private static final int[] TYPE_TINT = {0xFFFFFFFF, 0xFF8FD18A, 0xFFB79BFF, 0xFFFFD60A, 0xFF7FC4FF};
     private final int type, skin;
     private boolean charging;
@@ -107,9 +107,9 @@ final class DinoView extends View {
         LASER2 = 17, HOURGLASS = 18, SHIELD = 19, METEOR = 20, TORNADO = 21, TURBO = 22, MAGNET = 23, CLOVER = 24;
     /** How an item works: tap the dino, throw at a spot, hold a stream, swipe, tap anywhere, use once, always on. */
     private static final int K_TAP = 0, K_THROW = 1, K_STREAM = 2, K_SWIPE = 3, K_WAVE = 4, K_BOLT = 5, K_CAST = 6, K_PASSIVE = 7;
-    private static final String[] W_NAME = {"FAUST", "STEINE", "FLAMMEN", "LASER", "SPRUCH", "HAMMER", "BANANE", "SCHNEEBALL",
-        "BUMERANG", "WASSERBOMBE", "BOGEN", "EISSTRAHL", "KATANA", "GITARRE", "BLITZ", "RAKETE", "KONFETTI", "LASER MK II",
-        "SANDUHR", "SCHILD", "METEOR", "TORNADO", "ROBO-TURBO", "MAGNET", "GLÜCKSKLEE"};
+    private static final String[] W_NAME = {L.t("FAUST"), L.t("STEINE"), L.t("FLAMMEN"), "LASER", L.t("SPRUCH"), "HAMMER", L.t("BANANE"), L.t("SCHNEEBALL"),
+        L.t("BUMERANG"), L.t("WASSERBOMBE"), L.t("BOGEN"), L.t("EISSTRAHL"), "KATANA", L.t("GITARRE"), L.t("BLITZ"), L.t("RAKETE"), L.t("KONFETTI"), "LASER MK II",
+        L.t("SANDUHR"), L.t("SCHILD"), "METEOR", "TORNADO", "ROBO-TURBO", "MAGNET", L.t("GLÜCKSKLEE")};
     private static final String[] W_ICON = {"👊", "🪨", "🔥", "⚔️", "📜", "🔨", "🍌", "❄️", "🪃", "💧", "🏹", "🧊", "🗡️", "🎸", "⚡",
         "🚀", "🎉", "💜", "⏳", "🛡️", "☄️", "🌪️", "🤖", "🧲", "🍀"};
     /** Bones: once for a weapon or a perk, every time for the one-shot items (scrolls, meteor …). */
@@ -119,31 +119,31 @@ final class DinoView extends View {
         K_THROW, K_STREAM, K_SWIPE, K_WAVE, K_BOLT, K_THROW, K_STREAM, K_SWIPE, K_CAST, K_CAST, K_CAST, K_CAST, K_PASSIVE, K_PASSIVE,
         K_PASSIVE};
     private static final String[] W_DESC = {
-        "Antippen = Tritt. Immer dabei.",
-        "Werfen: tipp, wo er landen soll.",
-        "Halten: Feuerstrahl, 4,5 s Treibstoff pro Kampf.",
-        "Durchwischen: Lichtschwert-Schnitt.",
-        "Einmal pro Kauf: der Dino zerbröselt sofort.",
-        "Antippen: doppelter Schaden, wirft ihn um.",
-        "Werfen: er rutscht aus – 1,5 s k.o.",
-        "Werfen: friert ihn 2,5 s langsam.",
-        "Werfen: trifft hin und zurück – zweimal.",
-        "Werfen: platscht breit, trifft auch knapp daneben.",
-        "Pfeil: schnell und gerade, kein Bogen.",
-        "Halten: Eisstrahl, bremst ihn ab.",
-        "Wischen: schneller als der Laser.",
-        "Tippen irgendwo: Schallwelle trifft immer.",
-        "Tippen: Blitz von oben, starker Treffer.",
-        "Werfen: langsam, aber BUMM – riesige Explosion.",
-        "Halten: Regenbogen-Konfetti. Wenig Schaden, viel Party.",
-        "Wischen: der Traum-Laser. Breit, lila, brutal.",
-        "Einmal: die Zeit steht 4 s – er bewegt sich nicht.",
-        "Einmal: +6 Sekunden Kampfzeit.",
-        "Einmal: ein Meteor – 40 % seiner Energie weg.",
-        "Einmal: Tornado wirbelt ihn 3 s herum.",
-        "Immer aktiv: der Roboter zappt 3× so stark.",
-        "Immer aktiv: +50 % Knochen pro Sieg.",
-        "Immer aktiv: 15 % Chance auf kritische Treffer (×2)."};
+        L.t("Antippen = Tritt. Immer dabei."),
+        L.t("Werfen: tipp, wo er landen soll."),
+        L.t("Halten: Feuerstrahl, 4,5 s Treibstoff pro Kampf."),
+        L.t("Durchwischen: Lichtschwert-Schnitt."),
+        L.t("Einmal pro Kauf: der Dino zerbröselt sofort."),
+        L.t("Antippen: doppelter Schaden, wirft ihn um."),
+        L.t("Werfen: er rutscht aus – 1,5 s k.o."),
+        L.t("Werfen: friert ihn 2,5 s langsam."),
+        L.t("Werfen: trifft hin und zurück – zweimal."),
+        L.t("Werfen: platscht breit, trifft auch knapp daneben."),
+        L.t("Pfeil: schnell und gerade, kein Bogen."),
+        L.t("Halten: Eisstrahl, bremst ihn ab."),
+        L.t("Wischen: schneller als der Laser."),
+        L.t("Tippen irgendwo: Schallwelle trifft immer."),
+        L.t("Tippen: Blitz von oben, starker Treffer."),
+        L.t("Werfen: langsam, aber BUMM – riesige Explosion."),
+        L.t("Halten: Regenbogen-Konfetti. Wenig Schaden, viel Party."),
+        L.t("Wischen: der Traum-Laser. Breit, lila, brutal."),
+        L.t("Einmal: die Zeit steht 4 s – er bewegt sich nicht."),
+        L.t("Einmal: +6 Sekunden Kampfzeit."),
+        L.t("Einmal: ein Meteor – 40 % seiner Energie weg."),
+        L.t("Einmal: Tornado wirbelt ihn 3 s herum."),
+        L.t("Immer aktiv: der Roboter zappt 3× so stark."),
+        L.t("Immer aktiv: +50 % Knochen pro Sieg."),
+        L.t("Immer aktiv: 15 % Chance auf kritische Treffer (×2).")};
     private static final int SHOP_SLOT = 4;
     private int weapon = FIST, bonesWon, editSlot = 3;
     private final RectF[] slots = {new RectF(), new RectF(), new RectF(), new RectF(), new RectF()};
@@ -210,7 +210,7 @@ final class DinoView extends View {
         if (W_KIND[i] == K_CAST) {
             if (crumbleAt >= 0) return;
             if (have < W_COST[i]) {
-                shopSay(W_NAME[i] + " kostet " + W_COST[i] + " 🦴 – du hast " + have + ".", ft);
+                shopSay(W_NAME[i] + L.t(" kostet ") + W_COST[i] + L.t(" 🦴 – du hast ") + have + ".", ft);
                 return;
             }
             store().edit().putInt("dinoBones", have - W_COST[i]).apply();
@@ -231,11 +231,11 @@ final class DinoView extends View {
     private boolean buy(int i, float ft) {
         int have = bones();
         if (have < W_COST[i]) {
-            shopSay(W_NAME[i] + ": noch " + (W_COST[i] - have) + " 🦴 sammeln.", ft);
+            shopSay(W_NAME[i] + L.t(": noch ") + (W_COST[i] - have) + L.t(" 🦴 sammeln."), ft);
             return false;
         }
         store().edit().putInt("dinoBones", have - W_COST[i]).putBoolean("dinoWeapon" + i, true).apply();
-        shopSay("Gekauft: " + W_NAME[i] + "!", ft);
+        shopSay(L.t("Gekauft: ") + W_NAME[i] + "!", ft);
         host.chomp();
         return true;
     }
@@ -248,10 +248,10 @@ final class DinoView extends View {
             host.chomp();
         } else if (i == HOURGLASS) {
             freezeUntil = ft + 4;
-            shopSay("⏳ Die Zeit steht still!", ft);
+            shopSay(L.t("⏳ Die Zeit steht still!"), ft);
         } else if (i == SHIELD) {
             timeLimit += 6;
-            shopSay("🛡️ +6 Sekunden!", ft);
+            shopSay(L.t("🛡️ +6 Sekunden!"), ft);
         } else if (i == METEOR) {
             meteorAt = ft;
         } else if (i == TORNADO) {
@@ -312,7 +312,7 @@ final class DinoView extends View {
 
     private void endFight() {
         host.vacuum(0, 0, 0);
-        if (buddyEaten) host.swapBuddy("Danke fürs Retten!");
+        if (buddyEaten) host.swapBuddy(L.t("Danke fürs Retten!"));
         post(host::done);
     }
 
@@ -483,13 +483,13 @@ final class DinoView extends View {
             hud(c, w, TYPE_NAME[type] + " · LV " + level + " · " + bones() + " 🦴", hp / maxHp, Math.max(0, timeLimit - ft), rust);
             if (ft - shopMsgAt < 2f && !shopOpen) bubble(c, shopMsg, w / 2, slots[0].top - dp(6), false, false);
             if (ft < freezeUntil) bubble(c, "⏳ " + (int) Math.ceil(freezeUntil - ft), fx, ground - 110 * k, true, false);
-            else if (ft < stunUntil) bubble(c, "🍌 RUTSCH!", fx, ground - 110 * k, true, false);
+            else if (ft < stunUntil) bubble(c, L.t("🍌 RUTSCH!"), fx, ground - 110 * k, true, false);
             else if (ft < slowUntil) bubble(c, "❄️ BRRR", fx, ground - 110 * k, false, false);
             if (ft - critAt < 0.6f) bubble(c, "KRIT! ×2", critX, critY - dp(30), true, false);
             if (shopOpen) drawShop(c, w, h);
             if (ft < 3f) bubble(c, TYPE_TIP[type], rx, ry - dp(30), false, false);
             else if (charging) bubble(c, "BLOCK!", fx, ground - 110 * k, true, false);
-            else if (rage && ft % 2 < 0.8f) bubble(c, "WUT!", fx, ground - 110 * k, true, false);
+            else if (rage && ft % 2 < 0.8f) bubble(c, L.t("WUT!"), fx, ground - 110 * k, true, false);
             if (hp <= 0) {
                 fstate = KO;
                 phaseAt = ft;
@@ -526,7 +526,7 @@ final class DinoView extends View {
                 c.drawCircle(mid + (float) Math.cos(a) * 30 * k, ground - 70 * k + (float) Math.sin(a) * 8 * k, 4 * k, p);
             }
             bubble(c, "K.O.!", mid, ground - 90 * k, true, true);
-            bubble(c, "🤖 Gewonnen! +" + bonesWon + " 🦴 · Dino jetzt Level " + Math.min(99, level + 1) + ".", w / 2, dp(150), false, false);
+            bubble(c, L.t("🤖 Gewonnen! +") + bonesWon + L.t(" 🦴 · Dino jetzt Level ") + Math.min(99, level + 1) + ".", w / 2, dp(150), false, false);
             if (d > 2.6f) {
                 fight(false);
                 endFight();
@@ -550,7 +550,7 @@ final class DinoView extends View {
             look = true;
             drawSide(c, mid, ground, k, (float) Math.abs(Math.sin(ft * 8)), ft, false, true);
             look = false;
-            if (eaten >= cutAt && eaten < cutAt + 2) bubble(c, "♪ … *KNIRSCH*", mid, ground - 116 * k, true, false);
+            if (eaten >= cutAt && eaten < cutAt + 2) bubble(c, L.t("♪ … *KNIRSCH*"), mid, ground - 116 * k, true, false);
             drawFolds(c, w, h);
             if (fstate == FLIGHT && dragCorner < 0) foldHints(c, w, h, ft);
             int n = 0;
@@ -558,17 +558,17 @@ final class DinoView extends View {
             float rx = w - dp(60), ry = dp(170) + (float) Math.sin(ft * 3) * dp(4);
             drawRobot(c, rx, ry, dp(1), false);
             if (fstate == FLIGHT) {
-                hud(c, w, "BILDSCHIRM FALTEN · " + n + " / 4", n / 4f, -1, 0xFF3C8DFF);
-                bubble(c, ft - warnAt < 1.2f ? "🤖 Erst die Diagonale!" : n == 0
-                    ? "🤖 Ecke zur Mitte ziehen – wie ein Eselsohr!" : n == 1 ? "🤖 Jetzt die gegenüberliegende Ecke!" : "🤖 Noch die letzten Ecken!", rx, ry - dp(30), false, false);
+                hud(c, w, L.t("BILDSCHIRM FALTEN · ") + n + " / 4", n / 4f, -1, 0xFF3C8DFF);
+                bubble(c, ft - warnAt < 1.2f ? L.t("🤖 Erst die Diagonale!") : n == 0
+                    ? L.t("🤖 Ecke zur Mitte ziehen – wie ein Eselsohr!") : n == 1 ? L.t("🤖 Jetzt die gegenüberliegende Ecke!") : L.t("🤖 Noch die letzten Ecken!"), rx, ry - dp(30), false, false);
                 if (n == 4) {
                     fstate = UPLOAD;
                     phaseAt = ft;
                 }
             } else {
                 float up = Math.min(1, (ft - phaseAt) / 3f);
-                hud(c, w, "UPLOAD IN DIE CLOUD ☁", up, -1, 0xFF2BBF6A);
-                bubble(c, "🤖 Lade hoch … " + Math.round(up * 100) + " %", rx, ry - dp(30), false, false);
+                hud(c, w, L.t("UPLOAD IN DIE CLOUD ☁"), up, -1, 0xFF2BBF6A);
+                bubble(c, L.t("🤖 Lade hoch … ") + Math.round(up * 100) + " %", rx, ry - dp(30), false, false);
                 if (up >= 1) {
                     host.restoreEaten();
                     fstate = SAVED;
@@ -579,8 +579,8 @@ final class DinoView extends View {
             float d = ft - phaseAt;
             float x = mid - (mid + 120 * k) * ease(d / 1.6f);
             drawSide(c, x, ground, k, 0.8f, ft * 1.6f, true, true);
-            bubble(c, "NEEEIN!", Math.max(dp(80), x), ground - 110 * k, true, true);
-            bubble(c, "🤖 Gesichert in der Cloud. Alles wieder da.", w / 2, dp(150), false, false);
+            bubble(c, L.t("NEEEIN!"), Math.max(dp(80), x), ground - 110 * k, true, true);
+            bubble(c, L.t("🤖 Gesichert in der Cloud. Alles wieder da."), w / 2, dp(150), false, false);
             if (d > 2.2f) {
                 fight(false);
                 endFight();
@@ -709,7 +709,7 @@ final class DinoView extends View {
                     }
                 }
             } else if (ft - shopMsgAt > 2f) {
-                shopSay(W_NAME[weapon] + " leer – nächster Kampf wieder voll.", ft);
+                shopSay(W_NAME[weapon] + L.t(" leer – nächster Kampf wieder voll."), ft);
             }
         }
         // Swipes: a glowing trail of the last 0.2 s.
@@ -958,7 +958,7 @@ final class DinoView extends View {
         shopAt = SystemClock.uptimeMillis();
         flaming = false;
         trail.clear();
-        shopMsg = "Tipp ein Teil: kaufen. Gekauft: kommt in den gewählten Gürtel-Platz.";
+        shopMsg = L.t("Tipp ein Teil: kaufen. Gekauft: kommt in den gewählten Gürtel-Platz.");
         shopMsgAt = Float.MAX_VALUE / 4;
         invalidate();
     }
@@ -1002,7 +1002,7 @@ final class DinoView extends View {
                     weapon = i;
                     store().edit().putInt("dinoWeaponSel", i).apply();
                 }
-                shopSay(W_ICON[i] + " " + W_NAME[i] + " → Platz " + (editSlot + 1) + ". " + W_DESC[i], ft);
+                shopSay(W_ICON[i] + " " + W_NAME[i] + L.t(" → Platz ") + (editSlot + 1) + ". " + W_DESC[i], ft);
             }
             break;
         }
@@ -1020,7 +1020,7 @@ final class DinoView extends View {
         p.setLetterSpacing(0.16f);
         p.setTextSize(dp(11));
         p.setColor(rust);
-        c.drawText("— KNOCHEN-SHOP", pad, top, p);
+        c.drawText(L.t("— KNOCHEN-SHOP"), pad, top, p);
         p.setLetterSpacing(-0.03f);
         p.setTextSize(dp(30));
         p.setColor(0xFFF4F2EC);
@@ -1061,7 +1061,7 @@ final class DinoView extends View {
             while (p.measureText(name) > cw - dp(6) && name.length() > 3) name = name.substring(0, name.length() - 1);
             p.setColor(0xFFF4F2EC);
             c.drawText(name, r.centerX(), r.top + ch * 0.66f, p);
-            String sub = passive && own ? "AKTIV" : own ? (onBelt ? "IM GÜRTEL" : "BESITZT") : cast ? W_COST[i] + "🦴/MAL" : W_COST[i] + " 🦴";
+            String sub = passive && own ? L.t("AKTIV") : own ? (onBelt ? L.t("IM GÜRTEL") : L.t("BESITZT")) : cast ? W_COST[i] + L.t("🦴/MAL") : W_COST[i] + " 🦴";
             p.setColor(passive && own ? 0xFF2BBF6A : own ? 0xFF9A9A98 : afford ? 0xFFE8B931 : 0xFF6F6E69);
             while (p.measureText(sub) > cw - dp(4) && sub.length() > 3) sub = sub.substring(0, sub.length() - 1);
             c.drawText(sub, r.centerX(), r.top + ch * 0.86f, p);
@@ -1074,7 +1074,7 @@ final class DinoView extends View {
         p.setTextSize(dp(10));
         p.setLetterSpacing(0.16f);
         p.setColor(0xFF9A9A98);
-        c.drawText("GÜRTEL · PLATZ WÄHLEN, DANN TEIL ANTIPPEN", pad, by, p);
+        c.drawText(L.t("GÜRTEL · PLATZ WÄHLEN, DANN TEIL ANTIPPEN"), pad, by, p);
         p.setLetterSpacing(0);
         float bw = (w - pad * 2 - gap * 3) / 4, bh = dp(54);
         for (int i = 0; i < 4; i++) {
@@ -1115,7 +1115,7 @@ final class DinoView extends View {
         p.setTextSize(dp(14));
         p.setLetterSpacing(0.1f);
         p.setColor(0xFFFAFAF8);
-        c.drawText("WEITER KÄMPFEN ⚔", shopClose.centerX(), shopClose.centerY() + dp(5), p);
+        c.drawText(L.t("WEITER KÄMPFEN ⚔"), shopClose.centerX(), shopClose.centerY() + dp(5), p);
         p.setLetterSpacing(0);
         p.setTextAlign(Paint.Align.LEFT);
         p.setTypeface(Typeface.DEFAULT);
@@ -1310,12 +1310,12 @@ final class DinoView extends View {
 
     /* {roar, translation, buddy, roar2, translation2, robot after chomp, roar3, translation3, buddy after, leave roar, translation4} */
     private static final String[][] SCRIPTS = {
-        {"ROOOAAAR!", "»Hallo. Ich habe Hunger.«", "Ähm … Hunger auf was?", "RAWR. RAWR.", "»Auf dich.«",
-            "Hey! Sofort ausspucken!", "RRRAWWR?!", "»Aua! Schmeckt eh nach Fell.«", "… wo bin ich?", "Grmpf.", "»Ich komme wieder.«"},
-        {"GRAAAOOOR!", "»Schönes Display hast du.«", "Danke …?", "RAWWR!", "»Was ist das Kleine da unten?«",
-            "Nein! Das ist der Buddy!", "RRRAAAW?!", "»Okay, okay! Nicht mehr tazen!«", "Echt jetzt?!", "Hmpf.", "»Nächstes Mal den Bären.«"},
-        {"ROAAAAR!", "»Ich bin vom letzten Update übrig.«", "Welches Update?", "RAWR!", "»1.0.∞ – der Snack-Patch.«",
-            "Nicht auf meiner Startseite!", "RAAWRR?!", "»Akku leer. Ich meine: Aua.«", "Alter?!", "Grrr.", "»Fünf Sterne. Würde wieder essen.«"},
+        {"ROOOAAAR!", L.t("»Hallo. Ich habe Hunger.«"), L.t("Ähm … Hunger auf was?"), "RAWR. RAWR.", L.t("»Auf dich.«"),
+            L.t("Hey! Sofort ausspucken!"), "RRRAWWR?!", L.t("»Aua! Schmeckt eh nach Fell.«"), L.t("… wo bin ich?"), "Grmpf.", L.t("»Ich komme wieder.«")},
+        {"GRAAAOOOR!", L.t("»Schönes Display hast du.«"), L.t("Danke …?"), "RAWWR!", L.t("»Was ist das Kleine da unten?«"),
+            L.t("Nein! Das ist der Buddy!"), "RRRAAAW?!", L.t("»Okay, okay! Nicht mehr tazen!«"), L.t("Echt jetzt?!"), "Hmpf.", L.t("»Nächstes Mal den Bären.«")},
+        {"ROAAAAR!", L.t("»Ich bin vom letzten Update übrig.«"), L.t("Welches Update?"), "RAWR!", L.t("»1.0.∞ – der Snack-Patch.«"),
+            L.t("Nicht auf meiner Startseite!"), "RAAWRR?!", L.t("»Akku leer. Ich meine: Aua.«"), L.t("Alter?!"), "Grrr.", L.t("»Fünf Sterne. Würde wieder essen.«")},
     };
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1457,15 +1457,15 @@ final class DinoView extends View {
                 host.chomp();
                 host.showBuddy();
             }
-            if (once(8, t, 22.6f)) host.buddySay("Igitt. Dino-Spucke.");
+            if (once(8, t, 22.6f)) host.buddySay(L.t("Igitt. Dino-Spucke."));
         } else if (plot == DODGE) {
             if (once(7, t, 16.8f)) host.buddyDodge();
             if (once(8, t, 17.3f)) host.chomp();
-            if (once(9, t, 18.4f)) host.buddySay("Zu langsam, Echse!");
+            if (once(9, t, 18.4f)) host.buddySay(L.t("Zu langsam, Echse!"));
             if (once(10, t, 18.9f)) host.stomp();
         } else if (plot == SNACK) {
             if (once(7, t, 18.5f)) host.chomp();
-            if (once(8, t, 21.2f)) host.buddySay("Puh. Danke, Robo.");
+            if (once(8, t, 21.2f)) host.buddySay(L.t("Puh. Danke, Robo."));
         }
 
         // ---- robot: flies in at 5 s, hovers, tazes 22–25.5 s, leaves at 35 s ----
@@ -1522,11 +1522,11 @@ final class DinoView extends View {
             else post(host::done);
             return;
         }
-        if (t > 18.2f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
+        if (t > 18.2f && t < 21) bubble(c, L.t("*mampf* *mampf*"), x - 30 * k, ground - 95 * k, true, false);
         if (t > 20.6f && t < 23) bubble(c, "🤖 " + lines[5], rx, ry + rob - dp(34), false, false);
         if (t > 22.4f && t < 25.5f) bubble(c, "BZZZZT!", rx - dp(40), ry + rob + dp(48), true, false);
         if (t > 25 && t < 27.2f) bubble(c, lines[6], x - 40 * k, ground - 116 * k, true, true);
-        if (t > 27.4f && t < 29.2f) bubble(c, "*RÜLPS*", x - 40 * k, ground - 110 * k, true, false);
+        if (t > 27.4f && t < 29.2f) bubble(c, L.t("*RÜLPS*"), x - 40 * k, ground - 110 * k, true, false);
         if (t > 26.4f && t < 29.6f) bubble(c, "🤖 " + lines[7], rx, ry + rob - dp(34), false, false);
         if (t > 29.6f && t < 31.6f) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
         if (t > 31.6f && t < 35) bubble(c, "🤖 " + lines[10], rx, ry + rob - dp(34), false, false);
@@ -1617,22 +1617,22 @@ final class DinoView extends View {
     private void plotSpeech(Canvas c, float t, float x, float ground, float k, float rx, float ry) {
         float hy = ground - 116 * k, by = ry - dp(34);
         if (plot == SPIT) {
-            if (t > 18.2f && t < 20) bubble(c, "*mampf* … hm?", x - 30 * k, ground - 95 * k, true, false);
-            if (t > 20 && t < 21.6f) bubble(c, "BÄÄÄH!", x - 40 * k, hy, true, true);
+            if (t > 18.2f && t < 20) bubble(c, L.t("*mampf* … hm?"), x - 30 * k, ground - 95 * k, true, false);
+            if (t > 20 && t < 21.6f) bubble(c, L.t("BÄÄÄH!"), x - 40 * k, hy, true, true);
             if (t > 21.6f && t < 22.6f) bubble(c, "*PTUI*", x - 40 * k, ground - 100 * k, true, false);
-            if (t > 22.4f && t < 25.2f) bubble(c, "🤖 Übersetzt: »Schmeckt nach Akku und Fell.«", rx, by, false, false);
+            if (t > 22.4f && t < 25.2f) bubble(c, L.t("🤖 Übersetzt: »Schmeckt nach Akku und Fell.«"), rx, by, false, false);
             if (t > 25 && t < 28) bubble(c, lines[9], Math.max(dp(90), x), ground - 100 * k, true, false);
         } else if (plot == DODGE) {
-            if (t > 17.2f && t < 18.6f) bubble(c, "*SCHNAPP*", x - 40 * k, ground - 100 * k, true, false);
-            if (t > 19.2f && t < 21) bubble(c, "Aua.", x - 30 * k, ground - 60 * k, true, false);
-            if (t > 20.4f && t < 23.2f) bubble(c, "🤖 Übersetzt: »Das war Absicht. Ich wollte liegen.«", rx, by, false, false);
+            if (t > 17.2f && t < 18.6f) bubble(c, L.t("*SCHNAPP*"), x - 40 * k, ground - 100 * k, true, false);
+            if (t > 19.2f && t < 21) bubble(c, L.t("Aua."), x - 30 * k, ground - 60 * k, true, false);
+            if (t > 20.4f && t < 23.2f) bubble(c, L.t("🤖 Übersetzt: »Das war Absicht. Ich wollte liegen.«"), rx, by, false, false);
             if (t > 23.4f && t < 26) bubble(c, lines[10], Math.max(dp(90), x), ground - 100 * k, true, false);
         } else {
-            if (t > 14.8f && t < 17) bubble(c, "🤖 Halt! Nimm lieber das!", rx, by, false, false);
-            if (t > 18.8f && t < 21) bubble(c, "*mampf* *mampf*", x - 30 * k, ground - 95 * k, true, false);
+            if (t > 14.8f && t < 17) bubble(c, L.t("🤖 Halt! Nimm lieber das!"), rx, by, false, false);
+            if (t > 18.8f && t < 21) bubble(c, L.t("*mampf* *mampf*"), x - 30 * k, ground - 95 * k, true, false);
             if (t > 21 && t < 23.2f) bubble(c, "RAWR ♥", x - 40 * k, hy, true, true);
-            if (t > 21.8f && t < 24.8f) bubble(c, "🤖 Übersetzt: »Mit Ananas wär's perfekt.«", rx, by, false, false);
-            if (t > 23.4f && t < 24.6f) bubble(c, "*RÜLPS*", x - 40 * k, ground - 110 * k, true, false);
+            if (t > 21.8f && t < 24.8f) bubble(c, L.t("🤖 Übersetzt: »Mit Ananas wär's perfekt.«"), rx, by, false, false);
+            if (t > 23.4f && t < 24.6f) bubble(c, L.t("*RÜLPS*"), x - 40 * k, ground - 110 * k, true, false);
         }
     }
 
@@ -1782,7 +1782,7 @@ final class DinoView extends View {
             drawSide(c, bx - 20 * k, ground, k, fall * 0.5f, t, false, true);
             dead = false;
             c.restore();
-            if (d > 0.8f && d < 3.6f) bubble(c, "*totgestellt*", bx - 20 * k, ground - 70 * k, false, false);
+            if (d > 0.8f && d < 3.6f) bubble(c, L.t("*totgestellt*"), bx - 20 * k, ground - 70 * k, false, false);
             float fade = Math.max(0, (d - 3.6f) / 0.6f);
             if (fade >= 1) {
                 post(host::done);
@@ -1812,7 +1812,7 @@ final class DinoView extends View {
             look = false;
             c.restore();
             drawBush(c, bx, ground, k, 1);
-            if (s > 1.4f && s < 4) bubble(c, "Bin nicht da.", bx, ground - 96 * k, false, false);
+            if (s > 1.4f && s < 4) bubble(c, L.t("Bin nicht da."), bx, ground - 96 * k, false, false);
         } else {
             post(host::done);
             return;

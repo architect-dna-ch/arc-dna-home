@@ -41,7 +41,7 @@ final class FoxRunView extends View {
     private final List<float[]> obstacles = new ArrayList<>();   // x, size, kind (0 cube/fence, 1 log, 2 water, 3 stone)
     private final List<float[]> carrots = new ArrayList<>();     // x, height above ground, taken
     private final boolean bunny;
-    private static final String[] SCENES = {"GARTEN", "WALD", "SEE"};
+    private static final String[] SCENES = {L.t("GARTEN"), L.t("WALD"), L.t("SEE")};
     private int scene = -1, carrotCount;
     private float sceneBanner;
     private final long[] taps = new long[3];
@@ -134,7 +134,7 @@ final class FoxRunView extends View {
             if (sc != scene) {
                 scene = sc;
                 sceneBanner = 2.2f;
-                if (distance > 1) voice.say(sc == 0 ? "Mümmel!" : sc == 1 ? "Snff?" : "Platsch?");
+                if (distance > 1) voice.say(sc == 0 ? L.t("Mümmel!") : sc == 1 ? "Snff?" : L.t("Platsch?"));
             }
             if (sceneBanner > 0) sceneBanner -= dt;
         }
@@ -177,7 +177,7 @@ final class FoxRunView extends View {
                 : overlap && foxLift < o[1] * (o[2] == 1 ? 0.5f : 0.85f);
             if (hit) {
                 crash = 1.3f;
-                voice.say(o[2] == 2 ? "Platsch!" : "Eeek!");
+                voice.say(o[2] == 2 ? L.t("Platsch!") : "Eeek!");
                 int d = (int) distance;
                 if (d > best) {
                     best = d;
@@ -436,10 +436,10 @@ final class FoxRunView extends View {
         paint.setLetterSpacing(0.16f);
         paint.setTextSize(dp(13));
         paint.setColor(rust);
-        c.drawText(bunny ? "HASENAUSFLUG" + (scene >= 0 ? " · " + SCENES[scene] : "") : "FUCHSJAGD", left, top + dp(13), paint);
+        c.drawText(bunny ? L.t("HASENAUSFLUG") + (scene >= 0 ? " · " + SCENES[scene] : "") : L.t("FUCHSJAGD"), left, top + dp(13), paint);
         paint.setColor(ink3);
         paint.setTextSize(dp(11));
-        String hint = crash > 0 ? "EEEK! NOCHMAL …" : "TIPPEN ODER KOPF HOCH = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK";
+        String hint = crash > 0 ? L.t("EEEK! NOCHMAL …") : L.t("TIPPEN ODER KOPF HOCH = SPRINGEN · 3× TIPPEN ODER 2× HOME = ZURÜCK");
         float hintW = paint.measureText(hint);
         // One left-aligned column: title, distance, then record (and carrots) under it.
         paint.setLetterSpacing(0.02f);
@@ -449,12 +449,12 @@ final class FoxRunView extends View {
         paint.setLetterSpacing(0.14f);
         paint.setTextSize(dp(12));
         paint.setColor(distance > best && best > 0 ? rust : ink3);
-        String rec = distance > best && best > 0 ? "NEUER REKORD!" : String.format(Locale.ROOT, "REKORD %05d M", best);
+        String rec = distance > best && best > 0 ? L.t("NEUER REKORD!") : String.format(Locale.ROOT, L.t("REKORD %05d M"), best);
         c.drawText(rec, left, top + dp(72), paint);
         if (bunny) {
             float rw = paint.measureText(rec + "   ");
             paint.setColor(0xFFF29A1F);
-            c.drawText("▼ " + carrotCount + " KAROTTEN", left + rw, top + dp(72), paint);
+            c.drawText("▼ " + carrotCount + L.t(" KAROTTEN"), left + rw, top + dp(72), paint);
         }
         paint.setColor(ink3);
         paint.setTextSize(dp(11));

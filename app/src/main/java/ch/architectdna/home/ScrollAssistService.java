@@ -53,7 +53,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private final Runnable frameWatchdog = () -> {
         if (!gotFrame && !mode.equals("off")) {
             DiagLog.log("no camera readings 6 s after start");
-            showPill("○ KEINE KAMERA-BILDER · GESICHT IM BILD?");
+            showPill(L.t("○ KEINE KAMERA-BILDER · GESICHT IM BILD?"));
         }
     };
 
@@ -291,7 +291,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             // Under 15 %: no camera. Next app switch checks again (so it's back once charging).
             stopTracking();
             mode = "off";
-            showPill("🔋 UNTER " + LowPower.LIMIT + " % · KOPF-SCROLL PAUSIERT");
+            showPill(L.t("🔋 UNTER ") + LowPower.LIMIT + L.t(" % · KOPF-SCROLL PAUSIERT"));
             main.postDelayed(() -> {
                 if (mode.equals("off") && !theftOn) hidePill();
             }, 3000);
@@ -304,13 +304,13 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             return;
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            showPill("○ KAMERA FEHLT – IM LAUNCHER ERLAUBEN");
+            showPill(L.t("○ KAMERA FEHLT – IM LAUNCHER ERLAUBEN"));
             return;
         }
         // Show the overlay first: a visible window lets Android grant the camera while another app is in front.
-        showPill("◉ KAMERA STARTET …");
+        showPill(L.t("◉ KAMERA STARTET …"));
         if (!goForeground()) {
-            showPill("○ KAMERA IM HINTERGRUND BLOCKIERT");
+            showPill(L.t("○ KAMERA IM HINTERGRUND BLOCKIERT"));
             return;
         }
         if (head == null) head = new HeadTracker(this, this);
@@ -321,7 +321,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         head.start(m.equals("gaze") ? HeadTracker.Mode.GAZE : HeadTracker.Mode.NOD);
         DiagLog.log("head tracking started, mode=" + m);
         if (m.equals("gaze") && !prefs.contains("gazeMid")) {
-            android.widget.Toast.makeText(this, "BLICK ist noch nicht kalibriert: ARC-DNA ⚙ Einstellungen → Kopf-Scroll → Blick kalibrieren",
+            android.widget.Toast.makeText(this, L.t("BLICK ist noch nicht kalibriert: ARC-DNA ⚙ Einstellungen → Kopf-Scroll → Blick kalibrieren"),
                 android.widget.Toast.LENGTH_LONG).show();
         }
         showEdge();
@@ -343,7 +343,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
     private void setTheft(boolean on) {
         if (on == theftOn) return;
         if (on && LowPower.active(this)) {
-            TheftWatch.status = "Akku unter " + LowPower.LIMIT + " % – pausiert";
+            TheftWatch.status = L.t("Akku unter ") + LowPower.LIMIT + L.t(" % – pausiert");
             DiagLog.log("theft watch: paused, battery under " + LowPower.LIMIT + " %");
             return;
         }
@@ -352,10 +352,10 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (on) {
             if (!theftForeground()) {
                 theftOn = false;
-                TheftWatch.status = "Hintergrund blockiert";
+                TheftWatch.status = L.t("Hintergrund blockiert");
                 return;
             }
-            showPill("◉ WACHE · KAMERA · MIKRO · GPS");
+            showPill(L.t("◉ WACHE · KAMERA · MIKRO · GPS"));
             TheftWatch.start(this);
         } else {
             TheftWatch.stop();
@@ -371,12 +371,12 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
-                nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Kopf-Scroll", NotificationManager.IMPORTANCE_MIN));
+                nm.createNotificationChannel(new NotificationChannel(CHANNEL, L.t("Kopf-Scroll"), NotificationManager.IMPORTANCE_MIN));
             }
             Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_cube)
-                .setContentTitle("ARC-DNA Diebstahl-Wache")
-                .setContentText("Sperrbildschirm: Selfie-Kamera, Mikrofon, GPS – nur auf dem Handy, nichts gespeichert.")
+                .setContentTitle(L.t("ARC-DNA Diebstahl-Wache"))
+                .setContentText(L.t("Sperrbildschirm: Selfie-Kamera, Mikrofon, GPS – nur auf dem Handy, nichts gespeichert."))
                 .setOngoing(true)
                 .build();
             int[] tries = Build.VERSION.SDK_INT >= 30 ? new int[]{
@@ -419,12 +419,12 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
-                nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Kopf-Scroll", NotificationManager.IMPORTANCE_MIN));
+                nm.createNotificationChannel(new NotificationChannel(CHANNEL, L.t("Kopf-Scroll"), NotificationManager.IMPORTANCE_MIN));
             }
             Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_cube)
-                .setContentTitle("ARC-DNA Kopf-Scroll aktiv")
-                .setContentText("Kamera liest die Kopfneigung, nur auf dem Handy.")
+                .setContentTitle(L.t("ARC-DNA Kopf-Scroll aktiv"))
+                .setContentText(L.t("Kamera liest die Kopfneigung, nur auf dem Handy."))
                 .setOngoing(true)
                 .build();
             if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA);
@@ -665,7 +665,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         if (pill == null) {
             CameraRing ring = new CameraRing();
             ring.setClickable(true);
-            ring.setContentDescription("Kopf-Scroll: tippen = Pause, halten = kalibrieren");
+            ring.setContentDescription(L.t("Kopf-Scroll: tippen = Pause, halten = kalibrieren"));
             ring.setOnTouchListener((v, e) -> {
                 // Every touch elsewhere on the screen: your finger is in charge for a moment.
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) {
@@ -690,7 +690,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
                         setSpeed(0);
                         v.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
                         DiagLog.log("head scroll " + (paused ? "paused" : "resumed") + " by tap");
-                        bigNote(paused ? "⏸  KOPF-SCROLL PAUSIERT · TIPPEN = WEITER" : "▶  KOPF-SCROLL LÄUFT", paused ? 0xFF2BBF6A : 0xFFE0552F);
+                        bigNote(paused ? L.t("⏸  KOPF-SCROLL PAUSIERT · TIPPEN = WEITER") : L.t("▶  KOPF-SCROLL LÄUFT"), paused ? 0xFF2BBF6A : 0xFFE0552F);
                         v.invalidate();
                     }
                 }

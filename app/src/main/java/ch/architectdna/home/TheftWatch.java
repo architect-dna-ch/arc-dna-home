@@ -67,7 +67,7 @@ final class TheftWatch {
         thread.start();
         bg = new Handler(thread.getLooper());
         if (c.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) openCamera(c);
-        else status = "Kamera nicht erlaubt";
+        else status = L.t("Kamera nicht erlaubt");
         if (c.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) openMic();
         if (c.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             try {
@@ -134,7 +134,7 @@ final class TheftWatch {
                 }
             }
             if (front == null) {
-                status = "keine Selfie-Kamera";
+                status = L.t("keine Selfie-Kamera");
                 return;
             }
             reader = ImageReader.newInstance(320, 240, ImageFormat.YUV_420_888, 2);
@@ -157,17 +157,17 @@ final class TheftWatch {
                                 try {
                                     s.setRepeatingRequest(b.build(), null, bg);
                                 } catch (Exception e) {
-                                    status = "Kamera: " + e.getMessage();
+                                    status = L.t("Kamera: ") + e.getMessage();
                                 }
                             }
 
                             @Override
                             public void onConfigureFailed(CameraCaptureSession s) {
-                                status = "Kamera besetzt";
+                                status = L.t("Kamera besetzt");
                             }
                         }, bg);
                     } catch (Exception e) {
-                        status = "Kamera: " + e.getMessage();
+                        status = L.t("Kamera: ") + e.getMessage();
                     }
                 }
 
@@ -175,19 +175,19 @@ final class TheftWatch {
                 public void onDisconnected(CameraDevice d) {
                     d.close();
                     camera = null;
-                    status = "Kamera getrennt";
+                    status = L.t("Kamera getrennt");
                 }
 
                 @Override
                 public void onError(CameraDevice d, int error) {
                     d.close();
                     camera = null;
-                    status = "Kamera blockiert (" + error + ")";
+                    status = L.t("Kamera blockiert (") + error + ")";
                     DiagLog.log("theft watch camera error " + error);
                 }
             }, bg);
         } catch (Exception e) {
-            status = "Kamera: " + e.getMessage();
+            status = L.t("Kamera: ") + e.getMessage();
             DiagLog.log("theft watch camera: " + e.getMessage());
         }
     }

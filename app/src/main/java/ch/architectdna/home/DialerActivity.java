@@ -162,9 +162,9 @@ public class DialerActivity extends Activity {
         // — ARC-DNA · TELEFON ……… ● BEREIT
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(sectionLabel("Architect · DNA · Telefon"), new LinearLayout.LayoutParams(0, -2, 1f));
+        top.addView(sectionLabel(L.t("Architect · DNA · Telefon")), new LinearLayout.LayoutParams(0, -2, 1f));
         TextView ready = mono(11, ink3);
-        android.text.SpannableString st = new android.text.SpannableString("● BEREIT");
+        android.text.SpannableString st = new android.text.SpannableString(L.t("● BEREIT"));
         st.setSpan(new android.text.style.ForegroundColorSpan(0xFF1A7A3C), 0, 1, 0);
         ready.setText(st);
         top.addView(ready);
@@ -175,7 +175,7 @@ public class DialerActivity extends Activity {
         sv.setVerticalScrollBarEnabled(false);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        listHead = (LinearLayout) sectionLabel("Zuletzt");
+        listHead = (LinearLayout) sectionLabel(L.t("Zuletzt"));
         list.addView(listHead);
         suggestions = new LinearLayout(this);
         suggestions.setOrientation(LinearLayout.VERTICAL);
@@ -210,7 +210,7 @@ public class DialerActivity extends Activity {
         blink.start();
         numRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         TextView back = mono(13, ink2);
-        back.setText("⌫ LÖSCHEN");
+        back.setText(L.t("⌫ LÖSCHEN"));
         back.setPadding(dp(12), dp(8), dp(12), dp(8));
         back.setBackground(box(card, line, 8));
         back.setOnClickListener(v -> {
@@ -264,7 +264,7 @@ public class DialerActivity extends Activity {
         // Call bar: full width, rust, sharp.
         TextView call = mono(15, 0xFFFFFFFF);
         call.setLetterSpacing(0.2f);
-        call.setText("ANRUFEN  →");
+        call.setText(L.t("ANRUFEN  →"));
         call.setGravity(Gravity.CENTER);
         call.setBackground(box(rust, 0, 8));
         call.setOnClickListener(v -> {
@@ -292,12 +292,12 @@ public class DialerActivity extends Activity {
 
     private void refresh() {
         display.setText(number.length() == 0 ? "" : number);
-        display.setHint("Nummer");
+        display.setHint(L.t("Nummer"));
         display.setHintTextColor(ink3);
         suggestions.removeAllViews();
         String q = number.toString();
         List<String[]> rows = q.isEmpty() ? recents() : matches(q);
-        ((TextView) listHead.getChildAt(1)).setText(q.isEmpty() ? "ZULETZT" : rows.isEmpty() ? "KEIN KONTAKT" : "KONTAKTE · " + rows.size());
+        ((TextView) listHead.getChildAt(1)).setText(q.isEmpty() ? L.t("ZULETZT") : rows.isEmpty() ? L.t("KEIN KONTAKT") : L.t("KONTAKTE · ") + rows.size());
         for (int i = 0; i < rows.size(); i++) {
             if (i > 0) {
                 View div = new View(this);
@@ -312,7 +312,7 @@ public class DialerActivity extends Activity {
             suggestions.setVisibility(View.VISIBLE);
             TextView ask = text(13, ink2, false);
             ask.setPadding(dp(14), dp(12), dp(14), dp(12));
-            ask.setText("Anrufliste und Kontakte erlauben, um sie hier zu sehen →");
+            ask.setText(L.t("Anrufliste und Kontakte erlauben, um sie hier zu sehen →"));
             ask.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.READ_CALL_LOG,
                 Manifest.permission.READ_CONTACTS}, REQ_READ));
             suggestions.addView(ask);

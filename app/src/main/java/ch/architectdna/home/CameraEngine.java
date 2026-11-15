@@ -118,7 +118,7 @@ final class CameraEngine implements LifecycleOwner {
         }
         if (aperture != null) out.add(String.format(java.util.Locale.ROOT, "f/%.1f", aperture));
         if (focal != null) out.add(String.format(java.util.Locale.ROOT, "%.1f mm", focal));
-        if (focus != null) out.add(focus <= 0.01f ? "FOKUS ∞" : String.format(java.util.Locale.ROOT, "FOKUS %.1f m", 1 / focus));
+        if (focus != null) out.add(focus <= 0.01f ? L.t("FOKUS ∞") : String.format(java.util.Locale.ROOT, L.t("FOKUS %.1f m"), 1 / focus));
         return out;
     }
 
@@ -184,7 +184,7 @@ final class CameraEngine implements LifecycleOwner {
             } catch (Exception e) {
                 running = false;
                 DiagLog.log("camera start failed: " + e.getMessage());
-                listener.onError("Kamera nicht verfügbar.");
+                listener.onError(L.t("Kamera nicht verfügbar."));
             }
         }, mainExecutor);
     }

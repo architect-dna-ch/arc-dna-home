@@ -50,9 +50,9 @@ import java.util.Random;
  */
 public class BoardActivity extends Activity {
 
-    static final String[] TITLES = {"Dr. Overloaded", "Dr. Überladen", "Prof. Chaos", "Dr. Kritzel", "Dr. Deadline",
-        "Prof. Brainstorm", "Dr. Kaffee", "Dr. Später", "Prof. Pfeil", "Dr. Zuviel", "Dr. Tabula Rasa", "Prof. Plan B",
-        "Dr. Mindmap", "Dr. Gekritzel", "Prof. Eigentlich", "Dr. Multitask", "Dr. Notfall", "Prof. Skizze"};
+    static final String[] TITLES = {"Dr. Overloaded", L.t("Dr. Überladen"), "Prof. Chaos", L.t("Dr. Kritzel"), "Dr. Deadline",
+        "Prof. Brainstorm", L.t("Dr. Kaffee"), L.t("Dr. Später"), L.t("Prof. Pfeil"), L.t("Dr. Zuviel"), "Dr. Tabula Rasa", "Prof. Plan B",
+        L.t("Dr. Mindmap"), L.t("Dr. Gekritzel"), L.t("Prof. Eigentlich"), "Dr. Multitask", L.t("Dr. Notfall"), L.t("Prof. Skizze")};
 
     private SharedPreferences prefs;
     private boolean night;
@@ -160,13 +160,13 @@ public class BoardActivity extends Activity {
             prefs.edit().putBoolean("buddy", !prefs.getBoolean("buddy", false)).apply();
             buddyChip.setText(buddyLabel());
             mischief.planNext();
-            if (prefs.getBoolean("buddy", false)) Toast.makeText(this, "Fuchs darf Chaos machen. Viel Glück.", Toast.LENGTH_SHORT).show();
+            if (prefs.getBoolean("buddy", false)) Toast.makeText(this, L.t("Fuchs darf Chaos machen. Viel Glück."), Toast.LENGTH_SHORT).show();
         });
         top.addView(buddyChip);
-        top.addView(chip("✏ LERNEN", v -> pickGuide()));
-        top.addView(chip("+ BILD", v -> pickImage()));
-        top.addView(chip("+ NEU", v -> newBoard()));
-        top.addView(chip("TEILEN", v -> share()));
+        top.addView(chip(L.t("✏ LERNEN"), v -> pickGuide()));
+        top.addView(chip(L.t("+ BILD"), v -> pickImage()));
+        top.addView(chip(L.t("+ NEU"), v -> newBoard()));
+        top.addView(chip(L.t("TEILEN"), v -> share()));
         ui.addView(top);
         ui.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -215,7 +215,7 @@ public class BoardActivity extends Activity {
             row2.addView(t);
         }
         if (row2 == bar) bar.addView(divider());
-        eraserChip = chipView("RADIERER");
+        eraserChip = chipView(L.t("RADIERER"));
         eraserChip.setOnClickListener(v -> {
             eraser = !eraser;
             paintTools();
@@ -238,8 +238,8 @@ public class BoardActivity extends Activity {
             save();
         });
         row2.addView(again);
-        TextView clear = chipView(row2 == bar ? "LEEREN" : "✕");
-        clear.setOnClickListener(v -> Toast.makeText(this, "Lange drücken = Board leeren", Toast.LENGTH_SHORT).show());
+        TextView clear = chipView(row2 == bar ? L.t("LEEREN") : "✕");
+        clear.setOnClickListener(v -> Toast.makeText(this, L.t("Lange drücken = Board leeren"), Toast.LENGTH_SHORT).show());
         clear.setOnLongClickListener(v -> {
             redo.clear();
             redo.addAll(strokes);
@@ -247,7 +247,7 @@ public class BoardActivity extends Activity {
             strokes.clear();
             board.rebuild();
             save();
-            Toast.makeText(this, "Geleert · ↷ holt alles zurück", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Geleert · ↷ holt alles zurück"), Toast.LENGTH_SHORT).show();
             return true;
         });
         row2.addView(clear);
@@ -417,7 +417,7 @@ public class BoardActivity extends Activity {
         e.setSelectAllOnFocus(true);
         e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         new AlertDialog.Builder(this)
-            .setTitle("Titel")
+            .setTitle(L.t("Titel"))
             .setView(e)
             .setPositiveButton("OK", (d, w) -> {
                 String t = e.getText().toString().trim();
@@ -425,12 +425,12 @@ public class BoardActivity extends Activity {
                 title.setText(t);
                 putBoard(boardId, t);
             })
-            .setNeutralButton("Zufall", (d, w) -> {
+            .setNeutralButton(L.t("Zufall"), (d, w) -> {
                 String t = freshTitle();
                 title.setText(t);
                 putBoard(boardId, t);
             })
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(L.t("Abbrechen"), null)
             .show();
     }
 
@@ -473,14 +473,14 @@ public class BoardActivity extends Activity {
         small.setLetterSpacing(0.24f);
         titles.addView(small);
         TextView big = new TextView(this);
-        big.setText("Deine Boards");
+        big.setText(L.t("Deine Boards"));
         big.setTextColor(ink);
         big.setTextSize(30);
         big.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
         big.setLetterSpacing(-0.04f);
         titles.addView(big);
         head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
-        head.addView(chip("+ NEU", v -> {
+        head.addView(chip(L.t("+ NEU"), v -> {
             closeOverview();
             newBoard();
         }));
@@ -600,7 +600,7 @@ public class BoardActivity extends Activity {
             p.setTextSize(dp(13));
             p.setTypeface(android.graphics.Typeface.create("casual", android.graphics.Typeface.NORMAL));
             p.setTextAlign(Paint.Align.CENTER);
-            c.drawText("noch leer …", w / 2f, h / 2f, p);
+            c.drawText(L.t("noch leer …"), w / 2f, h / 2f, p);
             return out;
         }
         float pad = dp(14), sc = Math.min((w - 2 * pad) / Math.max(1, r - l), (h - 2 * pad) / Math.max(1, b - t));
@@ -632,8 +632,8 @@ public class BoardActivity extends Activity {
     private final class Doodles extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path path = new Path();
-        private final String[] maths = {"2 + 2 = 3 ?!", "e^iπ + 1 = 0", "∫ Kaffee dt = Code", "π ≈ 3", "1 + 1 = 10 (binär)",
-            "a² + b² = c²", "∞ / 0 = 🤯", "x = Hausaufgaben"};
+        private final String[] maths = {"2 + 2 = 3 ?!", "e^iπ + 1 = 0", L.t("∫ Kaffee dt = Code"), "π ≈ 3", L.t("1 + 1 = 10 (binär)"),
+            "a² + b² = c²", "∞ / 0 = 🤯", L.t("x = Hausaufgaben")};
 
         Doodles() {
             super(BoardActivity.this);
@@ -720,8 +720,8 @@ public class BoardActivity extends Activity {
 
     private void deleteBoard() {
         new AlertDialog.Builder(this)
-            .setTitle("„" + title.getText() + "“ löschen?")
-            .setPositiveButton("Löschen", (d, w) -> {
+            .setTitle("„" + title.getText() + L.t("“ löschen?"))
+            .setPositiveButton(L.t("Löschen"), (d, w) -> {
                 boardFile(boardId).delete();
                 JSONArray a = listBoards(), out = new JSONArray();
                 for (int i = 0; i < a.length(); i++) {
@@ -733,7 +733,7 @@ public class BoardActivity extends Activity {
                 if (out.length() > 0) open(out.optJSONObject(0).optString("id"));
                 else newBoard();
             })
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(L.t("Abbrechen"), null)
             .show();
     }
 
@@ -742,7 +742,7 @@ public class BoardActivity extends Activity {
         save();
         float[] b = board.bounds();
         if (b == null) {
-            Toast.makeText(this, "Noch leer", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Noch leer"), Toast.LENGTH_SHORT).show();
             return;
         }
         float pad = 60, w = b[2] - b[0] + 2 * pad, h = b[3] - b[1] + 2 * pad;
@@ -760,7 +760,7 @@ public class BoardActivity extends Activity {
         c.drawColor(bg);
         c.drawBitmap(layer, 0, 0, null);
         if (Build.VERSION.SDK_INT < 29) {
-            Toast.makeText(this, "Teilen braucht Android 10 oder neuer", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L.t("Teilen braucht Android 10 oder neuer"), Toast.LENGTH_LONG).show();
             return;
         }
         try {
@@ -770,7 +770,7 @@ public class BoardActivity extends Activity {
             v.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
             v.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ARC-DNA");
             Uri uri = getContentResolver().insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
-            if (uri == null) throw new IOException("kein Speicherplatz");
+            if (uri == null) throw new IOException(L.t("kein Speicherplatz"));
             try (java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
                 bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
             }
@@ -778,7 +778,7 @@ public class BoardActivity extends Activity {
                 .putExtra(Intent.EXTRA_SUBJECT, title.getText().toString()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(send, title.getText()));
         } catch (Exception e) {
-            Toast.makeText(this, "Teilen ging nicht: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L.t("Teilen ging nicht: ") + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1054,7 +1054,7 @@ public class BoardActivity extends Activity {
                 p.setColor((col & 0x00FFFFFF) | 0xE6000000);
                 c.save();
                 c.rotate(-5, l, t - bump * 0.9f);
-                c.drawText("Aufgabe " + (i + 1), l + dp(4), t - bump * 0.9f, p);
+                c.drawText(L.t("Aufgabe ") + (i + 1), l + dp(4), t - bump * 0.9f, p);
                 c.restore();
                 p.setTypeface(null);
             }
@@ -1279,7 +1279,7 @@ public class BoardActivity extends Activity {
         try {
             startActivityForResult(i, PICK);
         } catch (RuntimeException e) {
-            Toast.makeText(this, "Keine Bilder-Auswahl gefunden", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Keine Bilder-Auswahl gefunden"), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1342,14 +1342,14 @@ public class BoardActivity extends Activity {
             } catch (Exception | OutOfMemoryError ignored) {
             }
             if (b == null) {
-                runOnUiThread(() -> Toast.makeText(this, "Bild ließ sich nicht öffnen", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, L.t("Bild ließ sich nicht öffnen"), Toast.LENGTH_SHORT).show());
                 return;
             }
             String name = Long.toString(System.currentTimeMillis(), 36) + ".png";
             try (FileOutputStream out = new FileOutputStream(new File(pictureDir(), name))) {
                 b.compress(Bitmap.CompressFormat.PNG, 100, out);
             } catch (IOException e) {
-                runOnUiThread(() -> Toast.makeText(this, "Bild ließ sich nicht speichern", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, L.t("Bild ließ sich nicht speichern"), Toast.LENGTH_SHORT).show());
                 return;
             }
             Bitmap pic = b;
@@ -1381,7 +1381,7 @@ public class BoardActivity extends Activity {
     private void showPlaceHint() {
         if (placeHint == null) {
             placeHint = mono(11, 0xFFFFFFFF);
-            placeHint.setText("BILD: ZIEHEN · 2 FINGER = GRÖSSE · DANEBEN TIPPEN = FERTIG");
+            placeHint.setText(L.t("BILD: ZIEHEN · 2 FINGER = GRÖSSE · DANEBEN TIPPEN = FERTIG"));
             placeHint.setPadding(dp(14), dp(8), dp(14), dp(8));
             GradientDrawable g = new GradientDrawable();
             g.setColor(0xE6121211);
@@ -1407,7 +1407,7 @@ public class BoardActivity extends Activity {
     private TextView cloudChip;
 
     private String cloudLabel() {
-        return prefs.getBoolean("clouds", true) ? "☁ WOLKEN" : "☁ AUS";
+        return prefs.getBoolean("clouds", true) ? L.t("☁ WOLKEN") : L.t("☁ AUS");
     }
 
 
@@ -1417,8 +1417,8 @@ public class BoardActivity extends Activity {
     private TextView buddyChip;
 
     private String buddyLabel() {
-        if (mischief != null && mischief.foxHere()) return "🚓 ROBO-POLIZEI";
-        return prefs.getBoolean("buddy", false) ? "🦊 CHAOS AN" : "🦊 AUS";
+        if (mischief != null && mischief.foxHere()) return L.t("🚓 ROBO-POLIZEI");
+        return prefs.getBoolean("buddy", false) ? L.t("🦊 CHAOS AN") : L.t("🦊 AUS");
     }
 
     /*
@@ -1589,8 +1589,8 @@ public class BoardActivity extends Activity {
                 c.restore();
             }
             if (state == LAUGH) bubble(c, "HAHAHA! 😂", fx, fy - fh / 2 - dp(8));
-            if (state == ERASE) bubble(c, "Was ist das denn?", fx, fy - fh / 2 - dp(8));
-            if (state == POLICE && t > 3.0f) bubble(c, "Festgenommen. Beweis zurück. 🤖", robotX, fy - dp(54));
+            if (state == ERASE) bubble(c, L.t("Was ist das denn?"), fx, fy - fh / 2 - dp(8));
+            if (state == POLICE && t > 3.0f) bubble(c, L.t("Festgenommen. Beweis zurück. 🤖"), robotX, fy - dp(54));
             postInvalidateOnAnimation();
         }
 
@@ -1644,37 +1644,37 @@ public class BoardActivity extends Activity {
      * c x y r = circle · o l t r b = oval · l x1 y1 x2 y2 = line · p x y x y … = polyline ·
      * a l t r b start sweep = arc
      */
-    private static final String[] MOTIFS = {"🐱 Katze", "🏠 Haus", "☀ Sonne", "🐟 Fisch", "🌷 Blume", "🚗 Auto"};
+    private static final String[] MOTIFS = {L.t("🐱 Katze"), L.t("🏠 Haus"), L.t("☀ Sonne"), L.t("🐟 Fisch"), L.t("🌷 Blume"), L.t("🚗 Auto")};
     private static final String[][][] STEPS = {
-        {{"Ein grosser Kreis für den Kopf", "c 0 0.05 0.55"},
-            {"Zwei spitze Ohren oben", "p -0.5 -0.2 -0.42 -0.75 -0.15 -0.45", "p 0.15 -0.45 0.42 -0.75 0.5 -0.2"},
-            {"Zwei Augen", "o -0.3 -0.12 -0.12 0.08", "o 0.12 -0.12 0.3 0.08"},
-            {"Eine kleine Nase und ein Mund wie ein W", "p -0.06 0.15 0.06 0.15 0 0.23 -0.06 0.15", "p -0.18 0.3 -0.09 0.36 0 0.25 0.09 0.36 0.18 0.3"},
-            {"Schnurrhaare – drei auf jeder Seite", "l -0.25 0.22 -0.75 0.12", "l -0.25 0.27 -0.75 0.28", "l -0.25 0.32 -0.72 0.45",
+        {{L.t("Ein grosser Kreis für den Kopf"), "c 0 0.05 0.55"},
+            {L.t("Zwei spitze Ohren oben"), "p -0.5 -0.2 -0.42 -0.75 -0.15 -0.45", "p 0.15 -0.45 0.42 -0.75 0.5 -0.2"},
+            {L.t("Zwei Augen"), "o -0.3 -0.12 -0.12 0.08", "o 0.12 -0.12 0.3 0.08"},
+            {L.t("Eine kleine Nase und ein Mund wie ein W"), "p -0.06 0.15 0.06 0.15 0 0.23 -0.06 0.15", "p -0.18 0.3 -0.09 0.36 0 0.25 0.09 0.36 0.18 0.3"},
+            {L.t("Schnurrhaare – drei auf jeder Seite"), "l -0.25 0.22 -0.75 0.12", "l -0.25 0.27 -0.75 0.28", "l -0.25 0.32 -0.72 0.45",
                 "l 0.25 0.22 0.75 0.12", "l 0.25 0.27 0.75 0.28", "l 0.25 0.32 0.72 0.45"}},
-        {{"Ein Viereck als Haus", "p -0.55 -0.05 0.55 -0.05 0.55 0.7 -0.55 0.7 -0.55 -0.05"},
-            {"Ein Dreieck als Dach", "p -0.7 -0.05 0 -0.7 0.7 -0.05"},
-            {"Eine Tür in der Mitte", "p -0.13 0.7 -0.13 0.3 0.13 0.3 0.13 0.7"},
-            {"Zwei Fenster", "p -0.42 0.1 -0.2 0.1 -0.2 0.3 -0.42 0.3 -0.42 0.1", "p 0.2 0.1 0.42 0.1 0.42 0.3 0.2 0.3 0.2 0.1"},
-            {"Ein Kamin mit Rauch", "p 0.3 -0.35 0.3 -0.6 0.45 -0.6 0.45 -0.2", "a 0.32 -0.85 0.5 -0.68 180 270"}},
-        {{"Ein Kreis in der Mitte", "c 0 0 0.35"},
-            {"Strahlen rundherum", "l 0 -0.45 0 -0.75", "l 0 0.45 0 0.75", "l -0.45 0 -0.75 0", "l 0.45 0 0.75 0",
+        {{L.t("Ein Viereck als Haus"), "p -0.55 -0.05 0.55 -0.05 0.55 0.7 -0.55 0.7 -0.55 -0.05"},
+            {L.t("Ein Dreieck als Dach"), "p -0.7 -0.05 0 -0.7 0.7 -0.05"},
+            {L.t("Eine Tür in der Mitte"), "p -0.13 0.7 -0.13 0.3 0.13 0.3 0.13 0.7"},
+            {L.t("Zwei Fenster"), "p -0.42 0.1 -0.2 0.1 -0.2 0.3 -0.42 0.3 -0.42 0.1", "p 0.2 0.1 0.42 0.1 0.42 0.3 0.2 0.3 0.2 0.1"},
+            {L.t("Ein Kamin mit Rauch"), "p 0.3 -0.35 0.3 -0.6 0.45 -0.6 0.45 -0.2", "a 0.32 -0.85 0.5 -0.68 180 270"}},
+        {{L.t("Ein Kreis in der Mitte"), "c 0 0 0.35"},
+            {L.t("Strahlen rundherum"), "l 0 -0.45 0 -0.75", "l 0 0.45 0 0.75", "l -0.45 0 -0.75 0", "l 0.45 0 0.75 0",
                 "l 0.32 -0.32 0.53 -0.53", "l -0.32 -0.32 -0.53 -0.53", "l 0.32 0.32 0.53 0.53", "l -0.32 0.32 -0.53 0.53"},
-            {"Augen und ein Lächeln", "c -0.12 -0.08 0.04", "c 0.12 -0.08 0.04", "a -0.18 -0.1 0.18 0.2 20 140"}},
-        {{"Ein langes Oval als Körper", "o -0.6 -0.32 0.4 0.32"},
-            {"Ein Dreieck als Schwanz", "p 0.38 0 0.75 -0.32 0.75 0.32 0.38 0"},
-            {"Ein Auge", "c -0.35 -0.08 0.06"},
-            {"Ein Mund und Schuppen", "a -0.62 -0.02 -0.48 0.12 270 120", "a -0.2 -0.2 0 0.2 300 120", "a 0 -0.2 0.2 0.2 300 120"},
-            {"Blasen nach oben", "c -0.75 -0.45 0.05", "c -0.85 -0.62 0.07", "c -0.72 -0.8 0.09"}},
-        {{"Ein Stiel von unten nach oben", "l 0 0.8 0 -0.1"},
-            {"Zwei Blätter am Stiel", "o -0.32 0.32 0 0.48", "o 0 0.12 0.32 0.28"},
-            {"Ein Kreis als Blütenmitte", "c 0 -0.3 0.13"},
-            {"Fünf Blütenblätter rundherum", "c 0 -0.55 0.13", "c 0.24 -0.38 0.13", "c 0.15 -0.08 0.13", "c -0.15 -0.08 0.13", "c -0.24 -0.38 0.13"}},
-        {{"Der Körper: ein langes Rechteck", "p -0.75 0 0.75 0 0.75 0.35 -0.75 0.35 -0.75 0"},
-            {"Das Dach oben drauf", "p -0.45 0 -0.3 -0.35 0.3 -0.35 0.5 0"},
-            {"Zwei Fenster", "p -0.35 -0.03 -0.25 -0.28 -0.03 -0.28 -0.03 -0.03", "p 0.05 -0.03 0.05 -0.28 0.27 -0.28 0.4 -0.03"},
-            {"Zwei Räder", "c -0.42 0.38 0.17", "c 0.42 0.38 0.17"},
-            {"Licht vorne und hinten", "o 0.62 0.05 0.75 0.15", "o -0.75 0.05 -0.65 0.15"}}};
+            {L.t("Augen und ein Lächeln"), "c -0.12 -0.08 0.04", "c 0.12 -0.08 0.04", "a -0.18 -0.1 0.18 0.2 20 140"}},
+        {{L.t("Ein langes Oval als Körper"), "o -0.6 -0.32 0.4 0.32"},
+            {L.t("Ein Dreieck als Schwanz"), "p 0.38 0 0.75 -0.32 0.75 0.32 0.38 0"},
+            {L.t("Ein Auge"), "c -0.35 -0.08 0.06"},
+            {L.t("Ein Mund und Schuppen"), "a -0.62 -0.02 -0.48 0.12 270 120", "a -0.2 -0.2 0 0.2 300 120", "a 0 -0.2 0.2 0.2 300 120"},
+            {L.t("Blasen nach oben"), "c -0.75 -0.45 0.05", "c -0.85 -0.62 0.07", "c -0.72 -0.8 0.09"}},
+        {{L.t("Ein Stiel von unten nach oben"), "l 0 0.8 0 -0.1"},
+            {L.t("Zwei Blätter am Stiel"), "o -0.32 0.32 0 0.48", "o 0 0.12 0.32 0.28"},
+            {L.t("Ein Kreis als Blütenmitte"), "c 0 -0.3 0.13"},
+            {L.t("Fünf Blütenblätter rundherum"), "c 0 -0.55 0.13", "c 0.24 -0.38 0.13", "c 0.15 -0.08 0.13", "c -0.15 -0.08 0.13", "c -0.24 -0.38 0.13"}},
+        {{L.t("Der Körper: ein langes Rechteck"), "p -0.75 0 0.75 0 0.75 0.35 -0.75 0.35 -0.75 0"},
+            {L.t("Das Dach oben drauf"), "p -0.45 0 -0.3 -0.35 0.3 -0.35 0.5 0"},
+            {L.t("Zwei Fenster"), "p -0.35 -0.03 -0.25 -0.28 -0.03 -0.28 -0.03 -0.03", "p 0.05 -0.03 0.05 -0.28 0.27 -0.28 0.4 -0.03"},
+            {L.t("Zwei Räder"), "c -0.42 0.38 0.17", "c 0.42 0.38 0.17"},
+            {L.t("Licht vorne und hinten"), "o 0.62 0.05 0.75 0.15", "o -0.75 0.05 -0.65 0.15"}}};
 
     private Guide guide;
     private LinearLayout guideBar;
@@ -1683,7 +1683,7 @@ public class BoardActivity extends Activity {
 
     private void pickGuide() {
         new AlertDialog.Builder(this)
-            .setTitle("Was möchtest du zeichnen?")
+            .setTitle(L.t("Was möchtest du zeichnen?"))
             .setItems(MOTIFS, (d, w) -> startGuide(w))
             .show();
     }
@@ -1710,15 +1710,15 @@ public class BoardActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.END);
             row.setPadding(0, dp(10), 0, 0);
-            row.addView(chip("✕ ENDE", v -> stopGuide()));
-            row.addView(chip("← ZURÜCK", v -> {
+            row.addView(chip(L.t("✕ ENDE"), v -> stopGuide()));
+            row.addView(chip(L.t("← ZURÜCK"), v -> {
                 guideStep = Math.max(0, guideStep - 1);
                 paintGuide();
             }));
-            row.addView(chip("WEITER →", v -> {
+            row.addView(chip(L.t("WEITER →"), v -> {
                 guideStep++;
                 if (guideStep >= STEPS[guideMotif].length) {
-                    guideText.setText("Super gemacht! 🎉 Jetzt ausmalen – mit den Farben unten.");
+                    guideText.setText(L.t("Super gemacht! 🎉 Jetzt ausmalen – mit den Farben unten."));
                     guide.postDelayed(this::stopGuide, 2600);
                     guideStep = STEPS[guideMotif].length;
                     guide.invalidate();
@@ -1738,7 +1738,7 @@ public class BoardActivity extends Activity {
     private void paintGuide() {
         if (guideMotif < 0) return;
         String[] step = STEPS[guideMotif][guideStep];
-        guideText.setText("Schritt " + (guideStep + 1) + "/" + STEPS[guideMotif].length + ": " + step[0] + ". Fahr der gestrichelten Linie nach!");
+        guideText.setText(L.t("Schritt ") + (guideStep + 1) + "/" + STEPS[guideMotif].length + ": " + step[0] + L.t(". Fahr der gestrichelten Linie nach!"));
         guide.invalidate();
     }
 

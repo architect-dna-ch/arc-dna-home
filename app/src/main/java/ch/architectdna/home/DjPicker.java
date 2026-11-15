@@ -52,16 +52,16 @@ final class DjPicker extends FrameLayout {
     DjPicker(Context c, String favourite, Listener l) {
         super(c);
         listener = l;
-        djs.add(new Dj("DJ BÄR", "LO-FI & CHILL", "Zum Runterkommen. Langsam, warm, mit Knistern.",
+        djs.add(new Dj(L.t("DJ BÄR"), "LO-FI & CHILL", L.t("Zum Runterkommen. Langsam, warm, mit Knistern."),
             "lofi hip hop chill mix", R.drawable.bear, 0xFF8B5A2B));
-        djs.add(new Dj("DJ F1", "DRUM & BASS · TECHNO", "Vollgas. 170 BPM, Boxenstopp nur zum Atmen.",
+        djs.add(new Dj("DJ F1", "DRUM & BASS · TECHNO", L.t("Vollgas. 170 BPM, Boxenstopp nur zum Atmen."),
             "drum and bass mix", R.drawable.f1buddy, 0xFFB5271E));
-        djs.add(new Dj("DJ FUCHS", favourite != null ? "DEINE WOCHE" : "DEUTSCHRAP",
-            favourite != null ? "Mehr wie " + favourite + " – dein meistgehörter Name diese Woche." : "Deutschrap und Hip-Hop, frisch.",
+        djs.add(new Dj(L.t("DJ FUCHS"), favourite != null ? L.t("DEINE WOCHE") : L.t("DEUTSCHRAP"),
+            favourite != null ? L.t("Mehr wie ") + favourite + L.t(" – dein meistgehörter Name diese Woche.") : L.t("Deutschrap und Hip-Hop, frisch."),
             favourite != null ? favourite + " radio" : "deutschrap hits", R.drawable.fox, 0xFFE07A2E));
-        djs.add(new Dj("DJ HASE", "POP & DANCE", "Gute Laune, Refrains zum Mitsingen.",
+        djs.add(new Dj(L.t("DJ HASE"), "POP & DANCE", L.t("Gute Laune, Refrains zum Mitsingen."),
             "dance pop hits", R.drawable.rabbit, 0xFF2BA85A));
-        djs.add(new Dj("DJ BUNNY", "INDIE & AKUSTIK", "Sanft: Gitarre, Stimme, Morgenkaffee.",
+        djs.add(new Dj("DJ BUNNY", L.t("INDIE & AKUSTIK"), L.t("Sanft: Gitarre, Stimme, Morgenkaffee."),
             "indie acoustic chill", R.drawable.bunnybuddy, 0xFF7A5AD9));
         // Who fits the time of day.
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
@@ -115,16 +115,16 @@ final class DjPicker extends FrameLayout {
             p.setLetterSpacing(0.2f);
             p.setTextSize(dp(12));
             p.setColor(0xFF9A9A98);
-            c.drawText("— WER LEGT AUF?", dp(24), dp(84), p);
+            c.drawText(L.t("— WER LEGT AUF?"), dp(24), dp(84), p);
             p.setLetterSpacing(0);
             p.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
             p.setTextSize(dp(24));
             p.setColor(0xFFF4F2EC);
-            c.drawText(picked < 0 ? "Wähl deinen DJ." : djs.get(picked).name + " legt auf …", dp(24), dp(118), p);
+            c.drawText(picked < 0 ? L.t("Wähl deinen DJ.") : djs.get(picked).name + L.t(" legt auf …"), dp(24), dp(118), p);
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(11));
             p.setColor(0xFF6F6E69);
-            c.drawText(picked < 0 ? "DISKETTE ANTIPPEN · ✕ = SPÄTER" : "PLAYLIST WIRD GELADEN", dp(24), dp(140), p);
+            c.drawText(picked < 0 ? L.t("DISKETTE ANTIPPEN · ✕ = SPÄTER") : L.t("PLAYLIST WIRD GELADEN"), dp(24), dp(140), p);
             // Close.
             p.setTextSize(dp(20));
             p.setColor(0xFFF4F2EC);

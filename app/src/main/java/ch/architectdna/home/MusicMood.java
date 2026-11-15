@@ -35,8 +35,8 @@ final class MusicMood {
         "funk", "mc ", "dj ", "bass", "drop", "turn up", "banger", "club", "type beat", "rap", "hard"};
 
     static final String[][] LABELS = {
-        {"aufgewühlt", "😤", "2"}, {"melancholisch", "😔", "2"}, {"unruhig – suchst was", "🔀", "3"},
-        {"ruhig, fokussiert", "😌", "3"}, {"zufrieden", "🙂", "4"}, {"aufgedreht", "🔥", "5"}, {"neutral", "😐", "3"}};
+        {L.t("aufgewühlt"), "😤", "2"}, {"melancholisch", "😔", "2"}, {L.t("unruhig – suchst was"), "🔀", "3"},
+        {L.t("ruhig, fokussiert"), "😌", "3"}, {"zufrieden", "🙂", "4"}, {"aufgedreht", "🔥", "5"}, {"neutral", "😐", "3"}};
 
     private MusicMood() {
     }
@@ -187,7 +187,7 @@ final class MusicMood {
         try {
             SharedPreferences mp = c.getSharedPreferences("mood", Context.MODE_PRIVATE);
             JSONArray log = new JSONArray(mp.getString("log", "[]"));
-            log.put(new JSONObject().put("at", now).put("m", Integer.parseInt(l[2])).put("n", "🎵 geschätzt: " + l[0]).put("auto", true));
+            log.put(new JSONObject().put("at", now).put("m", Integer.parseInt(l[2])).put("n", L.t("🎵 geschätzt: ") + l[0]).put("auto", true));
             mp.edit().putString("log", log.toString()).apply();
         } catch (Exception ignored) {
         }
@@ -200,7 +200,7 @@ final class MusicMood {
         float[] g = current(c);
         if (g == null) return null;
         String[] l = LABELS[(int) g[0]];
-        return "🎵 KLINGT NACH: " + l[0].toUpperCase(Locale.GERMAN) + " " + l[1];
+        return L.t("🎵 KLINGT NACH: ") + l[0].toUpperCase(Locale.GERMAN) + " " + l[1];
     }
 
     static int guessedMood(Context c) {

@@ -54,9 +54,9 @@ final class ArcUi {
     int dp(float v) { return Math.round(v * d); }
 
     /** German if the phone is set to German, English for everything else. */
-    static final boolean DE = "de".equals(java.util.Locale.getDefault().getLanguage());
+    static boolean de() { return "de".equals(java.util.Locale.getDefault().getLanguage()); }
 
-    static String t(String en, String de) { return DE ? de : en; }
+    static String t(String en, String de) { return de() ? de : en; }
 
     TextView label(String s, boolean accent) {
         TextView t = new TextView(a);

@@ -119,7 +119,7 @@ public class RecorderActivity extends Activity {
         time.setText("0:00");
         rc.addView(time);
         status = mono(11, ink3);
-        status.setText("BEREIT");
+        status.setText(L.t("BEREIT"));
         rc.addView(status);
 
         wave = new Wave();
@@ -138,7 +138,7 @@ public class RecorderActivity extends Activity {
         bl.leftMargin = bl.rightMargin = dp(26);
         buttons.addView(recBtn, bl);
         recBtn.setOnClickListener(v -> toggleRecord());
-        recBtn.setContentDescription("Aufnahme starten oder stoppen");
+        recBtn.setContentDescription(L.t("Aufnahme starten oder stoppen"));
         FrameLayout pb = new FrameLayout(this);
         pb.setBackground(circle(0, line));
         pauseIcon = text(20, ink, true);
@@ -155,7 +155,7 @@ public class RecorderActivity extends Activity {
         LinearLayout lh = new LinearLayout(this);
         lh.setGravity(Gravity.CENTER_VERTICAL);
         lh.setPadding(0, dp(24), 0, dp(10));
-        lh.addView(label("Aufnahmen"), new LinearLayout.LayoutParams(0, -2, 1f));
+        lh.addView(label(L.t("Aufnahmen")), new LinearLayout.LayoutParams(0, -2, 1f));
         count = mono(11, rust);
         lh.addView(count);
         col.addView(lh);
@@ -207,7 +207,7 @@ public class RecorderActivity extends Activity {
     private void toggleRecord() {
         if (RecorderService.recording()) {
             boolean kept = RecorderService.stop(this);
-            Toast.makeText(this, kept ? "Gesichert." : "Zu kurz – nichts gesichert.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, kept ? L.t("Gesichert.") : L.t("Zu kurz – nichts gesichert."), Toast.LENGTH_SHORT).show();
             wave.clear();
             paint();
             load();
@@ -226,7 +226,7 @@ public class RecorderActivity extends Activity {
             recBtn.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         } catch (Exception e) {
             DiagLog.log("recorder start failed: " + e.getMessage());
-            Toast.makeText(this, "Aufnahme geht nicht: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L.t("Aufnahme geht nicht: ") + e.getMessage(), Toast.LENGTH_LONG).show();
         }
         wave.clear();
         paint();
@@ -236,7 +236,7 @@ public class RecorderActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQ_MIC && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) toggleRecord();
-        else if (requestCode == REQ_MIC) Toast.makeText(this, "Ohne Mikrofon keine Aufnahme.", Toast.LENGTH_LONG).show();
+        else if (requestCode == REQ_MIC) Toast.makeText(this, L.t("Ohne Mikrofon keine Aufnahme."), Toast.LENGTH_LONG).show();
     }
 
     private final Runnable tick = new Runnable() {
@@ -260,7 +260,7 @@ public class RecorderActivity extends Activity {
 
     private void paint() {
         boolean on = RecorderService.recording(), p = RecorderService.paused();
-        status.setText(!on ? "BEREIT · TIPPEN = AUFNEHMEN" : p ? "PAUSE" : "● AUFNAHME · LÄUFT AUCH GESPERRT");
+        status.setText(!on ? L.t("BEREIT · TIPPEN = AUFNEHMEN") : p ? "PAUSE" : L.t("● AUFNAHME · LÄUFT AUCH GESPERRT"));
         status.setTextColor(on && !p ? rust : ink3);
         if (!on) time.setText("0:00");
         pauseBtn.setVisibility(on ? View.VISIBLE : View.INVISIBLE);
@@ -309,10 +309,10 @@ public class RecorderActivity extends Activity {
             }
         }
         list.removeAllViews();
-        count.setText(items.size() + (items.size() == 1 ? " AUFNAHME" : " AUFNAHMEN"));
+        count.setText(items.size() + (items.size() == 1 ? L.t(" AUFNAHME") : L.t(" AUFNAHMEN")));
         if (items.isEmpty()) {
             TextView empty = text(15, ink3, false);
-            empty.setText("Noch nichts aufgenommen. Der rote Knopf oben startet.");
+            empty.setText(L.t("Noch nichts aufgenommen. Der rote Knopf oben startet."));
             empty.setPadding(0, dp(12), 0, 0);
             list.addView(empty);
         }
@@ -389,7 +389,7 @@ public class RecorderActivity extends Activity {
             });
         } catch (Exception e) {
             stopPlayer();
-            Toast.makeText(this, "Kann nicht abspielen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Kann nicht abspielen."), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -491,16 +491,16 @@ public class RecorderActivity extends Activity {
         meta.setText(it.meta.getText());
         meta.setPadding(0, 0, 0, dp(8));
         s.addView(meta, 2);
-        action(s, "✎", "Umbenennen", false, () -> rename(it));
-        if (it.file == null) action(s, "↗", "Teilen", false, () -> {
+        action(s, "✎", L.t("Umbenennen"), false, () -> rename(it));
+        if (it.file == null) action(s, "↗", L.t("Teilen"), false, () -> {
             closeSheet(true);
             share(it);
         });
-        action(s, "✕", "Löschen", true, () -> delete(it));
+        action(s, "✕", L.t("Löschen"), true, () -> delete(it));
     }
 
     private void rename(Item it) {
-        LinearLayout s = openSheet("Umbenennen");
+        LinearLayout s = openSheet(L.t("Umbenennen"));
         android.widget.EditText e = new android.widget.EditText(this);
         e.setText(it.name);
         e.setSingleLine(true);
@@ -526,7 +526,7 @@ public class RecorderActivity extends Activity {
                     getContentResolver().update(it.uri, v, null, null);
                 }
             } catch (RuntimeException ex) {
-                Toast.makeText(this, "Umbenennen ging nicht.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("Umbenennen ging nicht."), Toast.LENGTH_SHORT).show();
             }
             load();
         };
@@ -537,13 +537,13 @@ public class RecorderActivity extends Activity {
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.END);
         buttons.setPadding(0, dp(16), 0, 0);
-        TextView cancel = pill("ABBRECHEN", ink3, false);
+        TextView cancel = pill(L.t("ABBRECHEN"), ink3, false);
         cancel.setOnClickListener(v -> {
             hideKeyboard(e);
             closeSheet(true);
         });
         buttons.addView(cancel);
-        TextView ok = pill("SICHERN", rust, true);
+        TextView ok = pill(L.t("SICHERN"), rust, true);
         ok.setOnClickListener(v -> save.run());
         LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(-2, -2);
         ol.leftMargin = dp(10);
@@ -577,17 +577,17 @@ public class RecorderActivity extends Activity {
     }
 
     private void delete(Item it) {
-        LinearLayout s = openSheet("„" + it.name + "“ löschen?");
+        LinearLayout s = openSheet("„" + it.name + L.t("“ löschen?"));
         TextView note = text(14, ink2, false);
-        note.setText("Die Aufnahme ist danach weg – auch für andere Apps.");
+        note.setText(L.t("Die Aufnahme ist danach weg – auch für andere Apps."));
         s.addView(note);
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.END);
         buttons.setPadding(0, dp(18), 0, 0);
-        TextView cancel = pill("ABBRECHEN", ink3, false);
+        TextView cancel = pill(L.t("ABBRECHEN"), ink3, false);
         cancel.setOnClickListener(v -> closeSheet(true));
         buttons.addView(cancel);
-        TextView del = pill("LÖSCHEN", rust, true);
+        TextView del = pill(L.t("LÖSCHEN"), rust, true);
         del.setOnClickListener(v -> {
             closeSheet(true);
             if (playing == it) stopPlayer();
@@ -599,7 +599,7 @@ public class RecorderActivity extends Activity {
                     getContentResolver().delete(it.uri, null, null);
                 }
             } catch (RuntimeException e) {
-                Toast.makeText(this, "Löschen ging nicht.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("Löschen ging nicht."), Toast.LENGTH_SHORT).show();
             }
             load();
         });

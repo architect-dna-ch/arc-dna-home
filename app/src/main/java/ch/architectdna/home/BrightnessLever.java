@@ -52,7 +52,7 @@ final class BrightnessLever extends View {
         card = colours[4];
         line = colours[5];
         this.listener = listener;
-        setContentDescription("Helligkeit: Geister-Level, LO, MID, HI – lange drücken für automatisch");
+        setContentDescription(L.t("Helligkeit: Geister-Level, LO, MID, HI – lange drücken für automatisch"));
     }
 
     void setLevel(int l, boolean animate) {

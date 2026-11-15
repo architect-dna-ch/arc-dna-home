@@ -58,12 +58,12 @@ public class HistoryActivity extends Activity {
         c.setTimeInMillis(t);
         switch (cat) {
             case "KÜNSTLER":
-                return p[2].isEmpty() ? "(ohne Künstler)" : p[2];
+                return p[2].isEmpty() ? L.t("(ohne Künstler)") : p[2];
             case "APP":
                 return appName(p[3]);
             case "TAGESZEIT": {
                 int h = c.get(Calendar.HOUR_OF_DAY);
-                return h >= 5 && h < 11 ? "Morgen" : h < 14 && h >= 11 ? "Mittag" : h >= 14 && h < 18 ? "Nachmittag" : h >= 18 && h < 22 ? "Abend" : "Nacht";
+                return h >= 5 && h < 11 ? L.t("Morgen") : h < 14 && h >= 11 ? L.t("Mittag") : h >= 14 && h < 18 ? L.t("Nachmittag") : h >= 18 && h < 22 ? L.t("Abend") : L.t("Nacht");
             }
             case "WOCHENTAG":
                 return new SimpleDateFormat("EEEE", Locale.GERMAN).format(new Date(t));
@@ -72,7 +72,7 @@ public class HistoryActivity extends Activity {
             case "TIER":
                 return ANIMALS[animalIndex(p)][1];
             default:
-                return MusicStats.isFavourite(this, p[1], p[2]) ? "Favoriten" : "Ohne Stern";
+                return MusicStats.isFavourite(this, p[1], p[2]) ? L.t("Favoriten") : L.t("Ohne Stern");
         }
     }
 
@@ -140,7 +140,7 @@ public class HistoryActivity extends Activity {
     /** Pick a value of a category among what's still selected (most frequent first). */
     private void pickLayer(String cat) {
         if (layers.size() >= 10) {
-            Toast.makeText(this, "Maximal 10 Filter-Ebenen", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Maximal 10 Filter-Ebenen"), Toast.LENGTH_SHORT).show();
             return;
         }
         Map<String, Integer> n = new HashMap<>();
@@ -151,13 +151,13 @@ public class HistoryActivity extends Activity {
         String[] labels = new String[size];
         for (int i = 0; i < size; i++) labels[i] = e.get(i).getKey() + "  ·  " + e.get(i).getValue();
         new android.app.AlertDialog.Builder(this)
-            .setTitle(cat + " · Ebene " + (layers.size() + 1) + " / 10")
+            .setTitle(cat + L.t(" · Ebene ") + (layers.size() + 1) + " / 10")
             .setItems(labels, (d, w) -> {
                 String v = e.get(w).getKey();
                 layers.add(new String[]{cat, v, cat.equals("★") ? v : v});
                 refresh();
             })
-            .setNegativeButton("Abbrechen", null)
+            .setNegativeButton(L.t("Abbrechen"), null)
             .show();
     }
 
@@ -270,7 +270,7 @@ public class HistoryActivity extends Activity {
 
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(sectionLabel("Architect · DNA · Musik-Verlauf"), new LinearLayout.LayoutParams(0, -2, 1f));
+        top.addView(sectionLabel(L.t("Architect · DNA · Musik-Verlauf")), new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(18, ink, true);
         close.setText("✕");
         close.setPadding(dp(12), dp(4), dp(4), dp(4));
@@ -281,16 +281,16 @@ public class HistoryActivity extends Activity {
         TextView big = text(34, ink, true);
         big.setTypeface(Typeface.create("sans-serif-black", Typeface.NORMAL));
         big.setLetterSpacing(-0.04f);
-        big.setText(all.size() + " Titel");
+        big.setText(all.size() + L.t(" Titel"));
         big.setPadding(0, dp(16), 0, 0);
         root.addView(big);
         TextView sub = mono(10, ink3);
         int favs = getSharedPreferences("favourites", MODE_PRIVATE).getAll().size();
-        sub.setText(counts.size() + " VERSCHIEDENE · ★ " + favs + " FAVORITEN" + (BtSync.peerName(this) != null ? " · HIER + " + BtSync.peerName(this).toUpperCase(java.util.Locale.GERMAN) : ""));
+        sub.setText(counts.size() + L.t(" VERSCHIEDENE · ★ ") + favs + L.t(" FAVORITEN") + (BtSync.peerName(this) != null ? L.t(" · HIER + ") + BtSync.peerName(this).toUpperCase(java.util.Locale.GERMAN) : ""));
         root.addView(sub);
 
         LinearLayout tabs = new LinearLayout(this);
-        tabRecent = tab("VERLAUF");
+        tabRecent = tab(L.t("VERLAUF"));
         tabTop = tab("TOP");
         tabRecent.setOnClickListener(v -> {
             mode = 0;
@@ -304,7 +304,7 @@ public class HistoryActivity extends Activity {
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
         tl.leftMargin = dp(8);
         tabs.addView(tabTop, tl);
-        tabAnimals = tab("TIERE");
+        tabAnimals = tab(L.t("TIERE"));
         tabAnimals.setOnClickListener(v -> {
             mode = 2;
             showAnimals();
@@ -318,7 +318,7 @@ public class HistoryActivity extends Activity {
 
         // Search, the globe of all plays (the selection lights up, the rest fades), categories, layers.
         android.widget.EditText search = new android.widget.EditText(this);
-        search.setHint("Titel, Künstler, App suchen…");
+        search.setHint(L.t("Titel, Künstler, App suchen…"));
         search.setHintTextColor(ink3);
         search.setTextColor(ink);
         search.setTextSize(15);
@@ -405,11 +405,11 @@ public class HistoryActivity extends Activity {
     /* ---- TIERE: every song sorted to a lock screen character by its remembered phase map ---- */
 
     private static final String[][] ANIMALS = {
-        {"🏎", "F1-Racer", "Energie, Builds und Drops"},
-        {"🐻", "Bär in der Höhle", "ruhig, tief, Breaks und Instrumentals"},
-        {"🦊", "Fuchs", "Stimme vorne, Flow"},
-        {"🐰", "Hase", "leicht und verspielt, Groove"},
-        {"?", "Noch nicht gehört", "Phasen werden beim nächsten Hören gelernt"}};
+        {"🏎", "F1-Racer", L.t("Energie, Builds und Drops")},
+        {"🐻", L.t("Bär in der Höhle"), L.t("ruhig, tief, Breaks und Instrumentals")},
+        {"🦊", L.t("Fuchs"), L.t("Stimme vorne, Flow")},
+        {"🐰", L.t("Hase"), L.t("leicht und verspielt, Groove")},
+        {"?", L.t("Noch nicht gehört"), L.t("Phasen werden beim nächsten Hören gelernt")}};
 
     /** Phase shares {groove, build, drop, break, vocal, instrumental} from the per-song map, or null if too little was heard. */
     private float[] shares(String[] p) {
@@ -468,7 +468,7 @@ public class HistoryActivity extends Activity {
         for (String[] p : plays) latest.putIfAbsent(key(p), p);
         if (latest.isEmpty()) {
             TextView none = text(14, ink2, false);
-            none.setText("Nichts in dieser Auswahl.");
+            none.setText(L.t("Nichts in dieser Auswahl."));
             list.addView(none);
             return;
         }
@@ -554,8 +554,8 @@ public class HistoryActivity extends Activity {
         list.removeAllViews();
         if (plays.isEmpty()) {
             TextView none = text(14, ink2, false);
-            none.setText(all.isEmpty() ? "Noch nichts gehört. Spiel einen Titel ab – er erscheint hier (Benachrichtigungszugriff nötig)."
-                : "Nichts in dieser Auswahl – Filter oben antippen zum Entfernen.");
+            none.setText(all.isEmpty() ? L.t("Noch nichts gehört. Spiel einen Titel ab – er erscheint hier (Benachrichtigungszugriff nötig).")
+                : L.t("Nichts in dieser Auswahl – Filter oben antippen zum Entfernen."));
             list.addView(none);
             return;
         }
@@ -817,7 +817,7 @@ public class HistoryActivity extends Activity {
             try {
                 startActivity(i.setPackage(null));
             } catch (RuntimeException e2) {
-                Toast.makeText(this, "Keine Musik-App kann danach suchen.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("Keine Musik-App kann danach suchen."), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -854,8 +854,8 @@ public class HistoryActivity extends Activity {
         Calendar now = Calendar.getInstance(), c = Calendar.getInstance();
         c.setTimeInMillis(t);
         int days = (now.get(Calendar.YEAR) - c.get(Calendar.YEAR)) * 366 + now.get(Calendar.DAY_OF_YEAR) - c.get(Calendar.DAY_OF_YEAR);
-        if (days == 0) return "Heute";
-        if (days == 1) return "Gestern";
+        if (days == 0) return L.t("Heute");
+        if (days == 1) return L.t("Gestern");
         return new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date(t));
     }
 }

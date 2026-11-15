@@ -94,7 +94,7 @@ final class HeadDebugView extends View {
      */
     static void saveAndShare(android.app.Activity a) {
         if (SHOTS.isEmpty()) {
-            android.widget.Toast.makeText(a, "Noch keine Aufnahme – Kamera-Debug in der Mediathek laufen lassen.", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(a, L.t("Noch keine Aufnahme – Kamera-Debug in der Mediathek laufen lassen."), android.widget.Toast.LENGTH_LONG).show();
             return;
         }
         java.util.List<Bitmap> shots = new java.util.ArrayList<>(SHOTS);
@@ -131,7 +131,7 @@ final class HeadDebugView extends View {
                 out.add(doc);
             }
         } catch (Exception e) {
-            android.widget.Toast.makeText(a, "Speichern fehlgeschlagen: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(a, L.t("Speichern fehlgeschlagen: ") + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
             return;
         } finally {
             sheet.recycle();
@@ -143,9 +143,9 @@ final class HeadDebugView extends View {
         android.content.Intent send = new android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE)
             .setType("*/*")
             .putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, out)
-            .putExtra(android.content.Intent.EXTRA_TEXT, "ARC-DNA Kopf-Tracking Aufnahme " + stamp)
+            .putExtra(android.content.Intent.EXTRA_TEXT, L.t("ARC-DNA Kopf-Tracking Aufnahme ") + stamp)
             .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        a.startActivity(android.content.Intent.createChooser(send, "Tracking-Aufnahme teilen"));
+        a.startActivity(android.content.Intent.createChooser(send, L.t("Tracking-Aufnahme teilen")));
     }
 
     private float dp(float v) {
@@ -181,7 +181,7 @@ final class HeadDebugView extends View {
         c.clipPath(clip);
         if (d == null || d.frame == null) {
             text.setTextSize(dp(10));
-            c.drawText("KAMERA STARTET …", dp(8), dp(18), text);
+            c.drawText(L.t("KAMERA STARTET …"), dp(8), dp(18), text);
             return;
         }
         // The frame, fitted and mirrored (selfie view); points are mirrored the same way.
@@ -233,15 +233,15 @@ final class HeadDebugView extends View {
         text.setTextSize(dp(wide ? 11 : 9.5f));
         float tx = wide ? pw + dp(12) : dp(8), y = wide ? dp(26) : ih + dp(14), step = dp(wide ? 18 : 13);
         text.setColor(d.face ? 0xFFFFFFFF : rust);
-        c.drawText(d.face ? String.format(java.util.Locale.ROOT, "KOPF  ↕%+5.1f°  ↔%+5.1f°", d.pitch, d.yaw) : "KEIN GESICHT", tx, y, text);
+        c.drawText(d.face ? String.format(java.util.Locale.ROOT, L.t("KOPF  ↕%+5.1f°  ↔%+5.1f°"), d.pitch, d.yaw) : L.t("KEIN GESICHT"), tx, y, text);
         y += step;
         text.setColor(0xFF1FA8FF);
-        c.drawText(Float.isNaN(d.gazeV) ? "AUGEN  –" : String.format(java.util.Locale.ROOT, "AUGEN ↕%+.2f  ↔%+.2f", d.gazeV, d.gazeH), tx, y, text);
+        c.drawText(Float.isNaN(d.gazeV) ? L.t("AUGEN  –") : String.format(java.util.Locale.ROOT, L.t("AUGEN ↕%+.2f  ↔%+.2f"), d.gazeV, d.gazeH), tx, y, text);
         y += step;
         text.setColor(rust);
         c.drawText(decision, tx, y, text);
         y += step;
         text.setColor(0x99FFFFFF);
-        c.drawText("ROT NICKEN · BLAU/GELB AUGEN", tx, y, text);
+        c.drawText(L.t("ROT NICKEN · BLAU/GELB AUGEN"), tx, y, text);
     }
 }

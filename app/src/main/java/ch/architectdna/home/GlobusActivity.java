@@ -69,7 +69,7 @@ public class GlobusActivity extends Activity {
 
     /** Regions: Android's app categories, in German; ARC-DNA's own apps and the links get their own. */
     private static final String[] REGIONS = {"ARC-DNA", "SPIELE", "MUSIK & AUDIO", "VIDEO", "FOTOS", "SOZIAL", "NEWS",
-        "KARTEN", "ARBEIT", "HILFEN", "WEB", "WEITERE"};
+        "KARTEN", "ARBEIT", "HILFEN", "WEB", L.t("WEITERE")};
     private final List<Mark> apps = new ArrayList<>();
     private final java.util.Map<String, double[]> regionCentre = new java.util.HashMap<>();
 
@@ -84,7 +84,7 @@ public class GlobusActivity extends Activity {
             case 6: return "KARTEN";
             case 7: return "ARBEIT";
             case 8: return "HILFEN";
-            default: return "WEITERE";
+            default: return L.t("WEITERE");
         }
     }
 
@@ -103,7 +103,7 @@ public class GlobusActivity extends Activity {
                 k.url = pkg;
                 k.app = new android.content.ComponentName(pkg, ri.activityInfo.name);
                 k.region = pkg.equals(getPackageName()) ? "ARC-DNA"
-                    : Build.VERSION.SDK_INT >= 26 ? regionOf(ri.activityInfo.applicationInfo.category) : "WEITERE";
+                    : Build.VERSION.SDK_INT >= 26 ? regionOf(ri.activityInfo.applicationInfo.category) : L.t("WEITERE");
                 try {
                     android.graphics.drawable.Drawable d = ri.loadIcon(pm);
                     android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888);
@@ -178,7 +178,7 @@ public class GlobusActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(label("Globus · Apps"), new LinearLayout.LayoutParams(0, -2, 1f));
+        head.addView(label(L.t("Globus · Apps")), new LinearLayout.LayoutParams(0, -2, 1f));
         count = mono(11, rust);
         head.addView(count);
         TextView close = text(18, ink, true);
@@ -189,7 +189,7 @@ public class GlobusActivity extends Activity {
         col.addView(head);
 
         TextView hint = mono(10, ink3);
-        hint.setText("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · TIPPEN = APP");
+        hint.setText(L.t("ZIEHEN = DREHEN · ZWEI FINGER = ZOOM · TIPPEN = APP"));
         hint.setPadding(0, dp(10), 0, 0);
         col.addView(hint);
 
@@ -207,7 +207,7 @@ public class GlobusActivity extends Activity {
         sheetUrl.setPadding(0, dp(4), 0, dp(12));
         sheet.addView(sheetUrl);
         LinearLayout actions = new LinearLayout(this);
-        TextView open = chip("ÖFFNEN →", rust);
+        TextView open = chip(L.t("ÖFFNEN →"), rust);
         open.setOnClickListener(v -> openSelected());
         actions.addView(open);
         remove = chip("ENTFERNEN", ink3);
@@ -238,7 +238,7 @@ public class GlobusActivity extends Activity {
 
         // Add a link by hand.
         EditText add = new EditText(this);
-        add.setHint("App suchen … (oder Link einfügen)");
+        add.setHint(L.t("App suchen … (oder Link einfügen)"));
         add.setHintTextColor(ink3);
         add.setTextColor(ink);
         add.setSingleLine(true);
@@ -313,7 +313,7 @@ public class GlobusActivity extends Activity {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(selected.url)));
             }
         } catch (RuntimeException e) {
-            Toast.makeText(this, "Lässt sich nicht öffnen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Lässt sich nicht öffnen."), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -330,7 +330,7 @@ public class GlobusActivity extends Activity {
         if (text == null) return;
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("https?://\\S+").matcher(text);
         if (!m.find()) {
-            Toast.makeText(this, "Kein Link gefunden.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("Kein Link gefunden."), Toast.LENGTH_SHORT).show();
             return;
         }
         String subject = i.getStringExtra(Intent.EXTRA_SUBJECT);
@@ -341,7 +341,7 @@ public class GlobusActivity extends Activity {
         if (!url.startsWith("http")) url = "https://" + url;
         // Shared text comes from any app: keep it sane (web links only, bounded size and count).
         if (!url.matches("https?://[^\\s]{3,2000}") || marks.size() >= 500) {
-            Toast.makeText(this, marks.size() >= 500 ? "Der Globus ist voll (500 Punkte)." : "Kein gültiger Link.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, marks.size() >= 500 ? L.t("Der Globus ist voll (500 Punkte).") : L.t("Kein gültiger Link."), Toast.LENGTH_SHORT).show();
             return;
         }
         if (title != null && title.length() > 120) title = title.substring(0, 120);
@@ -355,7 +355,7 @@ public class GlobusActivity extends Activity {
         marks.add(k);
         save();
         select(k);
-        Toast.makeText(this, "Auf den Globus gelegt.", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L.t("Auf den Globus gelegt."), Toast.LENGTH_SHORT).show();
     }
 
     /** Same site → same region; each link a little apart, always the same place. */
@@ -456,7 +456,7 @@ public class GlobusActivity extends Activity {
         }
         sheetTitle.setText(selected.title);
         sheetUrl.setText(selected.app != null ? selected.region + " · " + selected.url : selected.url);
-        remove.setText(selected.app != null ? "APP-INFO" : "ENTFERNEN");
+        remove.setText(selected.app != null ? L.t("APP-INFO") : "ENTFERNEN");
         sheet.setVisibility(View.VISIBLE);
     }
 

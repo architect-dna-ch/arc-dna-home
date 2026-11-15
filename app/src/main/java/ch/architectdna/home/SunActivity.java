@@ -74,7 +74,7 @@ public class SunActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView tag = mono(11, accent);
-        tag.setText("— SONNE & WELT");
+        tag.setText(L.t("— SONNE & WELT"));
         tag.setLetterSpacing(0.2f);
         head.addView(tag, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView x = text(20, ink, true);
@@ -273,18 +273,18 @@ public class SunActivity extends Activity {
     private View statsCard() {
         Sun s = solar(System.currentTimeMillis());
         LinearLayout b = cardBox();
-        b.addView(cardTag("JETZT · " + String.format(Locale.GERMAN, "%.3f°, %.3f°", lat, lon)));
-        b.addView(row("Sonnenhöhe", String.format(Locale.GERMAN, "%.1f°", s.elevation) + (s.elevation > 0 ? " über Horizont" : " unter Horizont")));
-        b.addView(row("Richtung", compass(s.azimuth) + String.format(Locale.GERMAN, " (%.0f°)", s.azimuth)));
-        b.addView(row("Sonnenaufgang", s.polarDay ? "—" : s.polarNight ? "—" : hm(s.sunriseMin)));
-        b.addView(row("Sonnenuntergang", s.polarDay ? "—" : s.polarNight ? "—" : hm(s.sunsetMin)));
-        b.addView(row("Höchststand", hm(s.noonMin)));
-        b.addView(row("Tageslänge", s.polarNight ? "Polarnacht" : s.polarDay ? "Polartag (24 h)"
+        b.addView(cardTag(L.t("JETZT · ") + String.format(Locale.GERMAN, "%.3f°, %.3f°", lat, lon)));
+        b.addView(row(L.t("Sonnenhöhe"), String.format(Locale.GERMAN, "%.1f°", s.elevation) + (s.elevation > 0 ? L.t(" über Horizont") : L.t(" unter Horizont"))));
+        b.addView(row(L.t("Richtung"), compass(s.azimuth) + String.format(Locale.GERMAN, " (%.0f°)", s.azimuth)));
+        b.addView(row(L.t("Sonnenaufgang"), s.polarDay ? "—" : s.polarNight ? "—" : hm(s.sunriseMin)));
+        b.addView(row(L.t("Sonnenuntergang"), s.polarDay ? "—" : s.polarNight ? "—" : hm(s.sunsetMin)));
+        b.addView(row(L.t("Höchststand"), hm(s.noonMin)));
+        b.addView(row(L.t("Tageslänge"), s.polarNight ? L.t("Polarnacht") : s.polarDay ? L.t("Polartag (24 h)")
             : (int) (s.dayLenMin / 60) + " h " + String.format(Locale.ROOT, "%02d", (int) (s.dayLenMin % 60)) + " min"));
         // Trend: compare to yesterday.
         Sun y = solar(System.currentTimeMillis() - 86_400_000L);
         double diff = s.dayLenMin - y.dayLenMin;
-        b.addView(row("Gegenüber gestern", (diff >= 0 ? "+" : "−") + Math.abs(Math.round(diff)) + " min Tageslicht " + (diff >= 0 ? "☀↑" : "🌙↓")));
+        b.addView(row(L.t("Gegenüber gestern"), (diff >= 0 ? "+" : "−") + Math.abs(Math.round(diff)) + L.t(" min Tageslicht ") + (diff >= 0 ? "☀↑" : "🌙↓")));
         return b;
     }
 
@@ -293,7 +293,7 @@ public class SunActivity extends Activity {
         Calendar c = Calendar.getInstance();
         int doy = c.get(Calendar.DAY_OF_YEAR);
         String season = season(doy);
-        b.addView(cardTag("JAHRESZEIT · " + season.toUpperCase(Locale.GERMAN)));
+        b.addView(cardTag(L.t("JAHRESZEIT · ") + season.toUpperCase(Locale.GERMAN)));
         // A year ring with solstices/equinoxes and today's marker.
         b.addView(new YearRing(), new LinearLayout.LayoutParams(-1, dp(150)));
         b.addView(info(seasonInfo(doy)));
@@ -306,29 +306,29 @@ public class SunActivity extends Activity {
         int hour = c.get(Calendar.HOUR_OF_DAY);
         // A "now" tip from the time of day.
         String tip;
-        if (s.elevation > 0 && hour < 11) tip = "🌅 Jetzt ist die beste Zeit für Morgenlicht: 10–20 Min raus oder ans Fenster. Das stellt deine innere Uhr, hebt die Stimmung und macht dich abends müde zur richtigen Zeit.";
-        else if (s.elevation > 10) tip = "☀️ Tageslicht tankt Vitamin D und Energie. Ein kurzer Gang draußen schlägt jede Tasse Kaffee fürs Wachsein.";
-        else if (s.elevation > -6) tip = "🌇 Dämmerung: Licht wird warm und dimmt. Dein Körper fängt an, Melatonin zu bilden – gutes Signal, Bildschirme langsam runterzudimmen.";
-        else tip = "🌙 Nacht: helles, blaues Licht (Handy, Decke) bremst jetzt deinen Schlaf. Warm und dunkel = leichter einschlafen.";
+        if (s.elevation > 0 && hour < 11) tip = L.t("🌅 Jetzt ist die beste Zeit für Morgenlicht: 10–20 Min raus oder ans Fenster. Das stellt deine innere Uhr, hebt die Stimmung und macht dich abends müde zur richtigen Zeit.");
+        else if (s.elevation > 10) tip = L.t("☀️ Tageslicht tankt Vitamin D und Energie. Ein kurzer Gang draußen schlägt jede Tasse Kaffee fürs Wachsein.");
+        else if (s.elevation > -6) tip = L.t("🌇 Dämmerung: Licht wird warm und dimmt. Dein Körper fängt an, Melatonin zu bilden – gutes Signal, Bildschirme langsam runterzudimmen.");
+        else tip = L.t("🌙 Nacht: helles, blaues Licht (Handy, Decke) bremst jetzt deinen Schlaf. Warm und dunkel = leichter einschlafen.");
 
         LinearLayout now = cardBox();
-        now.addView(cardTag("GERADE GUT FÜR DICH"));
+        now.addView(cardTag(L.t("GERADE GUT FÜR DICH")));
         now.addView(info(tip));
 
         LinearLayout sleep = cardBox();
-        sleep.addView(cardTag("LICHT & SCHLAF"));
-        sleep.addView(info("• Morgens Licht, abends Dunkel – so lernt dein Körper, wann Tag und Nacht ist.\n"
-            + "• 30–60 Min nach dem Aufwachen Tageslicht holt deinen Rhythmus nach vorn (leichter aufstehen).\n"
-            + "• 1–2 h vor dem Schlaf Licht dimmen, warm statt blau.\n"
-            + "• Gleiche Schlafenszeit zählt mehr als die Menge einer Nacht."));
+        sleep.addView(cardTag(L.t("LICHT & SCHLAF")));
+        sleep.addView(info(L.t("• Morgens Licht, abends Dunkel – so lernt dein Körper, wann Tag und Nacht ist.\n")
+            + L.t("• 30–60 Min nach dem Aufwachen Tageslicht holt deinen Rhythmus nach vorn (leichter aufstehen).\n")
+            + L.t("• 1–2 h vor dem Schlaf Licht dimmen, warm statt blau.\n")
+            + L.t("• Gleiche Schlafenszeit zählt mehr als die Menge einer Nacht.")));
 
         LinearLayout climate = cardBox();
-        climate.addView(cardTag("KLIMA & KÖRPER"));
+        climate.addView(cardTag(L.t("KLIMA & KÖRPER")));
         double decl = s.declination;
-        climate.addView(info("Die Sonne steht bei dir heute maximal " + String.format(Locale.GERMAN, "%.0f°", maxElev())
-            + " hoch. " + (maxElev() < 25 ? "Flacher Winkel = schwächere Strahlung, kürzere Tage, kühler. Der Körper will mehr Schlaf und Licht – ganz normal." :
-            maxElev() > 55 ? "Hoher Stand = starke Strahlung. Mittags Schatten/Wasser, Sonnencreme; Hitze kostet Schlafqualität – kühl und dunkel schlafen." :
-            "Mittlerer Stand – milde Strahlung, angenehme Tageslänge.")));
+        climate.addView(info(L.t("Die Sonne steht bei dir heute maximal ") + String.format(Locale.GERMAN, "%.0f°", maxElev())
+            + L.t(" hoch. ") + (maxElev() < 25 ? L.t("Flacher Winkel = schwächere Strahlung, kürzere Tage, kühler. Der Körper will mehr Schlaf und Licht – ganz normal.") :
+            maxElev() > 55 ? L.t("Hoher Stand = starke Strahlung. Mittags Schatten/Wasser, Sonnencreme; Hitze kostet Schlafqualität – kühl und dunkel schlafen.") :
+            L.t("Mittlerer Stand – milde Strahlung, angenehme Tageslänge."))));
         return new View[]{now, sleep, climate};
     }
 
@@ -368,7 +368,7 @@ public class SunActivity extends Activity {
                 c.drawArc(cx - r, cy - r, cx + r, cy + r, i - 90, 3.5f, false, p);
             }
             // Markers: solstices (~172, 355) and equinoxes (~80, 266).
-            String[] names = {"❄ Winter", "🌱 Frühling", "☀ Sommer", "🍂 Herbst"};
+            String[] names = {"❄ Winter", L.t("🌱 Frühling"), L.t("☀ Sommer"), L.t("🍂 Herbst")};
             int[] days = {355, 80, 172, 266};
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(9));
@@ -394,7 +394,7 @@ public class SunActivity extends Activity {
             p.setColor(ink);
             p.setTextAlign(Paint.Align.CENTER);
             p.setTextSize(dp(13));
-            c.drawText("HEUTE", cx, cy - dp(4), p);
+            c.drawText(L.t("HEUTE"), cx, cy - dp(4), p);
             p.setColor(ink3);
             p.setTextSize(dp(10));
             c.drawText(new java.text.SimpleDateFormat("d. MMM", Locale.GERMAN).format(new java.util.Date()), cx, cy + dp(12), p);
@@ -415,7 +415,7 @@ public class SunActivity extends Activity {
 
     private String season(int doy) {
         boolean south = lat < 0;
-        String[] n = {"Winter", "Frühling", "Sommer", "Herbst"};
+        String[] n = {"Winter", L.t("Frühling"), L.t("Sommer"), L.t("Herbst")};
         int i = doy < 80 || doy >= 355 ? 0 : doy < 172 ? 1 : doy < 266 ? 2 : 3;
         if (south) i = (i + 2) % 4;
         return n[i];
@@ -424,13 +424,13 @@ public class SunActivity extends Activity {
     private String seasonInfo(int doy) {
         double len = dayLenFor(doy), tomorrow = dayLenFor(doy + 1);
         boolean growing = tomorrow > len;
-        return "Die Tage werden gerade " + (growing ? "länger ☀↑" : "kürzer 🌙↓")
-            + ". " + (growing ? "Mehr Licht kommt – Energie und Stimmung steigen mit. Nutze die hellen Morgen."
-            : "Weniger Licht – es ist normal, müder und gedämpfter zu sein. Hol dir aktiv Morgenlicht, das hält die innere Uhr stabil.");
+        return L.t("Die Tage werden gerade ") + (growing ? L.t("länger ☀↑") : L.t("kürzer 🌙↓"))
+            + ". " + (growing ? L.t("Mehr Licht kommt – Energie und Stimmung steigen mit. Nutze die hellen Morgen.")
+            : L.t("Weniger Licht – es ist normal, müder und gedämpfter zu sein. Hol dir aktiv Morgenlicht, das hält die innere Uhr stabil."));
     }
 
     private String compass(double az) {
-        String[] d = {"N", "NO", "O", "SO", "S", "SW", "W", "NW"};
+        String[] d = {"N", L.t("NO"), "O", L.t("SO"), "S", "SW", "W", "NW"};
         return d[(int) Math.round(az / 45.0) % 8];
     }
 

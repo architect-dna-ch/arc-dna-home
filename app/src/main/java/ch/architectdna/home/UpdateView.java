@@ -52,11 +52,11 @@ final class UpdateView extends View {
             NetworkCapabilities nc = n == null ? null : cm.getNetworkCapabilities(n);
             if (nc == null) { net = "OFFLINE"; return; }
             net = nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ? "WLAN"
-                : nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ? "MOBIL"
-                : nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ? "LAN" : "NETZ";
+                : nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ? L.t("MOBIL")
+                : nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ? "LAN" : L.t("NETZ");
             if (nc.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) net += " · VPN";
             int kbps = nc.getLinkDownstreamBandwidthKbps();
-            if (kbps > 0) estimate = "≈ " + mbit(kbps * 1000.0) + " GESCHÄTZT";
+            if (kbps > 0) estimate = "≈ " + mbit(kbps * 1000.0) + L.t(" GESCHÄTZT");
         } catch (RuntimeException ignored) { }
     }
 
@@ -115,7 +115,7 @@ final class UpdateView extends View {
         p.setTextSize(10.5f * d);
         p.setLetterSpacing(0.24f);
         p.setColor(failed ? RUST : finished ? GREEN : RUST);
-        c.drawText(failed ? "— UPDATE ABGEBROCHEN" : "— ARC·DNA UPDATE", pad, pad + 8 * d, p);
+        c.drawText(failed ? L.t("— UPDATE ABGEBROCHEN") : "— ARC·DNA UPDATE", pad, pad + 8 * d, p);
         String ver = version > 0 ? "1.0." + version : "";
         p.setColor(INK3);
         c.drawText(ver, w - pad - p.measureText(ver), pad + 8 * d, p);
@@ -164,8 +164,8 @@ final class UpdateView extends View {
         p.setLetterSpacing(0f);
         p.setTextSize(14 * d);
         p.setColor(INK2);
-        String what = failed ? "Später nochmal." : finished ? "Bereit. Android installiert." : phase == 0 ? "Lädt nur die Änderungen"
-            : phase == 1 ? "Baut die neue Version" : total > 0 ? "Lädt die neue Version" : "Verbindet …";
+        String what = failed ? L.t("Später nochmal.") : finished ? L.t("Bereit. Android installiert.") : phase == 0 ? L.t("Lädt nur die Änderungen")
+            : phase == 1 ? L.t("Baut die neue Version") : total > 0 ? L.t("Lädt die neue Version") : L.t("Verbindet …");
         c.drawText(what, w - pad - p.measureText(what), by, p);
 
         // the numbers
@@ -178,7 +178,7 @@ final class UpdateView extends View {
         String eta = "";
         if (bps > 1000 && total > 0 && done < total && phase != 1) {
             long s = Math.max(1, Math.round((total - done) / bps));
-            eta = "NOCH " + (s >= 60 ? s / 60 + " MIN" : s + " S");
+            eta = L.t("NOCH ") + (s >= 60 ? s / 60 + " MIN" : s + " S");
         }
         String l1 = net + (speed.isEmpty() ? "" : "  ·  " + speed);
         String l2 = size + (eta.isEmpty() ? "" : "  ·  " + eta);

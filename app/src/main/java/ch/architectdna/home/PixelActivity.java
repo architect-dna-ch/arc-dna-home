@@ -108,16 +108,16 @@ public class PixelActivity extends Activity {
                 sx += sw + dp(6);
             }
             float by = barTop + dp(16) + sw + dp(14), bw = (w - dp(56) - dp(24)) / 4;
-            button(c, rubberBtn, dp(28), by, bw, rubber ? "◻ RADIERER ✓" : "◻ RADIERER", rubber);
-            button(c, undoBtn, dp(28) + (bw + dp(8)), by, bw, "↶ ZURÜCK", false);
-            button(c, clearBtn, dp(28) + 2 * (bw + dp(8)), by, bw, "LEEREN", false);
-            button(c, doneBtn, dp(28) + 3 * (bw + dp(8)), by, bw, "FERTIG ✓", true);
+            button(c, rubberBtn, dp(28), by, bw, rubber ? L.t("◻ RADIERER ✓") : L.t("◻ RADIERER"), rubber);
+            button(c, undoBtn, dp(28) + (bw + dp(8)), by, bw, L.t("↶ ZURÜCK"), false);
+            button(c, clearBtn, dp(28) + 2 * (bw + dp(8)), by, bw, L.t("LEEREN"), false);
+            button(c, doneBtn, dp(28) + 3 * (bw + dp(8)), by, bw, L.t("FERTIG ✓"), true);
             // Hint on top.
             p.setTypeface(Typeface.MONOSPACE);
             p.setTextSize(dp(11));
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(0xCC121211);
-            String hint = "QUADRATE TIPPEN / ZIEHEN = MALEN · " + cells.size() + " PIXEL";
+            String hint = L.t("QUADRATE TIPPEN / ZIEHEN = MALEN · ") + cells.size() + L.t(" PIXEL");
             float hw = p.measureText(hint) + dp(24);
             c.drawRoundRect(w / 2 - hw / 2, dp(48), w / 2 + hw / 2, dp(78), dp(15), dp(15), p);
             p.setColor(0xFFFFFFFF);

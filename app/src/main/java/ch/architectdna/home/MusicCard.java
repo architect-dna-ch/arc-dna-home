@@ -221,7 +221,7 @@ final class MusicCard {
         vizHint = label(10, ink3, true);
         vizHint.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         vizHint.setLetterSpacing(0.12f);
-        vizHint.setText("VISUALIZER: HIER TIPPEN ZUM AKTIVIEREN");
+        vizHint.setText(L.t("VISUALIZER: HIER TIPPEN ZUM AKTIVIEREN"));
         vizHint.setOnClickListener(v -> host.askAudioPermission());
         root.addView(vizHint);
 
@@ -285,7 +285,7 @@ final class MusicCard {
         buttons.setOrientation(LinearLayout.VERTICAL);
         TextView sw = label(11, ink2, true);
         sw.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        sw.setText("⇄ AUSGANG");
+        sw.setText(L.t("⇄ AUSGANG"));
         sw.setPadding(dp(10), dp(5), dp(10), dp(5));
         sw.setBackground(box(card, line, 14));
         sw.setOnClickListener(v -> showOutputSwitcher());
@@ -339,7 +339,7 @@ final class MusicCard {
         root.addView(volRow, new LinearLayout.LayoutParams(-1, -2));
 
         accessHint = label(12, ink, true);
-        accessHint.setText("Titel & Cover von Spotify & Co. anzeigen → Benachrichtigungszugriff für ARC-DNA erlauben");
+        accessHint.setText(L.t("Titel & Cover von Spotify & Co. anzeigen → Benachrichtigungszugriff für ARC-DNA erlauben"));
         accessHint.setLineSpacing(0, 1.2f);
         accessHint.setPadding(0, dp(8), 0, 0);
         accessHint.setOnClickListener(v -> host.open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
@@ -348,7 +348,7 @@ final class MusicCard {
         // Only the cover opens the playing app; the rest of the card belongs to the slider: a touch
         // anywhere in the band around it (device line above, card edge below) moves the volume.
         art.setOnClickListener(v -> openArc());
-        art.setContentDescription("Player-App öffnen");
+        art.setContentDescription(L.t("Player-App öffnen"));
         root.setOnTouchListener((v, e) -> {
             // Only the slider's own rectangle (a hair of margin) counts as sliding – not the output/
             // YouTube-Music link above it, nor the A/B chips beside it.
@@ -462,8 +462,8 @@ final class MusicCard {
         if (st == null || (st.getActions() & PlaybackState.ACTION_SEEK_TO) == 0) {
             DiagLog.log("seek not possible: " + (controller == null ? "no media session" : "app doesn't allow seeking"));
             android.widget.Toast.makeText(activity, controller == null
-                ? "Keine Musik-App verbunden (Benachrichtigungszugriff?)"
-                : appName(controller.getPackageName()) + " erlaubt kein Springen im Titel.", android.widget.Toast.LENGTH_SHORT).show();
+                ? L.t("Keine Musik-App verbunden (Benachrichtigungszugriff?)")
+                : appName(controller.getPackageName()) + L.t(" erlaubt kein Springen im Titel."), android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
         long d = duration();
@@ -512,7 +512,7 @@ final class MusicCard {
         if (p != candidate) {
             candidate = p;
             candidateSince = now;
-        } else if (phaseLabel != null && "KEIN SIGNAL".contentEquals(phaseLabel.getText())) {
+        } else if (phaseLabel != null && L.t("KEIN SIGNAL").contentEquals(phaseLabel.getText())) {
             paintPhase(phase);
         } else if (p != phase && now - candidateSince > 600) {
             phase = p;
@@ -646,7 +646,7 @@ final class MusicCard {
         stats.removeAllViews();
         if (!hasAccess()) {
             TextView ask = label(12, ink, true);
-            ask.setText("Statistiken brauchen den Benachrichtigungszugriff für ARC-DNA →");
+            ask.setText(L.t("Statistiken brauchen den Benachrichtigungszugriff für ARC-DNA →"));
             ask.setPadding(0, dp(12), 0, dp(4));
             ask.setOnClickListener(v -> host.open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
             stats.addView(ask);
@@ -659,7 +659,7 @@ final class MusicCard {
         head.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         head.setLetterSpacing(0.12f);
         String partner = BtSync.peerName(activity);
-        head.setText(partner != null ? "HEUTE GEHÖRT · HIER + " + partner.toUpperCase(java.util.Locale.GERMAN) : "HEUTE GEHÖRT · NUR AUF DIESEM GERÄT");
+        head.setText(partner != null ? L.t("HEUTE GEHÖRT · HIER + ") + partner.toUpperCase(java.util.Locale.GERMAN) : L.t("HEUTE GEHÖRT · NUR AUF DIESEM GERÄT"));
         head.setPadding(0, dp(16), 0, dp(2));
         stats.addView(head);
         TextView big = label(46, ink, true);
@@ -667,7 +667,7 @@ final class MusicCard {
         big.setText(today >= 60 ? (today / 60) + " h " + (today % 60) + " min" : today + " min");
         stats.addView(big);
         TextView sub = label(15, ink2, false);
-        sub.setText(MusicStats.tracksToday(activity) + " Titel heute · " + (total / 60) + " h " + (total % 60) + " min in 7 Tagen");
+        sub.setText(MusicStats.tracksToday(activity) + L.t(" Titel heute · ") + (total / 60) + " h " + (total % 60) + L.t(" min in 7 Tagen"));
         stats.addView(sub);
 
         // Last 7 days as bars, today in rust.
@@ -680,7 +680,7 @@ final class MusicCard {
                 long max = 1;
                 for (long m : week) max = Math.max(max, m);
                 float gap = dp(6), bw = (getWidth() - 6 * gap) / 7f, h = getHeight() - dp(20), top = dp(16);
-                String[] days = {"MO", "DI", "MI", "DO", "FR", "SA", "SO"};
+                String[] days = {"MO", L.t("DI"), L.t("MI"), L.t("DO"), "FR", "SA", L.t("SO")};
                 java.util.Calendar cal = java.util.Calendar.getInstance();
                 cal.add(java.util.Calendar.DAY_OF_YEAR, -6);
                 p.setTextSize(dp(11));
@@ -718,7 +718,7 @@ final class MusicCard {
         TextView topHead = label(11, ink3, true);
         topHead.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         topHead.setLetterSpacing(0.12f);
-        topHead.setText(top.isEmpty() ? "NOCH KEINE KÜNSTLER HEUTE" : "TOP HEUTE");
+        topHead.setText(top.isEmpty() ? L.t("NOCH KEINE KÜNSTLER HEUTE") : L.t("TOP HEUTE"));
         topHead.setPadding(0, dp(14), 0, dp(4));
         stats.addView(topHead);
         for (int i = 0; i < Math.min(3, top.size()); i++) {
@@ -738,13 +738,13 @@ final class MusicCard {
         }
         TextView history = label(13, rust, true);
         history.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        history.setText("VERLAUF ALLER TITEL →");
+        history.setText(L.t("VERLAUF ALLER TITEL →"));
         history.setPadding(0, dp(14), 0, dp(2));
         history.setOnClickListener(v -> host.open(new Intent(activity, HistoryActivity.class)));
         stats.addView(history);
         TextView back = label(11, ink3, true);
         back.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        back.setText("← WISCHEN = PLAYER");
+        back.setText(L.t("← WISCHEN = PLAYER"));
         back.setPadding(0, dp(6), 0, 0);
         stats.addView(back);
     }
@@ -908,8 +908,8 @@ final class MusicCard {
         if (title == null) return;
         MediaMetadata meta = controller == null ? null : controller.getMetadata();
         if (meta == null) {
-            title.setText(audio.isMusicActive() ? "Musik läuft" : "Nichts läuft");
-            artist.setText("🎧 Titel antippen = DJ wählen · ▶ = letzte Musik");
+            title.setText(audio.isMusicActive() ? L.t("Musik läuft") : L.t("Nichts läuft"));
+            artist.setText(L.t("🎧 Titel antippen = DJ wählen · ▶ = letzte Musik"));
             source.setText("");
             if (eraButton != null) eraButton.set(null, null);
             songTitle = null;
@@ -1424,9 +1424,9 @@ final class MusicCard {
         if (name != null && !name.equals(btName)) {
             btName = name;
             btSince = System.currentTimeMillis();
-            if (announce) host.say(name + " verbunden!");
+            if (announce) host.say(name + L.t(" verbunden!"));
         } else if (name == null && btName != null) {
-            if (announce) host.say(btName + " getrennt.");
+            if (announce) host.say(btName + L.t(" getrennt."));
             btName = null;
         }
         if (anc != null) {
@@ -1437,17 +1437,17 @@ final class MusicCard {
             askBluetoothOnce();
             int battery = speakerBattery();
             deviceName.setText(btName);
-            output.setText((battery >= 0 ? battery + " % · " : "") + "BLUETOOTH · SEIT " + since);
+            output.setText((battery >= 0 ? battery + " % · " : "") + L.t("BLUETOOTH · SEIT ") + since);
             output.setTextColor(rust);
             gauge.set(btName.toLowerCase(Locale.ROOT).matches(".*(buds|beam|pods|tune|ear|wf-|tws|free).*") ? 0 : 1, battery);
         } else if (wired != null) {
             deviceName.setText(String.valueOf(wired.getProductName()));
-            output.setText("KABEL");
+            output.setText(L.t("KABEL"));
             output.setTextColor(ink2);
             gauge.set(3, -1);
         } else {
-            deviceName.setText("Handy-Lautsprecher");
-            output.setText("TIPPEN = AUSGANG WECHSELN");
+            deviceName.setText(L.t("Handy-Lautsprecher"));
+            output.setText(L.t("TIPPEN = AUSGANG WECHSELN"));
             output.setTextColor(ink3);
             gauge.set(2, -1);
         }
@@ -1627,7 +1627,7 @@ final class MusicCard {
                 colLo[colHead] = colMid[colHead] = colHi[colHead] = 0;
                 colBeat[colHead] = false;
                 if (phaseLabel != null && audio.isMusicActive()) {
-                    phaseLabel.setText("KEIN SIGNAL");
+                    phaseLabel.setText(L.t("KEIN SIGNAL"));
                     phase = PhaseBar.Phase.GROOVE;
                 }
                 if (phaseBar != null) {
@@ -1710,7 +1710,7 @@ final class MusicCard {
             paint.setTypeface(Typeface.MONOSPACE);
             float lx = dp(2);
             int[] lc = {0xFFC8402F, 0xFFFFB627, 0xFF6FE3FF, 0xFFFFFFFF};
-            String[] ln = {"BASS", "STIMME", "HÖHEN", "● BEAT"};
+            String[] ln = {"BASS", L.t("STIMME"), L.t("HÖHEN"), "● BEAT"};
             for (int i = 0; i < 4; i++) {
                 paint.setColor(lc[i]);
                 canvas.drawText(ln[i], lx, h - dp(1), paint);
@@ -1789,7 +1789,7 @@ final class MusicCard {
         void set(String title, String app) {
             song = title;
             setVisibility(title == null ? GONE : VISIBLE);
-            setContentDescription(app == null ? null : "ARC Player öffnen");
+            setContentDescription(app == null ? null : L.t("ARC Player öffnen"));
             invalidate();
         }
 
@@ -1899,7 +1899,7 @@ final class MusicCard {
         likeButton.setText(liked ? "♥" : "♡");
         likeButton.setTextColor(liked ? rust : ink2);
         likeButton.setAlpha(pending ? 0.7f : 1f);
-        likeButton.setContentDescription(liked ? "Like entfernen" : "Like");
+        likeButton.setContentDescription(liked ? L.t("Like entfernen") : "Like");
     }
 
 
@@ -1966,7 +1966,7 @@ final class MusicCard {
         o.addView(big);
         TextView sub = label(11, 0xFFA5A5A0, true);
         sub.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        sub.setText(saved ? "LAUTSTÄRKE " + key + " GESPEICHERT" : "LAUTSTÄRKE " + key);
+        sub.setText(saved ? "LAUTSTÄRKE " + key + L.t(" GESPEICHERT") : "LAUTSTÄRKE " + key);
         sub.setGravity(Gravity.CENTER);
         o.addView(sub);
         View bar = new View(activity) {
@@ -1999,7 +1999,7 @@ final class MusicCard {
         if (moodLine == null) return;
         String l = MusicMood.line(activity);
         moodLine.setVisibility(l == null ? View.GONE : View.VISIBLE);
-        if (l != null) moodLine.setText(l + " · STIMMT?");
+        if (l != null) moodLine.setText(l + L.t(" · STIMMT?"));
     }
 
     /** "Stimmt": the guess becomes a real entry in the Stimmung log. */
@@ -2009,12 +2009,12 @@ final class MusicCard {
         try {
             android.content.SharedPreferences mp = activity.getSharedPreferences("mood", Activity.MODE_PRIVATE);
             org.json.JSONArray log = new org.json.JSONArray(mp.getString("log", "[]"));
-            log.put(new org.json.JSONObject().put("at", System.currentTimeMillis()).put("m", m).put("n", "🎵 bestätigt"));
+            log.put(new org.json.JSONObject().put("at", System.currentTimeMillis()).put("m", m).put("n", L.t("🎵 bestätigt")));
             mp.edit().putString("log", log.toString()).apply();
         } catch (Exception ignored) {
         }
         moodLine.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
-        moodLine.setText("✓ NOTIERT IN STIMMUNG · HALTEN = ÖFFNEN");
+        moodLine.setText(L.t("✓ NOTIERT IN STIMMUNG · HALTEN = ÖFFNEN"));
     }
     private String songTitle, songArtist;
 

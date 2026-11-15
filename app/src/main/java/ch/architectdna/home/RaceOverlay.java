@@ -61,7 +61,7 @@ final class RaceOverlay extends View {
 
     // You at the wheel.
     private static final int VIEW_COCKPIT = 0, VIEW_CHASE = 1, VIEW_BIRD = 2;
-    private static final String[] VIEWS = {"COCKPIT", "VERFOLGER", "VOGEL"};
+    private static final String[] VIEWS = {"COCKPIT", L.t("VERFOLGER"), L.t("VOGEL")};
     private boolean driving, braking;
     private int view = VIEW_COCKPIT, fouls, crashes;
     private float drift, peakExcess, spin;
@@ -82,7 +82,7 @@ final class RaceOverlay extends View {
         driving = false;
         braking = false;
         drift = 0;
-        say("ARC FÄHRT WIEDER", 0xFFF4F2EC);
+        say(L.t("ARC FÄHRT WIEDER"), 0xFFF4F2EC);
         invalidate();
     }
 
@@ -273,14 +273,14 @@ final class RaceOverlay extends View {
             crashes = 0;
             drift = 0;
             zoomAt = -1;
-            say("HALTEN = BREMSEN · LOSLASSEN = GAS", 0xFFF4F2EC);
+            say(L.t("HALTEN = BREMSEN · LOSLASSEN = GAS"), 0xFFF4F2EC);
             performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
             return true;
         }
         if (act == MotionEvent.ACTION_DOWN) {
             if (onPill) {
                 view = (view + 1) % VIEWS.length;
-                say("SICHT: " + VIEWS[view], 0xFFF4F2EC);
+                say(L.t("SICHT: ") + VIEWS[view], 0xFFF4F2EC);
                 performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
             } else {
                 braking = true;
@@ -565,7 +565,7 @@ final class RaceOverlay extends View {
         }
         myPlace = place(me);
         if (driving && myPlace < placeBefore) passes = 1400;
-        if (zooming && myPlace < placeBefore) passes = 1400;          // "ÜBERHOLT!" flash (ms)
+        if (zooming && myPlace < placeBefore) passes = 1400;          // L.t("ÜBERHOLT!") flash (ms)
         if (passes > 0) passes -= (int) (dt * 1000);
         updateDino(now, dt);
         if (racing && Math.floor(me.s) >= LAPS) {
@@ -711,10 +711,10 @@ final class RaceOverlay extends View {
         if (driving) driverHud(c, w, h, now);
 
         // The pill under the camera (like the head-scroll notice): his speed, place and lap.
-        String board = phase == INTRO ? "ARC GP · " + TRACKS[variant] + " · " + LAPS + " RUNDEN"
-            : phase == FINISH ? (driving ? "🏁 DU: P" + myPlace + " · " + fouls + " FOULS · " + crashes + " CRASH" : "🏁 ARC GEWINNT · " + TRACKS[variant])
+        String board = phase == INTRO ? "ARC GP · " + TRACKS[variant] + " · " + LAPS + L.t(" RUNDEN")
+            : phase == FINISH ? (driving ? L.t("🏁 DU: P") + myPlace + " · " + fouls + " FOULS · " + crashes + " CRASH" : L.t("🏁 ARC GEWINNT · ") + TRACKS[variant])
             : driving ? (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · R " + Math.min(LAPS, myLap + 1) + "/" + LAPS + " · " + VIEWS[view] + " ⟳"
-            : (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + " · RUNDE " + Math.min(LAPS, myLap + 1) + "/" + LAPS + " · TIPP = FAHREN";
+            : (int) (me.speed / dp(1) * 0.62f) + " KM/H · P" + myPlace + L.t(" · RUNDE ") + Math.min(LAPS, myLap + 1) + "/" + LAPS + L.t(" · TIPP = FAHREN");
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         p.setTextSize(dp(13));
         float tw = p.measureText(board);
@@ -740,11 +740,11 @@ final class RaceOverlay extends View {
             p.setColor(0xFFD9472F);
             p.setAlpha((int) (255 * in));
             int fin = place(me);
-            c.drawText(!driving || fin == 1 ? "SIEG!" : "P" + fin, w / 2, h * 0.36f, p);
+            c.drawText(!driving || fin == 1 ? L.t("SIEG!") : "P" + fin, w / 2, h * 0.36f, p);
             p.setTextSize(dp(13));
             p.setColor(0xFFF4F2EC);
             p.setAlpha((int) (255 * in));
-            c.drawText(driving ? "DU · " + LAPS + " RUNDEN · " + fouls + " FOULS · " + crashes + " CRASH" : "ARC · " + LAPS + " RUNDEN · P1",
+            c.drawText(driving ? L.t("DU · ") + LAPS + L.t(" RUNDEN · ") + fouls + " FOULS · " + crashes + " CRASH" : "ARC · " + LAPS + L.t(" RUNDEN · P1"),
                 w / 2, h * 0.36f + dp(26), p);
             p.setAlpha(255);
             p.setTextAlign(Paint.Align.LEFT);
@@ -775,7 +775,7 @@ final class RaceOverlay extends View {
         // A corner starts: well braked (just under the limit, brakes off moments ago) is praised.
         if (limit < dp(300) && lastLimit >= dp(300)) {
             float r = me.speed / limit;
-            if (r > 0.88f && r < 1.06f && now - brakeUpAt < 900) say("SPÄT GEBREMST · PERFEKT", 0xFF2BD96B);
+            if (r > 0.88f && r < 1.06f && now - brakeUpAt < 900) say(L.t("SPÄT GEBREMST · PERFEKT"), 0xFF2BD96B);
         }
         lastLimit = limit;
         float excess = me.speed / limit;
@@ -797,7 +797,7 @@ final class RaceOverlay extends View {
             if (peakExcess > 1.38f) {                      // much too fast: into the wall
                 crashes++;
                 crashUntil = now + 2200;
-                say("CRASH! · MAUER", 0xFFE8231A);
+                say(L.t("CRASH! · MAUER"), 0xFFE8231A);
                 performHapticFeedback(android.view.HapticFeedbackConstants.REJECT);
                 for (int i = 0; i < 40; i++) {
                     sparks.add(new float[]{me.x, me.y, (rnd.nextFloat() - 0.5f) * dp(420), (rnd.nextFloat() - 0.5f) * dp(420), 0});
@@ -806,7 +806,7 @@ final class RaceOverlay extends View {
             } else {                                         // on the grass: track limits
                 fouls++;
                 penaltyUntil = now + 2600;
-                say(fouls >= 3 ? "FOUL " + fouls + " · TRACK LIMITS · STRAFE" : "FOUL · TRACK LIMITS · GRAS", 0xFFFFB020);
+                say(fouls >= 3 ? "FOUL " + fouls + L.t(" · TRACK LIMITS · STRAFE") : L.t("FOUL · TRACK LIMITS · GRAS"), 0xFFFFB020);
                 performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 if (fouls >= 3) penaltyUntil = now + 5000;       // the third one is a drive-through
             }
@@ -843,10 +843,10 @@ final class RaceOverlay extends View {
         c.drawRoundRect(bx, by + bh * (1 - f), bx + dp(12), by + bh, dp(6), dp(6), p);
         p.setTextSize(dp(9));
         p.setColor(0xFFF4F2EC);
-        c.drawText(braking ? "BREMSE" : "GAS", bx + dp(6) + dp(14), by + bh + dp(14), p);
+        c.drawText(braking ? L.t("BREMSE") : L.t("GAS"), bx + dp(6) + dp(14), by + bh + dp(14), p);
         if (now < penaltyUntil) {
             p.setColor(0xFFFFB020);
-            c.drawText("STRAFE · " + (penaltyUntil - now) / 1000 + "." + (penaltyUntil - now) / 100 % 10 + " s", w / 2, h * 0.24f + dp(36), p);
+            c.drawText(L.t("STRAFE · ") + (penaltyUntil - now) / 1000 + "." + (penaltyUntil - now) / 100 % 10 + " s", w / 2, h * 0.24f + dp(36), p);
         }
         p.setTextAlign(Paint.Align.LEFT);
     }
@@ -1003,7 +1003,7 @@ final class RaceOverlay extends View {
     /** The hello: a speech bubble next to him, then the five red lights. */
     private void intro(Canvas c, float w, float h, Car me, long t, float roll) {
         if (t > ROLL_IN * 0.6f && t < HELLO + 5 * LIGHT) {
-            String a = "Ciao! Ich bin ARC.", b = "Startplatz 5 – Sieg in " + LAPS + " Runden.";
+            String a = L.t("Ciao! Ich bin ARC."), b = L.t("Startplatz 5 – Sieg in ") + LAPS + L.t(" Runden.");
             p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(12));
             float tw = Math.max(p.measureText(a), p.measureText(b)) + dp(20);
@@ -1082,7 +1082,7 @@ final class RaceOverlay extends View {
             p.setTextSize(dp(30));
             p.setColor(0xFFD9472F);
             p.setAlpha((int) (255 * Math.min(1, passes / 300f)));
-            c.drawText("ÜBERHOLT!", w / 2, h * 0.3f, p);
+            c.drawText(L.t("ÜBERHOLT!"), w / 2, h * 0.3f, p);
         }
         p.setAlpha(255);
         p.setTextAlign(Paint.Align.LEFT);

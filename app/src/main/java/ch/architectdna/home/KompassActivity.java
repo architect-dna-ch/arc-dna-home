@@ -38,21 +38,21 @@ import java.util.Locale;
  */
 public class KompassActivity extends Activity {
 
-    private static final String[] ANCHORS = {"🍳 Frühstück", "🍝 Mittag", "🍲 Abend", "😴 Schlaf ≥ 7 h", "🥊 Bewegung"};
+    private static final String[] ANCHORS = {L.t("🍳 Frühstück"), L.t("🍝 Mittag"), L.t("🍲 Abend"), L.t("😴 Schlaf ≥ 7 h"), L.t("🥊 Bewegung")};
     private static final String[] RULES = {
-        "Ich esse dreimal am Tag. Nicht verhandelbar.",
-        "Schlaf geht vor allem Zusätzlichen.",
-        "„Vielleicht verboten“ heisst: erlaubt. Der Zweifel entscheidet nicht.",
-        "Jede Woche hole ich eine gute Sache zurück, die ich weggeschnitten habe.",
-        "Fragen nach richtig und falsch warten auf Sonntag.",
-        "Ich bestimme Tempo und Dosis – bei Musik, Familie, Menschen."};
-    private static final String[] KINDS = {"👨‍👩‍👦 Familie", "🤝 Freunde", "💬 Date / Frau", "🕌 Community", "🎶 Musik von früher", "🥊 Gym / Sport"};
+        L.t("Ich esse dreimal am Tag. Nicht verhandelbar."),
+        L.t("Schlaf geht vor allem Zusätzlichen."),
+        L.t("„Vielleicht verboten“ heisst: erlaubt. Der Zweifel entscheidet nicht."),
+        L.t("Jede Woche hole ich eine gute Sache zurück, die ich weggeschnitten habe."),
+        L.t("Fragen nach richtig und falsch warten auf Sonntag."),
+        L.t("Ich bestimme Tempo und Dosis – bei Musik, Familie, Menschen.")};
+    private static final String[] KINDS = {L.t("👨‍👩‍👦 Familie"), L.t("🤝 Freunde"), L.t("💬 Date / Frau"), "🕌 Community", L.t("🎶 Musik von früher"), "🥊 Gym / Sport"};
     private static final String[][] HISTORY = {
-        {"Abu Zayd al-Balkhi · 9. Jh.", "Beschrieb zwanghafte Zweifel, Angst und Traurigkeit als Krankheiten der Seele – nicht als Sünde – und behandelte sie mit Reden, Ablenkung und neuen Gedanken-Gewohnheiten."},
-        {"Al-Ghazali · 11. Jh.", "Brach auf dem Höhepunkt seiner Karriere zusammen, konnte kaum sprechen oder essen, ging weg, reiste jahrelang – und kam zurück. Er schrieb offen darüber."},
-        {"Ibn Qudama · 12./13. Jh.", "Schrieb ein ganzes Buch gegen übertriebene Skrupel: Strenge, die quält, ist keine Frömmigkeit, sondern eine Falle."},
-        {"Ibn Hajar al-Haytami · 16. Jh.", "Gegen zwanghafte Zweifel hilft nichts besser, als sie komplett zu ignorieren – egal wie laut sie werden."},
-        {"Heute", "Zwanghafte Zweifel und Skrupel sind bekannt und gut behandelbar (Therapie mit ERP). Viele haben das hinter sich gebracht."}};
+        {L.t("Abu Zayd al-Balkhi · 9. Jh."), L.t("Beschrieb zwanghafte Zweifel, Angst und Traurigkeit als Krankheiten der Seele – nicht als Sünde – und behandelte sie mit Reden, Ablenkung und neuen Gedanken-Gewohnheiten.")},
+        {L.t("Al-Ghazali · 11. Jh."), L.t("Brach auf dem Höhepunkt seiner Karriere zusammen, konnte kaum sprechen oder essen, ging weg, reiste jahrelang – und kam zurück. Er schrieb offen darüber.")},
+        {L.t("Ibn Qudama · 12./13. Jh."), L.t("Schrieb ein ganzes Buch gegen übertriebene Skrupel: Strenge, die quält, ist keine Frömmigkeit, sondern eine Falle.")},
+        {L.t("Ibn Hajar al-Haytami · 16. Jh."), L.t("Gegen zwanghafte Zweifel hilft nichts besser, als sie komplett zu ignorieren – egal wie laut sie werden.")},
+        {L.t("Heute"), L.t("Zwanghafte Zweifel und Skrupel sind bekannt und gut behandelbar (Therapie mit ERP). Viele haben das hinter sich gebracht.")}};
 
     private SharedPreferences prefs;
     private int bg, card, line, ink, ink2, ink3, rust, green = 0xFF2BBF6A;
@@ -97,7 +97,7 @@ public class KompassActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView label = mono(11, ink3);
-        label.setText("— KOMPASS");
+        label.setText(L.t("— KOMPASS"));
         label.setLetterSpacing(0.24f);
         head.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(22, ink, true);
@@ -109,11 +109,11 @@ public class KompassActivity extends Activity {
 
         // 1. The basics, before any big question.
         TextView t1 = text(28, ink, true);
-        t1.setText("Heute zuerst.");
+        t1.setText(L.t("Heute zuerst."));
         t1.setLetterSpacing(-0.03f);
         col.addView(t1, margins(dp(12)));
         TextView s1 = text(14, ink2, false);
-        s1.setText("Essen, Schlaf, Bewegung kommen vor jeder Entscheidung über Charakter, Menschen oder Religion.");
+        s1.setText(L.t("Essen, Schlaf, Bewegung kommen vor jeder Entscheidung über Charakter, Menschen oder Religion."));
         col.addView(s1, margins(dp(4)));
         anchors = new LinearLayout(this);
         anchors.setOrientation(LinearLayout.VERTICAL);
@@ -122,7 +122,7 @@ public class KompassActivity extends Activity {
         col.addView(anchorNote, margins(dp(6)));
 
         // 2. Direct rules.
-        col.addView(section("DEINE REGELN"), margins(dp(28)));
+        col.addView(section(L.t("DEINE REGELN")), margins(dp(28)));
         for (String r : RULES) {
             TextView rv = text(15, ink, false);
             rv.setText("•  " + r);
@@ -132,14 +132,14 @@ public class KompassActivity extends Activity {
         }
 
         // 3. Park the doubt.
-        col.addView(section("ZWEIFEL PARKEN"), margins(dp(28)));
+        col.addView(section(L.t("ZWEIFEL PARKEN")), margins(dp(28)));
         TextView s3 = text(14, ink2, false);
-        s3.setText("Der Gedanke dreht? Aufschreiben, parken. Er wartet bis Sonntag – du musst ihn jetzt nicht lösen.");
+        s3.setText(L.t("Der Gedanke dreht? Aufschreiben, parken. Er wartet bis Sonntag – du musst ihn jetzt nicht lösen."));
         col.addView(s3, margins(dp(4)));
-        EditText doubt = field("Was zweifelt gerade? …");
+        EditText doubt = field(L.t("Was zweifelt gerade? …"));
         col.addView(doubt, margins(dp(8)));
         LinearLayout dRow = new LinearLayout(this);
-        TextView park = chip("🅿 PARKEN", true);
+        TextView park = chip(L.t("🅿 PARKEN"), true);
         park.setOnClickListener(v -> {
             String d = doubt.getText().toString().trim();
             if (d.isEmpty()) return;
@@ -147,7 +147,7 @@ public class KompassActivity extends Activity {
             doubt.setText("");
             hideKeyboard(doubt);
             paintDoubts();
-            toast("Geparkt bis Sonntag. Du darfst jetzt was anderes machen.");
+            toast(L.t("Geparkt bis Sonntag. Du darfst jetzt was anderes machen."));
         });
         dRow.addView(park, weighted(dp(8)));
         TextView review = chip("☀ CHECK-IN", false);
@@ -159,18 +159,18 @@ public class KompassActivity extends Activity {
         col.addView(doubts, margins(dp(8)));
 
         // 4. Does this do me good?
-        col.addView(section("TUT MIR DAS GUT?"), margins(dp(28)));
+        col.addView(section(L.t("TUT MIR DAS GUT?")), margins(dp(28)));
         TextView s4 = text(14, ink2, false);
-        s4.setText("Statt „ist das erlaubt?“ oder „gehört das zu mir?“ – nur diese Frage.");
+        s4.setText(L.t("Statt „ist das erlaubt?“ oder „gehört das zu mir?“ – nur diese Frage."));
         col.addView(s4, margins(dp(4)));
-        EditText what = field("Was steht an? (z. B. Party, Familie anrufen, Musik)");
+        EditText what = field(L.t("Was steht an? (z. B. Party, Familie anrufen, Musik)"));
         col.addView(what, margins(dp(8)));
         LinearLayout tRow = new LinearLayout(this);
-        String[] tests = {"👍 TUT GUT", "🤷 WEISS NICHT", "👎 ZIEHT RUNTER"};
+        String[] tests = {L.t("👍 TUT GUT"), L.t("🤷 WEISS NICHT"), L.t("👎 ZIEHT RUNTER")};
         String[] answers = {
-            "Mach's. Ohne Rechtfertigung, ohne Nachprüfen.",
-            "Kleine Dosis ausprobieren – danach kurz unten bei „Tempo & Dosis“ eintragen, wie's war.",
-            "Lass es oder mach's kürzer. Du hältst die Bremse – und das ist kein Versagen."};
+            L.t("Mach's. Ohne Rechtfertigung, ohne Nachprüfen."),
+            L.t("Kleine Dosis ausprobieren – danach kurz unten bei „Tempo & Dosis“ eintragen, wie's war."),
+            L.t("Lass es oder mach's kürzer. Du hältst die Bremse – und das ist kein Versagen.")};
         for (int i = 0; i < 3; i++) {
             TextView b = chip(tests[i], i == 0);
             int k = i;
@@ -190,18 +190,18 @@ public class KompassActivity extends Activity {
         col.addView(testAnswer, margins(dp(8)));
 
         // 5. Money envelopes.
-        col.addView(section("GELD · ZWEI KUVERTS"), margins(dp(28)));
+        col.addView(section(L.t("GELD · ZWEI KUVERTS")), margins(dp(28)));
         TextView s5 = text(14, ink2, false);
-        s5.setText("Kleider-Geld zuerst zur Seite – dann frisst Auswärts-Essen es nicht auf. Ist die Woche leer: kochen, ohne Schuld. Halten = Betrag ändern.");
+        s5.setText(L.t("Kleider-Geld zuerst zur Seite – dann frisst Auswärts-Essen es nicht auf. Ist die Woche leer: kochen, ohne Schuld. Halten = Betrag ändern."));
         col.addView(s5, margins(dp(4)));
         money = new LinearLayout(this);
         money.setOrientation(LinearLayout.VERTICAL);
         col.addView(money, margins(dp(8)));
 
         // 6. Pace and dose.
-        col.addView(section("TEMPO & DOSIS"), margins(dp(28)));
+        col.addView(section(L.t("TEMPO & DOSIS")), margins(dp(28)));
         TextView s6 = text(14, ink2, false);
-        s6.setText("Nach einem Kontakt: wie war's? Mit der Zeit siehst du, was dir guttut – ohne grosse Entscheidung.");
+        s6.setText(L.t("Nach einem Kontakt: wie war's? Mit der Zeit siehst du, was dir guttut – ohne grosse Entscheidung."));
         col.addView(s6, margins(dp(4)));
         HorizontalScrollView hs = new HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
@@ -221,7 +221,7 @@ public class KompassActivity extends Activity {
         col.addView(contacts, margins(dp(8)));
 
         // 7. Not alone.
-        TextView hist = section("DU BIST NICHT ALLEIN  ▸");
+        TextView hist = section(L.t("DU BIST NICHT ALLEIN  ▸"));
         col.addView(hist, margins(dp(28)));
         LinearLayout histBox = new LinearLayout(this);
         histBox.setOrientation(LinearLayout.VERTICAL);
@@ -243,13 +243,13 @@ public class KompassActivity extends Activity {
         hist.setOnClickListener(v -> {
             boolean open = histBox.getVisibility() != View.VISIBLE;
             histBox.setVisibility(open ? View.VISIBLE : View.GONE);
-            hist.setText(open ? "— DU BIST NICHT ALLEIN  ▾" : "— DU BIST NICHT ALLEIN  ▸");
+            hist.setText(open ? L.t("— DU BIST NICHT ALLEIN  ▾") : L.t("— DU BIST NICHT ALLEIN  ▸"));
         });
         col.addView(histBox, margins(dp(4)));
 
         // 8. Help, quietly at the bottom.
         TextView help = text(14, ink2, false);
-        help.setText("Wenn's zu schwer wird: 📞 143 · Die Dargebotene Hand – rund um die Uhr, anonym. Antippen = anrufen.");
+        help.setText(L.t("Wenn's zu schwer wird: 📞 143 · Die Dargebotene Hand – rund um die Uhr, anonym. Antippen = anrufen."));
         help.setPadding(dp(14), dp(12), dp(14), dp(12));
         help.setBackground(box(card, line, 14));
         help.setOnClickListener(v -> {
@@ -315,8 +315,8 @@ public class KompassActivity extends Activity {
             if (meals) streak++;
             c.add(Calendar.DAY_OF_YEAR, -1);
         }
-        anchorNote.setText(done == ANCHORS.length ? "ALLES DA · STARK. DER REST DES TAGES GEHÖRT DIR."
-            : done + "/" + ANCHORS.length + " HEUTE" + (streak > 1 ? " · " + streak + " TAGE IN FOLGE DREI MAHLZEITEN" : ""));
+        anchorNote.setText(done == ANCHORS.length ? L.t("ALLES DA · STARK. DER REST DES TAGES GEHÖRT DIR.")
+            : done + "/" + ANCHORS.length + L.t(" HEUTE") + (streak > 1 ? " · " + streak + L.t(" TAGE IN FOLGE DREI MAHLZEITEN") : ""));
     }
 
     private void paintDoubts() {
@@ -325,19 +325,19 @@ public class KompassActivity extends Activity {
         int open = 0;
         for (int i = 0; i < a.length(); i++) if (!a.optJSONObject(i).optBoolean("done")) open++;
         TextView n = mono(11, open > 0 ? rust : ink3);
-        n.setText(open == 0 ? "NICHTS GEPARKT" : open + " GEPARKT · WARTEN AUF SONNTAG");
+        n.setText(open == 0 ? L.t("NICHTS GEPARKT") : open + L.t(" GEPARKT · WARTEN AUF SONNTAG"));
         doubts.addView(n);
         JSONArray th = list("therapy");
         if (th.length() > 0) {
             TextView t = mono(11, ink2);
-            t.setText("🩺 " + th.length() + " FÜR DIE THERAPIE NOTIERT · HALTEN = ANZEIGEN");
+            t.setText("🩺 " + th.length() + L.t(" FÜR DIE THERAPIE NOTIERT · HALTEN = ANZEIGEN"));
             t.setPadding(0, dp(6), 0, 0);
             t.setOnLongClickListener(v -> {
                 StringBuilder b = new StringBuilder();
                 for (int i = 0; i < th.length(); i++) b.append("• ").append(th.optJSONObject(i).optString("t")).append('\n');
-                sheet("Für die Therapie", b.toString().trim(), new String[]{"Teilen", "Liste leeren", "Schliessen"}, k -> {
+                sheet(L.t("Für die Therapie"), b.toString().trim(), new String[]{L.t("Teilen"), L.t("Liste leeren"), L.t("Schliessen")}, k -> {
                     if (k == 0) startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, "Für die Therapie:\n" + b), "Teilen"));
+                        .putExtra(Intent.EXTRA_TEXT, L.t("Für die Therapie:\n") + b), L.t("Teilen")));
                     else if (k == 1) {
                         prefs.edit().putString("therapy", "[]").apply();
                         paintDoubts();
@@ -363,14 +363,14 @@ public class KompassActivity extends Activity {
         }
         if (idx < 0) {
             prefs.edit().putString("checkedIn", today()).apply();
-            sheet("Check-in", from == 0 ? "Nichts mehr geparkt. Die Woche gehört dir." : "Durch. Was noch geparkt ist, wartet bis nächsten Sonntag.",
+            sheet("Check-in", from == 0 ? L.t("Nichts mehr geparkt. Die Woche gehört dir.") : L.t("Durch. Was noch geparkt ist, wartet bis nächsten Sonntag."),
                 new String[]{"Gut"}, k -> { });
             return;
         }
         JSONObject o = a.optJSONObject(idx);
         int at = idx;
-        sheet("Check-in · geparkter Zweifel", "„" + o.optString("t") + "“\n\nIst das heute noch wichtig?",
-            new String[]{"✓ Erledigt – war nur der Zweifel", "↻ Bleibt geparkt", "🩺 Mit der Therapie besprechen"}, k -> {
+        sheet(L.t("Check-in · geparkter Zweifel"), "„" + o.optString("t") + L.t("“\n\nIst das heute noch wichtig?"),
+            new String[]{L.t("✓ Erledigt – war nur der Zweifel"), L.t("↻ Bleibt geparkt"), L.t("🩺 Mit der Therapie besprechen")}, k -> {
                 if (k != 1) {
                     try {
                         a.getJSONObject(at).put("done", true);
@@ -413,8 +413,8 @@ public class KompassActivity extends Activity {
             if (o.optInt("k") == 0 && o.optLong("at") >= weekStart) food += o.optDouble("chf");
             if (o.optInt("k") == 1 && o.optLong("at") >= monthStart) clothes += o.optDouble("chf");
         }
-        money.addView(envelope("🍔 Auswärts essen · diese Woche", food, weekFood(), 0, new int[]{40, 60, 80, 100, 120}, "foodWeek"));
-        money.addView(envelope("👕 Kleider · dieser Monat", clothes, monthClothes(), 1, new int[]{50, 90, 120, 150, 200}, "clothesMonth"), margins(dp(8)));
+        money.addView(envelope(L.t("🍔 Auswärts essen · diese Woche"), food, weekFood(), 0, new int[]{40, 60, 80, 100, 120}, "foodWeek"));
+        money.addView(envelope(L.t("👕 Kleider · dieser Monat"), clothes, monthClothes(), 1, new int[]{50, 90, 120, 150, 200}, "clothesMonth"), margins(dp(8)));
     }
 
     private View envelope(String title, float spent, int budget, int kind, int[] steps, String key) {
@@ -429,7 +429,7 @@ public class KompassActivity extends Activity {
         top.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
         float left = budget - spent;
         TextView l = mono(13, left < 0 ? rust : left < budget * 0.25f ? 0xFFE8B931 : green);
-        l.setText(String.format(Locale.ROOT, "CHF %.0f %s", Math.abs(left), left < 0 ? "DRÜBER" : "ÜBRIG"));
+        l.setText(String.format(Locale.ROOT, "CHF %.0f %s", Math.abs(left), left < 0 ? L.t("DRÜBER") : L.t("ÜBRIG")));
         top.addView(l);
         c.addView(top);
         View bar = new View(this) {
@@ -446,7 +446,7 @@ public class KompassActivity extends Activity {
         c.addView(bar, new LinearLayout.LayoutParams(-1, dp(10)));
         ((LinearLayout.LayoutParams) bar.getLayoutParams()).topMargin = dp(10);
         TextView sub = mono(10, ink3);
-        sub.setText(String.format(Locale.ROOT, "CHF %.0f VON %d · ANTIPPEN = AUSGABE · HALTEN = BETRAG", spent, budget));
+        sub.setText(String.format(Locale.ROOT, L.t("CHF %.0f VON %d · ANTIPPEN = AUSGABE · HALTEN = BETRAG"), spent, budget));
         c.addView(sub, margins(dp(6)));
         c.setOnClickListener(v -> spendSheet(kind));
         c.setOnLongClickListener(v -> {
@@ -463,18 +463,18 @@ public class KompassActivity extends Activity {
         int[] amounts = kind == 0 ? new int[]{8, 12, 15, 20, 25, 35} : new int[]{20, 30, 50, 80, 120};
         String[] rows = new String[amounts.length];
         for (int i = 0; i < amounts.length; i++) rows[i] = "CHF " + amounts[i];
-        sheet(kind == 0 ? "🍔 Auswärts gegessen" : "👕 Kleider gekauft", "Wie viel?", rows, k -> {
+        sheet(kind == 0 ? L.t("🍔 Auswärts gegessen") : L.t("👕 Kleider gekauft"), L.t("Wie viel?"), rows, k -> {
             addTo("spend", new String[]{"k", String.valueOf(kind), "chf", String.valueOf(amounts[k])});
             paintMoney();
         });
     }
 
     private void feelSheet(int kind) {
-        sheet(KINDS[kind], "Wie war's?", new String[]{"😊 Gut", "😐 Okay", "😣 Hat runtergezogen"}, k -> {
+        sheet(KINDS[kind], L.t("Wie war's?"), new String[]{L.t("😊 Gut"), "😐 Okay", L.t("😣 Hat runtergezogen")}, k -> {
             addTo("contacts", new String[]{"k", String.valueOf(kind), "f", String.valueOf(k)});
             paintContacts();
-            if (kind == 2 && k == 2) toast("Enttäuschung ist kein Beweis gegen dich. Langsam: Gefühle wachsen lassen, nicht springen.");
-            else if (k == 2) toast("Notiert. Du darfst Abstand nehmen – das ist kein Versagen.");
+            if (kind == 2 && k == 2) toast(L.t("Enttäuschung ist kein Beweis gegen dich. Langsam: Gefühle wachsen lassen, nicht springen."));
+            else if (k == 2) toast(L.t("Notiert. Du darfst Abstand nehmen – das ist kein Versagen."));
         });
     }
 
@@ -492,7 +492,7 @@ public class KompassActivity extends Activity {
         }
         if (!any) {
             TextView none = text(13, ink3, false);
-            none.setText("Noch nichts eingetragen. Oben antippen nach einem Kontakt, einem Song, einem Training.");
+            none.setText(L.t("Noch nichts eingetragen. Oben antippen nach einem Kontakt, einem Song, einem Training."));
             contacts.addView(none);
             return;
         }
@@ -500,14 +500,14 @@ public class KompassActivity extends Activity {
             int total = n[k][0] + n[k][1] + n[k][2];
             if (total == 0) continue;
             TextView r = mono(12, ink);
-            String hint = n[k][2] > n[k][0] ? "  → WENIGER / KÜRZER" : n[k][0] > n[k][2] ? "  → TUT DIR GUT" : "";
+            String hint = n[k][2] > n[k][0] ? L.t("  → WENIGER / KÜRZER") : n[k][0] > n[k][2] ? L.t("  → TUT DIR GUT") : "";
             r.setText(KINDS[k] + "  ·  😊" + n[k][0] + "  😐" + n[k][1] + "  😣" + n[k][2] + hint);
             r.setTextColor(n[k][2] > n[k][0] ? rust : n[k][0] > n[k][2] ? green : ink);
             r.setPadding(0, dp(4), 0, dp(4));
             contacts.addView(r);
         }
         TextView foot = mono(10, ink3);
-        foot.setText("LETZTE 14 TAGE");
+        foot.setText(L.t("LETZTE 14 TAGE"));
         contacts.addView(foot, margins(dp(4)));
     }
 

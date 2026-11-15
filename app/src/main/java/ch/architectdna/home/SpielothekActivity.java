@@ -135,10 +135,10 @@ public class SpielothekActivity extends Activity {
 
         private void menu(Canvas c, long now) {
             float w = getWidth(), h = getHeight(), top = topInset + dp(24);
-            label(c, "— ARC-DNA SPIELOTHEK", dp(22), top + dp(10), dp(11), INK3, false, Paint.Align.LEFT);
-            label(c, "Eine Runde?", dp(22), top + dp(52), dp(30), INK, true, Paint.Align.LEFT);
-            String[] names = {"Darts", "Rakete", "Tischtennis"};
-            String[] subs = {"3 Pfeile × 5 Runden · ruhige Hand", "Halten links / rechts · Sterne sammeln", "Bis 11 gegen den Robo"};
+            label(c, L.t("— ARC-DNA SPIELOTHEK"), dp(22), top + dp(10), dp(11), INK3, false, Paint.Align.LEFT);
+            label(c, L.t("Eine Runde?"), dp(22), top + dp(52), dp(30), INK, true, Paint.Align.LEFT);
+            String[] names = {"Darts", L.t("Rakete"), L.t("Tischtennis")};
+            String[] subs = {L.t("3 Pfeile × 5 Runden · ruhige Hand"), L.t("Halten links / rechts · Sterne sammeln"), L.t("Bis 11 gegen den Robo")};
             String[] keys = {"darts", "rocket", "pong"};
             float ch = Math.min(dp(170), (h - top - dp(90) - bottomInset - dp(24)) / 3 - dp(12));
             for (int i = 0; i < 3; i++) {
@@ -158,7 +158,7 @@ public class SpielothekActivity extends Activity {
                 float tx = cards[i].left + ch + dp(4);
                 label(c, names[i], tx, iy - dp(4), dp(24), INK, true, Paint.Align.LEFT);
                 label(c, subs[i].toUpperCase(Locale.GERMAN), tx, iy + dp(20), dp(10), INK3, false, Paint.Align.LEFT);
-                label(c, "REKORD " + best(keys[i]), tx, iy + dp(42), dp(11), RUST, false, Paint.Align.LEFT);
+                label(c, L.t("REKORD ") + best(keys[i]), tx, iy + dp(42), dp(11), RUST, false, Paint.Align.LEFT);
             }
         }
 
@@ -241,7 +241,7 @@ public class SpielothekActivity extends Activity {
         private void darts(Canvas c, float dt, long now) {
             float w = getWidth(), h = getHeight();
             float cx = w / 2, cy = h * 0.47f, R = Math.min(w, h) * 0.38f;
-            label(c, "DARTS · RUNDE " + Math.min(5, dartRound) + "/5", w / 2, topInset + dp(36), dp(12), INK3, false, Paint.Align.CENTER);
+            label(c, L.t("DARTS · RUNDE ") + Math.min(5, dartRound) + "/5", w / 2, topInset + dp(36), dp(12), INK3, false, Paint.Align.CENTER);
             label(c, String.valueOf(dartScore), w / 2, topInset + dp(86), dp(44), INK, true, Paint.Align.CENTER);
             board(c, cx, cy, R);
             for (float[] d : darts) {
@@ -277,8 +277,8 @@ public class SpielothekActivity extends Activity {
             if (now - hitAt < 1200 && !lastHit.isEmpty()) {
                 label(c, lastHit, w / 2, cy + R + dp(56), dp(26), YELLOW, true, Paint.Align.CENTER);
             }
-            String hint = dartRound > 5 ? "FERTIG · " + dartScore + " PUNKTE · TIPPEN = NOCHMAL"
-                : "FINGER HALTEN = ZIELEN · LOSLASSEN = WERFEN · PFEIL " + (dartThrown + 1) + "/3";
+            String hint = dartRound > 5 ? L.t("FERTIG · ") + dartScore + L.t(" PUNKTE · TIPPEN = NOCHMAL")
+                : L.t("FINGER HALTEN = ZIELEN · LOSLASSEN = WERFEN · PFEIL ") + (dartThrown + 1) + "/3";
             label(c, hint, w / 2, h - bottomInset - dp(28), dp(11), INK2, false, Paint.Align.CENTER);
         }
 
@@ -301,7 +301,7 @@ public class SpielothekActivity extends Activity {
                 int[] sc = scoreAt(dx, dy);
                 darts.add(new float[]{dx, dy});
                 dartScore += sc[0];
-                lastHit = sc[0] == 50 ? "BULLSEYE! 50" : sc[0] == 25 ? "BULL 25" : sc[0] == 0 ? "DANEBEN"
+                lastHit = sc[0] == 50 ? "BULLSEYE! 50" : sc[0] == 25 ? "BULL 25" : sc[0] == 0 ? L.t("DANEBEN")
                     : (sc[1] == 3 ? "TRIPLE " : sc[1] == 2 ? "DOUBLE " : "") + sc[0];
                 hitAt = SystemClock.uptimeMillis();
                 performHapticFeedback(sc[0] >= 50 ? HapticFeedbackConstants.CONFIRM : HapticFeedbackConstants.VIRTUAL_KEY);
@@ -423,13 +423,13 @@ public class SpielothekActivity extends Activity {
                     float rr = dp(18) + (float) Math.abs(Math.sin(now / 120.0 + k)) * dp(24);
                     c.drawCircle(sx + (float) Math.cos(a) * rr, sy + (float) Math.sin(a) * rr, dp(7), p);
                 }
-                label(c, "BUMM!", w / 2, h * 0.42f, dp(44), RUST, true, Paint.Align.CENTER);
-                label(c, score() + " PUNKTE · TIPPEN = NOCHMAL", w / 2, h * 0.42f + dp(36), dp(12), INK2, false, Paint.Align.CENTER);
+                label(c, L.t("BUMM!"), w / 2, h * 0.42f, dp(44), RUST, true, Paint.Align.CENTER);
+                label(c, score() + L.t(" PUNKTE · TIPPEN = NOCHMAL"), w / 2, h * 0.42f + dp(36), dp(12), INK2, false, Paint.Align.CENTER);
             } else {
                 rocketShip(c, sx, sy, size, -90 + steer * 14, true);
             }
             label(c, (int) (height / dp(10)) + " M · ★ " + stars, w / 2, topInset + dp(40), dp(18), INK, true, Paint.Align.CENTER);
-            if (!crashed) label(c, "LINKS / RECHTS HALTEN = LENKEN", w / 2, h - bottomInset - dp(28), dp(11), INK3, false, Paint.Align.CENTER);
+            if (!crashed) label(c, L.t("LINKS / RECHTS HALTEN = LENKEN"), w / 2, h - bottomInset - dp(28), dp(11), INK3, false, Paint.Align.CENTER);
         }
 
         private int score() {
@@ -525,11 +525,11 @@ public class SpielothekActivity extends Activity {
                 }
                 if (by > 1.04f) {
                     botPts++;
-                    pongMsg = "PUNKT ROBO";
+                    pongMsg = L.t("PUNKT ROBO");
                     serve(false);
                 } else if (by < -0.04f) {
                     youPts++;
-                    pongMsg = "PUNKT DU!";
+                    pongMsg = L.t("PUNKT DU!");
                     serve(true);
                 }
                 if (youPts >= 11) record("pong", youPts - botPts);
@@ -548,15 +548,15 @@ public class SpielothekActivity extends Activity {
             c.drawCircle(tl + bx * tw + dp(4), tt + by * th + dp(4), dp(7), p);
             p.setColor(0xFFFFB627);
             c.drawCircle(tl + bx * tw, tt + by * th, dp(7) + lift * 0.4f, p);
-            label(c, "ROBO " + botPts + "  :  " + youPts + " DU", w / 2, topInset + dp(44), dp(20), INK, true, Paint.Align.CENTER);
+            label(c, "ROBO " + botPts + "  :  " + youPts + L.t(" DU"), w / 2, topInset + dp(44), dp(20), INK, true, Paint.Align.CENTER);
             if (over) {
                 boolean won = youPts >= 11;
-                label(c, won ? "GEWONNEN! 🏓" : "Der Robo gewinnt.", w / 2, h / 2 - dp(30), dp(34), won ? GREEN : RUST, true, Paint.Align.CENTER);
-                label(c, "TIPPEN = NOCHMAL", w / 2, h / 2 + dp(4), dp(12), INK2, false, Paint.Align.CENTER);
+                label(c, won ? L.t("GEWONNEN! 🏓") : L.t("Der Robo gewinnt."), w / 2, h / 2 - dp(30), dp(34), won ? GREEN : RUST, true, Paint.Align.CENTER);
+                label(c, L.t("TIPPEN = NOCHMAL"), w / 2, h / 2 + dp(4), dp(12), INK2, false, Paint.Align.CENTER);
             } else if (now < serveAt && !pongMsg.isEmpty()) {
                 label(c, pongMsg, w / 2, h / 2 - dp(30), dp(22), YELLOW, true, Paint.Align.CENTER);
             }
-            label(c, "FINGER UNTEN = SCHLÄGER · WISCHEN BEIM SCHLAG = SPIN", w / 2, h - bottomInset - dp(24), dp(10), INK3, false, Paint.Align.CENTER);
+            label(c, L.t("FINGER UNTEN = SCHLÄGER · WISCHEN BEIM SCHLAG = SPIN"), w / 2, h - bottomInset - dp(24), dp(10), INK3, false, Paint.Align.CENTER);
         }
 
         private void pongTouch(MotionEvent e) {

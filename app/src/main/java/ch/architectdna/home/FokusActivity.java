@@ -39,20 +39,20 @@ public class FokusActivity extends Activity {
 
     private Node root() {
         return split("Start",
-            "Freizeit", "abschalten, geniessen",
+            "Freizeit", L.t("abschalten, geniessen"),
                 split("Freizeit",
-                    "Ruhe", "runterkommen", leaf("Ruhe", "player", "globus", "freq"),
-                    "Spiel", "Spass, Wettkampf", leaf("Spiel", "race", "nexus", "board")),
-            "Fokus", "etwas schaffen",
+                    L.t("Ruhe"), "runterkommen", leaf(L.t("Ruhe"), "player", "globus", "freq"),
+                    L.t("Spiel"), L.t("Spass, Wettkampf"), leaf(L.t("Spiel"), "race", "nexus", "board")),
+            "Fokus", L.t("etwas schaffen"),
                 split("Fokus",
-                    "Planen", "ordnen, vorbereiten",
+                    "Planen", L.t("ordnen, vorbereiten"),
                         split("Planen",
-                            "Schule", "", leaf("Schule", "wecker", "buecher", "lern"),
-                            "Arbeit", "", leaf("Arbeit", "board", "wecker", "recorder")),
-                    "Machen", "jetzt umsetzen",
+                            L.t("Schule"), "", leaf(L.t("Schule"), "wecker", "buecher", "lern"),
+                            L.t("Arbeit"), "", leaf(L.t("Arbeit"), "board", "wecker", "recorder")),
+                    "Machen", L.t("jetzt umsetzen"),
                         split("Machen",
-                            "Schule", "", leaf("Schule", "lern", "buecher", "recorder"),
-                            "Arbeit", "", leaf("Arbeit", "board", "recorder", "vpn"))));
+                            L.t("Schule"), "", leaf(L.t("Schule"), "lern", "buecher", "recorder"),
+                            L.t("Arbeit"), "", leaf(L.t("Arbeit"), "board", "recorder", "vpn"))));
     }
 
     private final Deque<Node> stack = new ArrayDeque<>();
@@ -182,11 +182,11 @@ public class FokusActivity extends Activity {
         h.addView(crumb, new LinearLayout.LayoutParams(0, -2, 1f));
 
         if (!stack.isEmpty()) {
-            TextView back = chip("↑ zurück");
+            TextView back = chip(L.t("↑ zurück"));
             back.setOnClickListener(v -> onBackPressed());
             h.addView(back);
         }
-        TextView all = chip("Alle Apps");
+        TextView all = chip(L.t("Alle Apps"));
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-2, -2); alp.leftMargin = dp(8);
         all.setOnClickListener(v -> finish()); // back to the full home
         h.addView(all, alp);
@@ -300,7 +300,7 @@ public class FokusActivity extends Activity {
         col.setPadding(dp(22), dp(12), dp(22), dp(24));
 
         TextView lead = new TextView(this);
-        lead.setText("Dafür brauchst du jetzt:");
+        lead.setText(L.t("Dafür brauchst du jetzt:"));
         lead.setTextColor(ink2);
         lead.setTextSize(15);
         lead.setPadding(0, dp(6), 0, dp(16));
@@ -310,7 +310,7 @@ public class FokusActivity extends Activity {
         for (String tok : cur.apps) col.addView(appCard(tok), cardLp());
 
         TextView hint = new TextView(this);
-        hint.setText("Nicht dabei? → Alle Apps");
+        hint.setText(L.t("Nicht dabei? → Alle Apps"));
         hint.setTextColor(ink3);
         hint.setTextSize(12.5f);
         hint.setPadding(0, dp(14), 0, 0);

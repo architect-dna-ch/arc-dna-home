@@ -236,7 +236,7 @@ final class RouteLearner {
         c.setReadTimeout(15_000);
         c.setRequestProperty("Accept", "application/json");
         int code = c.getResponseCode();
-        if (code != 200) throw new IOException("Fahrplan antwortet " + code);
+        if (code != 200) throw new IOException(L.t("Fahrplan antwortet ") + code);
         java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
         try (InputStream in = c.getInputStream()) {
             byte[] buf = new byte[8192];

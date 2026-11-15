@@ -208,12 +208,12 @@ final class BatteryLog {
             double h = (b.time - a.time) / 3_600_000.0;
             if (h <= 0 || h > 3) continue;
             double drop = Math.max(0, a.level - b.level);
-            String ak = a.screen ? (a.app.isEmpty() ? "Bildschirm an" : label.apply(a.app)) : "Bildschirm aus";
+            String ak = a.screen ? (a.app.isEmpty() ? L.t("Bildschirm an") : label.apply(a.app)) : L.t("Bildschirm aus");
             add(apps, ak, h, drop);
-            add(music, a.music.isEmpty() ? "Ohne Musik" : "Musik · " + label.apply(a.music), h, drop);
+            add(music, a.music.isEmpty() ? L.t("Ohne Musik") : L.t("Musik · ") + label.apply(a.music), h, drop);
             String nk = a.net.equals("wifi") ? "WLAN"
                 : a.net.equals("cell") ? "Mobil · Signal " + (a.signal < 0 ? "?" : a.signal + "/4") + (a.signal >= 0 && a.signal <= 1 ? " (schwach)" : "")
-                : "Kein Netz";
+                : L.t("Kein Netz");
             add(net, nk, h, drop);
         }
         List<List<Drain>> out = new ArrayList<>();

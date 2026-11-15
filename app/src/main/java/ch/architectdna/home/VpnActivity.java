@@ -78,7 +78,7 @@ public class VpnActivity extends Activity {
         head.addView(dash, dl);
         TextView name = mono(11, ink3);
         name.setLetterSpacing(0.24f);
-        name.setText("VPN · ÜBER PROTON");
+        name.setText(L.t("VPN · ÜBER PROTON"));
         head.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView close = text(18, ink, true);
         close.setText("✕");
@@ -109,7 +109,7 @@ public class VpnActivity extends Activity {
         il.topMargin = dp(22);
         col.addView(info, il);
         TextView ih = mono(10, ink3);
-        ih.setText("SO SIEHT DICH DAS INTERNET");
+        ih.setText(L.t("SO SIEHT DICH DAS INTERNET"));
         info.addView(ih);
         where = text(20, ink, true);
         where.setPadding(0, dp(8), 0, 0);
@@ -127,25 +127,25 @@ public class VpnActivity extends Activity {
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, -2);
         al.topMargin = dp(20);
         col.addView(actions, al);
-        TextView proton = chip("PROTON ÖFFNEN ↗", rust, true);
+        TextView proton = chip(L.t("PROTON ÖFFNEN ↗"), rust, true);
         proton.setOnClickListener(v -> openProton());
         actions.addView(proton);
-        TextView sys = chip("VPN-EINSTELLUNGEN", ink2, false);
+        TextView sys = chip(L.t("VPN-EINSTELLUNGEN"), ink2, false);
         sys.setOnClickListener(v -> open(new Intent(Settings.ACTION_VPN_SETTINGS)));
         LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(-2, -2);
         xl.leftMargin = dp(8);
         actions.addView(sys, xl);
 
         TextView again = mono(10, ink3);
-        again.setText("IP NEU PRÜFEN ↻");
+        again.setText(L.t("IP NEU PRÜFEN ↻"));
         again.setGravity(Gravity.CENTER);
         again.setPadding(0, dp(18), 0, 0);
         again.setOnClickListener(v -> lookup(true));
         col.addView(again, new LinearLayout.LayoutParams(-1, -2));
 
         TextView note = text(12, ink3, false);
-        note.setText("Verbinden und Trennen macht Proton – es lässt das keine andere App tun. "
-            + "Ein eigenes ARC-DNA-VPN mit deinen Proton-Servern kommt als eigene App.");
+        note.setText(L.t("Verbinden und Trennen macht Proton – es lässt das keine andere App tun. ")
+            + L.t("Ein eigenes ARC-DNA-VPN mit deinen Proton-Servern kommt als eigene App."));
         note.setPadding(0, dp(20), 0, 0);
         col.addView(note);
 
@@ -212,7 +212,7 @@ public class VpnActivity extends Activity {
         on = vpnOn(cm);
         if (on && prefs.getLong("since", 0) == 0) prefs.edit().putLong("since", System.currentTimeMillis()).apply();
         if (!on) prefs.edit().remove("since").apply();
-        state.setText(on ? "Geschützt" : "Nicht geschützt");
+        state.setText(on ? L.t("Geschützt") : L.t("Nicht geschützt"));
         state.setTextColor(on ? green : rust);
         paintSince();
         shield.invalidate();
@@ -222,11 +222,11 @@ public class VpnActivity extends Activity {
     private void paintSince() {
         long s = prefs.getLong("since", 0);
         if (!on) {
-            since.setText(installed() ? "PROTON ÖFFNEN UND VERBINDEN" : "PROTON VPN IST NICHT INSTALLIERT");
+            since.setText(installed() ? L.t("PROTON ÖFFNEN UND VERBINDEN") : L.t("PROTON VPN IST NICHT INSTALLIERT"));
             return;
         }
         long m = (System.currentTimeMillis() - s) / 60_000;
-        since.setText(("VPN AKTIV" + (installed() ? " · PROTON" : "") + " · SEIT " + (m >= 60 ? m / 60 + " H " + m % 60 + " MIN" : m + " MIN")));
+        since.setText((L.t("VPN AKTIV") + (installed() ? " · PROTON" : "") + L.t(" · SEIT ") + (m >= 60 ? m / 60 + " H " + m % 60 + " MIN" : m + " MIN")));
     }
 
     /** Public IP and its place, from ipinfo.io (only this one request, only when asked or the state changes). */
@@ -251,13 +251,13 @@ public class VpnActivity extends Activity {
                 String place = (flag(cc) + " " + (city.isEmpty() ? "" : city + ", ") + countryName(cc)).trim();
                 String isp = o.optString("org", "").replaceFirst("^AS\\d+\\s*", "");
                 main.post(() -> {
-                    where.setText(place.isEmpty() ? "Unbekannt" : place);
+                    where.setText(place.isEmpty() ? L.t("Unbekannt") : place);
                     ip.setText(addr);
                     org.setText(isp);
                 });
             } catch (Exception e) {
                 main.post(() -> {
-                    where.setText("Kein Internet");
+                    where.setText(L.t("Kein Internet"));
                     ip.setText("–");
                     org.setText("");
                 });

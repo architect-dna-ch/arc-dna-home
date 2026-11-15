@@ -33,7 +33,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Bären-Wecker", NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, L.t("Bären-Wecker"), NotificationManager.IMPORTANCE_HIGH);
             ch.setSound(null, null);       // the activity plays the growl itself
             nm.createNotificationChannel(ch);
         }
@@ -46,8 +46,8 @@ public class AlarmReceiver extends BroadcastReceiver {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_cube)
-            .setContentTitle(deadline >= 0 ? "Der Bär erinnert dich" : "Der Bär kommt …")
-            .setContentText(deadline >= 0 && label != null ? label : "Aufwachen! Antippen, um den Wecker zu öffnen.")
+            .setContentTitle(deadline >= 0 ? L.t("Der Bär erinnert dich") : L.t("Der Bär kommt …"))
+            .setContentText(deadline >= 0 && label != null ? label : L.t("Aufwachen! Antippen, um den Wecker zu öffnen."))
             .setCategory(Notification.CATEGORY_ALARM)
             .setFullScreenIntent(pi, true)
             .setContentIntent(pi)
@@ -73,15 +73,15 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (!ctx.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean("alarmOn", false)) return;
         DiagLog.log("full-screen access lost after update: reminder posted");
         if (nm.getNotificationChannel("setup") == null) {
-            nm.createNotificationChannel(new NotificationChannel("setup", "Einrichtung", NotificationManager.IMPORTANCE_DEFAULT));
+            nm.createNotificationChannel(new NotificationChannel("setup", L.t("Einrichtung"), NotificationManager.IMPORTANCE_DEFAULT));
         }
         Intent open = new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
             android.net.Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pi = PendingIntent.getActivity(ctx, 7, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         nm.notify(43, new Notification.Builder(ctx, "setup")
             .setSmallIcon(R.drawable.ic_cube)
-            .setContentTitle("Bär-Wecker: Vollbild wieder erlauben")
-            .setContentText("Android hat es beim Update zurückgesetzt. Antippen → Schalter an.")
+            .setContentTitle(L.t("Bär-Wecker: Vollbild wieder erlauben"))
+            .setContentText(L.t("Android hat es beim Update zurückgesetzt. Antippen → Schalter an."))
             .setContentIntent(pi)
             .setAutoCancel(true)
             .build());

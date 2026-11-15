@@ -16,6 +16,7 @@
     </queries>
 
     <application
+        android:localeConfig="@xml/locales_config"
         android:allowBackup="false"
         android:icon="@drawable/ic_stats"
         android:label="@string/app_name"

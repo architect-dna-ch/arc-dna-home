@@ -309,7 +309,7 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(44 * s);
                 paint.setTextAlign(Paint.Align.CENTER);
-                String a = "⚠ KEIN NETZ · NUR NOTRUFE ⚠";
+                String a = L.t("⚠ KEIN NETZ · NUR NOTRUFE ⚠");
                 float tw = paint.measureText(a) + 60 * s;
                 paint.setColor(0xE6120808);
                 c.drawRoundRect(width / 2f - tw / 2, y - 64 * s, width / 2f + tw / 2, y + 26 * s, 30 * s, 30 * s, paint);
@@ -380,11 +380,11 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTextSize(24 * s);
                 paint.setTextAlign(Paint.Align.CENTER);
                 paint.setColor(0xFF7FE07F);
-                String st = TheftWatch.status.isEmpty() ? (ScrollAssistService.instance == null ? "ARC-DNA SCROLL AUS" : "KAMERA STARTET …") : TheftWatch.status.toUpperCase(java.util.Locale.GERMAN);
+                String st = TheftWatch.status.isEmpty() ? (ScrollAssistService.instance == null ? L.t("ARC-DNA SCROLL AUS") : L.t("KAMERA STARTET …")) : TheftWatch.status.toUpperCase(java.util.Locale.GERMAN);
                 c.drawText(st, box.centerX(), box.centerY(), paint);
                 if (ScrollAssistService.instance == null) {
                     paint.setTextSize(18 * s);
-                    c.drawText("Bedienungshilfen → einschalten", box.centerX(), box.centerY() + 32 * s, paint);
+                    c.drawText(L.t("Bedienungshilfen → einschalten"), box.centerX(), box.centerY() + 32 * s, paint);
                 }
                 paint.setTextAlign(Paint.Align.LEFT);
             }
@@ -412,7 +412,7 @@ public class ArcWallpaper extends WallpaperService {
             c.drawRoundRect(info, 22 * s, 22 * s, paint);
             paint.setColor(dark ? 0xFF7FE07F : 0xFF1F7A3A);
             paint.setTextSize(20 * s);
-            c.drawText("◎ GPS · NUR LOKAL", rx + 22 * s, top + 40 * s, paint);
+            c.drawText(L.t("◎ GPS · NUR LOKAL"), rx + 22 * s, top + 40 * s, paint);
             android.location.Location loc = TheftWatch.where;
             paint.setColor(dark ? 0xFFF4F2EC : 0xFF1A1A1A);
             paint.setTextSize(30 * s);
@@ -422,15 +422,15 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTextSize(19 * s);
                 paint.setColor(dark ? 0xFFA9A8A2 : 0xFF5A5A58);
                 long age = Math.max(0, (System.currentTimeMillis() - loc.getTime()) / 1000);
-                c.drawText("± " + Math.round(loc.getAccuracy()) + " m · vor " + (age < 120 ? age + " s" : age / 60 + " min"), rx + 22 * s, top + 154 * s, paint);
+                c.drawText("± " + Math.round(loc.getAccuracy()) + L.t(" m · vor ") + (age < 120 ? age + " s" : age / 60 + " min"), rx + 22 * s, top + 154 * s, paint);
             } else {
-                c.drawText("SUCHE …", rx + 22 * s, top + 84 * s, paint);
+                c.drawText(L.t("SUCHE …"), rx + 22 * s, top + 84 * s, paint);
             }
             // Microphone graph.
             float gTop = top + 190 * s, gBot = top + camH - 50 * s, gl = rx + 22 * s, gr = rx + rw - 22 * s;
             paint.setColor(dark ? 0xFF7FE07F : 0xFF1F7A3A);
             paint.setTextSize(20 * s);
-            c.drawText("🎙 MIKRO LIVE", gl, top + camH - 18 * s, paint);
+            c.drawText(L.t("🎙 MIKRO LIVE"), gl, top + camH - 18 * s, paint);
             if (gBot > gTop + 20 * s) {
                 float[] lv = TheftWatch.levels;
                 int head = TheftWatch.head, n = lv.length;
@@ -515,7 +515,7 @@ public class ArcWallpaper extends WallpaperService {
             paint.setLetterSpacing(0.22f);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setColor(dark ? 0xFFC9402F : 0xFFB5271E);
-            c.drawText("♥ FÜR DICH", width / 2f, top + pad + 22 * s, paint);
+            c.drawText(L.t("♥ FÜR DICH"), width / 2f, top + pad + 22 * s, paint);
             paint.setLetterSpacing(0);
             paint.setTextAlign(Paint.Align.LEFT);
             c.save();
@@ -761,18 +761,18 @@ public class ArcWallpaper extends WallpaperService {
 
         /** Every 15 s: bear → F1 car → rabbit → fox. Gibberish first, then the "translation". */
         private static final String[][][] LINES = {
-            {{"Grrmmph brummel-wumm!", "Schau mich nicht an, sonst fress ich dich."},
-                {"Hrrr… mmmh… Hoonig?", "Hast du Honig? Nein? Dann schlaf ich weiter."},
-                {"Wuuoorrgh. Mpf.", "Wer hat mich geweckt? Ah, du. Natürlich."}},
-            {{"Nyeeeooowww-ng-ng!", "Ich bin schneller als dein Entsperren."},
-                {"Brrm brrm pfft.", "Box, box! Reifenwechsel im Hosensack."},
-                {"Wrrraaap-tak-tak!", "Das war Sektor drei. Lila. Natürlich."}},
-            {{"Mümmel-mümmel tick?", "Ich sehe nichts. Ich bin ein Busch."},
-                {"Tipp-tipp-tapp-hüpf!", "Der Fuchs ist hinter mir, oder? ODER?"},
-                {"Snff snff… mmh.", "Riecht nach Karotten. Oder nach Bass."}},
-            {{"Gekk-gekk-ack!", "Ich hab dein Passwort nicht gesehen. Ehrlich."},
-                {"Wa-pa-pa-pa-pow!", "Was sagt der Fuchs? Genau das."},
-                {"Yip! Yip-yip!", "Dieser Beat ist besser als Hasenjagd."}}
+            {{L.t("Grrmmph brummel-wumm!"), L.t("Schau mich nicht an, sonst fress ich dich.")},
+                {L.t("Hrrr… mmmh… Hoonig?"), L.t("Hast du Honig? Nein? Dann schlaf ich weiter.")},
+                {"Wuuoorrgh. Mpf.", L.t("Wer hat mich geweckt? Ah, du. Natürlich.")}},
+            {{"Nyeeeooowww-ng-ng!", L.t("Ich bin schneller als dein Entsperren.")},
+                {"Brrm brrm pfft.", L.t("Box, box! Reifenwechsel im Hosensack.")},
+                {"Wrrraaap-tak-tak!", L.t("Das war Sektor drei. Lila. Natürlich.")}},
+            {{L.t("Mümmel-mümmel tick?"), L.t("Ich sehe nichts. Ich bin ein Busch.")},
+                {L.t("Tipp-tipp-tapp-hüpf!"), L.t("Der Fuchs ist hinter mir, oder? ODER?")},
+                {"Snff snff… mmh.", L.t("Riecht nach Karotten. Oder nach Bass.")}},
+            {{"Gekk-gekk-ack!", L.t("Ich hab dein Passwort nicht gesehen. Ehrlich.")},
+                {"Wa-pa-pa-pa-pow!", L.t("Was sagt der Fuchs? Genau das.")},
+                {"Yip! Yip-yip!", L.t("Dieser Beat ist besser als Hasenjagd.")}}
         };
 
         private android.graphics.drawable.Drawable foxArt, rabbitArt;
@@ -848,7 +848,7 @@ public class ArcWallpaper extends WallpaperService {
                 c.drawCircle(ex + ax * size * 0.02f, ey + ay * size * 0.02f, size * 0.045f, paint);      // the paw pad
             }
             // Why, in a bubble to the right.
-            String said = "KEIN NETZ! Da oben steht's: nur Notrufe. Die SIM hat gerade keinen Empfang – deshalb zittert hier alles.";
+            String said = L.t("KEIN NETZ! Da oben steht's: nur Notrufe. Die SIM hat gerade keinen Empfang – deshalb zittert hier alles.");
             float bx = x + size * 1.1f, bw = width * 0.95f - bx, by = y - size * 0.35f;
             paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
             paint.setTextSize(32 * s);
@@ -908,7 +908,7 @@ public class ArcWallpaper extends WallpaperService {
             boolean wrong = translated && slips && k < 9.5f, fixed = translated && slips && k >= 9.5f;
             String said = !translated ? line[0]
                 : wrong ? WRONG[slot][(int) (cycle % WRONG[slot].length)]
-                : fixed ? "Oh, den hab ich falsch erwischt! Eigentlich: " + line[1]
+                : fixed ? L.t("Oh, den hab ich falsch erwischt! Eigentlich: ") + line[1]
                 : line[1];
             // Speech bubble to the right.
             float bx = width * 0.06f + size * 1.15f, bw = Math.min(width * 0.94f - bx, Math.min(width, height) * 0.8f), by = y - size * 0.15f;
@@ -942,7 +942,7 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD));
                 paint.setTextSize(20 * s);
                 paint.setColor(glow);
-                c.drawText(fixed ? "ROBO, KORRIGIERT:" : "ROBO ÜBERSETZT:", bx + 22 * s, box.top + 18 * s + 20 * s, paint);
+                c.drawText(fixed ? L.t("ROBO, KORRIGIERT:") : L.t("ROBO ÜBERSETZT:"), bx + 22 * s, box.top + 18 * s + 20 * s, paint);
                 paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 paint.setTextSize(34 * s);
                 ty += 30 * s;
@@ -964,28 +964,28 @@ public class ArcWallpaper extends WallpaperService {
 
         static {
             ASSISTANT.put("gemini", new String[][]{
-                {"Grrr… blinke-blink?", "Gemini? Ich dachte, ich bin hier der Bunte."},
-                {"Nyeeoow-PIT!", "Gemini im Rückspiegel. Ich lass ihn nicht vorbei."},
-                {"Mümmel… bling?", "Ein Stern mit Glitzer! Kann der Karotten finden?"},
-                {"Yip-yip-hmm?", "Frag Gemini, was der Fuchs sagt. Ich warte."}});
+                {L.t("Grrr… blinke-blink?"), L.t("Gemini? Ich dachte, ich bin hier der Bunte.")},
+                {"Nyeeoow-PIT!", L.t("Gemini im Rückspiegel. Ich lass ihn nicht vorbei.")},
+                {L.t("Mümmel… bling?"), L.t("Ein Stern mit Glitzer! Kann der Karotten finden?")},
+                {"Yip-yip-hmm?", L.t("Frag Gemini, was der Fuchs sagt. Ich warte.")}});
             ASSISTANT.put("claude", new String[][]{
-                {"Brumm-brumm, Chef!", "Claude ist da. Alle so tun, als wär der Code fertig."},
-                {"Vroom… tak.", "Der Ingenieur! Bitte keinen neuen Boxenstopp."},
-                {"Tipp-tapp-psst!", "Claude hat mich gezeichnet. Ohren zu gross, danke."},
-                {"Gekk! Gekk!", "Hallo Erbauer. Der Dino war nicht meine Idee."}});
+                {L.t("Brumm-brumm, Chef!"), L.t("Claude ist da. Alle so tun, als wär der Code fertig.")},
+                {"Vroom… tak.", L.t("Der Ingenieur! Bitte keinen neuen Boxenstopp.")},
+                {L.t("Tipp-tapp-psst!"), L.t("Claude hat mich gezeichnet. Ohren zu gross, danke.")},
+                {"Gekk! Gekk!", L.t("Hallo Erbauer. Der Dino war nicht meine Idee.")}});
             ASSISTANT.put("chatgpt", new String[][]{
-                {"Hrrmpf!", "Die Konkurrenz. Ich schlaf weiter."},
-                {"Pfft-pfft.", "Andere Box, anderes Team."},
-                {"Snff?", "Riecht nach fremder KI."},
-                {"Yip…?", "Ich sag nichts ohne meinen Anwalt."}});
+                {"Hrrmpf!", L.t("Die Konkurrenz. Ich schlaf weiter.")},
+                {"Pfft-pfft.", L.t("Andere Box, anderes Team.")},
+                {"Snff?", L.t("Riecht nach fremder KI.")},
+                {"Yip…?", L.t("Ich sag nichts ohne meinen Anwalt.")}});
         }
 
         /** Things the robot thinks they said, before it notices. */
         private static final String[][] WRONG = {
-            {"Ich hätte gern einen Smoothie mit Glitzer.", "Bitte weck mich um fünf, ich will joggen."},
-            {"Ich fahre heute ganz gemütlich, Tempo 30.", "Kann mir jemand das Lenkrad halten?"},
-            {"Ich liebe den Fuchs. Er ist mein bester Freund.", "Karotten? Nein danke, ich esse nur Pizza."},
-            {"Ich bin seit heute vegetarisch.", "Ich will einfach nur kuscheln."}};
+            {L.t("Ich hätte gern einen Smoothie mit Glitzer."), L.t("Bitte weck mich um fünf, ich will joggen.")},
+            {L.t("Ich fahre heute ganz gemütlich, Tempo 30."), L.t("Kann mir jemand das Lenkrad halten?")},
+            {L.t("Ich liebe den Fuchs. Er ist mein bester Freund."), L.t("Karotten? Nein danke, ich esse nur Pizza.")},
+            {L.t("Ich bin seit heute vegetarisch."), L.t("Ich will einfach nur kuscheln.")}};
 
         /**
          * The translator: a small square robot with two LED eyes, a speaking mouth (bars that move
@@ -1299,7 +1299,7 @@ public class ArcWallpaper extends WallpaperService {
                 paint.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
                 paint.setTextSize(34 * s);
                 paint.setColor(0xF2FFFFFF);
-                String said = "Ups – Stecker raus! Alles ausgelaufen. 🔌";
+                String said = L.t("Ups – Stecker raus! Alles ausgelaufen. 🔌");
                 float tw = paint.measureText(said) + 40 * s, tx = Math.min(width - tw - 20 * s, bx + size * 1.1f), ty = by - 30 * s;
                 c.drawRoundRect(tx, ty - 50 * s, tx + tw, ty + 14 * s, 22 * s, 22 * s, paint);
                 paint.setColor(0xFF1A1A1A);
