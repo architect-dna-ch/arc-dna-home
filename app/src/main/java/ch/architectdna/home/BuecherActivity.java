@@ -28,8 +28,8 @@ public class BuecherActivity extends Activity {
     // {subject, platform, openUrl, redeemUrl, spineColorHex}
     private static final String[][] META = {
         {L.t("Rechnungswesen"), "RW-Lehrmittel", "https://ebook.rw-lehrmittel.ch/my-books", "https://ebook.rw-lehrmittel.ch", "2E66D6"},
-        {L.t("Mathematik"), "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "2E9AA6"},
-        {L.t("Deutsch"), "hep", "https://hep-verlag.ch/code", "https://hep-verlag.ch/code", "B7A52E"},
+        {L.t("Mathematik"), "hep · Edubase", "https://app.edubase.ch", "https://hep-verlag.ch/code", "2E9AA6"},
+        {L.t("Deutsch"), "hep · Edubase", "https://app.edubase.ch", "https://hep-verlag.ch/code", "B7A52E"},
         {L.t("Französisch"), "blinklearning", "https://www.blinklearning.com", "https://www.blinklearning.com", "5B9BC4"},
         {L.t("Englisch"), "Cambridge One", "https://www.cambridgeone.org", "https://www.cambridgeone.org", "46A86E"},
         {L.t("Wirtschaft & Gesellschaft"), "kv-edupool", "https://kv-edupool.ch", "https://timelinekeys.kv-edupool.ch/redeem", "3E6B5E"},
@@ -278,6 +278,19 @@ public class BuecherActivity extends Activity {
     }
 
     private void open(String url) {
+        // Edubase: the installed app opens the book shelf directly (you're logged in there).
+        if (url.contains("edubase")) {
+            try {
+                Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+                for (android.content.pm.ResolveInfo ri : getPackageManager().queryIntentActivities(q, 0)) {
+                    CharSequence label = ri.loadLabel(getPackageManager());
+                    if (label != null && label.toString().toLowerCase(java.util.Locale.ROOT).contains("edubase")) {
+                        startActivity(getPackageManager().getLaunchIntentForPackage(ri.activityInfo.packageName));
+                        return;
+                    }
+                }
+            } catch (RuntimeException ignored) { }
+        }
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (RuntimeException e) {

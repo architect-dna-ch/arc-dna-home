@@ -4,6 +4,8 @@
 
     <!-- Reads how long and when each app is used. Granted by hand in Settings → Usage access. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Swipe down on home opens the notification panel. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Only for Einspruch and Anchor (they talk to their own servers). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Updates itself from its GitHub releases. -->

@@ -432,7 +432,7 @@ public class StatsHomeActivity extends Activity {
                     if (page == 1) { if (horizontal && dx > 0) showStats(false); }
                     else if (horizontal) { if (dx < 0) showStats(true); }
                     else if (dy < 0) openDrawer(false);
-                    else openDrawer(true);
+                    else openShade();                 // down from anywhere: Android's notification panel
                 }
             }
             return true;
@@ -451,6 +451,17 @@ public class StatsHomeActivity extends Activity {
         } else {
             statsPage.animate().translationX(w).setDuration(220).withEndAction(() -> statsPage.setVisibility(View.GONE)).start();
             homePage.animate().translationX(0).alpha(1f).setDuration(220).start();
+        }
+    }
+
+    /** Pull down anywhere on home = the system notification panel, like on Pixel / One UI launchers. */
+    @SuppressWarnings({"WrongConstant", "JavaReflectionMemberAccess"})
+    private void openShade() {
+        try {
+            Object sb = getSystemService("statusbar");
+            Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sb);
+        } catch (Exception e) {
+            openDrawer(true);                          // a device that doesn't allow it: search instead
         }
     }
 
