@@ -454,10 +454,9 @@ public class StatsHomeActivity extends Activity {
         drawer.setVisibility(View.VISIBLE);
         drawer.setTranslationY(root.getHeight());
         drawer.animate().translationY(0).setDuration(240).setInterpolator(new DecelerateInterpolator(1.6f)).withEndAction(null).start();
-        if (focusSearch) {
-            search.requestFocus();
-            if (imm != null) imm.showSoftInput(search, 0);
-        }
+        // Always land in the search field: start typing right away (on-screen or hardware keyboard).
+        search.requestFocus();
+        search.postDelayed(() -> { if (drawerOpen && imm != null) imm.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT); }, 120);
     }
 
     private void closeDrawer() {
