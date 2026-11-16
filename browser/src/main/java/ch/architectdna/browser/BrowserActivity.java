@@ -645,6 +645,17 @@ public class BrowserActivity extends Activity {
                 case android.view.KeyEvent.KEYCODE_TAB:
                     if (tabs.size() > 1 && cur != null) show(tabs.get((tabs.indexOf(cur) + (e.isShiftPressed() ? tabs.size() - 1 : 1)) % tabs.size()));
                     return true;
+                case android.view.KeyEvent.KEYCODE_1: case android.view.KeyEvent.KEYCODE_2:
+                case android.view.KeyEvent.KEYCODE_3: case android.view.KeyEvent.KEYCODE_4:
+                case android.view.KeyEvent.KEYCODE_5: case android.view.KeyEvent.KEYCODE_6:
+                case android.view.KeyEvent.KEYCODE_7: case android.view.KeyEvent.KEYCODE_8: {
+                    int idx = e.getKeyCode() - android.view.KeyEvent.KEYCODE_1;   // ⌘1..⌘8 = that tab
+                    if (idx < tabs.size()) show(tabs.get(idx));
+                    return true;
+                }
+                case android.view.KeyEvent.KEYCODE_9:                            // ⌘9 = last tab, like browsers do
+                    if (!tabs.isEmpty()) show(tabs.get(tabs.size() - 1));
+                    return true;
                 default: break;
             }
         }
