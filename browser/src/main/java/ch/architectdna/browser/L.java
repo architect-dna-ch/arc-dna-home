@@ -37,6 +37,17 @@ final class L {
     }
 
     private static final String[] DATA = {
+        " GESCHÄTZT\u0002 ESTIMATED\u0001",
+        "Baut die neue Version\u0002Building the new version\u0001",
+        "Bereit. Android installiert.\u0002Ready. Android is installing.\u0001",
+        "Lädt die neue Version\u0002Loading the new version\u0001",
+        "Lädt nur die Änderungen\u0002Loading only the changes\u0001",
+        "MOBIL\u0002MOBILE\u0001",
+        "NETZ\u0002NETWORK\u0001",
+        "NOCH \u0002LEFT \u0001",
+        "Später nochmal.\u0002Try again later.\u0001",
+        "Verbindet …\u0002Connecting …\u0001",
+        "— UPDATE ABGEBROCHEN\u0002— UPDATE CANCELLED\u0001",
         "Updates: Token einmal einfügen →\u0002Updates: paste the token once →\u0001",
         "Aktuell · 0.\u0002Up to date · 0.\u0001",
         "Suche Updates …\u0002Checking for updates …\u0001",

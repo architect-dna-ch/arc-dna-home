@@ -44,6 +44,35 @@ final class SelfUpdater {
     private final SharedPreferences prefs;
     private final Handler main = new Handler(Looper.getMainLooper());
     private volatile boolean busy;
+    private UpdateView helix;
+    private long lastProg;
+
+    /** The same 🧬 helix card as ARC-DNA, over this app's window, while the update downloads. */
+    private void progress(int phase, long done, long total, int version, boolean force) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (!force && now - lastProg < 60) return;
+        lastProg = now;
+        main.post(() -> {
+            if (a.isFinishing()) return;
+            android.view.ViewGroup decor = (android.view.ViewGroup) a.getWindow().getDecorView();
+            if (helix == null || helix.getParent() != decor) {
+                helix = new UpdateView(a);
+                float dn = a.getResources().getDisplayMetrics().density;
+                android.widget.FrameLayout.LayoutParams l = new android.widget.FrameLayout.LayoutParams(-1, Math.round(UpdateView.heightDp() * dn), android.view.Gravity.TOP);
+                l.leftMargin = l.rightMargin = Math.round(12 * dn);
+                l.topMargin = Math.round(48 * dn);
+                decor.addView(helix, l);
+                UpdateView mine = helix;
+                mine.setOnClickListener(v -> decor.removeView(mine));
+            }
+            helix.update(phase, done, total, version);
+            if (helix.isFinished()) {
+                UpdateView v = helix;
+                helix = null;
+                v.postDelayed(() -> v.animate().alpha(0f).setDuration(280).withEndAction(() -> decor.removeView(v)).start(), phase == -1 ? 2600 : 1600);
+            }
+        });
+    }
 
     SelfUpdater(Activity a, String tagPrefix, Ui ui) {
         this.a = a;
@@ -110,7 +139,7 @@ final class SelfUpdater {
                     }
                     int v = best;
                     main.post(() -> ui.state(L.t("Lädt Update 0.") + v + " …", false));
-                    install(asset);
+                    install(asset, best);
                     main.post(() -> ui.state(L.t("Installiert 0.") + v + " …", false));
                 } else {
                     main.post(() -> ui.state(L.t("Aktuell · 0.") + current(), false));
@@ -136,7 +165,17 @@ final class SelfUpdater {
         check(true);
     }
 
-    private void install(long id) throws Exception {
+    private void install(long id, int version) throws Exception {
+        progress(2, 0, 0, version, true);
+        try {
+            installInner(id, version);
+        } catch (Exception e) {
+            progress(-1, 0, 0, version, true);
+            throw e;
+        }
+    }
+
+    private void installInner(long id, int version) throws Exception {
         HttpURLConnection c = open(from + "/releases/assets/" + id, "application/octet-stream", from.equals(REPO));
         c.setInstanceFollowRedirects(false);
         int code = c.getResponseCode();
@@ -155,12 +194,19 @@ final class SelfUpdater {
         PackageInstaller.Session s = pi.openSession(pi.createSession(params));
         try (InputStream in = c.getInputStream(); OutputStream out = s.openWrite("update.apk", 0, length)) {
             byte[] buf = new byte[64 * 1024];
-            for (int r; (r = in.read(buf)) != -1; ) out.write(buf, 0, r);
+            long done = 0;
+            for (int r; (r = in.read(buf)) != -1; ) {
+                out.write(buf, 0, r);
+                done += r;
+                progress(2, done, length, version, false);
+            }
+            progress(2, done, length, version, true);
             s.fsync(out);
         } catch (Exception e) {
             s.abandon();
             throw e;
         }
+        progress(3, 1, 1, version, true);
         Intent status = new Intent(a, a.getClass()).setAction(ACTION);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
         s.commit(PendingIntent.getActivity(a, 31, status, flags).getIntentSender());
