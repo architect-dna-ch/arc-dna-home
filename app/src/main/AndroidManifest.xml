@@ -107,6 +107,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- ARC Spotlight: ⌘+Space (via ARC Link) from anywhere; type an app, Enter opens it. -->
+        <activity
+            android:name=".SpotlightActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="ARC Spotlight"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity="ch.architectdna.home.spotlight"
+            android:theme="@style/FokusOverlay"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+
         <!-- ARC-DNA hub: the launcher icon. Every ARC tool in one list, plus updates. -->
         <activity
             android:name=".HubActivity"
