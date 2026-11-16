@@ -123,6 +123,7 @@ public class SpotlightActivity extends Activity {
             {"🔊", "ARC Remote", RemoteActivity.class}, {"💾", "ARC Player", PlayerActivity.class},
             {"⚖️", "Einspruch", EinspruchActivity.class}, {"⚓", "Anchor", AnchorActivity.class},
             {"🧬", "ARC-DNA Hub", HubActivity.class}, {"🐻", t("Bear alarm", "Bär-Wecker"), WeckerActivity.class},
+            {"🔑", t("Passwords", "Passwörter"), VaultActivity.class},
         };
         for (Object[] a : arc) {
             Item it = new Item();
