@@ -206,6 +206,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         String pkg = event.getPackageName().toString();
         int type = event.getEventType();
         OpenerOverlay.onEvent(this, event, pkg);   // the WhatsApp message coach (toolbar only there)
+        PassKey.onEvent(this, event, pkg);         // ARC Passwords: the 🔑 key above the keyboard on login fields
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             noteAssistant(pkg);
             VpnWarnActivity.check(this, pkg);      // Tor Browser without a VPN → the call-style warning

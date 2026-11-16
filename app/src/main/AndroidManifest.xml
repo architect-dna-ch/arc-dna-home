@@ -107,6 +107,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- ARC Passwords: pick a login (from the 🔑 key above the keyboard) or manage them. -->
+        <activity
+            android:name=".VaultActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:label="ARC Passwords"
+            android:launchMode="singleTask"
+            android:taskAffinity="ch.architectdna.home.vault"
+            android:theme="@style/FokusOverlay"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- ARC Spotlight: ⌘+Space (via ARC Link) from anywhere; type an app, Enter opens it. -->
         <activity
             android:name=".SpotlightActivity"
