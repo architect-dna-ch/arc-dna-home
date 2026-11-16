@@ -210,19 +210,30 @@ public class SpotlightActivity extends Activity {
             if (i == sel) l.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
             l.setPadding(ui.dp(14), 0, 0, 0);
             r.addView(l, new LinearLayout.LayoutParams(0, -2, 1f));
-            if (i == sel) r.addView(ui.mono("↵", ui.rust, 13));
+            if (i == sel) r.addView(ui.mono("↵  ⇧↵ float", ui.rust, 11));
             int idx = i;
             r.setOnClickListener(v -> launch(idx));
             list.addView(r);
         }
     }
 
-    private void launch(int i) {
+    private void launch(int i) { launch(i, false); }
+
+    /** floating = open as a freeform (floating) window — pairs with HyperOS Workstation. Shift+Enter. */
+    private void launch(int i, boolean floating) {
         if (i < 0 || i >= shown.size()) return;
         Intent in = shown.get(i).intent;
         finish();
         if (in == null) { LinkReceiver.closeAll(getApplicationContext()); return; }
-        try { startActivity(in); } catch (RuntimeException ignored) { }
+        try {
+            android.os.Bundle opts = null;
+            if (floating) {
+                android.app.ActivityOptions o = android.app.ActivityOptions.makeBasic();
+                try { o.getClass().getMethod("setLaunchWindowingMode", int.class).invoke(o, 5); } catch (Exception ignored) { }  // WINDOWING_MODE_FREEFORM
+                opts = o.toBundle();
+            }
+            startActivity(in, opts);
+        } catch (RuntimeException ignored) { }
         overridePendingTransition(0, 0);
     }
 
@@ -233,7 +244,7 @@ public class SpotlightActivity extends Activity {
                 case KeyEvent.KEYCODE_ESCAPE: finish(); return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN: if (sel < shown.size() - 1) { sel++; paint(); } return true;
                 case KeyEvent.KEYCODE_DPAD_UP: if (sel > 0) { sel--; paint(); } return true;
-                case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER: launch(sel); return true;
+                case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER: launch(sel, e.isShiftPressed()); return true;
                 default: break;
             }
         }
