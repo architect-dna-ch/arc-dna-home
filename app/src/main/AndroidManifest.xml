@@ -248,6 +248,13 @@
             android:theme="@android:style/Theme.Material.NoActionBar"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".MathActivity"
+            android:exported="false"
+            android:label="ARC Math"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- ARC Remote: the phone steers the music on the tablet over Bluetooth. -->
         <activity
             android:name=".RemoteActivity"

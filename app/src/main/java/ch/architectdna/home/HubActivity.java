@@ -97,6 +97,10 @@ public class HubActivity extends Activity {
             {"📜", t("Music history", "Musik-Verlauf"), t("Everything you played", "Alles, was du gehört hast"), HistoryActivity.class},
             {"🎧", "VOID FREQ", t("Focus sounds", "Fokus-Klänge"), FreqActivity.class},
         });
+        section(col, t("School", "Schule"), new Object[][]{
+            {"∑", "ARC Math", t("Solve it in a second, with steps", "In einer Sekunde gelöst, mit Schritten"), MathActivity.class},
+            {"📚", t("Books", "Bücher"), t("E-books and codes", "E-Books und Codes"), BuecherActivity.class},
+        });
         section(col, t("Help", "Hilfe"), new Object[][]{
             {"⚖️", "Einspruch", t("Formal letter under Swiss law", "Formeller Brief nach Schweizer Recht"), EinspruchActivity.class},
             {"⚓", "Anchor", t("A companion who knows your situation", "Begleiter, der deine Lage kennt"), AnchorActivity.class},
@@ -107,7 +111,6 @@ public class HubActivity extends Activity {
         });
         section(col, t("Tools", "Werkzeuge"), new Object[][]{
             {"🧰", t("AI tools", "KI-Werkzeuge"), t("Study buddy, Drive, Bear, Wellness, Health …", "Lernbegleiter, Antrieb, Bär, Wellness, Health …"), WerkzeugeActivity.class},
-            {"📚", t("Books", "Bücher"), t("E-books and codes", "E-Books und Codes"), BuecherActivity.class},
             {"🚆", t("Routes", "Routen"), t("Swiss public transport", "ÖV Schweiz"), RouteActivity.class},
             {"🔎", t("Fact check", "Faktencheck"), t("Spot the tricks", "Tricks erkennen"), FaktenActivity.class},
             {"📷", "ARC Camera", t("Composition coach", "Bild-Coach"), CameraActivity.class},

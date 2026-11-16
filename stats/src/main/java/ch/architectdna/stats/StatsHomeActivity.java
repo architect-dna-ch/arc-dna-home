@@ -218,6 +218,9 @@ public class StatsHomeActivity extends Activity {
             }
         });
         homePage.addView(remote, lp(-1, -2, 0, dp(8), 0, 0));
+        TextView math = toolChip("∑ ARC Math", "");
+        math.setOnClickListener(v -> startActivity(new Intent(this, MathActivity.class)));
+        homePage.addView(math, lp(-1, -2, 0, dp(8), 0, 0));
 
         dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
