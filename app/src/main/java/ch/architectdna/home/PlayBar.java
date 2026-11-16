@@ -95,24 +95,36 @@ final class PlayBar {
         panel.setVisibility(View.GONE);
         handle.setVisibility(View.VISIBLE);
         try { wm.addView(root, lp); } catch (RuntimeException ignored) { }
+        excludeGesture();
+    }
+
+    /** Claim our strip back from the phone's edge back-gesture / edge-panel zone, so taps land on us. */
+    private static void excludeGesture() {
+        if (Build.VERSION.SDK_INT < 29 || root == null) return;
+        root.post(() -> {
+            try {
+                java.util.List<android.graphics.Rect> r = new java.util.ArrayList<>();
+                r.add(new android.graphics.Rect(0, 0, root.getWidth(), root.getHeight()));
+                root.setSystemGestureExclusionRects(r);
+            } catch (Exception ignored) { }
+        });
     }
 
     private static void build(Context c, int bg, int ink, int ink2, int line, int rust) {
         root = new FrameLayout(c);
 
-        // The always-there handle: a slim vertical pill hugging the edge.
-        handle = new View(c);
+        // The always-there handle: a clear vertical tab hugging the edge, with a ‹ to say "pull me".
+        TextView tab = glyph(c, "‹", 0xFFFFFFFF, 20);
         GradientDrawable hg = new GradientDrawable();
         hg.setColor(rust);
-        hg.setCornerRadii(new float[]{px(7), px(7), 0, 0, 0, 0, px(7), px(7)});   // round the LEFT side only
-        handle.setBackground(hg);
-        handle.setElevation(px(8));
-        FrameLayout.LayoutParams hl = new FrameLayout.LayoutParams((int) px(7), (int) px(74), Gravity.END | Gravity.CENTER_VERTICAL);
-        root.addView(handle, hl);
-        // a wider invisible touch target over the thin pill, so it's easy to grab
+        hg.setCornerRadii(new float[]{px(11), px(11), 0, 0, 0, 0, px(11), px(11)});   // round the LEFT side only
+        tab.setBackground(hg);
+        tab.setElevation(px(8));
+        handle = tab;
+        root.addView(handle, new FrameLayout.LayoutParams((int) px(24), (int) px(104), Gravity.END | Gravity.CENTER_VERTICAL));
+        // a big invisible touch target over the tab, so it's easy to grab even near the edge gesture zone
         View grab = new View(c);
-        FrameLayout.LayoutParams gl = new FrameLayout.LayoutParams((int) px(26), (int) px(110), Gravity.END | Gravity.CENTER_VERTICAL);
-        root.addView(grab, gl);
+        root.addView(grab, new FrameLayout.LayoutParams((int) px(50), (int) px(160), Gravity.END | Gravity.CENTER_VERTICAL));
         grab.setOnTouchListener(edgeSwipe(true));
 
         // The pulled-out control strip, stacked top → bottom.
@@ -214,6 +226,7 @@ final class PlayBar {
 
     private static void relayout() {
         try { if (root != null && root.getParent() != null) wm.updateViewLayout(root, lp); } catch (RuntimeException ignored) { }
+        excludeGesture();
     }
 
     private static TextView btn(Context c, String s, int colour, float sp, View.OnClickListener l) {
