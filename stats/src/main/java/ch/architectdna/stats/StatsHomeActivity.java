@@ -195,32 +195,40 @@ public class StatsHomeActivity extends Activity {
         suggestBox.setOrientation(LinearLayout.VERTICAL);
         homePage.addView(suggestBox);
 
-        // Architect-DNA web tools, one tap away
-        LinearLayout tools = new LinearLayout(this);
-        tools.addView(nativeChip("⚖ Einspruch", "EinspruchActivity", "https://einspruch.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
-        View tgap = new View(this);
-        tools.addView(tgap, new LinearLayout.LayoutParams(dp(8), 1));
-        tools.addView(nativeChip("⚓ Anchor", "AnchorActivity", "https://anchor.architect-dna.ch"), new LinearLayout.LayoutParams(0, -2, 1f));
-        homePage.addView(tools, lp(-1, -2, 0, dp(14), 0, 0));
-        LinearLayout tools2 = new LinearLayout(this);
-        tools2.addView(toolChip("🛁 Wellness", "https://architect-dna.ch/wellness/"), new LinearLayout.LayoutParams(0, -2, 1f));
-        View tgap2 = new View(this);
-        tools2.addView(tgap2, new LinearLayout.LayoutParams(dp(8), 1));
-        tools2.addView(toolChip("🧅 Health", "https://architect-dna.ch/health/"), new LinearLayout.LayoutParams(0, -2, 1f));
-        homePage.addView(tools2, lp(-1, -2, 0, dp(8), 0, 0));
-        TextView remote = toolChip(L.t("🔊 Musik aufs Tablet"), "");
-        remote.setOnClickListener(v -> {
-            try {
-                startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity")
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            } catch (RuntimeException e) {
-                android.widget.Toast.makeText(this, L.t("Dafür ARC-DNA Home installieren."), android.widget.Toast.LENGTH_SHORT).show();
-            }
-        });
-        homePage.addView(remote, lp(-1, -2, 0, dp(8), 0, 0));
+        // Architect-DNA tools, one tap away. Phone: two per row. Tablet: one or two compact rows,
+        // so the dock never gets pushed off the screen. "Music to the tablet" only on a phone.
+        java.util.List<TextView> chips = new java.util.ArrayList<>();
+        chips.add(nativeChip("⚖ Einspruch", "EinspruchActivity", "https://einspruch.architect-dna.ch"));
+        chips.add(nativeChip("⚓ Anchor", "AnchorActivity", "https://anchor.architect-dna.ch"));
+        chips.add(toolChip("🛁 Wellness", "https://architect-dna.ch/wellness/"));
+        chips.add(toolChip("🧅 Health", "https://architect-dna.ch/health/"));
         TextView math = toolChip("∑ ARC Math", "");
         math.setOnClickListener(v -> startActivity(new Intent(this, MathActivity.class)));
-        homePage.addView(math, lp(-1, -2, 0, dp(8), 0, 0));
+        chips.add(math);
+        android.content.res.Configuration cfg = getResources().getConfiguration();
+        boolean tablet = cfg.smallestScreenWidthDp >= 600;
+        if (!tablet) {
+            TextView remote = toolChip(L.t("🔊 Musik aufs Tablet"), "");
+            remote.setOnClickListener(v -> {
+                try {
+                    startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity")
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (RuntimeException e) {
+                    android.widget.Toast.makeText(this, L.t("Dafür ARC-DNA Home installieren."), android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+            chips.add(remote);
+        }
+        int perRow = cfg.screenWidthDp >= 840 ? chips.size() : cfg.screenWidthDp >= 600 ? 3 : 2;
+        for (int i = 0; i < chips.size(); i += perRow) {
+            LinearLayout row = new LinearLayout(this);
+            for (int k = i; k < Math.min(chips.size(), i + perRow); k++) {
+                LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -2, 1f);
+                if (k > i) cl.leftMargin = dp(8);
+                row.addView(chips.get(k), cl);
+            }
+            homePage.addView(row, lp(-1, -2, 0, dp(i == 0 ? 14 : 8), 0, 0));
+        }
 
         dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER_VERTICAL);
