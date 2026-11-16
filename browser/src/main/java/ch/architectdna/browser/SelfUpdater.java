@@ -79,14 +79,26 @@ final class SelfUpdater {
         this.prefix = tagPrefix;
         this.ui = ui;
         prefs = a.getSharedPreferences("selfupdate", Activity.MODE_PRIVATE);
-        // Back after a self-update: the helix once more, green, "✓ Updated to 0.N".
+    }
+
+    /**
+     * Back after a self-update: the helix once more, green, "✓ Updated to 0.N". Waits until you can
+     * see it (screen on, unlocked, this app in front), so an update at night isn't celebrated to nobody.
+     */
+    private void celebrateIfSeen() {
         int pending = prefs.getInt("pending", 0);
-        if (pending > 0 && current() >= pending) {
-            prefs.edit().remove("pending").apply();
-            main.postDelayed(() -> progress(4, 1, 1, pending, true), 700);
-        } else if (pending > 0 && System.currentTimeMillis() - prefs.getLong("pendingAt", 0) > 86_400_000L) {
-            prefs.edit().remove("pending").apply();
+        if (pending <= 0) return;
+        if (current() < pending) {
+            if (System.currentTimeMillis() - prefs.getLong("pendingAt", 0) > 86_400_000L) prefs.edit().remove("pending").apply();
+            return;
         }
+        android.os.PowerManager pm = a.getSystemService(android.os.PowerManager.class);
+        android.app.KeyguardManager km = a.getSystemService(android.app.KeyguardManager.class);
+        if ((pm != null && !pm.isInteractive()) || (km != null && km.isKeyguardLocked()) || !a.hasWindowFocus()) {
+            return;                                   // the next time the app comes to the front (every resume calls check)
+        }
+        prefs.edit().remove("pending").apply();
+        progress(4, 1, 1, pending, true);
     }
 
     String token() { return SecureStore.open(prefs.getString("tok", "")); }
@@ -110,6 +122,7 @@ final class SelfUpdater {
 
     /** On every resume (at most every 6 h) and when asked. Installs by itself when there is something new. */
     void check(boolean manual) {
+        main.postDelayed(this::celebrateIfSeen, 700);
         if (busy) return;
         if (!manual && System.currentTimeMillis() - prefs.getLong("checked", 0) < EVERY_MS) { ui.state(L.t("Aktuell · 0.") + current(), false); return; }
         busy = true;

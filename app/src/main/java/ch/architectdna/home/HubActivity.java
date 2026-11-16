@@ -44,8 +44,6 @@ public class HubActivity extends Activity {
         setContentView(root);
         updater = new Updater(this, prefs, this::onUpdateState);
         updater.progress = this::onProgress;
-        int fresh = updater.justUpdatedTo();
-        if (fresh > 0) root.postDelayed(() -> onProgress(4, 1, 1, fresh), 700);   // ✓ Updated to 1.0.N
         build();
         // Pull down from the top: look for updates now.
         scroll.setOnTouchListener((v, e) -> {
@@ -62,7 +60,17 @@ public class HubActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        root.postDelayed(this::celebrateIfSeen, 700);
         updater.check(false);
+    }
+
+    /** ✓ Updated to 1.0.N, but only once you can actually see the hub. */
+    private void celebrateIfSeen() {
+        android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
+        android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
+        if (isFinishing() || (pm != null && !pm.isInteractive()) || (km != null && km.isKeyguardLocked()) || !hasWindowFocus()) return;
+        int fresh = updater.justUpdatedTo();
+        if (fresh > 0) onProgress(4, 1, 1, fresh);
     }
 
     @Override
