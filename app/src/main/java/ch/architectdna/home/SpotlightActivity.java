@@ -211,7 +211,7 @@ public class SpotlightActivity extends Activity {
             if (i == sel) l.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
             l.setPadding(ui.dp(14), 0, 0, 0);
             r.addView(l, new LinearLayout.LayoutParams(0, -2, 1f));
-            if (i == sel) r.addView(ui.mono("↵  ⇧↵ float", ui.rust, 11));
+            if (i == sel) r.addView(ui.mono("↵ open  ·  ⇧↵ new window", ui.rust, 11));
             int idx = i;
             r.setOnClickListener(v -> launch(idx));
             list.addView(r);
@@ -220,15 +220,25 @@ public class SpotlightActivity extends Activity {
 
     private void launch(int i) { launch(i, false); }
 
-    /** floating = open as a freeform (floating) window — pairs with HyperOS Workstation. Shift+Enter. */
-    private void launch(int i, boolean floating) {
+    /**
+     * newWindow (Shift+Enter) = open a SECOND window of the app, side by side, as its own freeform
+     * (floating) window — this is how you get two Chromes, two of anything that allows it. It forces
+     * a fresh task (MULTIPLE_TASK + NEW_DOCUMENT) instead of just pulling the open one forward, and
+     * drops it into HyperOS Workstation's windowing mode. Apps locked to one instance (singleTask /
+     * singleInstance — many social apps) will still reuse their window; that's the app's choice, not
+     * something a launcher can override.
+     */
+    private void launch(int i, boolean newWindow) {
         if (i < 0 || i >= shown.size()) return;
         Intent in = shown.get(i).intent;
         finish();
         if (in == null) { LinkReceiver.closeAll(getApplicationContext()); return; }
         try {
             android.os.Bundle opts = null;
-            if (floating) {
+            if (newWindow) {
+                in = new Intent(in);
+                in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+                in.removeFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);  // don't just surface the open one
                 android.app.ActivityOptions o = android.app.ActivityOptions.makeBasic();
                 try { o.getClass().getMethod("setLaunchWindowingMode", int.class).invoke(o, 5); } catch (Exception ignored) { }  // WINDOWING_MODE_FREEFORM
                 opts = o.toBundle();
