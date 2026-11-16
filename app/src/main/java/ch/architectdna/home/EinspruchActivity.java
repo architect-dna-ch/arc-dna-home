@@ -57,6 +57,7 @@ public class EinspruchActivity extends Activity {
     private String recipient = "", lang = "fr".equals(Locale.getDefault().getLanguage()) ? "fr" : "it".equals(Locale.getDefault().getLanguage()) ? "it" : "de";
     private String situation = "", goal = "", name = "", address = "";
     private boolean premium, verfuegung;
+    private String tone = "";   // friendly / firm / formal; empty = pick by recipient
     private int step;
     private String letter = "";
 
@@ -226,6 +227,13 @@ public class EinspruchActivity extends Activity {
                 e.setMinLines(4);
                 e.setText(goal);
                 col.addView(e, ui.lp(-1, -2, ui.dp(18)));
+                // Tone: a friendly first request often works better in Switzerland than a legal threat.
+                col.addView(ui.label(t("Tone", "Ton"), false), ui.lp(-1, -2, ui.dp(20)));
+                ArcUi.Wrap tw = new ArcUi.Wrap(this, ui.dp(8));
+                String[][] tones = {{"friendly", t("🤝 Friendly request", "🤝 Freundliche Anfrage")},
+                    {"firm", t("📌 Firm, with a deadline", "📌 Bestimmt, mit Frist")}, {"formal", t("⚖️ Formal objection", "⚖️ Formelle Einsprache")}};
+                for (String[] tn : tones) tw.addView(ui.chip(tn[1], tn[0].equals(tone()), v -> { tone = tn[0]; goal = e.getText().toString(); wizard(); }));
+                col.addView(tw, ui.lp(-1, -2, ui.dp(8)));
                 boolean canForce = "gemeinde".equals(recipient) || "ahv".equals(recipient) || "andere".equals(recipient);
                 if (canForce) {
                     TextView t = toggle(t("Only refused verbally? Demand a formal, appealable decision", "Nur mündlich abgelehnt? Anfechtbare Verfügung verlangen"), verfuegung, v -> { verfuegung = !verfuegung; goal = e.getText().toString(); wizard(); });
@@ -301,6 +309,7 @@ public class EinspruchActivity extends Activity {
             body.put("lang", lang);
             body.put("premium", premium);
             body.put("forceVerfuegung", verfuegung);
+            body.put("tone", tone());
             String token = prefs.getString("token", "");
             if (!token.isEmpty()) body.put("token", token);
             String admin = prefs.getString("admin", "");
@@ -321,6 +330,67 @@ public class EinspruchActivity extends Activity {
                 wizard();
             }
         });
+    }
+
+    /** Landlord, employer & co.: start friendly. Insurers and offices: the formal objection. */
+    private String tone() {
+        if (!tone.isEmpty()) return tone;
+        switch (recipient) {
+            case "vermieter": case "arbeitgeber": case "telekom": case "bank": case "kuendigung": return "friendly";
+            default: return "formal";
+        }
+    }
+
+    /** Rework the finished letter: shorter, friendlier, firmer, without articles, or an own wish. */
+    private void revise(String instruction) {
+        screen = "writing";
+        LinearLayout col = page();
+        header(col, "", null);
+        col.addView(ui.title(t("Reworking your letter …", "Überarbeitet deinen Brief …"), 32), ui.lp(-1, -2, ui.dp(60)));
+        col.addView(ui.body(instruction, ui.ink2, 15), ui.lp(-1, -2, ui.dp(10)));
+        ProgressBar pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        pb.setIndeterminate(true);
+        pb.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ui.rust));
+        col.addView(pb, ui.lp(-1, ui.dp(6), ui.dp(26)));
+        JSONObject body = new JSONObject();
+        try {
+            body.put("recipient", recipient.isEmpty() ? "andere" : recipient);
+            body.put("lang", lang);
+            body.put("premium", premium);
+            body.put("revise", new JSONObject().put("letter", letter).put("instruction", instruction));
+            String token = prefs.getString("token", "");
+            if (!token.isEmpty()) body.put("token", token);
+            String admin = prefs.getString("admin", "");
+            if (!admin.isEmpty()) body.put("admin", admin);
+        } catch (Exception ignored) { }
+        String before = letter;
+        ui.post(ORIGIN, "/api/brief", body, r -> {
+            if (r.code == 200 && !r.json.optString("letter").isEmpty()) {
+                letter = personalise(r.json.optString("letter"));
+                if (r.json.has("remaining")) prefs.edit().putInt("left", r.json.optInt("remaining")).apply();
+                save(letter);
+                result(true);
+            } else {
+                letter = before;
+                if (r.code == 402) { paywall(); return; }
+                Toast.makeText(this, r.code == 0 ? t("No connection.", "Keine Verbindung.") : t("Couldn't rework it. Try again.", "Hat nicht geklappt. Nochmal versuchen."), Toast.LENGTH_LONG).show();
+                result(false);
+            }
+        });
+    }
+
+    private void askOwnChange() {
+        EditText e = ui.input(t("e.g. leave out the late payments, mention my new flatmate", "z.B. Zahlungsverzug weglassen, neuen Mitbewohner erwähnen"), true, 400);
+        e.setMinLines(3);
+        LinearLayout w = new LinearLayout(this);
+        w.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), 0);
+        w.addView(e, new LinearLayout.LayoutParams(-1, -2));
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(t("What should change?", "Was soll sich ändern?"))
+            .setView(w)
+            .setPositiveButton(t("Rework", "Überarbeiten"), (d, i) -> { String s2 = e.getText().toString().trim(); if (!s2.isEmpty()) revise(s2); })
+            .setNegativeButton(t("Cancel", "Abbrechen"), null)
+            .show();
     }
 
     private String personalise(String s) {
@@ -366,6 +436,20 @@ public class EinspruchActivity extends Activity {
         acts.addView(ui.button(t("Share", "Teilen"), 2, v -> share()), new LinearLayout.LayoutParams(0, ui.dp(52), 1f));
         col.addView(acts, ui.lp(-1, -2, ui.dp(16)));
         col.addView(ui.button(t("Save as PDF / print", "Als PDF speichern / drucken"), 2, v -> print()), ui.lp(-1, ui.dp(52), ui.dp(8)));
+
+        // Rework it: the letter stays, only what you ask for changes.
+        col.addView(ui.label(t("Rework", "Überarbeiten"), false), ui.lp(-1, -2, ui.dp(24)));
+        ArcUi.Wrap rw = new ArcUi.Wrap(this, ui.dp(8));
+        String[][] revs = {
+            {t("✂️ Shorter", "✂️ Kürzer"), t("Make it clearly shorter, about half. Keep only what matters.", "Deutlich kürzer, etwa die Hälfte. Nur das Wichtigste behalten.")},
+            {t("🤝 Friendlier", "🤝 Freundlicher"), t("Make it friendly and cooperative: no legal threats, no deadline with consequences, offer solutions.", "Freundlich und kooperativ: keine rechtlichen Drohungen, keine Frist mit Konsequenzen, Lösungen anbieten.")},
+            {t("📌 Firmer", "📌 Bestimmter"), t("Make it firmer: a clear request with a 14-day deadline, still polite.", "Bestimmter: klare Forderung mit 14 Tagen Frist, trotzdem höflich.")},
+            {t("🚫 No legal articles", "🚫 Ohne Gesetze"), t("Remove all legal articles and legal language; plain, clear words.", "Alle Gesetzesartikel und Juristensprache entfernen; einfache, klare Worte.")},
+            {t("✉️ As an email", "✉️ Als E-Mail"), t("Turn it into a short email: no date line, no address block, subject line on top.", "Als kurze E-Mail: ohne Datumszeile, ohne Adressblock, Betreff oben.")},
+        };
+        for (String[] rv : revs) rw.addView(ui.chip(rv[0], false, v -> revise(rv[1])));
+        rw.addView(ui.chip(t("✏️ Own change …", "✏️ Eigene Änderung …"), false, v -> askOwnChange()));
+        col.addView(rw, ui.lp(-1, -2, ui.dp(10)));
         if (fresh) col.addView(ui.button(t("New letter", "Neuen Brief"), 2, v -> { step = 0; situation = ""; goal = ""; verfuegung = false; wizard(); }), ui.lp(-1, ui.dp(52), ui.dp(8)));
         TextView tip = ui.body(t("Tip: send it registered and keep a copy. Deadlines run from when the decision was delivered.", "Tipp: Eingeschrieben senden und eine Kopie behalten. Fristen laufen ab Zustellung des Entscheids."), ui.ink3, 12.5f);
         col.addView(tip, ui.lp(-1, -2, ui.dp(22)));
