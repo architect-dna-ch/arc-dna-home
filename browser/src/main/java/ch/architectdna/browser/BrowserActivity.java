@@ -629,6 +629,28 @@ public class BrowserActivity extends Activity {
         if (tab == cur) paintAddress();
     }
 
+    /** Hardware keyboard (or ARC Link's ⌘): Ctrl+T new tab, W close, L address, R reload, Tab next tab. */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && e.isCtrlPressed()) {
+            switch (e.getKeyCode()) {
+                case android.view.KeyEvent.KEYCODE_T:
+                    newTab(null);
+                    address.requestFocus();
+                    ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(address, 0);
+                    return true;
+                case android.view.KeyEvent.KEYCODE_W: if (cur != null) closeTab(cur); return true;
+                case android.view.KeyEvent.KEYCODE_L: address.requestFocus(); address.selectAll(); return true;
+                case android.view.KeyEvent.KEYCODE_R: if (cur != null) cur.web.reload(); return true;
+                case android.view.KeyEvent.KEYCODE_TAB:
+                    if (tabs.size() > 1 && cur != null) show(tabs.get((tabs.indexOf(cur) + (e.isShiftPressed() ? tabs.size() - 1 : 1)) % tabs.size()));
+                    return true;
+                default: break;
+            }
+        }
+        return super.dispatchKeyEvent(e);
+    }
+
     @Override
     public void onBackPressed() {
         if (customView != null) { exitFullscreen(); return; }
