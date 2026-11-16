@@ -115,6 +115,12 @@
             android:label="ARC Play bar"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
+        <activity
+            android:name=".BtAudioActivity"
+            android:exported="false"
+            android:label="ARC Headphones"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC Passwords: pick a login (from the 🔑 key above the keyboard) or manage them. -->
         <activity
             android:name=".VaultActivity"
