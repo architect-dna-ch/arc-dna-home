@@ -1,7 +1,9 @@
 package ch.architectdna.home;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -424,11 +426,36 @@ final class Updater {
             if (confirm != null) activity.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } else if (status == PackageInstaller.STATUS_SUCCESS) {
             toast(L.t("Update installiert."));
-            showState();
+            relaunch();
         } else {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             toast(L.t("Update abgebrochen") + (msg != null ? ": " + msg : "."));
             showState();
+        }
+    }
+
+    /**
+     * After we install our own new APK, this live process still runs the OLD code — the new version
+     * only takes effect once a fresh process starts, which is why you used to have to reopen ARC-DNA
+     * by hand. So we book the launcher to reopen in a moment (a system-fired alarm, which is allowed
+     * to come to the front even as we go away) and then exit, letting the new process take over. The
+     * fresh HubActivity then plays the ✓ "updated" animation on its own via justUpdatedTo().
+     */
+    private void relaunch() {
+        Context app = activity.getApplicationContext();
+        try {
+            Intent launch = app.getPackageManager().getLaunchIntentForPackage(app.getPackageName());
+            if (launch == null) { showState(); return; }
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            int f = PendingIntent.FLAG_CANCEL_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+            PendingIntent pi = PendingIntent.getActivity(app, 0x1DEA, launch, f);
+            AlarmManager am = app.getSystemService(AlarmManager.class);
+            am.set(AlarmManager.RTC, System.currentTimeMillis() + 450, pi);   // set(), not setExact() → no exact-alarm permission needed
+            DiagLog.log("update: installed → relaunching a fresh process");
+            new Handler(Looper.getMainLooper()).postDelayed(() -> Runtime.getRuntime().exit(0), 700);
+        } catch (Exception e) {
+            DiagLog.log("relaunch failed, staying put: " + e);
+            showState();   // worst case = the old behaviour: it's installed, reopen ARC-DNA yourself
         }
     }
 
