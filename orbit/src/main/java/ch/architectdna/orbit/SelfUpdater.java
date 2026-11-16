@@ -69,7 +69,7 @@ final class SelfUpdater {
             if (helix.isFinished()) {
                 UpdateView v = helix;
                 helix = null;
-                v.postDelayed(() -> v.animate().alpha(0f).setDuration(280).withEndAction(() -> decor.removeView(v)).start(), phase == -1 ? 2600 : 1600);
+                v.postDelayed(() -> v.animate().alpha(0f).setDuration(280).withEndAction(() -> decor.removeView(v)).start(), phase == -1 ? 2600 : phase == 4 ? 3200 : 1600);
             }
         });
     }
@@ -79,6 +79,14 @@ final class SelfUpdater {
         this.prefix = tagPrefix;
         this.ui = ui;
         prefs = a.getSharedPreferences("selfupdate", Activity.MODE_PRIVATE);
+        // Back after a self-update: the helix once more, green, "✓ Updated to 0.N".
+        int pending = prefs.getInt("pending", 0);
+        if (pending > 0 && current() >= pending) {
+            prefs.edit().remove("pending").apply();
+            main.postDelayed(() -> progress(4, 1, 1, pending, true), 700);
+        } else if (pending > 0 && System.currentTimeMillis() - prefs.getLong("pendingAt", 0) > 86_400_000L) {
+            prefs.edit().remove("pending").apply();
+        }
     }
 
     String token() { return SecureStore.open(prefs.getString("tok", "")); }
@@ -207,6 +215,7 @@ final class SelfUpdater {
             throw e;
         }
         progress(3, 1, 1, version, true);
+        prefs.edit().putInt("pending", version).putLong("pendingAt", System.currentTimeMillis()).apply();
         Intent status = new Intent(a, a.getClass()).setAction(ACTION);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
         s.commit(PendingIntent.getActivity(a, 31, status, flags).getIntentSender());

@@ -44,6 +44,8 @@ public class HubActivity extends Activity {
         setContentView(root);
         updater = new Updater(this, prefs, this::onUpdateState);
         updater.progress = this::onProgress;
+        int fresh = updater.justUpdatedTo();
+        if (fresh > 0) root.postDelayed(() -> onProgress(4, 1, 1, fresh), 700);   // ✓ Updated to 1.0.N
         build();
         // Pull down from the top: look for updates now.
         scroll.setOnTouchListener((v, e) -> {
@@ -177,7 +179,7 @@ public class HubActivity extends Activity {
         if (updateView.isFinished()) {
             UpdateView v = updateView;
             updateView = null;
-            v.postDelayed(() -> v.animate().alpha(0f).setDuration(280).withEndAction(() -> root.removeView(v)).start(), phase == -1 ? 2600 : 1600);
+            v.postDelayed(() -> v.animate().alpha(0f).setDuration(280).withEndAction(() -> root.removeView(v)).start(), phase == -1 ? 2600 : phase == 4 ? 3200 : 1600);
         }
     }
 }

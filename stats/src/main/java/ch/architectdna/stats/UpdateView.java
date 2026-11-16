@@ -23,6 +23,7 @@ final class UpdateView extends View {
 
     private static final int BG = 0xFF0E0E0D, LINE = 0xFF2C2C2A, INK = 0xFFF4F2EC, INK2 = 0xFFA5A5A0, INK3 = 0xFF6F6E69, RUST = 0xFFD9472F, GREEN = 0xFF2BD96B;
     private static final int PAIRS = 26;
+    private static final boolean BIG = false;   // ARC-DNA counts 1.0.N, the other apps 0.N
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float d;
@@ -34,7 +35,7 @@ final class UpdateView extends View {
     // speed: a short window of samples
     private long winT0, winB0;
     private double bps;
-    private boolean finished, failed;
+    private boolean finished, failed, success;
 
     UpdateView(Context c) {
         super(c);
@@ -75,6 +76,7 @@ final class UpdateView extends View {
         this.done = done;
         this.total = total;
         if (phase == 3) finished = true;
+        if (phase == 4) { finished = true; success = true; shown = 1f; }
         if (phase == -1) failed = true;
         invalidate();
     }
@@ -89,6 +91,7 @@ final class UpdateView extends View {
             case 1: return 0.55f + f * 0.45f;
             case 2: return f;
             case 3: return 1f;
+            case 4: return 1f;
             default: return shown;
         }
     }
@@ -158,13 +161,13 @@ final class UpdateView extends View {
         p.setLetterSpacing(-0.04f);
         p.setTextSize(36 * d);
         p.setColor(INK);
-        String pct = failed ? "—" : Math.round(shown * 100) + " %";
+        String pct = failed ? "—" : success ? "✓" : Math.round(shown * 100) + " %";
         c.drawText(pct, pad, by, p);
         p.setTypeface(Typeface.DEFAULT);
         p.setLetterSpacing(0f);
         p.setTextSize(14 * d);
         p.setColor(INK2);
-        String what = failed ? L.t("Später nochmal.") : finished ? L.t("Bereit. Android installiert.") : phase == 0 ? L.t("Lädt nur die Änderungen")
+        String what = failed ? L.t("Später nochmal.") : success ? L.t("Aktualisiert auf ") + (version > 0 ? (BIG ? "1.0." : "0.") + version : "") : finished ? L.t("Bereit. Android installiert.") : phase == 0 ? L.t("Lädt nur die Änderungen")
             : phase == 1 ? L.t("Baut die neue Version") : total > 0 ? L.t("Lädt die neue Version") : L.t("Verbindet …");
         c.drawText(what, w - pad - p.measureText(what), by, p);
 

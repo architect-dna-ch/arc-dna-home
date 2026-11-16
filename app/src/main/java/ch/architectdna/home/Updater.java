@@ -228,6 +228,14 @@ final class Updater {
         session.close();
     }
 
+    /** Back after our own update: the version we just reached (once), else 0. */
+    int justUpdatedTo() {
+        int p = prefs.getInt("updatePending", 0);
+        if (p > 0 && current() >= p) { prefs.edit().remove("updatePending").apply(); return p; }
+        if (p > 0 && System.currentTimeMillis() - prefs.getLong("updatePendingAt", 0) > 86_400_000L) prefs.edit().remove("updatePending").apply();
+        return 0;
+    }
+
     private void showState() {
         if (latest == 0) {
             latest = prefs.getInt("updateLatest", 0);
@@ -300,6 +308,7 @@ final class Updater {
                 session.close();
                 session = null;
                 prog(3, 1, 1, true);
+                prefs.edit().putInt("updatePending", latest).putLong("updatePendingAt", System.currentTimeMillis()).apply();
                 main.post(() -> ui.onUpdateState(L.t("Installation bestätigen …"), false));
             } catch (Exception e) {
                 if (session != null) session.abandon();

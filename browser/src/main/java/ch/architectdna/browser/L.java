@@ -37,6 +37,7 @@ final class L {
     }
 
     private static final String[] DATA = {
+        "Aktualisiert auf \u0002Updated to \u0001",
         " GESCHÄTZT\u0002 ESTIMATED\u0001",
         "Baut die neue Version\u0002Building the new version\u0001",
         "Bereit. Android installiert.\u0002Ready. Android is installing.\u0001",

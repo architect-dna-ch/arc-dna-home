@@ -37,6 +37,7 @@ final class L {
     }
 
     private static final String[] DATA = {
+        "Aktualisiert auf \u0002Updated to \u0001",
         "Sleep-Timer aus.\u0002Sleep timer off.\u0001",
         "Pausiert in \u0002Pausing in \u0001",
         "Aktualisiert \u0002Updating \u0001",
