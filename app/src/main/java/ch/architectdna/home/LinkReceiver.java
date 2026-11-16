@@ -21,6 +21,11 @@ public class LinkReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         String a = i.getAction();
+        // Any ARC Link signal (type, battery, switch) means the Mac keyboard is attached right now.
+        // Screens read this time to auto-focus for typing — and to NOT pop the on-screen keyboard
+        // when there is no external keyboard.
+        if (a != null && a.startsWith("ch.architectdna.home."))
+            c.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putLong("kbdSeenAt", System.currentTimeMillis()).apply();
         if ("ch.architectdna.home.KBD_BATT".equals(a)) {
             int level = i.getIntExtra("level", -1);
             if (level >= 0 && KbdBatt.canShow(c)) KbdBatt.show(c.getApplicationContext(), level, i.getBooleanExtra("charging", false));

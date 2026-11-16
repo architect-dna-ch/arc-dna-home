@@ -1236,6 +1236,17 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return row;
     }
 
+    /**
+     * A real keyboard to type with: a hardware (BT/USB) keyboard right now, or ARC Link (the Mac over
+     * USB) seen in the last two minutes. Only then do the Mediathek screens auto-focus the search —
+     * on the tablet alone we leave it be, so the on-screen keyboard doesn't rise and cover the library.
+     */
+    private boolean externalKeyboard() {
+        Configuration c = getResources().getConfiguration();
+        if (c.keyboard == Configuration.KEYBOARD_QWERTY && c.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO) return true;
+        return System.currentTimeMillis() - prefs.getLong("kbdSeenAt", 0) < 120_000L;   // ARC Link types over adb, not as a HID keyboard
+    }
+
     /** The home search bar now searches apps: it opens the Mediathek and carries the query into its app search. */
     private void webSearch() {
         String q = webQuery.getText().toString().trim();
@@ -1244,11 +1255,14 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         if (libSearch != null) {
             libSearch.setText(q);
             libSearch.setSelection(q.length());
-            libSearch.post(() -> {
-                libSearch.requestFocus();
-                android.view.inputmethod.InputMethodManager im = getSystemService(android.view.inputmethod.InputMethodManager.class);
-                if (im != null) im.showSoftInput(libSearch, 0);
-            });
+            if (externalKeyboard()) {
+                libSearch.post(() -> libSearch.requestFocus());   // keyboard attached → just keep typing to refine
+            } else {
+                // Tablet alone: the query is in and the list is already filtered. Keep the keyboard down
+                // so the whole Mediathek stays visible; tap the field to edit.
+                libSearch.clearFocus();
+                hideKeyboard();
+            }
         }
     }
 
@@ -1723,6 +1737,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         dockOverLib(true);                 // keep the bottom dock on top of the Mediathek
         // Head / eye scrolling only works in the Mediathek: the camera starts here …
         if (!headMode().equals("off")) startHead();
+        // With the MacBook / a BT keyboard attached, land the cursor in search so you can type to
+        // filter straight away. On the tablet alone, stay hands-off — no auto-focus, so the on-screen
+        // keyboard doesn't rise and hide the lower half of the Mediathek.
+        if (externalKeyboard() && libSearch != null) libSearch.post(() -> libSearch.requestFocus());
     }
 
     private void closeLibrary() {
