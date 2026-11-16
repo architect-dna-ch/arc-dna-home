@@ -74,6 +74,14 @@ public class MathActivity extends Activity {
         input.setText(prefs.getString("draft", ""));
         col.addView(input, ui.lp(-1, -2, ui.dp(22)));
 
+        // A photo of the problem: worksheet, book, whiteboard
+        LinearLayout cam = new LinearLayout(this);
+        cam.addView(ui.button(t("📷  Photo", "📷  Foto"), 0, v -> takePhoto()), new LinearLayout.LayoutParams(0, ui.dp(50), 1f));
+        View gap = new View(this);
+        cam.addView(gap, new LinearLayout.LayoutParams(ui.dp(8), 1));
+        cam.addView(ui.button(t("🖼  From gallery", "🖼  Aus Galerie"), 2, v -> pickImage()), new LinearLayout.LayoutParams(0, ui.dp(50), 1f));
+        col.addView(cam, ui.lp(-1, -2, ui.dp(10)));
+
         // Symbols the phone keyboard hides
         ArcUi.Wrap sym = new ArcUi.Wrap(this, ui.dp(6));
         for (String s : SYMBOLS) {
@@ -93,7 +101,7 @@ public class MathActivity extends Activity {
         for (String[] m : ms) modes.addView(ui.chip(m[1], m[0].equals(mode), v -> { mode = m[0]; keepDraft(); build(); }));
         col.addView(modes, ui.lp(-1, -2, ui.dp(10)));
 
-        col.addView(ui.button(t("Solve →", "Lösen →"), 1, v -> solve()), ui.lp(-1, ui.dp(56), ui.dp(20)));
+        col.addView(ui.button(t("Solve →", "Lösen →"), 1, v -> solve(null)), ui.lp(-1, ui.dp(56), ui.dp(20)));
 
         out = new LinearLayout(this);
         out.setOrientation(LinearLayout.VERTICAL);
@@ -116,9 +124,12 @@ public class MathActivity extends Activity {
         if (input != null) prefs.edit().putString("draft", input.getText().toString()).apply();
     }
 
-    private void solve() {
+    private void solve() { solve(null); }
+
+    /** image = a base64 JPEG of the problem, or null for typed text only. */
+    private void solve(String image) {
         String p = input.getText().toString().trim();
-        if (p.isEmpty() || busy) return;
+        if ((p.isEmpty() && image == null) || busy) return;
         busy = true;
         keepDraft();
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(), 0);
@@ -127,9 +138,11 @@ public class MathActivity extends Activity {
         pb.setIndeterminate(true);
         pb.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ui.rust));
         out.addView(pb, ui.lp(-1, ui.dp(6), ui.dp(14)));
+        if (image != null) out.addView(ui.mono(t("📷 READING THE PHOTO …", "📷 LIEST DAS FOTO …"), ui.ink3, 10.5f), ui.lp(-1, -2, ui.dp(8)));
         JSONObject body = new JSONObject();
         try {
             body.put("problem", p);
+            if (image != null) body.put("image", image);
             body.put("mode", mode);
             body.put("lang", ArcUi.de() ? "de" : "en");
         } catch (Exception ignored) { }
@@ -138,11 +151,14 @@ public class MathActivity extends Activity {
             busy = false;
             out.removeAllViews();
             if (r.code == 200 && !r.json.optString("text").isEmpty()) {
-                String text = r.json.optString("text"), res = r.json.optString("result");
-                save(p, text, res);
+                String text = r.json.optString("text"), res = r.json.optString("result"), read = r.json.optString("read");
+                if (!read.isEmpty() && p.isEmpty()) { input.setText(read); keepDraft(); }   // show what was read from the photo
+                save(p.isEmpty() ? (read.isEmpty() ? "📷" : read) : p, text, res);
                 show(text, res, System.currentTimeMillis() - t0);
             } else {
-                String msg = r.code == 429 ? t("Lots of problems in a short time. Try again in a bit.", "Viele Aufgaben in kurzer Zeit. Gleich nochmal.")
+                String msg = r.code == 422 ? t("No problem found on the photo. Closer, sharper, more light?", "Keine Aufgabe auf dem Foto erkannt. Näher, schärfer, mehr Licht?")
+                    : r.code == 413 ? t("Photo too large.", "Foto zu gross.")
+                    : r.code == 429 ? t("Lots of problems in a short time. Try again in a bit.", "Viele Aufgaben in kurzer Zeit. Gleich nochmal.")
                     : r.code == 0 ? t("No connection.", "Keine Verbindung.") : t("Didn't work. Try again.", "Hat nicht geklappt. Nochmal.");
                 out.addView(ui.body(msg, ui.rust, 15), ui.lp(-1, -2, ui.dp(12)));
             }
@@ -186,6 +202,95 @@ public class MathActivity extends Activity {
         out.addView(card, ui.lp(-1, -2, ui.dp(16)));
         out.addView(ui.button(t("New problem", "Neue Aufgabe"), 2, v -> { input.setText(""); keepDraft(); out.removeAllViews(); input.requestFocus(); }),
             ui.lp(-1, ui.dp(50), ui.dp(10)));
+    }
+
+    /* ================= camera & gallery ================= */
+
+    private android.net.Uri photoUri;
+
+    private void takePhoto() {
+        // ARC-DNA holds the camera permission (head scroll), so Android wants it granted before the camera app may run.
+        if (declaresCamera() && checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 60);
+            return;
+        }
+        try {
+            android.content.ContentValues cv = new android.content.ContentValues();
+            cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "arc-math-" + System.currentTimeMillis() + ".jpg");
+            cv.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            if (android.os.Build.VERSION.SDK_INT >= 29) cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ARC Math");
+            photoUri = getContentResolver().insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+            android.content.Intent i = new android.content.Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                .putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoUri)
+                .addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(i, 61);
+        } catch (RuntimeException e) {
+            Toast.makeText(this, t("No camera app found. Pick a photo from the gallery instead.", "Keine Kamera-App gefunden. Nimm ein Foto aus der Galerie."), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private boolean declaresCamera() {
+        try {
+            String[] req = getPackageManager().getPackageInfo(getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions;
+            if (req != null) for (String r : req) if (android.Manifest.permission.CAMERA.equals(r)) return true;
+        } catch (Exception ignored) { }
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code == 60 && res.length > 0 && res[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) takePhoto();
+    }
+
+    private void pickImage() {
+        try {
+            startActivityForResult(new android.content.Intent(android.content.Intent.ACTION_GET_CONTENT).setType("image/*"), 62);
+        } catch (RuntimeException ignored) { }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, android.content.Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == 61) {
+            android.net.Uri u = photoUri;
+            if (res == RESULT_OK && u != null) send(u);
+            if (u != null) try { getContentResolver().delete(u, null, null); } catch (RuntimeException ignored) { }   // don't keep it in the gallery
+        } else if (req == 62 && res == RESULT_OK && data != null && data.getData() != null) {
+            send(data.getData());
+        }
+    }
+
+    /** Shrink to ≤ 1600 px, upright, JPEG ~85 % → a few hundred kB, then solve. */
+    private void send(android.net.Uri u) {
+        String b64 = null;
+        try {
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            try (java.io.InputStream in = getContentResolver().openInputStream(u)) { android.graphics.BitmapFactory.decodeStream(in, null, o); }
+            int sample = 1;
+            while (Math.max(o.outWidth, o.outHeight) / sample > 3200) sample *= 2;
+            o = new android.graphics.BitmapFactory.Options();
+            o.inSampleSize = sample;
+            android.graphics.Bitmap bm;
+            try (java.io.InputStream in = getContentResolver().openInputStream(u)) { bm = android.graphics.BitmapFactory.decodeStream(in, null, o); }
+            if (bm == null) throw new java.io.IOException("decode");
+            int rot = 0;
+            try (java.io.InputStream in = getContentResolver().openInputStream(u)) {
+                int or = new android.media.ExifInterface(in).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 1);
+                rot = or == 6 ? 90 : or == 3 ? 180 : or == 8 ? 270 : 0;
+            } catch (Exception ignored) { }
+            float scale = Math.min(1f, 1600f / Math.max(bm.getWidth(), bm.getHeight()));
+            android.graphics.Matrix m = new android.graphics.Matrix();
+            m.postScale(scale, scale);
+            m.postRotate(rot);
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), m, true);
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            small.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, bo);
+            b64 = android.util.Base64.encodeToString(bo.toByteArray(), android.util.Base64.NO_WRAP);
+        } catch (Exception e) {
+            Toast.makeText(this, t("Couldn't open the photo.", "Foto liess sich nicht öffnen."), Toast.LENGTH_LONG).show();
+        }
+        if (b64 != null) solve(b64);
     }
 
     private JSONArray history() {
