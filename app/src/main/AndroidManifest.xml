@@ -313,6 +313,18 @@
             android:theme="@android:style/Theme.Material.NoActionBar"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- ARC Remote as a Quick-Settings tile: one tap from the shade opens the remote. -->
+        <service
+            android:name=".RemoteTile"
+            android:exported="true"
+            android:icon="@drawable/ic_music"
+            android:label="ARC Remote"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Energie: drops down like a control centre: battery, switches, what drains. -->
         <activity
             android:name=".EnergyActivity"

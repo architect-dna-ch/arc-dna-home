@@ -84,6 +84,7 @@ public class RemoteActivity extends Activity {
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);   // in the tub, the screen stays ready
+        offerTile();
 
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(bg);
@@ -284,6 +285,21 @@ public class RemoteActivity extends Activity {
     }
 
     /* ---------------- link ---------------- */
+
+    /** First time here on Android 13+, offer to drop an ARC Remote tile into the Quick-Settings shade. */
+    private void offerTile() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        android.content.SharedPreferences p = getSharedPreferences("home", MODE_PRIVATE);
+        if (p.getBoolean("remoteTileAsked", false)) return;
+        p.edit().putBoolean("remoteTileAsked", true).apply();
+        try {
+            android.app.StatusBarManager sb = getSystemService(android.app.StatusBarManager.class);
+            if (sb != null) sb.requestAddTileService(
+                new android.content.ComponentName(this, RemoteTile.class), "ARC Remote",
+                android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_music),
+                getMainExecutor(), r -> { });
+        } catch (Exception ignored) { }
+    }
 
     private void connect() {
         if (link != null || (connecting != null && connecting.isAlive())) return;
