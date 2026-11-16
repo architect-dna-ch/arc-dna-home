@@ -143,7 +143,12 @@ public class SpotlightActivity extends Activity {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             items.add(it);
         }
-        for (Item it : items) it.low = norm(it.label);
+        Item close = new Item();                      // "close" → Enter: every app closed
+        close.emoji = "🧹";
+        close.label = t("Close all apps", "Alle Apps schliessen");
+        close.intent = null;
+        items.add(0, close);
+                for (Item it : items) it.low = norm(it.label);
         runOnUiThread(() -> {
             all.clear();
             all.addAll(items);
@@ -213,8 +218,10 @@ public class SpotlightActivity extends Activity {
 
     private void launch(int i) {
         if (i < 0 || i >= shown.size()) return;
-        try { startActivity(shown.get(i).intent); } catch (RuntimeException ignored) { }
+        Intent in = shown.get(i).intent;
         finish();
+        if (in == null) { LinkReceiver.closeAll(getApplicationContext()); return; }
+        try { startActivity(in); } catch (RuntimeException ignored) { }
         overridePendingTransition(0, 0);
     }
 

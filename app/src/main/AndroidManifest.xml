@@ -104,6 +104,7 @@
             <intent-filter>
                 <action android:name="ch.architectdna.home.TYPE" />
                 <action android:name="ch.architectdna.home.KBD_BATT" />
+                <action android:name="ch.architectdna.home.CLOSE_ALL" />
             </intent-filter>
         </receiver>
 
