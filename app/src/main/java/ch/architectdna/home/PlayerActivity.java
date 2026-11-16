@@ -82,6 +82,12 @@ public class PlayerActivity extends Activity {
         col.setPadding(dp(22), dp(16), dp(22), dp(28));
         sv.addView(col);
 
+        // Preset for the window size. A narrow floating window (HyperOS Workstation, split, or a
+        // phone-sized pane) drops to a compact face — smaller disk, no volume lever, trimmed header —
+        // so it reads cleanly instead of cramped. The activity re-runs onCreate when you resize it.
+        final int wdp = getResources().getConfiguration().screenWidthDp;
+        final boolean compact = wdp < 480 && (isInMultiWindowMode() || wdp < 360);
+
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         View dash = new View(this);
@@ -95,9 +101,11 @@ public class PlayerActivity extends Activity {
         head.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView remB = chip("🔊 Tablet", ink2);
         remB.setOnClickListener(v -> startActivity(new Intent(this, RemoteActivity.class)));
-        head.addView(remB);
-        View rg = new View(this);
-        head.addView(rg, new LinearLayout.LayoutParams(dp(8), 1));
+        if (!compact) {
+            head.addView(remB);
+            View rg = new View(this);
+            head.addView(rg, new LinearLayout.LayoutParams(dp(8), 1));
+        }
         TextView djB = chip("🎧 DJ", rust);
         djB.setOnClickListener(v -> openDj());
         head.addView(djB);
@@ -118,15 +126,15 @@ public class PlayerActivity extends Activity {
         // The medium with a volume lever standing beside it, like a mixer fader.
         FrameLayout deck = new FrameLayout(this);
         FrameLayout.LayoutParams dkl = new FrameLayout.LayoutParams(-1, -1);
-        dkl.rightMargin = dp(50);
+        dkl.rightMargin = dp(compact ? 0 : 50);
         deck.addView(disk, dkl);
         Lever lever = new Lever();
         FrameLayout.LayoutParams lvl = new FrameLayout.LayoutParams(dp(46), -1, Gravity.END);
         lvl.topMargin = dp(10);
         lvl.bottomMargin = dp(28);
-        deck.addView(lever, lvl);
-        LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(-1, dp(320));
-        kl.topMargin = dp(18);
+        if (!compact) deck.addView(lever, lvl);   // narrow window: drop the volume lever, give the disk the full width
+        LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(-1, dp(compact ? (wdp < 340 ? 150 : 215) : 320));
+        kl.topMargin = dp(compact ? 10 : 18);
         col.addView(deck, kl);
 
         title = text(22, ink, true);
