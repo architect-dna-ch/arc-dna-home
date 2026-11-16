@@ -97,6 +97,16 @@
         android:supportsRtl="true"
         android:theme="@style/Home">
 
+        <!-- ARC Link (Mac keyboard over USB): umlauts and the keyboard-battery chip, no screen needed. -->
+        <receiver
+            android:name=".LinkReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="ch.architectdna.home.TYPE" />
+                <action android:name="ch.architectdna.home.KBD_BATT" />
+            </intent-filter>
+        </receiver>
+
         <!-- ARC-DNA hub: the launcher icon. Every ARC tool in one list, plus updates. -->
         <activity
             android:name=".HubActivity"
@@ -393,6 +403,19 @@
             android:exported="false"
             android:label="Bücher"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+
+        <!-- Bücher gets its own icon again, so Statistik / Orbit list it. -->
+        <activity-alias
+            android:name=".BuecherLauncher"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Bücher"
+            android:targetActivity=".BuecherActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- ARC·Tap Fuchs-Rennen: live Bluetooth race between two ARC-DNA devices. -->
         <activity
