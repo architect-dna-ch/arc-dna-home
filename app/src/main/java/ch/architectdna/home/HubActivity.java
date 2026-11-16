@@ -104,6 +104,7 @@ public class HubActivity extends Activity {
         section(col, t("Music", "Musik"), new Object[][]{
             {"💾", "ARC Player", t("Your face for whatever plays", "Dein Gesicht für alles, was läuft"), PlayerActivity.class},
             {"🔊", "ARC Remote", t("Steer the tablet's music", "Musik auf dem Tablet steuern"), RemoteActivity.class},
+            {"🎚", t("Play bar", "Play-Leiste"), t("Floating music control over every app", "Schwebende Musiksteuerung über allen Apps"), PlayBarActivity.class},
             {"📜", t("Music history", "Musik-Verlauf"), t("Everything you played", "Alles, was du gehört hast"), HistoryActivity.class},
             {"🎧", "VOID FREQ", t("Focus sounds", "Fokus-Klänge"), FreqActivity.class},
         });

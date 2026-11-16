@@ -108,6 +108,12 @@
             </intent-filter>
         </receiver>
 
+        <activity
+            android:name=".PlayBarActivity"
+            android:exported="false"
+            android:label="ARC Play bar"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC Passwords: pick a login (from the 🔑 key above the keyboard) or manage them. -->
         <activity
             android:name=".VaultActivity"

@@ -116,6 +116,7 @@ public class MediaListener extends NotificationListenerService {
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(changed);
         for (MediaController c : watched) c.unregisterCallback(callback);
         watched.clear();
+        PlayBar.hide();
         main.removeCallbacks(tick);
         main.removeCallbacks(progress);
         if (bgPhases != null) bgPhases.stop();
@@ -170,6 +171,7 @@ public class MediaListener extends NotificationListenerService {
             }
         }
         ArcMediaNotice.show(this, shown);
+        PlayBar.update(this, shown);        // the floating music control bar
         main.removeCallbacks(progress);
         if (playing != null) main.postDelayed(progress, 5_000);
     }
