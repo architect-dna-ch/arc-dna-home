@@ -56,7 +56,7 @@ jobs:
           gh release create "stats-v0.${{ github.run_number }}" ARC-DNA-Statistik.apk -R architect-dna-ch/arc-releases \
             --title "ARC-DNA Statistik 0.${{ github.run_number }}" --notes "Download ARC-DNA-Statistik.apk, open it and allow installing." --latest=false
           gh api "repos/architect-dna-ch/arc-releases/releases?per_page=100" \
-            --jq '[.[] | select(.tag_name | startswith("stats-v"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+            --jq '[.[] | select(.tag_name | startswith("stats-v"))] | sort_by(.published_at) | reverse | .[5:] | .[].tag_name' |
           while read -r tag; do gh release delete "$tag" --yes --cleanup-tag -R architect-dna-ch/arc-releases || true; done
 
       # Keep only the 5 newest Statistik releases (and their tags).
