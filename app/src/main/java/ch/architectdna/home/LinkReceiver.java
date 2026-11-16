@@ -27,6 +27,15 @@ public class LinkReceiver extends BroadcastReceiver {
             return;
         }
         if ("ch.architectdna.home.CLOSE_ALL".equals(a)) { closeAll(c); return; }
+        if ("ch.architectdna.home.SWITCH".equals(a)) {
+            ScrollAssistService s = ScrollAssistService.instance;
+            if (s == null) return;
+            String dir = i.getStringExtra("d");
+            if ("pick".equals(dir)) AppSwitcher.pick(s);
+            else if ("cancel".equals(dir)) AppSwitcher.cancel();
+            else AppSwitcher.step(s, "prev".equals(dir) ? -1 : 1);
+            return;
+        }
         if (!"ch.architectdna.home.TYPE".equals(a)) return;
         String t = i.getStringExtra("t");
         if (t == null || t.isEmpty()) return;

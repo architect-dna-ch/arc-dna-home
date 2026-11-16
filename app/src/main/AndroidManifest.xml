@@ -105,6 +105,7 @@
                 <action android:name="ch.architectdna.home.TYPE" />
                 <action android:name="ch.architectdna.home.KBD_BATT" />
                 <action android:name="ch.architectdna.home.CLOSE_ALL" />
+                <action android:name="ch.architectdna.home.SWITCH" />
             </intent-filter>
         </receiver>
 

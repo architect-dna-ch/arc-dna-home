@@ -230,6 +230,7 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
             }
             shadeUntil = 0;
             pendingPkg = pkg;
+            noteRecent(pkg);                       // keep the app-switcher's recent list current
             main.removeCallbacks(settle);
             main.postDelayed(settle, 500);
         } else if (pkg.equals(currentPkg)) {
@@ -268,6 +269,18 @@ public class ScrollAssistService extends AccessibilityService implements HeadTra
         DiagLog.log("front app changed" + (pkg.equals(getPackageName()) ? " (launcher)" : "") + ", scroll mode=" + m);
         apply(m);
     };
+
+    /** Most-recent-first list of real apps, for the ⌥Tab switcher. */
+    static final java.util.List<String> recent = new java.util.ArrayList<>();
+
+    private void noteRecent(String pkg) {
+        if (pkg.equals(getPackageName())) return;
+        synchronized (recent) {
+            recent.remove(pkg);
+            recent.add(0, pkg);
+            while (recent.size() > 12) recent.remove(recent.size() - 1);
+        }
+    }
 
     private boolean launchable(String pkg) {
         if (pkg.equals(getPackageName())) return true;
