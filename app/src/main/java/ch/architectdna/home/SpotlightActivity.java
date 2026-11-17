@@ -125,6 +125,7 @@ public class SpotlightActivity extends Activity {
             {"🧬", "ARC-DNA Hub", HubActivity.class}, {"🐻", t("Bear alarm", "Bär-Wecker"), WeckerActivity.class},
             {"🔑", t("Passwords", "Passwörter"), VaultActivity.class},
             {"🎧", t("Headphones", "Kopfhörer"), BtAudioActivity.class},
+            {"🎞", "ARC Gifs", GifActivity.class},
             {"🎚", t("Play bar", "Play-Leiste"), PlayBarActivity.class},
         };
         for (Object[] a : arc) {

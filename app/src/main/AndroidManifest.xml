@@ -263,6 +263,19 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Gifs: your own loop collection. Share a GIF to ARC to add it. -->
+        <activity
+            android:name=".GifActivity"
+            android:exported="true"
+            android:label="ARC Gifs"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/gif" />
+            </intent-filter>
+        </activity>
+
         <!-- ARC Player: our own player screen for whatever plays (YouTube Music keeps playing underneath). -->
         <activity
             android:name=".PlayerActivity"

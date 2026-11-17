@@ -140,6 +140,7 @@ public class HubActivity extends Activity {
             {"🎯", t("Games", "Spielothek"), t("Darts, rocket, table tennis", "Darts, Rakete, Tischtennis"), SpielothekActivity.class},
             {"👾", "Nexus Breach", t("Waves, upgrades, bosses", "Wellen, Upgrades, Bosse"), NexusActivity.class},
             {"✏️", "Whiteboard", t("Draw, learn to draw", "Zeichnen, zeichnen lernen"), BoardActivity.class},
+            {"🎞", "ARC Gifs", t("Your loop collection", "Deine Loop-Sammlung"), GifActivity.class},
         });
     }
 
