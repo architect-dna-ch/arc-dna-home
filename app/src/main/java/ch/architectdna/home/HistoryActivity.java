@@ -346,7 +346,7 @@ public class HistoryActivity extends Activity {
         root.setFocusableInTouchMode(true);     // no keyboard popping up on open
         root.requestFocus();
         globe = new PlayGlobe();
-        root.addView(globe, new LinearLayout.LayoutParams(-1, dp(150)));
+        root.addView(globe, new LinearLayout.LayoutParams(-1, dp(210)));
         android.widget.HorizontalScrollView cats = new android.widget.HorizontalScrollView(this);
         cats.setHorizontalScrollBarEnabled(false);
         LinearLayout catRow = new LinearLayout(this);
@@ -682,9 +682,18 @@ public class HistoryActivity extends Activity {
         private double yaw;
         private boolean dragging, expanded, moved;
         private float lastX, downX, downY;
+        private float zoom = 1f;
+        private final android.view.ScaleGestureDetector sgd;
 
         PlayGlobe() {
             super(HistoryActivity.this);
+            sgd = new android.view.ScaleGestureDetector(HistoryActivity.this, new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override public boolean onScale(android.view.ScaleGestureDetector d) {
+                    zoom = Math.max(1f, Math.min(4f, zoom * d.getScaleFactor()));
+                    invalidate();
+                    return true;
+                }
+            });
         }
 
         double hourOf(String[] q) {
@@ -700,13 +709,15 @@ public class HistoryActivity extends Activity {
 
         @Override
         public boolean onTouchEvent(android.view.MotionEvent e) {
+            sgd.onTouchEvent(e);                                   // two fingers = pinch to zoom
             int a = e.getActionMasked();
+            getParent().requestDisallowInterceptTouchEvent(true);
+            if (sgd.isInProgress() || e.getPointerCount() > 1) { dragging = false; moved = true; return true; }
             if (a == android.view.MotionEvent.ACTION_DOWN) {
                 dragging = true;
                 moved = false;
                 lastX = downX = e.getX();
                 downY = e.getY();
-                getParent().requestDisallowInterceptTouchEvent(true);
             } else if (a == android.view.MotionEvent.ACTION_MOVE) {
                 if (Math.hypot(e.getX() - downX, e.getY() - downY) > dp(8)) moved = true;
                 yaw += (e.getX() - lastX) / (getWidth() * 0.3);
@@ -721,7 +732,7 @@ public class HistoryActivity extends Activity {
         /** Tap: the globe grows to almost the screen width (with the hours around it), tap again: back. */
         private void toggleSize() {
             expanded = !expanded;
-            int from = getHeight(), to = expanded ? (int) Math.min(getWidth() * 0.95f, getResources().getDisplayMetrics().heightPixels * 0.55f) : dp(150);
+            int from = getHeight(), to = expanded ? (int) Math.min(getWidth() * 1.0f, getResources().getDisplayMetrics().heightPixels * 0.62f) : dp(210);
             android.animation.ValueAnimator va = android.animation.ValueAnimator.ofInt(from, to);
             va.setDuration(320);
             va.setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f));
@@ -737,7 +748,7 @@ public class HistoryActivity extends Activity {
         protected void onDraw(Canvas c) {
             picked.clear();
             picked.addAll(plays);
-            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.44f;
+            float w = getWidth(), h = getHeight(), cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.44f * zoom;
             // A narrowed selection turns to the front (its average hour); otherwise a slow spin. Drag to turn by hand.
             if (dragging) {
                 // the finger decides
@@ -759,14 +770,33 @@ public class HistoryActivity extends Activity {
             c.drawCircle(cx, cy, r, p);
             c.drawOval(cx - r, cy - r * 0.3f, cx + r, cy + r * 0.3f, p);
             boolean narrowed = plays.size() < all.size();
+            // When filtered, spread the selection evenly over the whole globe (Fibonacci sphere), so
+            // the red dots use the space the greyed-out ones leave behind instead of bunching up.
+            java.util.Map<String[], Integer> order = null;
+            if (narrowed) {
+                order = new java.util.IdentityHashMap<>();
+                int oi = 0;
+                for (String[] q : plays) order.put(q, oi++);
+            }
+            final int N = Math.max(1, plays.size());
             p.setStyle(Paint.Style.FILL);
             for (int pass = 0; pass < 2; pass++) {
                 for (String[] q : all) {
                     boolean in = picked.contains(q);
                     if ((pass == 1) != in) continue;            // selection drawn on top
-                    double lon = hourOf(q) / 24 * Math.PI * 2 + yaw;
-                    double lat = ((q[2].hashCode() & 0xFFFF) / 65535.0 - 0.5) * 2.4;
-                    double x = Math.cos(lat) * Math.sin(lon), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon);
+                    double x, y, z;
+                    Integer packed = (narrowed && in && order != null) ? order.get(q) : null;
+                    if (packed != null) {
+                        int i = packed;
+                        double yy = 1 - (i + 0.5) / (double) N * 2.0;      // -1 … 1
+                        double rr = Math.sqrt(Math.max(0, 1 - yy * yy));
+                        double theta = i * 2.399963229728653 + yaw;        // golden angle
+                        x = Math.cos(theta) * rr; y = yy; z = Math.sin(theta) * rr;
+                    } else {
+                        double lon = hourOf(q) / 24 * Math.PI * 2 + yaw;
+                        double lat = ((q[2].hashCode() & 0xFFFF) / 65535.0 - 0.5) * 2.4;
+                        x = Math.cos(lat) * Math.sin(lon); y = Math.sin(lat); z = Math.cos(lat) * Math.cos(lon);
+                    }
                     if (z < -0.2 && !in) continue;
                     float sx = cx + (float) x * r, sy = cy - (float) y * r * 0.9f;
                     float depth = (float) (0.55 + 0.45 * z);
