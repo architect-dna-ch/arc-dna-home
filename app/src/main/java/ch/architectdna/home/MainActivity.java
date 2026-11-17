@@ -6419,6 +6419,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         clockShowsOld = false;
         ScrollAssistService.homeInFront(getPackageName());
         BtSync.startServer(this);          // also without notification access: the partner must find us
+        TreasureSync.startServer(this);
         RouteLearner.note(this);           // at a station? (Routen learns your usual routes)
         BtSync.syncSoon(this, 3 * 60_000L, name -> {
             if (name != null && music != null) music.refreshStats();

@@ -90,6 +90,7 @@ public class MediaListener extends NotificationListenerService {
         main.removeCallbacks(tick);
         main.postDelayed(tick, 60_000);
         BtSync.startServer(this);
+        TreasureSync.startServer(this);   // phone↔tablet encrypted vault backup
         BtRemote.startServer(this);      // the phone can steer this device's music (ARC Remote)
     }
 

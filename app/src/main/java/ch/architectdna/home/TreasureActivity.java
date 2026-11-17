@@ -62,7 +62,7 @@ public class TreasureActivity extends Activity {
     }
 
     @Override protected void onStart() { super.onStart(); if (key == null) showLock(); }
-    @Override protected void onStop() { super.onStop(); key = null; pendingSave = null; }   // lock when it leaves the screen
+    @Override protected void onStop() { super.onStop(); TreasureSync.push(this); key = null; pendingSave = null; }   // back up, then lock
 
     // ---------- lock / create ----------
 
@@ -95,12 +95,14 @@ public class TreasureActivity extends Activity {
         });
         col.addView(go, gap(ui.dp(22)));
 
-        if (!fresh) {
-            TextView imp = ui.mono(t("Restore from a backup", "Aus Backup wiederherstellen"), ui.ink3, 12);
-            imp.setPadding(0, ui.dp(16), 0, 0);
-            imp.setOnClickListener(v -> openDoc(IMPORT, "application/zip", "*/*"));
-            col.addView(imp);
-        }
+        TextView near = ui.mono(t("Restore from the other ARC device", "Vom anderen ARC-Gerät wiederherstellen"), ui.rust, 12);
+        near.setPadding(0, ui.dp(18), 0, 0);
+        near.setOnClickListener(v -> restoreNearby());
+        col.addView(near);
+        TextView imp = ui.mono(t("Restore from a backup file", "Aus Backup-Datei wiederherstellen"), ui.ink3, 12);
+        imp.setPadding(0, ui.dp(10), 0, 0);
+        imp.setOnClickListener(v -> openDoc(IMPORT, "application/zip", "*/*"));
+        col.addView(imp);
         root.addView(wrap(col));
     }
 
@@ -111,6 +113,25 @@ public class TreasureActivity extends Activity {
             final SecretKey fk = k;
             main.post(() -> { if (fk != null) { key = fk; showVault(); } else Toast.makeText(this, t("Couldn't create the vault.", "Tresor-Erstellung fehlgeschlagen."), Toast.LENGTH_SHORT).show(); });
         }, "treasure-create").start();
+    }
+
+    /** Pull my vault back from the nearby device that holds it (the tablet, or the phone). */
+    private void restoreNearby() {
+        Toast.makeText(this, t("Looking for the other device …", "Suche das andere Gerät …"), Toast.LENGTH_SHORT).show();
+        TreasureSync.pull(this, blob -> {
+            if (blob == null) { Toast.makeText(this, t("No nearby ARC device had a backup. Open ARC-DNA on it and keep Bluetooth on.", "Kein ARC-Gerät mit Backup gefunden. ARC-DNA dort öffnen, Bluetooth an."), Toast.LENGTH_LONG).show(); return; }
+            new Thread(() -> {
+                boolean ok = false;
+                try { Treasure.importFrom(this, TreasureSync.stream(blob)); ok = true; } catch (Exception ignored) { }
+                final boolean fok = ok;
+                main.post(() -> {
+                    key = null;
+                    Toast.makeText(this, fok ? t("Vault restored. Unlock with your passphrase.", "Tresor wiederhergestellt. Mit deiner Passphrase öffnen.")
+                                             : t("Restore failed.", "Wiederherstellung fehlgeschlagen."), Toast.LENGTH_LONG).show();
+                    showLock();
+                });
+            }, "treasure-restore").start();
+        });
     }
 
     private void unlock(char[] pass) {
@@ -233,7 +254,7 @@ public class TreasureActivity extends Activity {
     private void confirmDelete(final Treasure.Item it) {
         new android.app.AlertDialog.Builder(this)
             .setMessage(t("Delete \"" + it.name + "\"? This can't be undone.", "„" + it.name + "“ löschen? Nicht rückgängig machbar."))
-            .setPositiveButton(t("Delete", "Löschen"), (d, i) -> { Treasure.delete(this, it.id); refresh(); })
+            .setPositiveButton(t("Delete", "Löschen"), (d, i) -> { Treasure.delete(this, it.id); refresh(); TreasureSync.push(this); })
             .setNegativeButton(t("Keep", "Behalten"), null)
             .show();
     }
@@ -273,7 +294,7 @@ public class TreasureActivity extends Activity {
                 String txt = in.getText().toString();
                 if (txt.isEmpty()) return;
                 String name = txt.length() > 28 ? txt.substring(0, 28).replace('\n', ' ') + "…" : txt.replace('\n', ' ');
-                try { byte[] p = txt.getBytes("UTF-8"); Treasure.add(this, key, name, type, p); refresh(); }
+                try { byte[] p = txt.getBytes("UTF-8"); Treasure.add(this, key, name, type, p); refresh(); TreasureSync.push(this); }
                 catch (Exception e) { toast(t("Couldn't save.", "Speichern fehlgeschlagen.")); }
             })
             .setNegativeButton(t("Cancel", "Abbrechen"), null)
@@ -309,7 +330,7 @@ public class TreasureActivity extends Activity {
                     byte[] bytes = readAll(uri);
                     if (bytes.length > 40 * 1024 * 1024) { toast(t("That file's too big (40 MB max).", "Datei zu gross (max. 40 MB).")); return; }
                     Treasure.add(this, key, nameOf(uri, type), type, bytes);
-                    main.post(this::refresh);
+                    main.post(this::refresh); TreasureSync.push(this);
                 } catch (Exception e) { toast(t("Couldn't add that.", "Konnte nicht hinzufügen.")); }
             }, "treasure-add").start();
         } else if (req == EXPORT) {
