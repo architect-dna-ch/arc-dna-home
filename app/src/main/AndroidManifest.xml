@@ -263,6 +263,15 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Treasure: passphrase-locked vault; nothing but ciphertext on disk. -->
+        <activity
+            android:name=".TreasureActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:label="ARC Treasure"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC Gifs: your own loop collection. Share a GIF to ARC to add it. -->
         <activity
             android:name=".GifActivity"

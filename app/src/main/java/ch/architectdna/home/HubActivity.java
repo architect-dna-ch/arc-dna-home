@@ -134,6 +134,7 @@ public class HubActivity extends Activity {
             {"🔋", t("Energy", "Energie"), t("Battery and what drains it", "Akku und was ihn zieht"), EnergyActivity.class},
             {"🛡", "VPN", t("How the internet sees you", "So sieht dich das Internet"), VpnActivity.class},
             {"🔑", t("Passwords", "Passwörter"), t("Your logins, filled in above the keyboard", "Deine Logins, eingefügt über der Tastatur"), VaultActivity.class},
+            {"🗝", t("Treasure", "Schatz"), t("A passphrase-locked vault only you can open", "Ein Tresor, den nur du mit deiner Passphrase öffnest"), TreasureActivity.class},
             {"🖼", t("Gallery", "Galerie"), t("Photos on a globe", "Fotos auf einem Globus"), GalleryActivity.class},
         });
         section(col, t("Play", "Spielen"), new Object[][]{

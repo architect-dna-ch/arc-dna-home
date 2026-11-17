@@ -126,6 +126,7 @@ public class SpotlightActivity extends Activity {
             {"🔑", t("Passwords", "Passwörter"), VaultActivity.class},
             {"🎧", t("Headphones", "Kopfhörer"), BtAudioActivity.class},
             {"🎞", "ARC Gifs", GifActivity.class},
+            {"🗝", t("Treasure", "Schatz"), TreasureActivity.class},
             {"🎚", t("Play bar", "Play-Leiste"), PlayBarActivity.class},
         };
         for (Object[] a : arc) {
