@@ -1947,6 +1947,42 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
         return a != null && a.component != null && getPackageName().equals(a.component.getPackageName());
     }
 
+    /** The ARC-DNA built-in screens as Mediathek entries, launched by explicit component (in-package). */
+    private List<AppEntry> arcEntries() {
+        Object[][] a = {
+            {"⚖","Einspruch",EinspruchActivity.class},{"⚓","Anchor",AnchorActivity.class},
+            {"∑","ARC Math",MathActivity.class},{"🗝",L.t("Schatz"),TreasureActivity.class},
+            {"🎞","ARC Gifs",GifActivity.class},{"🔊","ARC Remote",RemoteActivity.class},
+            {"🧭",L.t("Kompass"),KompassActivity.class},{"🌿",L.t("Gelassen"),CalmActivity.class},
+            {"🆘",L.t("Ruheinsel"),CrisisActivity.class},{"🎯",L.t("Fokus"),FokusActivity.class},
+            {"🧰",L.t("KI-Werkzeuge"),WerkzeugeActivity.class},{"🔎",L.t("Faktencheck"),FaktenActivity.class},
+            {"🙂",L.t("Stimmung"),MoodActivity.class},{"🌊","Takt",TaktActivity.class},
+            {"📅","Flexplan",PlanActivity.class},{"☀",L.t("Sonne & Welt"),SunActivity.class},
+            {"🎚",L.t("Play-Leiste"),PlayBarActivity.class},{"🎧",L.t("Kopfhörer"),BtAudioActivity.class},
+            {"🔑",L.t("Passwörter"),VaultActivity.class},{"📜",L.t("Musik-Verlauf"),HistoryActivity.class},
+            {"💾","ARC Player",PlayerActivity.class},{"🐻",L.t("Bär-Wecker"),WeckerActivity.class},
+        };
+        List<AppEntry> out = new ArrayList<>();
+        for (Object[] x : a) {
+            try { out.add(new AppEntry((String)x[1], new ComponentName(this, (Class<?>)x[2]), emojiDrawable((String)x[0]))); }
+            catch (Throwable ignored) { }
+        }
+        return out;
+    }
+
+    /** Draw an emoji/glyph into a drawable so an ARC screen shows an icon like any app. */
+    private Drawable emojiDrawable(String glyph) {
+        int sz = dp(44);
+        android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(sz, sz, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas c = new android.graphics.Canvas(bm);
+        android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        p.setColor(ink); p.setTextSize(sz * 0.66f); p.setTextAlign(android.graphics.Paint.Align.CENTER);
+        android.graphics.Rect r = new android.graphics.Rect();
+        p.getTextBounds(glyph, 0, glyph.length(), r);
+        c.drawText(glyph, sz / 2f, sz / 2f - (r.top + r.bottom) / 2f, p);
+        return new android.graphics.drawable.BitmapDrawable(getResources(), bm);
+    }
+
     private void loadApps() {
         new Thread(() -> {
             PackageManager pm = getPackageManager();
@@ -1972,6 +2008,10 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
                     new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name),
                     ownIcon(ri.activityInfo.name, ri.loadIcon(pm))));
             }
+            // ARC's own built-in screens belong in the Mediathek too (they have no launcher icon).
+            java.util.HashSet<String> have = new java.util.HashSet<>();
+            for (AppEntry e : list) if (e.component != null) have.add(e.component.getClassName());
+            for (AppEntry e : arcEntries()) if (!have.contains(e.component.getClassName())) list.add(e);
             Collator collator = Collator.getInstance(Locale.GERMAN);
             Collections.sort(list, (a, b) -> collator.compare(a.label, b.label));
             handler.post(() -> {
