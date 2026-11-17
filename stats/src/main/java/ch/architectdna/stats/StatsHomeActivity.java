@@ -228,7 +228,9 @@ public class StatsHomeActivity extends Activity {
             loadPoster();
             return true;
         });
-        homePage.addView(posterCard, lp(-1, dp(184), 0, dp(6), 0, dp(10)));
+        // Shorter in landscape, where vertical room is tight, so the dock/search below stay on screen.
+        boolean land = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        homePage.addView(posterCard, lp(-1, dp(land ? 104 : 176), 0, dp(6), 0, dp(8)));
         loadPoster();
 
         homeGap = new View(this);
