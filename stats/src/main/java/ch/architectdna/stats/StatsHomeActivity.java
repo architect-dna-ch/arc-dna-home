@@ -91,10 +91,8 @@ public class StatsHomeActivity extends Activity {
     private SharedPreferences prefs;
     private InputMethodManager imm;
     private SwipeFrame root;
-    private FrameLayout posterCard;
-    private ImageView poster;
-    private TextView posterHint, posterSwap;
     private static final int PICK_PHOTO = 0x9A01;
+    private TextView lockStatus;
     private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
     private ScrollView statsPage;
     private TextView glance, accessLink, screenTv, hourHint, sugLabel, designTag, classicClock, classicDate, classicGreet;
@@ -192,47 +190,6 @@ public class StatsHomeActivity extends Activity {
         accessLink.setVisibility(View.GONE);
         homePage.addView(accessLink);
 
-        // Your own picture, framed over the helix home — tap to swap it, long-press to clear it.
-        posterCard = new FrameLayout(this);
-        GradientDrawable pb = new GradientDrawable();
-        pb.setColor(card);
-        pb.setCornerRadius(dp(16));
-        pb.setStroke(dp(1), line);
-        posterCard.setBackground(pb);
-        posterCard.setClipToOutline(true);
-        posterCard.setOutlineProvider(new ViewOutlineProvider() {
-            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(16)); }
-        });
-        poster = new ImageView(this);
-        poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        posterCard.addView(poster, new FrameLayout.LayoutParams(-1, -1));
-        posterHint = text(13, ink3, false);
-        posterHint.setText(L.t("＋  Dein Foto"));
-        posterHint.setGravity(Gravity.CENTER);
-        posterCard.addView(posterHint, new FrameLayout.LayoutParams(-1, -1));
-        TextView swapChip = text(10, 0xFFFFFFFF, true);
-        swapChip.setText(L.t("TAUSCHEN"));
-        swapChip.setLetterSpacing(0.12f);
-        swapChip.setPadding(dp(8), dp(3), dp(8), dp(3));
-        GradientDrawable cg = new GradientDrawable();
-        cg.setColor(0x99000000);
-        cg.setCornerRadius(dp(10));
-        swapChip.setBackground(cg);
-        FrameLayout.LayoutParams scl = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.BOTTOM);
-        scl.rightMargin = dp(8); scl.bottomMargin = dp(8);
-        posterCard.addView(swapChip, scl);
-        posterSwap = swapChip;
-        posterCard.setOnClickListener(v -> pickPhoto());
-        posterCard.setOnLongClickListener(v -> {
-            new File(getFilesDir(), "home_photo.jpg").delete();
-            loadPoster();
-            return true;
-        });
-        // Shorter in landscape, where vertical room is tight, so the dock/search below stay on screen.
-        boolean land = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        homePage.addView(posterCard, lp(-1, dp(land ? 104 : 176), 0, dp(6), 0, dp(8)));
-        loadPoster();
-
         homeGap = new View(this);
         homePage.addView(homeGap, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -301,13 +258,12 @@ public class StatsHomeActivity extends Activity {
     }
 
     /** Page 1: the numbers behind the suggestions, and the three weights of the model. */
-    /** Open the photo picker (no storage permission on 13+) to choose your home picture. */
+    /** Open the photo picker (no storage permission on 13+) to choose your lock-screen picture. */
     private void pickPhoto() {
         try {
             Intent i = Build.VERSION.SDK_INT >= 33
-                ? new Intent(MediaStore.ACTION_PICK_IMAGES)
+                ? new Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
                 : new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
-            if (Build.VERSION.SDK_INT >= 33) i.setType("image/*");
             startActivityForResult(i, PICK_PHOTO);
         } catch (Exception e) {
             try { startActivityForResult(Intent.createChooser(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*"), L.t("Foto wählen")), PICK_PHOTO); }
@@ -318,38 +274,88 @@ public class StatsHomeActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req == PICK_PHOTO && res == RESULT_OK && data != null && data.getData() != null) savePoster(data.getData());
+        if (req == PICK_PHOTO && res == RESULT_OK && data != null && data.getData() != null) applyLockWallpaper(data.getData());
     }
 
-    /** Copy the chosen image into the app so it survives reboots and revoked URI grants. */
-    private void savePoster(Uri uri) {
+    /**
+     * Compose the chosen portrait with the ARC·DNA helix down the right and set it as the LOCK-SCREEN
+     * wallpaper (not the home — the Statistik UI stays the home). Runs off the main thread; the
+     * helix is drawn still here (a moving one needs a live wallpaper, which can't be lock-only).
+     */
+    private void applyLockWallpaper(Uri uri) {
+        if (lockStatus != null) lockStatus.setText(L.t("Setze …"));
         new Thread(() -> {
-            File f = new File(getFilesDir(), "home_photo.jpg");
-            try (InputStream in = getContentResolver().openInputStream(uri);
-                 OutputStream out = new FileOutputStream(f)) {
-                if (in == null) return;
-                byte[] buf = new byte[8192];
-                for (int r; (r = in.read(buf)) != -1; ) out.write(buf, 0, r);
-            } catch (Exception ignored) { }
-            runOnUiThread(this::loadPoster);
-        }, "poster-save").start();
+            String msg;
+            try {
+                android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
+                int W = Math.max(dp(1080), wm.getDesiredMinimumWidth());
+                int H = Math.max(dp(2340), wm.getDesiredMinimumHeight());
+                android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+                if (m.widthPixels > 0) { W = Math.min(m.widthPixels, m.heightPixels); H = Math.max(m.widthPixels, m.heightPixels); }
+
+                BitmapFactory.Options o = new BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                try (InputStream b = getContentResolver().openInputStream(uri)) { BitmapFactory.decodeStream(b, null, o); }
+                o.inSampleSize = Math.max(1, Math.min(o.outWidth / W, o.outHeight / H));
+                o.inJustDecodeBounds = false;
+                Bitmap src;
+                try (InputStream b = getContentResolver().openInputStream(uri)) { src = BitmapFactory.decodeStream(b, null, o); }
+                if (src == null) throw new Exception("decode");
+
+                Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(out);
+                c.drawColor(night ? 0xFF0E0E0D : 0xFF101014);
+                // cover-crop the photo over the whole screen
+                float s = Math.max((float) W / src.getWidth(), (float) H / src.getHeight());
+                float dw = src.getWidth() * s, dh = src.getHeight() * s;
+                android.graphics.RectF dst = new android.graphics.RectF((W - dw) / 2, (H - dh) / 2, (W + dw) / 2, (H + dh) / 2);
+                Paint pp = new Paint(Paint.ANTI_ALIAS_FLAG); pp.setFilterBitmap(true);
+                c.drawBitmap(src, null, dst, pp);
+                // a soft dark edge so the clock and helix stay readable over any photo
+                Paint sc = new Paint();
+                sc.setShader(new android.graphics.LinearGradient(0, 0, 0, H, new int[]{0x66000000, 0x00000000, 0x55000000}, new float[]{0, .35f, 1}, android.graphics.Shader.TileMode.CLAMP));
+                c.drawRect(0, 0, W, H, sc);
+                drawHelixOn(c, W * 0.88f, H * 0.14f, H * 0.72f, W * 0.11f);
+                // quiet wordmark bottom-left
+                Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
+                t.setColor(0xCCFFFFFF); t.setTextSize(W * 0.032f);
+                t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD)); t.setLetterSpacing(0.18f);
+                c.drawText("ARC·DNA", W * 0.06f, H * 0.955f, t);
+
+                wm.setBitmap(out, null, true, android.app.WallpaperManager.FLAG_LOCK);
+                src.recycle();
+                msg = L.t("Sperrbildschirm gesetzt ✓");
+            } catch (Throwable e) {
+                msg = L.t("Ging nicht — evtl. vom Theme gesperrt.");
+            }
+            final String fm = msg;
+            runOnUiThread(() -> {
+                if (lockStatus != null) lockStatus.setText(fm);
+                android.widget.Toast.makeText(this, fm, android.widget.Toast.LENGTH_LONG).show();
+            });
+        }, "lock-wallpaper").start();
     }
 
-    /** Show the saved picture (downsampled), or the "＋ Dein Foto" placeholder when none is set. */
-    private void loadPoster() {
-        if (poster == null) return;
-        File f = new File(getFilesDir(), "home_photo.jpg");
-        Bitmap bm = null;
-        if (f.exists()) {
-            try {
-                BitmapFactory.Options o = new BitmapFactory.Options();
-                o.inSampleSize = 2;                       // a home card never needs full resolution
-                bm = BitmapFactory.decodeFile(f.getAbsolutePath(), o);
-            } catch (Throwable ignored) { }
+    /** The same helix as the home background, painted onto a wallpaper canvas. */
+    private void drawHelixOn(Canvas c, float cx, float top, float span, float amp) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        int n = 60;
+        for (int i = 0; i < n; i++) {
+            float y = top + span * i / (n - 1);
+            float ph = i * 0.30f;
+            float xa = cx + (float) Math.sin(ph) * amp, xb = cx + (float) Math.sin(ph + Math.PI) * amp;
+            float za = ((float) Math.cos(ph) + 1) / 2, zb = 1 - za;
+            if (i % 2 == 0) {
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(amp * 0.04f);
+                p.setColor(0xFFFFFFFF); p.setAlpha(26);
+                c.drawLine(xa, y, xb, y, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFD9472F); p.setAlpha(Math.round(255 * (0.4f + za * 0.6f)));
+            c.drawCircle(xa, y, amp * (0.10f + za * 0.16f), p);
+            p.setColor(0xFFFFFFFF); p.setAlpha(Math.round(255 * (0.3f + zb * 0.5f)));
+            c.drawCircle(xb, y, amp * (0.10f + zb * 0.16f), p);
         }
-        poster.setImageBitmap(bm);
-        posterHint.setVisibility(bm == null ? View.VISIBLE : View.GONE);
-        posterSwap.setVisibility(bm == null ? View.GONE : View.VISIBLE);
     }
 
     private void buildStats() {
@@ -379,6 +385,21 @@ public class StatsHomeActivity extends Activity {
         accessCard.addView(btn, lp(-2, -2, 0, 0, 0, 0));
         accessCard.setVisibility(View.GONE);
         col.addView(accessCard, lp(-1, -2, 0, dp(16), 0, 0));
+
+        // Lock-screen photo: your picture + the ARC·DNA helix, set as the lock-screen wallpaper.
+        LinearLayout lock = cardBox();
+        lock.addView(label(L.t("SPERRBILDSCHIRM · DEIN FOTO"), ink3));
+        lockStatus = text(13, ink2, false);
+        lockStatus.setText(L.t("Dein Bild mit der ARC·DNA-Helix als Sperrbildschirm. Jederzeit austauschbar."));
+        lock.addView(lockStatus, lp(-1, -2, 0, dp(4), 0, dp(10)));
+        TextView lb = text(14, 0xFFFFFFFF, true);
+        lb.setText(L.t("Foto wählen & setzen"));
+        lb.setGravity(Gravity.CENTER);
+        lb.setPadding(dp(18), dp(11), dp(18), dp(11));
+        lb.setBackground(box(rust, rust, 40));
+        lb.setOnClickListener(v -> pickPhoto());
+        lock.addView(lb, lp(-2, -2, 0, 0, 0, 0));
+        col.addView(lock, lp(-1, -2, 0, dp(14), 0, 0));
 
         LinearLayout model = cardBox();
         model.addView(label(L.t("MODELL — AUSTÜFTELN"), ink3));
