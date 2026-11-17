@@ -96,7 +96,7 @@ public class StatsHomeActivity extends Activity {
     private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
     private ScrollView statsPage;
     private TextView glance, accessLink, screenTv, hourHint, sugLabel, designTag, classicClock, classicDate, classicGreet, homeStatsTime;
-    private LinearLayout classicBox, classicStrip, homeStats, homeStatsRows;
+    private LinearLayout classicBox, classicStrip, homeStats;
     private long todayScreen;
     private final android.os.Handler ticker = new android.os.Handler(android.os.Looper.getMainLooper());
     private View homeClock, homeGap;
@@ -184,23 +184,21 @@ public class StatsHomeActivity extends Activity {
         glance = text(15, ink2, false);
         homePage.addView(glance);
 
-        // Compact stats glance on the home, so you never have to swipe to see them. Tap = full stats.
+        // One lean line on the home: today's time + the top app, tap = full stats. No clutter.
         homeStats = cardBox();
+        homeStats.setOrientation(LinearLayout.HORIZONTAL);
+        homeStats.setGravity(Gravity.CENTER_VERTICAL);
+        homeStats.setPadding(dp(16), dp(13), dp(16), dp(13));
         homeStats.setClickable(true);
         homeStats.setOnClickListener(v -> showStats(true));
-        LinearLayout hsHead = new LinearLayout(this);
-        hsHead.setGravity(Gravity.CENTER_VERTICAL);
-        hsHead.addView(label(L.t("HEUTE AM BILDSCHIRM"), ink3), new LinearLayout.LayoutParams(0, -2, 1f));
+        homeStatsTime = text(17, ink, true);
+        homeStatsTime.setText("—");
+        homeStatsTime.setSingleLine(true);
+        homeStatsTime.setEllipsize(TextUtils.TruncateAt.END);
+        homeStats.addView(homeStatsTime, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView hsMore = text(11, rust, true);
         hsMore.setText(L.t("STATS →"));
-        hsHead.addView(hsMore);
-        homeStats.addView(hsHead);
-        homeStatsTime = text(28, ink, true);
-        homeStatsTime.setText("—");
-        homeStats.addView(homeStatsTime);
-        homeStatsRows = new LinearLayout(this);
-        homeStatsRows.setOrientation(LinearLayout.VERTICAL);
-        homeStats.addView(homeStatsRows, lp(-1, -2, 0, dp(8), 0, 0));
+        homeStats.addView(hsMore);
         homePage.addView(homeStats, lp(-1, -2, 0, dp(12), 0, dp(2)));
 
         accessLink = text(14, rust, true);
@@ -366,15 +364,15 @@ public class StatsHomeActivity extends Activity {
             float xa = cx + (float) Math.sin(ph) * amp, xb = cx + (float) Math.sin(ph + Math.PI) * amp;
             float za = ((float) Math.cos(ph) + 1) / 2, zb = 1 - za;
             if (i % 2 == 0) {
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(amp * 0.04f);
-                p.setColor(0xFFFFFFFF); p.setAlpha(26);
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(amp * 0.035f);
+                p.setColor(0xFFFFFFFF); p.setAlpha(12);
                 c.drawLine(xa, y, xb, y, p);
             }
             p.setStyle(Paint.Style.FILL);
-            p.setColor(0xFFD9472F); p.setAlpha(Math.round(255 * (0.4f + za * 0.6f)));
-            c.drawCircle(xa, y, amp * (0.10f + za * 0.16f), p);
-            p.setColor(0xFFFFFFFF); p.setAlpha(Math.round(255 * (0.3f + zb * 0.5f)));
-            c.drawCircle(xb, y, amp * (0.10f + zb * 0.16f), p);
+            p.setColor(0xFFD9472F); p.setAlpha(Math.round(255 * (0.18f + za * 0.28f)));   // ghosted: a quiet signature, photo leads
+            c.drawCircle(xa, y, amp * (0.08f + za * 0.11f), p);
+            p.setColor(0xFFFFFFFF); p.setAlpha(Math.round(255 * (0.13f + zb * 0.24f)));
+            c.drawCircle(xb, y, amp * (0.08f + zb * 0.11f), p);
         }
     }
 
@@ -1197,30 +1195,11 @@ public class StatsHomeActivity extends Activity {
         String date = new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(new Date());
         glance.setText(todayAll > 0 ? date + "  ·  " + dur(todayAll) + L.t(" am Bildschirm") : date);
         screenTv.setText(todayAll > 0 ? dur(todayAll) : "—");
-        // compact home glance: today's time + top 3 apps as thin bars
-        if (homeStatsTime != null) homeStatsTime.setText(todayAll > 0 ? dur(todayAll) : "—");
-        if (homeStatsRows != null) {
-            homeStatsRows.removeAllViews();
-            long hm = byToday.isEmpty() ? 1 : byToday.get(0).today;
-            for (int i = 0; i < Math.min(3, byToday.size()); i++) {
-                App a = byToday.get(i);
-                LinearLayout row = new LinearLayout(this);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                TextView nm = text(12, ink2, false);
-                nm.setText(a.label); nm.setSingleLine(true); nm.setEllipsize(TextUtils.TruncateAt.END);
-                row.addView(nm, new LinearLayout.LayoutParams(dp(88), -2));
-                row.addView(bar(a.today / (double) hm, i == 0 ? rust : teal, dp(8)), new LinearLayout.LayoutParams(0, dp(8), 1f));
-                TextView mn = text(11, ink3, false);
-                mn.setTypeface(Typeface.MONOSPACE); mn.setGravity(Gravity.END);
-                mn.setText(dur(a.today));
-                row.addView(mn, new LinearLayout.LayoutParams(dp(52), -2));
-                homeStatsRows.addView(row, lp(-1, -2, 0, dp(5), 0, 0));
-            }
-            if (byToday.isEmpty()) {
-                TextView none = text(12, ink3, false);
-                none.setText(L.t("Noch nichts heute."));
-                homeStatsRows.addView(none);
-            }
+        // lean home glance: "14m  ·  Claude 4m"
+        if (homeStatsTime != null) {
+            String g = todayAll > 0 ? dur(todayAll) + L.t(" heute") : L.t("Noch nichts heute");
+            if (!byToday.isEmpty()) { App t = byToday.get(0); g += "   ·   " + t.label + "  " + dur(t.today); }
+            homeStatsTime.setText(g);
         }
 
         topBox.removeAllViews();
