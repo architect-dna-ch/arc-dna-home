@@ -105,6 +105,8 @@ public class SpotlightActivity extends Activity {
         setContentView(root);
 
         field.requestFocus();
+        String seed = getIntent() != null ? getIntent().getStringExtra("q") : null;   // first key typed on the hub
+        if (seed != null && !seed.isEmpty()) { field.setText(seed); field.setSelection(field.length()); }
         new Thread(this::load, "arc-spotlight").start();
     }
 

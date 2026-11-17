@@ -162,6 +162,22 @@ public class HubActivity extends Activity {
             .show();
     }
 
+    /** Type-to-search on the hub: with a keyboard attached, start typing and ARC Spotlight opens with it. */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && !(getCurrentFocus() instanceof android.widget.EditText)
+                && !e.isCtrlPressed() && !e.isMetaPressed() && !e.isAltPressed()) {
+            int u = e.getUnicodeChar();
+            if (u >= 33) {
+                try { startActivity(new Intent(this, SpotlightActivity.class).putExtra("q", String.valueOf((char) u))); }
+                catch (RuntimeException ignored) { }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(e);
+    }
+
     private void section(LinearLayout col, String name, Object[][] rows) {
         col.addView(ui.label(name, false), ui.lp(-1, -2, ui.dp(30)));
         for (Object[] r : rows) {

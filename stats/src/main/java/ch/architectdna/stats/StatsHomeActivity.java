@@ -614,6 +614,25 @@ public class StatsHomeActivity extends Activity {
         }
     }
 
+    /**
+     * Type-to-search, like a desktop launcher: with a physical keyboard attached, just start typing
+     * on the home and the app drawer opens with your letters already in the search box.
+     */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && !drawerOpen
+                && !(getCurrentFocus() instanceof EditText)
+                && !e.isCtrlPressed() && !e.isMetaPressed() && !e.isAltPressed()) {
+            int u = e.getUnicodeChar();
+            if (u >= 33) {                               // a printable letter/digit/symbol (not space/control)
+                openDrawer(true);
+                if (search != null) { search.setText(String.valueOf((char) u)); search.setSelection(search.length()); }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(e);
+    }
+
     private void openDrawer(boolean focusSearch) {
         if (drawerOpen) return;
         drawerOpen = true;
