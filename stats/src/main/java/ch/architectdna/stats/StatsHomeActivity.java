@@ -288,12 +288,18 @@ public class StatsHomeActivity extends Activity {
             homePage.removeAllViews();
             LinearLayout leftCol = new LinearLayout(this); leftCol.setOrientation(LinearLayout.VERTICAL);
             LinearLayout rightCol = new LinearLayout(this); rightCol.setOrientation(LinearLayout.VERTICAL);
-            rightCol.setGravity(Gravity.BOTTOM);          // actions sit low on the right, matching the bottom bar
-            for (int i = 0; i < kids.size(); i++) (i < splitIndex ? leftCol : rightCol).addView(kids.get(i));
+            for (int i = 0; i < kids.size(); i++) {
+                if (i < splitIndex) { leftCol.addView(kids.get(i)); continue; }
+                rightCol.addView(kids.get(i));
+                if (i == splitIndex + 1) {                // after the suggestions: a flexible gap so the
+                    View fill = new View(this);           // tools/dock/search drop to the bottom and fill the column
+                    rightCol.addView(fill, new LinearLayout.LayoutParams(-1, 0, 1f));
+                }
+            }
             homePage.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(0, -1, 1f); ll.rightMargin = dp(28);
+            LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(0, -1, 1f); ll.rightMargin = dp(16);
             homePage.addView(leftCol, ll);
-            homePage.addView(rightCol, new LinearLayout.LayoutParams(0, -1, 1.05f));
+            homePage.addView(rightCol, new LinearLayout.LayoutParams(0, -1, 1f));
         }
     }
 
