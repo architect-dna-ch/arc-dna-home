@@ -1013,6 +1013,47 @@ public class StatsHomeActivity extends Activity {
         }
     }
 
+    /** ARC's built-in screens as drawer/search entries (they aren't installed packages). */
+    private List<App> arcScreens() {
+        List<App> l = new ArrayList<>();
+        l.add(arcApp("⚖", "Einspruch", new Intent(this, EinspruchActivity.class)));
+        l.add(arcApp("⚓", "Anchor", new Intent(this, AnchorActivity.class)));
+        l.add(arcApp("∑", "ARC Math", new Intent(this, MathActivity.class)));
+        l.add(arcApp("🛁", L.t("Wellness"), web("https://architect-dna.ch/wellness/")));
+        l.add(arcApp("🧅", "Health", web("https://architect-dna.ch/health/")));
+        l.add(arcApp("🔊", L.t("Musik aufs Tablet"),
+            new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+        return l;
+    }
+
+    private Intent web(String url) {
+        return new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
+
+    private App arcApp(String emoji, String label, Intent launch) {
+        App a = new App();
+        a.pkg = "arc." + label;                        // synthetic, never collides with a real package
+        a.label = label;
+        a.icon = emojiIcon(emoji);
+        a.launch = launch;
+        return a;
+    }
+
+    /** Draw an emoji/glyph into a drawable so ARC screens show an icon in the grid like any app. */
+    private Drawable emojiIcon(String glyph) {
+        int sz = dp(48);
+        Bitmap bm = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(bm);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(ink);                               // colour emoji ignore this; plain glyphs (∑, ⚖) take it
+        p.setTextSize(sz * 0.70f);
+        p.setTextAlign(Paint.Align.CENTER);
+        android.graphics.Rect r = new android.graphics.Rect();
+        p.getTextBounds(glyph, 0, glyph.length(), r);
+        cv.drawText(glyph, sz / 2f, sz / 2f - (r.top + r.bottom) / 2f, p);
+        return new android.graphics.drawable.BitmapDrawable(getResources(), bm);
+    }
+
     private void openUsageSettings() {
         try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); } catch (RuntimeException ignored) { }
     }
@@ -1037,6 +1078,7 @@ public class StatsHomeActivity extends Activity {
         accessLink.setVisibility(access ? View.GONE : View.VISIBLE);
         new Thread(() -> {
             final List<App> list = queryApps();
+            list.addAll(arcScreens());                 // ARC's own screens belong in the Mediathek + search too
             if (access) {
                 try { fillStats(list); } catch (RuntimeException ignored) { }
             }
