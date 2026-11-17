@@ -190,7 +190,7 @@ public class BrowserActivity extends Activity {
     protected void onResume() {
         super.onResume();
         paintVpn();
-        if (cur != null) cur.web.onResume();
+        if (cur != null) { cur.web.onResume(); cur.web.resumeTimers(); }
         updLoud = false;
         updater.check(false);                 // updates itself from the public mirror, quietly
     }
@@ -198,7 +198,31 @@ public class BrowserActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (cur != null) cur.web.onPause();
+        // Stop the page's rendering AND its JS timers/animations, so a busy page (canvas loops, etc.)
+        // can't keep burning CPU/GPU in the background — that's what could drag the whole device down.
+        if (cur != null) { cur.web.onPause(); cur.web.pauseTimers(); }
+    }
+
+    /** A page crashed the WebView renderer (usually out of memory). Rebuild the tab instead of
+     *  letting Android kill the whole browser — returning true from onRenderProcessGone is what
+     *  keeps the app (and the device) from going down with it. */
+    private void rebuildTab(Tab tab) {
+        try {
+            if (tab.web != null) {
+                ViewGroup pv = (ViewGroup) tab.web.getParent();
+                if (pv != null) pv.removeView(tab.web);
+                tab.web.destroy();
+            }
+        } catch (Exception ignored) { }
+        tab.web = makeWeb(tab);
+        tab.title = ""; tab.start = true;
+        if (tab == cur) {
+            webBox.removeAllViews();
+            webBox.addView(tab.web, new FrameLayout.LayoutParams(-1, -1));
+            startPage(tab);
+            android.widget.Toast.makeText(this, t("That page needed too much memory — reopened safely.",
+                "Die Seite brauchte zu viel Speicher — sicher neu geöffnet."), android.widget.Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -482,6 +506,11 @@ public class BrowserActivity extends Activity {
 
             @Override public void onPageFinished(WebView v, String url) {
                 if (tab == cur) { progress.set(1f); paintAddress(); }
+            }
+
+            @Override public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+                main.post(() -> rebuildTab(tab));
+                return true;   // handled: the browser recovers instead of the app being killed
             }
         });
         w.setWebChromeClient(new WebChromeClient() {
