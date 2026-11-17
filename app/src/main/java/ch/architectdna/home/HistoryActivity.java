@@ -38,7 +38,7 @@ public class HistoryActivity extends Activity {
 
     private int bg, ink, ink2, ink3, rust, card, line;
     private LinearLayout list;
-    private TextView tabRecent, tabTop, tabAnimals;
+    private TextView tabRecent, tabTop, tabAnimals, tabInsights;
     private List<String[]> plays, all;
     private final Map<String, Integer> counts = new HashMap<>();
 
@@ -102,6 +102,7 @@ public class HistoryActivity extends Activity {
         if (globe != null) globe.invalidate();
         if (mode == 1) showTop();
         else if (mode == 2) showAnimals();
+        else if (mode == 3) showInsights();
         else showRecent();
     }
 
@@ -312,9 +313,17 @@ public class HistoryActivity extends Activity {
         LinearLayout.LayoutParams tl2 = new LinearLayout.LayoutParams(-2, -2);
         tl2.leftMargin = dp(8);
         tabs.addView(tabAnimals, tl2);
+        tabInsights = tab(L.t("EINBLICK"));
+        tabInsights.setOnClickListener(v -> { mode = 3; showInsights(); });
+        LinearLayout.LayoutParams tl3 = new LinearLayout.LayoutParams(-2, -2);
+        tl3.leftMargin = dp(8);
+        tabs.addView(tabInsights, tl3);
+        android.widget.HorizontalScrollView tabScroll = new android.widget.HorizontalScrollView(this);
+        tabScroll.setHorizontalScrollBarEnabled(false);
+        tabScroll.addView(tabs);
         LinearLayout.LayoutParams tsl = new LinearLayout.LayoutParams(-1, -2);
         tsl.topMargin = dp(16);
-        root.addView(tabs, tsl);
+        root.addView(tabScroll, tsl);
 
         // Search, the globe of all plays (the selection lights up, the rest fades), categories, layers.
         android.widget.EditText search = new android.widget.EditText(this);
@@ -395,7 +404,7 @@ public class HistoryActivity extends Activity {
     }
 
     private void paintTab(TextView on) {
-        for (TextView t : new TextView[]{tabRecent, tabTop, tabAnimals}) {
+        for (TextView t : new TextView[]{tabRecent, tabTop, tabAnimals, tabInsights}) {
             boolean active = t == on;
             t.setTextColor(active ? 0xFFFFFFFF : ink2);
             t.setBackground(active ? box(rust, 0) : box(card, line));
@@ -607,6 +616,142 @@ public class HistoryActivity extends Activity {
             }
             group.addView(row(String.format(Locale.ROOT, "%02d", i + 1), top.get(i)));
         }
+    }
+
+    /** Insights, not a filter: what the current selection says about how you listen. */
+    private void showInsights() {
+        paintTab(tabInsights);
+        list.removeAllViews();
+        List<String[]> src = plays;
+        if (src == null || src.isEmpty()) {
+            TextView none = text(15, ink3, false);
+            none.setText(L.t("Noch keine Daten."));
+            list.addView(none, cardGap());
+            return;
+        }
+        Map<String, Integer> byArtist = new HashMap<>(), byApp = new HashMap<>();
+        int[] byHour = new int[24], byDow = new int[7];
+        long now = System.currentTimeMillis();
+        int week = 0, prev = 0;
+        Calendar cal = Calendar.getInstance();
+        for (String[] p : src) {
+            if (!p[2].isEmpty()) byArtist.merge(p[2], 1, Integer::sum);
+            byApp.merge(appName(p[3]), 1, Integer::sum);
+            long ts = parse(p[0]);
+            cal.setTimeInMillis(ts);
+            byHour[cal.get(Calendar.HOUR_OF_DAY)]++;
+            byDow[(cal.get(Calendar.DAY_OF_WEEK) + 5) % 7]++;      // Monday = 0
+            long age = now - ts;
+            if (age >= 0 && age < 7L * 86_400_000L) week++;
+            else if (age < 14L * 86_400_000L) prev++;
+        }
+
+        TextView head = text(16, ink2, false);
+        head.setText(src.size() + L.t(" Wiedergaben · ") + byArtist.size() + L.t(" Künstler"));
+        list.addView(head, cardGap());
+
+        List<Map.Entry<String, Integer>> arts = new ArrayList<>(byArtist.entrySet());
+        Collections.sort(arts, (a, b) -> b.getValue() - a.getValue());
+        if (!arts.isEmpty()) list.addView(barCard(L.t("DEINE KÜNSTLER"), arts, 6), cardGap());
+
+        int peak = 0;
+        for (int i = 1; i < 24; i++) if (byHour[i] > byHour[peak]) peak = i;
+        list.addView(hourCard(L.t("DEIN TAG IN MUSIK"), byHour, peak,
+            byHour[peak] > 0 ? String.format(Locale.ROOT, L.t("Am meisten gegen %02d:00 Uhr"), peak) : "—"), cardGap());
+
+        int bd = 0;
+        for (int i = 1; i < 7; i++) if (byDow[i] > byDow[bd]) bd = i;
+        cal.set(Calendar.DAY_OF_WEEK, bd == 6 ? Calendar.SUNDAY : bd + 2);
+        String dayName = new SimpleDateFormat("EEEE", Locale.getDefault()).format(cal.getTime());
+        list.addView(insightCard(L.t("LIEBSTER TAG"), dayName + "  ·  " + byDow[bd] + L.t(" Wiedergaben")), cardGap());
+
+        String trend = prev == 0 ? "" : "   " + (week >= prev ? "▲ " : "▼ ") + Math.round(Math.abs(week - prev) * 100.0 / Math.max(1, prev)) + "%";
+        list.addView(insightCard(L.t("DIESE WOCHE"),
+            week + L.t(" Wiedergaben") + (prev > 0 ? "   ·   " + L.t("davor ") + prev + trend : "")), cardGap());
+
+        List<Map.Entry<String, Integer>> apps = new ArrayList<>(byApp.entrySet());
+        Collections.sort(apps, (a, b) -> b.getValue() - a.getValue());
+        if (!apps.isEmpty()) {
+            Map.Entry<String, Integer> top = apps.get(0);
+            int pct = (int) Math.round(top.getValue() * 100.0 / src.size());
+            list.addView(insightCard(L.t("WO ES SPIELT"), top.getKey() + "  ·  " + pct + "%"), cardGap());
+        }
+    }
+
+    private LinearLayout insightBox(String label) {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.VERTICAL);
+        b.setBackground(box(card, line));
+        b.setPadding(dp(14), dp(12), dp(14), dp(14));
+        TextView l = mono(10, ink3);
+        l.setLetterSpacing(0.18f);
+        l.setText(label);
+        l.setPadding(0, 0, 0, dp(10));
+        b.addView(l);
+        return b;
+    }
+
+    private View insightCard(String label, String value) {
+        LinearLayout b = insightBox(label);
+        TextView val = text(19, ink, true); val.setText(value); b.addView(val);
+        return b;
+    }
+
+    private View barCard(String label, List<Map.Entry<String, Integer>> e, int topN) {
+        LinearLayout b = insightBox(label);
+        int max = e.isEmpty() ? 1 : Math.max(1, e.get(0).getValue());
+        for (int i = 0; i < Math.min(topN, e.size()); i++) {
+            Map.Entry<String, Integer> en = e.get(i);
+            LinearLayout r = new LinearLayout(this);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setPadding(0, dp(5), 0, dp(5));
+            TextView nm = text(14, ink, false);
+            nm.setText(en.getKey().isEmpty() ? "–" : en.getKey());
+            nm.setSingleLine(true);
+            nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            r.addView(nm, new LinearLayout.LayoutParams(dp(112), -2));
+            LinearLayout barRow = new LinearLayout(this);
+            float frac = Math.max(0.03f, en.getValue() / (float) max);
+            View fill = new View(this);
+            fill.setBackground(box(rust, 0));
+            barRow.addView(fill, new LinearLayout.LayoutParams(0, dp(9), frac));
+            if (frac < 1f) barRow.addView(new View(this), new LinearLayout.LayoutParams(0, dp(9), 1f - frac));
+            r.addView(barRow, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView cnt = mono(11, ink2);
+            cnt.setText(en.getValue() + "×");
+            cnt.setPadding(dp(10), 0, 0, 0);
+            r.addView(cnt);
+            b.addView(r);
+        }
+        return b;
+    }
+
+    private View hourCard(String label, int[] byHour, int peak, String caption) {
+        LinearLayout b = insightBox(label);
+        LinearLayout bars = new LinearLayout(this);
+        bars.setGravity(Gravity.BOTTOM);
+        int max = 1;
+        for (int v : byHour) max = Math.max(max, v);
+        for (int h = 0; h < 24; h++) {
+            View v = new View(this);
+            v.setBackground(box(h == peak ? rust : line, 0));
+            int ht = Math.max(dp(2), (int) (dp(50) * byHour[h] / (float) max));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ht, 1f);
+            lp.setMargins(dp(1), 0, dp(1), 0);
+            bars.addView(v, lp);
+        }
+        b.addView(bars, new LinearLayout.LayoutParams(-1, dp(50)));
+        TextView cap = mono(10, ink3);
+        cap.setText(caption);
+        cap.setPadding(0, dp(8), 0, 0);
+        b.addView(cap);
+        return b;
+    }
+
+    private LinearLayout.LayoutParams cardGap() {
+        LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-1, -2);
+        l.topMargin = dp(12);
+        return l;
     }
 
     private View row(String lead, String[] p) {
