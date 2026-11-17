@@ -1080,23 +1080,46 @@ public class StatsHomeActivity extends Activity {
         UsageEvents evs = usm.queryEvents(now - 7 * DAY, now);
         if (evs == null) return;
         UsageEvents.Event ev = new UsageEvents.Event();
-        Map<String, Long> started = new HashMap<>();
+        boolean svcOk = Build.VERSION.SDK_INT >= 29;        // FOREGROUND_SERVICE_START/STOP exist from API 29
+        Map<String, Long> fg = new HashMap<>(), svc = new HashMap<>();
+        Map<String, List<long[]>> spans = new HashMap<>();
         while (evs.hasNextEvent()) {
             evs.getNextEvent(ev);
             int type = ev.getEventType();
-            if (type != 1 && type != 2) continue;          // 1 = to foreground, 2 = to background
             String pkg = ev.getPackageName();
             App a = byPkg.get(pkg);
             if (a == null) continue;
             long ts = ev.getTimeStamp();
             if (ts > a.last) a.last = ts;
-            if (type == 1) {
-                started.put(pkg, ts);
-            } else {
-                Long s = started.remove(pkg);
-                if (s != null) addSpan(a, s, ts, dayStart, c);
-            }
+            if (type == 1) fg.put(pkg, ts);                           // on screen (foreground) …
+            else if (type == 2) { Long s = fg.remove(pkg); if (s != null) addInterval(spans, pkg, s, ts); }
+            else if (svcOk && type == 19) svc.put(pkg, ts);           // … and actively running (music playing, etc.)
+            else if (svcOk && type == 20) { Long s = svc.remove(pkg); if (s != null) addInterval(spans, pkg, s, ts); }
         }
+        // still open now (app in front, or music still playing) → count up to now
+        for (Map.Entry<String, Long> e : fg.entrySet()) addInterval(spans, e.getKey(), e.getValue(), now);
+        for (Map.Entry<String, Long> e : svc.entrySet()) addInterval(spans, e.getKey(), e.getValue(), now);
+        // merge each app's screen + playback spans so overlaps aren't counted twice, then tally
+        for (Map.Entry<String, List<long[]>> e : spans.entrySet()) {
+            App a = byPkg.get(e.getKey());
+            if (a == null) continue;
+            List<long[]> iv = e.getValue();
+            Collections.sort(iv, (x, y) -> Long.compare(x[0], y[0]));
+            long cs = -1, ce = -1;
+            for (long[] in : iv) {
+                if (cs < 0) { cs = in[0]; ce = in[1]; }
+                else if (in[0] <= ce) ce = Math.max(ce, in[1]);
+                else { addSpan(a, cs, ce, dayStart, c); cs = in[0]; ce = in[1]; }
+            }
+            if (cs >= 0) addSpan(a, cs, ce, dayStart, c);
+        }
+    }
+
+    private void addInterval(Map<String, List<long[]>> m, String pkg, long s, long e) {
+        if (e <= s) return;
+        List<long[]> l = m.get(pkg);
+        if (l == null) { l = new ArrayList<>(); m.put(pkg, l); }
+        l.add(new long[]{s, e});
     }
 
     private void addSpan(App a, long s, long e, long dayStart, Calendar c) {
