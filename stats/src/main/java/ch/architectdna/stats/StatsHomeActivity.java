@@ -10,13 +10,18 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -26,6 +31,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -41,6 +47,10 @@ import android.widget.SeekBar;
 import android.widget.TextClock;
 import android.widget.TextView;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -81,6 +91,10 @@ public class StatsHomeActivity extends Activity {
     private SharedPreferences prefs;
     private InputMethodManager imm;
     private SwipeFrame root;
+    private FrameLayout posterCard;
+    private ImageView poster;
+    private TextView posterHint, posterSwap;
+    private static final int PICK_PHOTO = 0x9A01;
     private LinearLayout homePage, statsCol, suggestBox, dock, drawer, accessCard, topBox;
     private ScrollView statsPage;
     private TextView glance, accessLink, screenTv, hourHint, sugLabel, designTag, classicClock, classicDate, classicGreet;
@@ -178,6 +192,45 @@ public class StatsHomeActivity extends Activity {
         accessLink.setVisibility(View.GONE);
         homePage.addView(accessLink);
 
+        // Your own picture, framed over the helix home — tap to swap it, long-press to clear it.
+        posterCard = new FrameLayout(this);
+        GradientDrawable pb = new GradientDrawable();
+        pb.setColor(card);
+        pb.setCornerRadius(dp(16));
+        pb.setStroke(dp(1), line);
+        posterCard.setBackground(pb);
+        posterCard.setClipToOutline(true);
+        posterCard.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(16)); }
+        });
+        poster = new ImageView(this);
+        poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        posterCard.addView(poster, new FrameLayout.LayoutParams(-1, -1));
+        posterHint = text(13, ink3, false);
+        posterHint.setText(L.t("＋  Dein Foto"));
+        posterHint.setGravity(Gravity.CENTER);
+        posterCard.addView(posterHint, new FrameLayout.LayoutParams(-1, -1));
+        TextView swapChip = text(10, 0xFFFFFFFF, true);
+        swapChip.setText(L.t("TAUSCHEN"));
+        swapChip.setLetterSpacing(0.12f);
+        swapChip.setPadding(dp(8), dp(3), dp(8), dp(3));
+        GradientDrawable cg = new GradientDrawable();
+        cg.setColor(0x99000000);
+        cg.setCornerRadius(dp(10));
+        swapChip.setBackground(cg);
+        FrameLayout.LayoutParams scl = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.BOTTOM);
+        scl.rightMargin = dp(8); scl.bottomMargin = dp(8);
+        posterCard.addView(swapChip, scl);
+        posterSwap = swapChip;
+        posterCard.setOnClickListener(v -> pickPhoto());
+        posterCard.setOnLongClickListener(v -> {
+            new File(getFilesDir(), "home_photo.jpg").delete();
+            loadPoster();
+            return true;
+        });
+        homePage.addView(posterCard, lp(-1, dp(184), 0, dp(6), 0, dp(10)));
+        loadPoster();
+
         homeGap = new View(this);
         homePage.addView(homeGap, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -246,6 +299,57 @@ public class StatsHomeActivity extends Activity {
     }
 
     /** Page 1: the numbers behind the suggestions, and the three weights of the model. */
+    /** Open the photo picker (no storage permission on 13+) to choose your home picture. */
+    private void pickPhoto() {
+        try {
+            Intent i = Build.VERSION.SDK_INT >= 33
+                ? new Intent(MediaStore.ACTION_PICK_IMAGES)
+                : new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
+            if (Build.VERSION.SDK_INT >= 33) i.setType("image/*");
+            startActivityForResult(i, PICK_PHOTO);
+        } catch (Exception e) {
+            try { startActivityForResult(Intent.createChooser(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*"), L.t("Foto wählen")), PICK_PHOTO); }
+            catch (Exception ignored) { }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == PICK_PHOTO && res == RESULT_OK && data != null && data.getData() != null) savePoster(data.getData());
+    }
+
+    /** Copy the chosen image into the app so it survives reboots and revoked URI grants. */
+    private void savePoster(Uri uri) {
+        new Thread(() -> {
+            File f = new File(getFilesDir(), "home_photo.jpg");
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 OutputStream out = new FileOutputStream(f)) {
+                if (in == null) return;
+                byte[] buf = new byte[8192];
+                for (int r; (r = in.read(buf)) != -1; ) out.write(buf, 0, r);
+            } catch (Exception ignored) { }
+            runOnUiThread(this::loadPoster);
+        }, "poster-save").start();
+    }
+
+    /** Show the saved picture (downsampled), or the "＋ Dein Foto" placeholder when none is set. */
+    private void loadPoster() {
+        if (poster == null) return;
+        File f = new File(getFilesDir(), "home_photo.jpg");
+        Bitmap bm = null;
+        if (f.exists()) {
+            try {
+                BitmapFactory.Options o = new BitmapFactory.Options();
+                o.inSampleSize = 2;                       // a home card never needs full resolution
+                bm = BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+            } catch (Throwable ignored) { }
+        }
+        poster.setImageBitmap(bm);
+        posterHint.setVisibility(bm == null ? View.VISIBLE : View.GONE);
+        posterSwap.setVisibility(bm == null ? View.GONE : View.VISIBLE);
+    }
+
     private void buildStats() {
         statsPage = new ScrollView(this);
         statsPage.setBackgroundColor(paper);
