@@ -170,6 +170,11 @@ public class StatsHomeActivity extends Activity {
     private void buildHome() {
         homePage = new LinearLayout(this);
         homePage.setOrientation(LinearLayout.VERTICAL);
+        android.content.res.Configuration cfg = getResources().getConfiguration();
+        boolean tablet = cfg.smallestScreenWidthDp >= 600;
+        // Tablet in landscape: the page is far wider than tall, so split it into two columns —
+        // clock/date/stats on the left, suggestions/tools/dock/search on the right — using the width.
+        boolean twoCol = tablet && cfg.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
 
         designTag = label("", rust);
         designTag.setPadding(0, dp(4), dp(24), dp(8));
@@ -223,6 +228,7 @@ public class StatsHomeActivity extends Activity {
         buildClassic();
         homePage.addView(classicBox, new LinearLayout.LayoutParams(-1, 0, 1f));
 
+        final int splitIndex = homePage.getChildCount();   // everything from here goes to the right column
         sugLabel = label(L.t("VORSCHLÄGE FÜR JETZT"), ink3);
         homePage.addView(sugLabel, lp(-1, -2, 0, 0, 0, dp(10)));
         suggestBox = new LinearLayout(this);
@@ -239,8 +245,6 @@ public class StatsHomeActivity extends Activity {
         TextView math = toolChip("∑ ARC Math", "");
         math.setOnClickListener(v -> startActivity(new Intent(this, MathActivity.class)));
         chips.add(math);
-        android.content.res.Configuration cfg = getResources().getConfiguration();
-        boolean tablet = cfg.smallestScreenWidthDp >= 600;
         if (!tablet) {
             TextView remote = toolChip(L.t("🔊 Musik aufs Tablet"), "");
             remote.setOnClickListener(v -> {
@@ -253,7 +257,7 @@ public class StatsHomeActivity extends Activity {
             });
             chips.add(remote);
         }
-        int perRow = cfg.screenWidthDp >= 840 ? chips.size() : cfg.screenWidthDp >= 600 ? 3 : 2;
+        int perRow = twoCol ? 2 : (cfg.screenWidthDp >= 840 ? chips.size() : cfg.screenWidthDp >= 600 ? 3 : 2);
         for (int i = 0; i < chips.size(); i += perRow) {
             LinearLayout row = new LinearLayout(this);
             for (int k = i; k < Math.min(chips.size(), i + perRow); k++) {
@@ -277,6 +281,20 @@ public class StatsHomeActivity extends Activity {
         pill.setBackground(box(card, line, 40));
         pill.setOnClickListener(v -> openDrawer(true));
         homePage.addView(pill, lp(-1, -2, 0, dp(12), 0, 0));
+
+        if (twoCol) {
+            java.util.List<View> kids = new java.util.ArrayList<>();
+            for (int i = 0; i < homePage.getChildCount(); i++) kids.add(homePage.getChildAt(i));
+            homePage.removeAllViews();
+            LinearLayout leftCol = new LinearLayout(this); leftCol.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout rightCol = new LinearLayout(this); rightCol.setOrientation(LinearLayout.VERTICAL);
+            rightCol.setGravity(Gravity.BOTTOM);          // actions sit low on the right, matching the bottom bar
+            for (int i = 0; i < kids.size(); i++) (i < splitIndex ? leftCol : rightCol).addView(kids.get(i));
+            homePage.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(0, -1, 1f); ll.rightMargin = dp(28);
+            homePage.addView(leftCol, ll);
+            homePage.addView(rightCol, new LinearLayout.LayoutParams(0, -1, 1.05f));
+        }
     }
 
     /** Page 1: the numbers behind the suggestions, and the three weights of the model. */

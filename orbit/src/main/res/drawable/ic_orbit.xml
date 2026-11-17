@@ -2,8 +2,18 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp" android:height="48dp"
     android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#14110E" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z" />
-    <path android:strokeColor="#6E6456" android:strokeWidth="2" android:fillColor="#00000000" android:pathData="M24,9a15,15 0,1 1,-0.01 0z" />
-    <path android:strokeColor="#D4523B" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M24,24 L34,16" />
-    <path android:fillColor="#EDE7DA" android:pathData="M24,7a3,3 0,1 1,-0.01 0z M37,30a3,3 0,1 1,-0.01 0z M13,32a2.5,2.5 0,1 1,-0.01 0z" />
+    <!-- paper tile + hairline border, matching the ARC family -->
+    <path android:fillColor="#FAFAF8" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z" />
+    <path android:strokeColor="#E4E3DC" android:strokeWidth="1.2" android:fillColor="#00000000" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z" />
+    <!-- bold orbit + its rust planet -->
+    <group android:rotation="-24" android:pivotX="24" android:pivotY="24">
+        <path android:strokeColor="#1A1A1A" android:strokeWidth="2" android:fillColor="#00000000" android:pathData="M9,24 a15,7 0 1,0 30,0 a15,7 0 1,0 -30,0" />
+        <path android:fillColor="#B5271E" android:pathData="M35.8,24 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0" />
+    </group>
+    <!-- a second, quieter orbit crossing it -->
+    <group android:rotation="38" android:pivotX="24" android:pivotY="24">
+        <path android:strokeColor="#B9B4A8" android:strokeWidth="1.3" android:fillColor="#00000000" android:pathData="M14.5,24 a9.5,4.4 0 1,0 19,0 a9.5,4.4 0 1,0 -19,0" />
+    </group>
+    <!-- nucleus -->
+    <path android:fillColor="#1A1A1A" android:pathData="M21,24 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
 </vector>
