@@ -304,7 +304,7 @@ public class StatsHomeActivity extends Activity {
 
                 Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
                 Canvas c = new Canvas(out);
-                c.drawColor(night ? 0xFF0E0E0D : 0xFF101014);
+                c.drawColor(0xFF101014);   // dark base; the photo cover-crops over it
                 // cover-crop the photo over the whole screen
                 float s = Math.max((float) W / src.getWidth(), (float) H / src.getHeight());
                 float dw = src.getWidth() * s, dh = src.getHeight() * s;
