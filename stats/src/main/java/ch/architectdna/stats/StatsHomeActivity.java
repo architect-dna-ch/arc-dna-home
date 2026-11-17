@@ -113,6 +113,10 @@ public class StatsHomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // On a phone the home stays upright like a normal launcher (landscape just stretches it into
+        // useless whitespace). Tablets (≥ 600dp) keep both orientations, where the width is worth it.
+        if (getResources().getConfiguration().smallestScreenWidthDp < 600)
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         prefs = getSharedPreferences("stats", MODE_PRIVATE);
         imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         boolean night = !"classic".equals(prefs.getString("design", DEFAULT_DESIGN))
