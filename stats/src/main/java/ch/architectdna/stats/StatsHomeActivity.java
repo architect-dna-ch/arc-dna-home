@@ -164,6 +164,12 @@ public class StatsHomeActivity extends Activity {
             updLine.setText(text.toUpperCase(java.util.Locale.ROOT));
             updLine.setTextColor(need ? rust : ink3);
         });
+        // The home you actually open also keeps the other ARC apps current, so Orbit & the Browser
+        // don't fall behind just because you rarely open them. Android confirms the first time.
+        siblings = new SelfUpdater[]{
+            new SelfUpdater(this, "orbit-v", "ch.architectdna.orbit", 32),
+            new SelfUpdater(this, "browser-v", "ch.architectdna.browser", 33),
+        };
     }
 
     /** Page 0: glance on top, suggestions in the middle, dock and search at the bottom. */
@@ -545,6 +551,7 @@ public class StatsHomeActivity extends Activity {
         super.onResume();
         load();
         if (updater != null) updater.check(false);
+        for (SelfUpdater s : siblings) s.check(false);
     }
 
     /** Leaving for another app: the next time home shows, it is the plain home page again. */
@@ -559,6 +566,7 @@ public class StatsHomeActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (SelfUpdater.ACTION.equals(intent.getAction())) { updater.onStatus(intent); return; }
+        for (SelfUpdater s : siblings) if (s.owns(intent)) { s.onStatus(intent); return; }
         closeDrawer();
         showStats(false);
     }
@@ -1479,6 +1487,7 @@ public class StatsHomeActivity extends Activity {
     }
 
     private SelfUpdater updater;
+    private SelfUpdater[] siblings = new SelfUpdater[0];
     private TextView updLine;
 
     /** One-time: the read-only GitHub token (same one ARC-DNA used). Stays encrypted on this phone. */

@@ -46,9 +46,15 @@ final class SelfUpdater {
     private volatile boolean busy;
     private UpdateView helix;
     private long lastProg;
+    private final String pkg;            // the package this updater keeps current
+    private final boolean self;          // true = this very app; false = a sibling ARC app
+    private final String action;         // the install-result intent action (unique per package)
+    private final int reqCode;           // a distinct PendingIntent request code per package
+    private final SharedPreferences tokenPrefs;  // the token always lives in this app's own prefs
 
     /** The same 🧬 helix card as ARC-DNA, over this app's window, while the update downloads. */
     private void progress(int phase, long done, long total, int version, boolean force) {
+        if (!self) return;                       // a sibling update is quiet — no helix card over this app
         long now = android.os.SystemClock.uptimeMillis();
         if (!force && now - lastProg < 60) return;
         lastProg = now;
@@ -74,11 +80,34 @@ final class SelfUpdater {
         });
     }
 
+    /** Keep THIS app current (the original behaviour). */
     SelfUpdater(Activity a, String tagPrefix, Ui ui) {
+        this(a, tagPrefix, ui, a.getPackageName(), true, ACTION, 31);
+    }
+
+    /** Also keep a SIBLING ARC app current from the home you actually open. Quiet: no helix card,
+     *  no "Aktuell" line; Android shows its own confirm the first time, then it is silent. */
+    SelfUpdater(Activity a, String tagPrefix, String targetPackage, int reqCode) {
+        this(a, tagPrefix, (t, n) -> {}, targetPackage, false, ACTION + ":" + targetPackage, reqCode);
+    }
+
+    private SelfUpdater(Activity a, String tagPrefix, Ui ui, String pkg, boolean self, String action, int reqCode) {
         this.a = a;
         this.prefix = tagPrefix;
         this.ui = ui;
-        prefs = a.getSharedPreferences("selfupdate", Activity.MODE_PRIVATE);
+        this.pkg = pkg;
+        this.self = self;
+        this.action = action;
+        this.reqCode = reqCode;
+        prefs = a.getSharedPreferences(self ? "selfupdate" : "siblingupdate_" + pkg, Activity.MODE_PRIVATE);
+        tokenPrefs = a.getSharedPreferences("selfupdate", Activity.MODE_PRIVATE);
+    }
+
+    boolean owns(Intent intent) { return action.equals(intent.getAction()); }
+
+    private boolean installed() {
+        try { a.getPackageManager().getPackageInfo(pkg, 0); return true; }
+        catch (Exception e) { return false; }
     }
 
     /**
@@ -101,18 +130,19 @@ final class SelfUpdater {
         progress(4, 1, 1, pending, true);
     }
 
-    String token() { return SecureStore.open(prefs.getString("tok", "")); }
+    String token() { return SecureStore.open(tokenPrefs.getString("tok", "")); }
 
     boolean hasToken() { return !token().isEmpty(); }
 
     void setToken(String raw) {
         String t = raw == null ? "" : raw.replaceAll("[^A-Za-z0-9_]", "");
-        prefs.edit().putString("tok", SecureStore.seal(t)).putLong("checked", 0).apply();
+        tokenPrefs.edit().putString("tok", SecureStore.seal(t)).apply();
+        prefs.edit().putLong("checked", 0).apply();
     }
 
     long current() {
         try {
-            PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            PackageInfo pi = a.getPackageManager().getPackageInfo(pkg, 0);
             return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : legacy(pi);
         } catch (Exception e) { return 0; }
     }
@@ -122,7 +152,8 @@ final class SelfUpdater {
 
     /** On every resume (at most every 6 h) and when asked. Installs by itself when there is something new. */
     void check(boolean manual) {
-        main.postDelayed(this::celebrateIfSeen, 700);
+        if (self) main.postDelayed(this::celebrateIfSeen, 700);
+        if (!self && !installed()) return;       // don't push a sibling the user doesn't have
         if (busy) return;
         if (!manual && System.currentTimeMillis() - prefs.getLong("checked", 0) < EVERY_MS) { ui.state(L.t("Aktuell · 0.") + current(), false); return; }
         busy = true;
@@ -210,7 +241,7 @@ final class SelfUpdater {
         long length = c.getContentLengthLong();
         PackageInstaller pi = a.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-        params.setAppPackageName(a.getPackageName());
+        params.setAppPackageName(pkg);
         if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         PackageInstaller.Session s = pi.openSession(pi.createSession(params));
         try (InputStream in = c.getInputStream(); OutputStream out = s.openWrite("update.apk", 0, length)) {
@@ -228,10 +259,10 @@ final class SelfUpdater {
             throw e;
         }
         progress(3, 1, 1, version, true);
-        prefs.edit().putInt("pending", version).putLong("pendingAt", System.currentTimeMillis()).apply();
-        Intent status = new Intent(a, a.getClass()).setAction(ACTION);
+        if (self) prefs.edit().putInt("pending", version).putLong("pendingAt", System.currentTimeMillis()).apply();
+        Intent status = new Intent(a, a.getClass()).setAction(action);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
-        s.commit(PendingIntent.getActivity(a, 31, status, flags).getIntentSender());
+        s.commit(PendingIntent.getActivity(a, reqCode, status, flags).getIntentSender());
         s.close();
     }
 
