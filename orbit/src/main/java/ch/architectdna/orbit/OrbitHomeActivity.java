@@ -192,6 +192,7 @@ public class OrbitHomeActivity extends Activity {
         chips.add(nativeChip("⚓ Anchor", "AnchorActivity", "https://anchor.architect-dna.ch"));
         chips.add(toolChip("🛁 Wellness", "https://architect-dna.ch/wellness/"));
         chips.add(toolChip("🧅 Health", "https://architect-dna.ch/health/"));
+        chips.add(toolChip("🫧 Konnekt", "https://architect-dna.ch/konnekt/"));
         TextView math = toolChip("∑ ARC Math", "");
         math.setOnClickListener(v -> startActivity(new Intent(this, MathActivity.class)));
         chips.add(math);

@@ -1072,6 +1072,7 @@ public class StatsHomeActivity extends Activity {
         l.add(arcApp("∑", "ARC Math", new Intent(this, MathActivity.class)));
         l.add(arcApp("🛁", L.t("Wellness"), web("https://architect-dna.ch/wellness/")));
         l.add(arcApp("🧅", "Health", web("https://architect-dna.ch/health/")));
+        l.add(arcApp("🫧", "Konnekt", web("https://architect-dna.ch/konnekt/")));
         l.add(arcApp("🔊", L.t("Musik aufs Tablet"),
             new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         return l;
