@@ -1481,6 +1481,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
 
         LinearLayout home = settingsGroup(col, L.t("Startseite"));
         settingsRow(home, L.t("ARC·Tap · Theme/Buddy teilen"), () -> L.t("An dein Partner-Gerät senden (Bluetooth)"), v -> showArcTap(), null);
+        settingsRow(home, L.t("ARC·Tap · Tippen zum Abgleich"), () -> ArcTap.enabled(this) ? L.t("AN · Magnet antippen → sofort Sync") : L.t("AUS"), v -> showArcTapTouch(), null);
         if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
             settingsRow(home, L.t("Tablet-Dashboard"), () -> prefs.getBoolean("dashboard", true) ? L.t("AN · Wetter, Uhr, Garten, Ordner") : L.t("AUS · Listen"), v -> {
                 prefs.edit().putBoolean("dashboard", !prefs.getBoolean("dashboard", true)).apply();
@@ -4118,6 +4119,92 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             .setItems(labels.toArray(new CharSequence[0]), (d, w) -> acts.get(w).run())
             .setNegativeButton(L.t("Abbrechen"), null)
             .show();
+    }
+
+    /* ── ARC·Tap touch: live magnetometer meter to calibrate the magnet and the trigger ── */
+    private void showArcTapTouch() {
+        final float d = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = Math.round(20 * d);
+        box.setPadding(pad, pad, pad, Math.round(8 * d));
+
+        android.widget.TextView info = new android.widget.TextView(this);
+        info.setText(L.t("Kleb einen kleinen Magneten auf ein Gerät. Tipp das andere an genau diese Stelle – beide gleichen sich sofort ab (Musik-Stats, ARC·Tap).\n\nBeweg den Magneten jetzt ans Gerät und schau den Wert:"));
+        info.setTextSize(13f); info.setTextColor(0xFF5A5A58);
+        box.addView(info);
+
+        final android.widget.TextView meter = new android.widget.TextView(this);
+        meter.setTextSize(36f); meter.setTextColor(0xFF1A1A1A);
+        meter.setPadding(0, Math.round(14 * d), 0, 0);
+        meter.setText("+0 µT");
+        box.addView(meter);
+
+        final android.widget.TextView hit = new android.widget.TextView(this);
+        hit.setTextSize(15f); hit.setTextColor(0xFF9A9A98);
+        hit.setText(L.t("warte auf Magnet …"));
+        box.addView(hit);
+
+        final android.widget.Switch sw = new android.widget.Switch(this);
+        sw.setText(L.t("ARC·Tap aktiv"));
+        sw.setChecked(ArcTap.enabled(this));
+        sw.setPadding(0, Math.round(18 * d), 0, 0);
+        box.addView(sw);
+
+        android.widget.TextView sl = new android.widget.TextView(this);
+        sl.setText(L.t("Empfindlichkeit")); sl.setTextColor(0xFF5A5A58); sl.setTextSize(13f);
+        sl.setPadding(0, Math.round(14 * d), 0, 0);
+        box.addView(sl);
+        final android.widget.SeekBar bar = new android.widget.SeekBar(this);
+        bar.setMax(260);
+        bar.setProgress(Math.max(0, Math.min(260, ArcTap.threshold(this) - 40)));
+        box.addView(bar);
+        final android.widget.TextView slv = new android.widget.TextView(this);
+        slv.setTextColor(0xFF9A9A98); slv.setTextSize(12f);
+        slv.setText((bar.getProgress() + 40) + L.t(" µT · kleiner = empfindlicher"));
+        box.addView(slv);
+
+        final int[] thresh = { ArcTap.threshold(this) };
+        bar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(android.widget.SeekBar s, int p, boolean u) {
+                thresh[0] = p + 40; slv.setText(thresh[0] + L.t(" µT · kleiner = empfindlicher"));
+            }
+            public void onStartTrackingTouch(android.widget.SeekBar s) { }
+            public void onStopTrackingTouch(android.widget.SeekBar s) { }
+        });
+
+        final android.hardware.SensorManager sm = getSystemService(android.hardware.SensorManager.class);
+        final android.hardware.Sensor mg = sm == null ? null : sm.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD);
+        final float[] base = { -1f };
+        final android.hardware.SensorEventListener lis = new android.hardware.SensorEventListener() {
+            public void onSensorChanged(android.hardware.SensorEvent e) {
+                float m = (float) Math.sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]);
+                if (base[0] < 0) base[0] = m;
+                float dl = m - base[0];
+                if (dl < thresh[0] * 0.5f) base[0] += 0.05f * dl;
+                meter.setText("+" + Math.max(0, Math.round(dl)) + " µT");
+                boolean on = dl > thresh[0];
+                meter.setTextColor(on ? 0xFFB5271E : 0xFF1A1A1A);
+                hit.setTextColor(on ? 0xFFB5271E : 0xFF9A9A98);
+                hit.setText(on ? L.t("✓ Tipp erkannt – das löst den Abgleich aus") : L.t("warte auf Magnet …"));
+            }
+            public void onAccuracyChanged(android.hardware.Sensor s, int a) { }
+        };
+        if (mg != null) sm.registerListener(lis, mg, android.hardware.SensorManager.SENSOR_DELAY_UI);
+        else { meter.setText("—"); hit.setText(L.t("Dieses Gerät hat kein Magnetometer.")); }
+
+        android.app.AlertDialog dlg = new android.app.AlertDialog.Builder(this)
+            .setTitle(L.t("ARC·Tap · Tippen zum Abgleich"))
+            .setView(box)
+            .setPositiveButton(L.t("Speichern"), (dd, w) -> {
+                ArcTap.prefs(this).edit().putBoolean("on", sw.isChecked()).putInt("thresh", thresh[0]).apply();
+                ArcTap.refresh(this);
+                pop(sw.isChecked() ? L.t("ARC·Tap aktiv") : L.t("ARC·Tap aus"));
+            })
+            .setNegativeButton(L.t("Schließen"), null)
+            .create();
+        dlg.setOnDismissListener(x -> { if (mg != null) sm.unregisterListener(lis); });
+        dlg.show();
     }
 
     private void arcTapSend(String themeId, int buddyIdx, String what) {
