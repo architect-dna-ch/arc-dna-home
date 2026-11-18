@@ -87,6 +87,21 @@ jobs:
             Download **ARC-DNA-Home.apk** on your Pixel, open it and allow installing from this source.
             Then: Settings → Apps → Default apps → Home app → ARC-DNA.
 
+      # Public download mirror (architect-dna-ch/arc-releases): the full APK only, so the app can
+      # update over the public CDN without a token — fixes stalled "Connecting …" on mobile data.
+      # Needs the repo secret RELEASES_TOKEN (fine-grained, arc-releases only, Contents: read & write).
+      - name: Mirror to public downloads
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "RELEASES_TOKEN not set, mirror skipped"; exit 0; fi
+          gh release create "v1.0.${{ github.run_number }}" ARC-DNA-Home.apk -R architect-dna-ch/arc-releases \
+            --title "ARC-DNA Home 1.0.${{ github.run_number }}" \
+            --notes "Download ARC-DNA-Home.apk, open it and allow installing." --latest
+          gh api "repos/architect-dna-ch/arc-releases/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | startswith("v1.0."))] | sort_by(.published_at) | reverse | .[8:] | .[].tag_name' |
+          while read -r tag; do gh release delete "$tag" --yes --cleanup-tag -R architect-dna-ch/arc-releases || true; done
+
       # A commit marked [final] also moves the "final" tag to this build.
       - name: Tag final
         if: steps.final.outputs.suffix != ''

@@ -57,6 +57,9 @@ final class Updater {
 
     static final String ACTION_STATUS = "ch.architectdna.home.UPDATE_STATUS";
     private static final String REPO = "https://api.github.com/repos/architect-dna-ch/arc-dna-home";
+    /** Public download mirror: full APK only, no token, robust CDN — so updates work on mobile data
+     *  even when the private repo's signed asset download stalls. Built by build.yml's mirror step. */
+    private static final String MIRROR = "https://api.github.com/repos/architect-dna-ch/arc-releases";
     private static final long CHECK_EVERY_MS = 6 * 3600 * 1000L;
 
     private final Activity activity;
@@ -272,7 +275,7 @@ final class Updater {
                     source = new java.io.FileInputStream(built);
                     length = built.length();
                 } else {
-                    c = download(assetId);
+                    c = openFullApk();
                     source = c.getInputStream();
                     length = c.getContentLengthLong();
                 }
@@ -326,6 +329,40 @@ final class Updater {
     }
 
     private long deltaId;
+
+    /**
+     * The full APK, from the public mirror first (no token, plain CDN — survives mobile data and
+     * VPNs where the private repo's signed asset redirect stalls), the private release as fallback.
+     */
+    private HttpURLConnection openFullApk() throws IOException {
+        try {
+            HttpURLConnection m = open(MIRROR + "/releases?per_page=40", "application/vnd.github+json", false);
+            if (m.getResponseCode() == 200) {
+                JSONArray all = new JSONArray(readAll(m.getInputStream()));
+                int best = -1; String url = null;
+                for (int i = 0; i < all.length(); i++) {
+                    JSONObject r = all.getJSONObject(i);
+                    String tag = r.getString("tag_name");
+                    if (!tag.startsWith("v1.0.")) continue;           // the hub's own tags, not a sibling's
+                    int n = Integer.parseInt(tag.substring(tag.lastIndexOf('.') + 1));
+                    if (n <= best || n <= current()) continue;
+                    JSONArray as = r.getJSONArray("assets");
+                    for (int k = 0; k < as.length(); k++) {
+                        JSONObject a = as.getJSONObject(k);
+                        if (a.getString("name").endsWith(".apk")) { best = n; url = a.getString("browser_download_url"); }
+                    }
+                }
+                if (url != null) {
+                    HttpURLConnection d = open(url, "application/octet-stream", false);
+                    if (d.getResponseCode() == 200) return d;
+                    d.disconnect();
+                }
+            }
+        } catch (Exception mirrorMiss) {
+            DiagLog.log("update mirror unavailable, using private release: " + mirrorMiss.getMessage());
+        }
+        return download(assetId);
+    }
 
     /** A release asset; GitHub redirects to a signed URL that must be fetched without the token. */
     private HttpURLConnection download(long id) throws IOException {
