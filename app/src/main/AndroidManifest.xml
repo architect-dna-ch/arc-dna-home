@@ -301,6 +301,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Konnekt: the anti-loneliness bubble platform, hosted web app in a WebView. -->
+        <activity
+            android:name=".KonnektActivity"
+            android:exported="true"
+            android:label="Konnekt"
+            android:taskAffinity="ch.architectdna.home.konnekt"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Einspruch and Anchor, native front ends for the Architect-DNA services. -->
         <activity
             android:name=".EinspruchActivity"

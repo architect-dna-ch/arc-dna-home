@@ -1951,6 +1951,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     /** The ARC-DNA built-in screens as Mediathek entries, launched by explicit component (in-package). */
     private List<AppEntry> arcEntries() {
         Object[][] a = {
+            {"🫧","Konnekt",KonnektActivity.class},
             {"⚖","Einspruch",EinspruchActivity.class},{"⚓","Anchor",AnchorActivity.class},
             {"∑","ARC Math",MathActivity.class},{"🗝",L.t("Schatz"),TreasureActivity.class},
             {"🎞","ARC Gifs",GifActivity.class},{"🔊","ARC Remote",RemoteActivity.class},
