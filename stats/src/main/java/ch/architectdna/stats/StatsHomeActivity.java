@@ -1073,6 +1073,8 @@ public class StatsHomeActivity extends Activity {
         l.add(arcApp("🛁", L.t("Wellness"), web("https://architect-dna.ch/wellness/")));
         l.add(arcApp("🧅", "Health", web("https://architect-dna.ch/health/")));
         l.add(arcApp("🫧", "Konnekt", web("https://architect-dna.ch/konnekt/")));
+        l.add(arcApp("🧹", L.t("Aufräumen"),
+            new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.CleanerActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         l.add(arcApp("🔊", L.t("Musik aufs Tablet"),
             new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RemoteActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         return l;

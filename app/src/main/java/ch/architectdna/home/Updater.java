@@ -281,6 +281,9 @@ final class Updater {
                 }
 
                 PackageInstaller installer = activity.getPackageManager().getPackageInstaller();
+                // Clear staged copies from past interrupted updates, so they don't pile up as 50 MB
+                // sessions eating storage (ARC Cleaner does the same on demand).
+                try { for (PackageInstaller.SessionInfo si : installer.getMySessions()) installer.abandonSession(si.getSessionId()); } catch (Exception ignored) { }
                 PackageInstaller.SessionParams params =
                     new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
                 params.setAppPackageName(activity.getPackageName());

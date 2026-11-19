@@ -302,6 +302,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Cleaner: reclaims storage from interrupted updates (staged APK sessions, cache). -->
+        <activity
+            android:name=".CleanerActivity"
+            android:exported="true"
+            android:label="ARC Cleaner"
+            android:taskAffinity="ch.architectdna.home.cleaner"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
         <!-- Konnekt: the anti-loneliness bubble platform, hosted web app in a WebView. -->
         <activity
             android:name=".KonnektActivity"

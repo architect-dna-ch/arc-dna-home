@@ -243,6 +243,8 @@ final class SelfUpdater {
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(pkg);
         if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        try { for (PackageInstaller.SessionInfo si : pi.getMySessions()) pi.abandonSession(si.getSessionId()); } catch (Exception ignored) { }  // drop stale staged copies
+
         PackageInstaller.Session s = pi.openSession(pi.createSession(params));
         try (InputStream in = c.getInputStream(); OutputStream out = s.openWrite("update.apk", 0, length)) {
             byte[] buf = new byte[64 * 1024];
