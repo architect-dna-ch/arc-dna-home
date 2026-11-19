@@ -196,7 +196,7 @@ final class SelfUpdater {
                 } else {
                     main.post(() -> ui.state(L.t("Aktuell · 0.") + current(), false));
                 }
-            } catch (Exception e) {
+            } catch (Throwable e) {          // Throwable, so an OutOfMemoryError is handled, not crashing
                 prefs.edit().putLong("checked", System.currentTimeMillis() - EVERY_MS + 3_600_000L).apply();
                 String m = e.getMessage();
                 main.post(() -> ui.state(L.t("Update-Prüfung fehlgeschlagen") + (m == null ? "" : ": " + m), true));

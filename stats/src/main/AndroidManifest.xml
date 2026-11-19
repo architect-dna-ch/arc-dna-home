@@ -23,6 +23,7 @@
     </queries>
 
     <application
+        android:largeHeap="true"
         android:localeConfig="@xml/locales_config"
         android:allowBackup="false"
         android:icon="@drawable/ic_stats"

@@ -151,7 +151,7 @@ final class Updater {
                     if (manual && n <= current()) toast(L.t("ARC-DNA ist aktuell (1.0.") + current() + ").");
                 });
                 if (n <= current()) updateSiblings(manual);
-            } catch (Exception e) {
+            } catch (Throwable e) {          // Throwable, so an OutOfMemoryError is handled, not crashing
                 DiagLog.log("update check failed: " + e.getMessage());
                 // Not again on every unlock: try once an hour until it works.
                 prefs.edit().putLong("updateChecked", System.currentTimeMillis() - CHECK_EVERY_MS + 3_600_000L).apply();
