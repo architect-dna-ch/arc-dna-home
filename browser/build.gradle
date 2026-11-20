@@ -45,3 +45,8 @@ android {
         checkReleaseBuilds false
     }
 }
+
+dependencies {
+    // WebAuthn / passkeys in WebView (SwissID, banks, Google) — off by default, switched on in BrowserActivity.
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

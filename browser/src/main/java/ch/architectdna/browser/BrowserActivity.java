@@ -41,6 +41,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -472,6 +474,12 @@ public class BrowserActivity extends Activity {
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(false);
         if (Build.VERSION.SDK_INT >= 33) s.setAlgorithmicDarkeningAllowed(true);
+        // Passkeys / WebAuthn (SwissID, banks, Google …) — a WebView does these only when switched on,
+        // and only on a recent Android System WebView. FOR_BROWSER = allow any site, not just ours.
+        try {
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION))
+                WebSettingsCompat.setWebAuthenticationSupport(s, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_BROWSER);
+        } catch (Throwable ignored) { }
         CookieManager.getInstance().setAcceptThirdPartyCookies(w, false);
 
         w.setWebViewClient(new WebViewClient() {
