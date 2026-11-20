@@ -47,6 +47,8 @@ public class TreasureActivity extends Activity {
     private LinearLayout listCol;
     private final Handler main = new Handler(Looper.getMainLooper());
     private byte[] pendingSave;            // decrypted bytes waiting for a "save a copy" target
+    private String pendingSaveId;          // item id to stream out for a big-file "save a copy"
+    private java.util.ArrayList<Uri> pendingShare;   // files shared into Treasure, imported after unlock
 
     private static final int PICK_IMG = 1, PICK_FILE = 2, EXPORT = 3, IMPORT = 4, SAVE_COPY = 5;
 
@@ -59,10 +61,45 @@ public class TreasureActivity extends Activity {
         root.setBackgroundColor(ui.bg);
         root.setFitsSystemWindows(true);
         setContentView(root);
+        stashShare(getIntent());
     }
 
+    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); stashShare(intent); }
+
     @Override protected void onStart() { super.onStart(); if (key == null) showLock(); }
-    @Override protected void onStop() { super.onStop(); TreasureSync.push(this); key = null; pendingSave = null; }   // back up, then lock
+    @Override protected void onStop() { super.onStop(); TreasureSync.push(this); key = null; pendingSave = null; pendingSaveId = null; }   // back up, then lock
+
+    /* ---------- share a file into the vault ---------- */
+    private void stashShare(Intent intent) {
+        if (intent == null) return;
+        String a = intent.getAction();
+        java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+        if (Intent.ACTION_SEND.equals(a)) { Uri u = intent.getParcelableExtra(Intent.EXTRA_STREAM); if (u != null) uris.add(u); }
+        else if (Intent.ACTION_SEND_MULTIPLE.equals(a)) { java.util.ArrayList<Uri> l = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM); if (l != null) uris.addAll(l); }
+        if (uris.isEmpty()) return;
+        if (pendingShare == null) pendingShare = new java.util.ArrayList<>();
+        pendingShare.addAll(uris);
+        if (key != null) drainShare();      // already open → vault it now; otherwise after unlock
+    }
+
+    private void drainShare() {
+        if (pendingShare == null || pendingShare.isEmpty() || key == null) return;
+        final java.util.ArrayList<Uri> uris = pendingShare; pendingShare = null;
+        toast(t("Sealing into the vault …", "Wird im Tresor verschlüsselt …"));
+        new Thread(() -> {
+            int ok = 0;
+            for (Uri u : uris) {
+                try (InputStream in = getContentResolver().openInputStream(u)) {
+                    String m = getContentResolver().getType(u);
+                    String type = (m != null && m.startsWith("image/")) ? Treasure.T_IMAGE : Treasure.T_FILE;
+                    Treasure.addStream(this, key, nameOf(u, type), type, in); ok++;
+                } catch (Exception ignored) { }
+            }
+            final int n = ok;
+            main.post(() -> { refresh(); toast(n > 0 ? (n + t(" added to the vault ✓", " im Tresor gespeichert ✓")) : t("Couldn't add that.", "Konnte nicht hinzufügen.")); });
+            TreasureSync.push(this);
+        }, "treasure-share").start();
+    }
 
     // ---------- lock / create ----------
 
@@ -111,7 +148,7 @@ public class TreasureActivity extends Activity {
             SecretKey k = null;
             try { k = Treasure.create(this, pass); } catch (Exception ignored) { }
             final SecretKey fk = k;
-            main.post(() -> { if (fk != null) { key = fk; showVault(); } else Toast.makeText(this, t("Couldn't create the vault.", "Tresor-Erstellung fehlgeschlagen."), Toast.LENGTH_SHORT).show(); });
+            main.post(() -> { if (fk != null) { key = fk; showVault(); drainShare(); } else Toast.makeText(this, t("Couldn't create the vault.", "Tresor-Erstellung fehlgeschlagen."), Toast.LENGTH_SHORT).show(); });
         }, "treasure-create").start();
     }
 
@@ -138,7 +175,7 @@ public class TreasureActivity extends Activity {
         Toast.makeText(this, t("Opening …", "Öffne …"), Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             final SecretKey k = Treasure.unlock(this, pass);
-            main.post(() -> { if (k != null) { key = k; showVault(); } else Toast.makeText(this, t("Wrong passphrase.", "Falsche Passphrase."), Toast.LENGTH_LONG).show(); });
+            main.post(() -> { if (k != null) { key = k; showVault(); drainShare(); } else Toast.makeText(this, t("Wrong passphrase.", "Falsche Passphrase."), Toast.LENGTH_LONG).show(); });
         }, "treasure-unlock").start();
     }
 
@@ -199,6 +236,11 @@ public class TreasureActivity extends Activity {
     // ---------- open an item ----------
 
     private void openItem(final Treasure.Item it) {
+        if (Treasure.T_FILE.equals(it.type)) {       // a file (incl. video) — stream it back out, never load it all
+            pendingSave = null; pendingSaveId = it.id;
+            createDoc(SAVE_COPY, it.name);
+            return;
+        }
         new Thread(() -> {
             byte[] data;
             try { data = Treasure.data(this, key, it.id); } catch (Exception e) { toast(t("Couldn't open it.", "Konnte nicht öffnen.")); return; }
@@ -206,9 +248,6 @@ public class TreasureActivity extends Activity {
                 BitmapFactory.Options o = new BitmapFactory.Options(); o.inSampleSize = 2;
                 final Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length, o);
                 main.post(() -> showImage(bm));
-            } else if (Treasure.T_FILE.equals(it.type)) {
-                pendingSave = data;
-                main.post(() -> createDoc(SAVE_COPY, it.name));
             } else {
                 final String txt = new String(data);
                 main.post(() -> showText(it.name, txt));
@@ -326,10 +365,8 @@ public class TreasureActivity extends Activity {
         if (req == PICK_IMG || req == PICK_FILE) {
             final String type = req == PICK_IMG ? Treasure.T_IMAGE : Treasure.T_FILE;
             new Thread(() -> {
-                try {
-                    byte[] bytes = readAll(uri);
-                    if (bytes.length > 40 * 1024 * 1024) { toast(t("That file's too big (40 MB max).", "Datei zu gross (max. 40 MB).")); return; }
-                    Treasure.add(this, key, nameOf(uri, type), type, bytes);
+                try (InputStream in = getContentResolver().openInputStream(uri)) {   // streamed: no size limit, no OOM
+                    Treasure.addStream(this, key, nameOf(uri, type), type, in);
                     main.post(this::refresh); TreasureSync.push(this);
                 } catch (Exception e) { toast(t("Couldn't add that.", "Konnte nicht hinzufügen.")); }
             }, "treasure-add").start();
@@ -348,10 +385,14 @@ public class TreasureActivity extends Activity {
             }, "treasure-import").start();
         } else if (req == SAVE_COPY) {
             final byte[] b = pendingSave; pendingSave = null;
-            if (b == null) return;
+            final String sid = pendingSaveId; pendingSaveId = null;
+            if (b == null && sid == null) return;
             new Thread(() -> {
-                try (OutputStream os = getContentResolver().openOutputStream(uri)) { os.write(b); toast(t("Saved a decrypted copy.", "Entschlüsselte Kopie gespeichert.")); }
-                catch (Exception e) { toast(t("Save failed.", "Speichern fehlgeschlagen.")); }
+                try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                    if (sid != null) { try (InputStream is = Treasure.dataStream(this, key, sid)) { Treasure.copy(is, os, false); } }   // streamed out
+                    else os.write(b);
+                    toast(t("Saved a decrypted copy.", "Entschlüsselte Kopie gespeichert."));
+                } catch (Exception e) { toast(t("Save failed.", "Speichern fehlgeschlagen.")); }
             }, "treasure-save").start();
         }
     }

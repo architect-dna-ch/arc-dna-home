@@ -18,6 +18,8 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
@@ -136,6 +138,41 @@ final class Treasure {
 
     static byte[] data(Context c, SecretKey key, String id) throws Exception {
         return open(key, read(new File(dir(c), id + ".dat")));
+    }
+
+    /** Stream a file straight into the vault, encrypting in chunks — no size limit, no out-of-memory
+     *  on big videos. The .dat layout (IV || ciphertext+tag) matches seal(), so data()/dataStream()
+     *  read either. Returns the bytes written. */
+    static long addStream(Context c, SecretKey key, String name, String type, InputStream in) throws Exception {
+        String id = Long.toHexString(System.currentTimeMillis()) + Integer.toHexString(new SecureRandom().nextInt(0xffff));
+        File dat = new File(dir(c), id + ".dat");
+        Cipher ci = Cipher.getInstance("AES/GCM/NoPadding");
+        byte[] iv = new byte[IV];
+        new SecureRandom().nextBytes(iv);
+        ci.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG, iv));
+        long total = 0;
+        try (OutputStream fo = new FileOutputStream(dat)) {
+            fo.write(iv);
+            try (CipherOutputStream co = new CipherOutputStream(fo, ci)) {
+                byte[] buf = new byte[64 * 1024];
+                for (int r; (r = in.read(buf)) != -1; ) { co.write(buf, 0, r); total += r; }
+            }
+        } catch (Exception e) { dat.delete(); throw e; }
+        JSONObject h = new JSONObject();
+        h.put("n", name); h.put("t", type); h.put("s", total);
+        write(new File(dir(c), id + ".hdr"), seal(key, h.toString().getBytes("UTF-8")));
+        return total;
+    }
+
+    /** Decrypt a stored item as a stream — so saving a big video back out doesn't load it all at once. */
+    static InputStream dataStream(Context c, SecretKey key, String id) throws Exception {
+        FileInputStream fi = new FileInputStream(new File(dir(c), id + ".dat"));
+        byte[] iv = new byte[IV];
+        int n = 0;
+        while (n < IV) { int r = fi.read(iv, n, IV - n); if (r < 0) break; n += r; }
+        Cipher ci = Cipher.getInstance("AES/GCM/NoPadding");
+        ci.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG, iv));
+        return new CipherInputStream(fi, ci);
     }
 
     static void delete(Context c, String id) {

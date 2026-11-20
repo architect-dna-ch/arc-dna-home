@@ -267,11 +267,23 @@
         <!-- ARC Treasure: passphrase-locked vault; nothing but ciphertext on disk. -->
         <activity
             android:name=".TreasureActivity"
-            android:exported="false"
+            android:exported="true"
             android:excludeFromRecents="true"
             android:label="ARC Treasure"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Material.NoActionBar" />
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <!-- Share any file (photo, video, document) into the passphrase-locked vault. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
 
         <!-- ARC Gifs: your own loop collection. Share a GIF to ARC to add it. -->
         <activity
