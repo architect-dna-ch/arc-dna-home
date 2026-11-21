@@ -74,6 +74,7 @@ final class ArcMediaNotice {
             if (cover == null) cover = m.getBitmap(MediaMetadata.METADATA_KEY_ART);
             if (cover == null) cover = m.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
             if (cover == null) cover = loadUri(c, m);
+            if (cover != null) MusicArt.save(c, title, artist, cover);   // fills the Mediathek's covers
             art = eraArt(cover, era, 256);
             StringBuilder names = new StringBuilder();
             for (PlaybackState.CustomAction ca : st.getCustomActions()) names.append(ca.getAction()).append('=').append(ca.getName()).append(' ');

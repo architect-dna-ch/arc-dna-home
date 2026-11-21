@@ -38,7 +38,7 @@ public class HistoryActivity extends Activity {
 
     private int bg, ink, ink2, ink3, rust, card, line;
     private LinearLayout list;
-    private TextView tabRecent, tabTop, tabAnimals, tabInsights;
+    private TextView tabRecent, tabTop, tabAnimals, tabInsights, tabMedia;
     private List<String[]> plays, all;
     private final Map<String, Integer> counts = new HashMap<>();
 
@@ -103,6 +103,7 @@ public class HistoryActivity extends Activity {
         if (mode == 1) showTop();
         else if (mode == 2) showAnimals();
         else if (mode == 3) showInsights();
+        else if (mode == 4) showMediathek();
         else showRecent();
     }
 
@@ -318,6 +319,11 @@ public class HistoryActivity extends Activity {
         LinearLayout.LayoutParams tl3 = new LinearLayout.LayoutParams(-2, -2);
         tl3.leftMargin = dp(8);
         tabs.addView(tabInsights, tl3);
+        tabMedia = tab(L.t("MEDIATHEK"));
+        tabMedia.setOnClickListener(v -> { mode = 4; showMediathek(); });
+        LinearLayout.LayoutParams tl4 = new LinearLayout.LayoutParams(-2, -2);
+        tl4.leftMargin = dp(8);
+        tabs.addView(tabMedia, tl4);
         android.widget.HorizontalScrollView tabScroll = new android.widget.HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.addView(tabs);
@@ -404,7 +410,7 @@ public class HistoryActivity extends Activity {
     }
 
     private void paintTab(TextView on) {
-        for (TextView t : new TextView[]{tabRecent, tabTop, tabAnimals, tabInsights}) {
+        for (TextView t : new TextView[]{tabRecent, tabTop, tabAnimals, tabInsights, tabMedia}) {
             boolean active = t == on;
             t.setTextColor(active ? 0xFFFFFFFF : ink2);
             t.setBackground(active ? box(rust, 0) : box(card, line));
@@ -615,6 +621,140 @@ public class HistoryActivity extends Activity {
                 group.addView(div, new LinearLayout.LayoutParams(-1, dp(1)));
             }
             group.addView(row(String.format(Locale.ROOT, "%02d", i + 1), top.get(i)));
+        }
+    }
+
+    /* ---- MEDIATHEK: your tracks as cover tiles; real art fills in as you play, generated otherwise ---- */
+    private void showMediathek() {
+        paintTab(tabMedia);
+        list.removeAllViews();
+        java.util.LinkedHashMap<String, String[]> latest = new java.util.LinkedHashMap<>();
+        for (String[] p : plays) latest.putIfAbsent(key(p), p);
+        List<String[]> top = new ArrayList<>(latest.values());
+        Collections.sort(top, (a, b) -> {
+            Integer cb = counts.get(key(b)), ca = counts.get(key(a));
+            return (cb == null ? 0 : cb) - (ca == null ? 0 : ca);
+        });
+        if (top.isEmpty()) {
+            TextView none = text(15, ink3, false);
+            none.setText(L.t("Noch keine Musik."));
+            list.addView(none, cardGap());
+            return;
+        }
+        final int cols = 3;
+        LinearLayout colv = new LinearLayout(this);
+        colv.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, -2);
+        cl.topMargin = dp(12);
+        list.addView(colv, cl);
+        int n = Math.min(90, top.size());
+        LinearLayout rowL = null;
+        for (int i = 0; i < n; i++) {
+            if (i % cols == 0) {
+                rowL = new LinearLayout(this);
+                rowL.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, -2);
+                rl.topMargin = i == 0 ? 0 : dp(12);
+                colv.addView(rowL, rl);
+            }
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(0, -2, 1f);
+            tlp.leftMargin = (i % cols == 0) ? 0 : dp(10);
+            rowL.addView(coverTile(top.get(i)), tlp);
+        }
+        int rem = (cols - (n % cols)) % cols;
+        for (int j = 0; j < rem && rowL != null; j++) {
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(0, -2, 1f);
+            slp.leftMargin = dp(10);
+            rowL.addView(new View(this), slp);
+        }
+    }
+
+    private View coverTile(final String[] p) {
+        final String title = p[1], artist = p[2];
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        android.widget.FrameLayout cov = new android.widget.FrameLayout(this);
+        cov.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(104)));
+        android.graphics.drawable.Drawable art = MusicArt.load(this, title, artist);
+        if (art != null) {
+            android.widget.ImageView iv = new android.widget.ImageView(this);
+            iv.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+            iv.setImageDrawable(art);
+            iv.setBackground(box(card, line));
+            cov.addView(iv, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        } else {
+            cov.setBackground(genCover(title, artist));
+            TextView cap = text(13, 0xFFFFFFFF, true);
+            cap.setText(title);
+            cap.setMaxLines(3);
+            cap.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            cap.setPadding(dp(9), dp(9), dp(9), dp(9));
+            cov.addView(cap);
+        }
+        if (MusicStats.isFavourite(this, title, artist)) {
+            TextView star = text(15, 0xFFFFD54A, true);
+            star.setText("★");
+            star.setPadding(dp(7), dp(5), 0, 0);
+            cov.addView(star);
+        }
+        Integer cnt = counts.get(key(p));
+        if (cnt != null && cnt > 1) {
+            TextView b = mono(10, 0xFFFFFFFF);
+            b.setText(cnt + "×");
+            b.setBackground(box(0xCC000000, 0));
+            b.setPadding(dp(6), dp(2), dp(6), dp(2));
+            android.widget.FrameLayout.LayoutParams blp = new android.widget.FrameLayout.LayoutParams(-2, -2);
+            blp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
+            blp.setMargins(0, 0, dp(6), dp(6));
+            cov.addView(b, blp);
+        }
+        t.addView(cov);
+        TextView tt = text(12, ink, true);
+        tt.setText(title);
+        tt.setMaxLines(1);
+        tt.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tt.setPadding(0, dp(6), 0, 0);
+        t.addView(tt);
+        if (artist != null && !artist.isEmpty()) {
+            TextView ta = text(11, ink3, false);
+            ta.setText(artist);
+            ta.setMaxLines(1);
+            ta.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            t.addView(ta);
+        }
+        t.setPadding(dp(3), dp(3), dp(3), dp(8));
+        t.setOnClickListener(v -> playTrack(title, artist));
+        t.setOnLongClickListener(v -> {
+            boolean now = MusicStats.favourite(this, title, artist);
+            android.widget.Toast.makeText(this, (now ? "★ " : "") + title, android.widget.Toast.LENGTH_SHORT).show();
+            showMediathek();
+            return true;
+        });
+        return t;
+    }
+
+    private android.graphics.drawable.GradientDrawable genCover(String title, String artist) {
+        int h = Math.abs(((artist == null ? "" : artist) + (title == null ? "" : title)).hashCode());
+        float[] a = {h % 360, 0.52f, 0.46f};
+        float[] b = {(h * 3 / 2 + 50) % 360, 0.55f, 0.66f};
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            new int[]{android.graphics.Color.HSVToColor(a), android.graphics.Color.HSVToColor(b)});
+        g.setCornerRadius(dp(12));
+        return g;
+    }
+
+    /** Tap a cover: open it in YouTube Music so you can play it — the visual way to rebuild a playlist. */
+    private void playTrack(String title, String artist) {
+        String q = (title + " " + (artist == null ? "" : artist)).trim();
+        try {
+            startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://music.youtube.com/search?q=" + android.net.Uri.encode(q))));
+        } catch (Exception e) {
+            try {
+                startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://www.youtube.com/results?search_query=" + android.net.Uri.encode(q))));
+            } catch (Exception ignored) { }
         }
     }
 
