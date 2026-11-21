@@ -115,10 +115,12 @@ public class BtAudioActivity extends Activity {
             boolean conn = isConnected(d);
             String name;
             try { name = d.getName() == null ? d.getAddress() : d.getName(); } catch (SecurityException e) { name = d.getAddress(); }
-            list.addView(ui.row(conn ? "🎧" : "🔇", name,
-                conn ? t("Connected here · tap to free it", "Hier verbunden · tippen zum Freigeben")
-                     : t("Not here · tap to bring sound here", "Nicht hier · tippen, um den Ton zu holen"),
-                v -> { toggle(d, conn); main.postDelayed(this::paint, 900); }), ui.lp(-1, -2, ui.dp(8)));
+            android.view.View r = ui.row(conn ? "🎧" : "🔇", name,
+                conn ? t("Connected here · tap to free it · hold → other device", "Hier verbunden · tippen zum Freigeben · halten → anderes Gerät")
+                     : t("Not here · tap to bring it here · hold → other device", "Nicht hier · tippen zum Holen · halten → anderes Gerät"),
+                v -> { toggle(d, conn); main.postDelayed(this::paint, 900); });
+            r.setOnLongClickListener(v -> { sendToOther(d, conn); return true; });
+            list.addView(r, ui.lp(-1, -2, ui.dp(8)));
         }
     }
 
@@ -128,6 +130,19 @@ public class BtAudioActivity extends Activity {
             if (headset != null && headset.getConnectionState(d) == BluetoothProfile.STATE_CONNECTED) return true;
         } catch (SecurityException ignored) { }
         return false;
+    }
+
+    /** Long-press: tell the paired ARC device (phone↔tablet) to grab or free these headphones on ITS
+     *  side — it must already be paired with them. Runs over the ARC Remote link. */
+    private void sendToOther(BluetoothDevice d, boolean connected) {
+        final String mac = d.getAddress();
+        Toast.makeText(this, t("Asking the other ARC device …", "Frage das andere ARC-Gerät …"), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            boolean ok = BtRemote.sendAudio(this, !connected, mac);
+            runOnUiThread(() -> Toast.makeText(this, ok
+                ? t("Sent — the other device is grabbing it.", "Gesendet — das andere Gerät holt ihn.")
+                : t("No other ARC device reachable (open ARC there).", "Kein anderes ARC-Gerät erreichbar (dort ARC öffnen)."), Toast.LENGTH_LONG).show());
+        }, "arc-audio-send").start();
     }
 
     private void toggle(BluetoothDevice d, boolean connected) {

@@ -132,6 +132,18 @@ final class BtRemote {
 
     /* ================= client: the phone ================= */
 
+    /** From the ARC Headphones screen: ask the paired ARC device to connect (or free) an audio device
+     *  to itself. The target must already be paired with those headphones — Android can't make another
+     *  device discover or pair a new one remotely. Returns false if no ARC device answered. Blocking. */
+    static boolean sendAudio(Context c, boolean on, String mac) {
+        Link l = connect(c, null);
+        if (l == null) return false;
+        try { l.send("AUDIO\t" + (on ? "connect" : "disconnect") + "\t" + mac); Thread.sleep(700); }
+        catch (Exception ignored) { }
+        l.close();
+        return true;
+    }
+
     /** Connects to the given device, or tries the last partner, then other paired phones/tablets. Blocking. */
     static Link connect(Context c, String preferredAddr) {
         BluetoothAdapter a = adapter(c);
@@ -379,6 +391,32 @@ final class BtRemote {
             l.send(b.toString());
         }
 
+        /** The other ARC device asked us to connect/free a headphone to THIS device. Only works if it
+         *  is already paired here — we can't discover or pair a new one on command. */
+        private void audioCmd(String arg) {
+            String[] q = arg.split("\t", 2);
+            final boolean on = "connect".equals(q[0]);
+            final String mac = q.length > 1 ? q[1] : "";
+            if (mac.isEmpty()) return;
+            final BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
+            if (a == null) return;
+            final BluetoothDevice dev;
+            try { dev = a.getRemoteDevice(mac); } catch (Exception e) { return; }
+            try {
+                a.getProfileProxy(c, new android.bluetooth.BluetoothProfile.ServiceListener() {
+                    @Override public void onServiceConnected(int profile, android.bluetooth.BluetoothProfile p) {
+                        try {
+                            java.lang.reflect.Method m = p.getClass().getMethod(on ? "connect" : "disconnect", BluetoothDevice.class);
+                            m.setAccessible(true); m.invoke(p, dev);
+                        } catch (Exception ignored) { }
+                        try { a.closeProfileProxy(profile, p); } catch (Exception ignored) { }
+                        if (link != null) link.send("NOTE\t" + (on ? L.t("Kopfhörer hierher geholt.") : L.t("Kopfhörer freigegeben.")));
+                    }
+                    @Override public void onServiceDisconnected(int profile) { }
+                }, android.bluetooth.BluetoothProfile.A2DP);
+            } catch (Exception ignored) { }
+        }
+
         private void run(String msg) {
             String[] p = msg.split("\t", 2);
             String cmd = p[0], arg = p.length > 1 ? p[1] : "";
@@ -393,6 +431,7 @@ final class BtRemote {
                 return;
             }
             if (cmd.equals("SEARCH")) { search(arg); return; }
+            if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
             if (ctl == null) { repick(); if (ctl == null) { if (cmd.equals("PLAY") || cmd.equals("TOGGLE")) startApp(); return; } }
             MediaController.TransportControls t = ctl.getTransportControls();
             try {
