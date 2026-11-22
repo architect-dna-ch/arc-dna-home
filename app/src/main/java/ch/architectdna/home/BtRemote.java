@@ -144,6 +144,15 @@ final class BtRemote {
         return true;
     }
 
+    /** ARC Finder: ring the paired ARC device so you can hear where it is. Returns false if none answered. */
+    static boolean sendFind(Context c) {
+        Link l = connect(c, null);
+        if (l == null) return false;
+        try { l.send("FIND\t"); Thread.sleep(500); } catch (Exception ignored) { }
+        l.close();
+        return true;
+    }
+
     /** Connects to the given device, or tries the last partner, then other paired phones/tablets. Blocking. */
     static Link connect(Context c, String preferredAddr) {
         BluetoothAdapter a = adapter(c);
@@ -417,6 +426,29 @@ final class BtRemote {
             } catch (Exception ignored) { }
         }
 
+        /** The other ARC device asked us to make noise so it can be found. Loud alarm + a buzz, ~20 s. */
+        private void findMe() {
+            try {
+                android.media.AudioManager am = c.getSystemService(android.media.AudioManager.class);
+                if (am != null) try { am.setStreamVolume(android.media.AudioManager.STREAM_ALARM, am.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM), 0); } catch (Exception ignored) { }
+                android.net.Uri u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
+                if (u == null) u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+                final android.media.Ringtone rt = u == null ? null : android.media.RingtoneManager.getRingtone(c, u);
+                if (rt != null) {
+                    try { rt.setStreamType(android.media.AudioManager.STREAM_ALARM); } catch (Exception ignored) { }
+                    rt.play();
+                    main.postDelayed(() -> { try { rt.stop(); } catch (Exception ignored) { } }, 20000);
+                }
+                android.os.Vibrator vb = c.getSystemService(android.os.Vibrator.class);
+                if (vb != null && vb.hasVibrator()) {
+                    long[] pat = {0, 500, 300, 500, 300, 500, 300, 500};
+                    if (android.os.Build.VERSION.SDK_INT >= 26) vb.vibrate(android.os.VibrationEffect.createWaveform(pat, -1));
+                    else vb.vibrate(pat, -1);
+                }
+            } catch (Exception ignored) { }
+            if (link != null) link.send("NOTE\t" + L.t("Klingelt – hörst du mich?"));
+        }
+
         private void run(String msg) {
             String[] p = msg.split("\t", 2);
             String cmd = p[0], arg = p.length > 1 ? p[1] : "";
@@ -432,6 +464,7 @@ final class BtRemote {
             }
             if (cmd.equals("SEARCH")) { search(arg); return; }
             if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
+            if (cmd.equals("FIND")) { findMe(); return; }
             if (ctl == null) { repick(); if (ctl == null) { if (cmd.equals("PLAY") || cmd.equals("TOGGLE")) startApp(); return; } }
             MediaController.TransportControls t = ctl.getTransportControls();
             try {

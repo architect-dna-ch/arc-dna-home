@@ -1952,6 +1952,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
     private List<AppEntry> arcEntries() {
         Object[][] a = {
             {"🫧","Konnekt",KonnektActivity.class},{"🧹",L.t("Aufräumen"),CleanerActivity.class},
+            {"📡",L.t("Finder"),FinderActivity.class},
             {"⚖","Einspruch",EinspruchActivity.class},{"⚓","Anchor",AnchorActivity.class},
             {"∑","ARC Math",MathActivity.class},{"🗝",L.t("Schatz"),TreasureActivity.class},
             {"🎞","ARC Gifs",GifActivity.class},{"🔊","ARC Remote",RemoteActivity.class},
