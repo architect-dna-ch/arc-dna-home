@@ -351,6 +351,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Lens: point the camera, ask the vision model (page at architect-dna.ch/lens). -->
+        <activity
+            android:name=".LensActivity"
+            android:exported="true"
+            android:label="ARC Lens"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC Lifeboat: continuity plan if the phone dies (tablet takes over). -->
         <activity
             android:name=".ContinuityActivity"

@@ -1085,6 +1085,8 @@ public class StatsHomeActivity extends Activity {
             new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.ContinuityActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         l.add(arcApp("🏷", "ARC Tag",
             new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.TagActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+        l.add(arcApp("🔍", "ARC Lens",
+            new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.LensActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         return l;
     }
 
