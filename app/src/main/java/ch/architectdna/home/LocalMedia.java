@@ -102,38 +102,63 @@ final class LocalMedia {
         } catch (RuntimeException ignored) { }
     }
 
-    /** Play a track here by search, then ease toward {@code posMs} once it has loaded (best effort). */
-    static void playHere(Context c, String title, String artist, long posMs) {
+    /** Play a track here by search, then ease toward {@code posMs} once it has loaded (best effort).
+     *  Uses the music app's session only if it advertises play-from-search (otherwise Android drops the
+     *  request silently), checks the title actually changed, and falls back to the play-from-search
+     *  intent. The seek adds the time the track took to load, so it lands closer to "the same second". */
+    static void playHere(final Context c, final String title, String artist, final long posMs) {
         final String q = (title + " " + artist).trim();
         if (q.isEmpty()) return;
+        final long t0 = SystemClock.elapsedRealtime();
+        final String before = currentTitle(c);
         MediaController ctl = pickFor(c, BtRemote.YT_MUSIC);
-        boolean started = false;
-        if (ctl != null) {
-            try { ctl.getTransportControls().playFromSearch(q, new Bundle()); started = true; }
+        boolean viaSession = false;
+        if (ctl != null && ctl.getPlaybackState() != null
+                && (ctl.getPlaybackState().getActions() & PlaybackState.ACTION_PLAY_FROM_SEARCH) != 0) {
+            try { ctl.getTransportControls().playFromSearch(q, new Bundle()); viaSession = true; }
             catch (RuntimeException ignored) { }
         }
-        if (!started) {
-            Intent i = new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
-                .putExtra(android.app.SearchManager.QUERY, q)
-                .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
-                .setPackage(BtRemote.YT_MUSIC)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            try { c.startActivity(i); } catch (RuntimeException ignored) { return; }
-        }
-        if (posMs > 4000) seekSoon(c, posMs);
+        if (!viaSession && !searchIntent(c, q)) return;
+        final boolean triedSession = viaSession;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (landed(c, before, q)) { if (posMs > 4000) seekSoon(c, posMs, t0); return; }
+            if (triedSession && searchIntent(c, q) && posMs > 4000) seekSoon(c, posMs, t0);
+        }, 3500);
     }
 
-    /** The track loads asynchronously; try to seek a couple of times as it comes up. */
-    private static void seekSoon(final Context c, final long posMs) {
+    private static boolean searchIntent(Context c, String q) {
+        Intent i = new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+            .putExtra(android.app.SearchManager.QUERY, q)
+            .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
+            .setPackage(BtRemote.YT_MUSIC)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { c.startActivity(i); return true; } catch (RuntimeException e) { return false; }
+    }
+
+    private static String currentTitle(Context c) {
+        MediaController m = pick(c);
+        MediaMetadata md = m == null ? null : m.getMetadata();
+        return md == null ? "" : nz(md.getString(MediaMetadata.METADATA_KEY_TITLE));
+    }
+
+    private static boolean landed(Context c, String before, String q) {
+        String now = currentTitle(c);
+        return !now.isEmpty() && (!now.equals(before)
+            || q.toLowerCase(java.util.Locale.ROOT).contains(now.toLowerCase(java.util.Locale.ROOT)));
+    }
+
+    /** The track loads asynchronously; seek a couple of times as it comes up, to where the source is NOW
+     *  (its position when we asked + the time since). */
+    private static void seekSoon(final Context c, final long posMs, final long t0) {
         final Handler h = new Handler(Looper.getMainLooper());
-        final long[] at = {1500, 3200};
-        for (long delay : at) {
+        for (long delay : new long[]{300, 2000}) {
             h.postDelayed(() -> {
                 MediaController ctl = pick(c);
                 if (ctl == null) return;
                 PlaybackState s = ctl.getPlaybackState();
                 boolean actionable = s != null && (s.getActions() & PlaybackState.ACTION_SEEK_TO) != 0;
-                if (actionable) try { ctl.getTransportControls().seekTo(posMs); } catch (RuntimeException ignored) { }
+                long target = posMs + (SystemClock.elapsedRealtime() - t0);
+                if (actionable) try { ctl.getTransportControls().seekTo(target); } catch (RuntimeException ignored) { }
             }, delay);
         }
     }

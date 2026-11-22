@@ -457,8 +457,7 @@ public class RemoteActivity extends Activity {
         String[] now = localNow();
         if (now == null) { toast(L.t("Auf dem Handy läuft gerade kein Song.")); return; }
         send("SEARCH\t" + (now[0] + " " + now[1]).trim().replace('\t', ' '));
-        note.setText(L.t("Aufs Tablet überspielt: ") + now[0]);
-        toast("„" + now[0] + L.t("“ läuft jetzt auf dem Tablet."));
+        note.setText(L.t("Sende ans Tablet: ") + now[0] + " …");     // the tablet answers with the real outcome
     }
 
     /** Title + artist of the song playing on this phone right now (prefers an actively-playing session). */
@@ -563,10 +562,8 @@ public class RemoteActivity extends Activity {
             ? SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime() : 0);
         String q = (t + (a == null ? "" : " " + a)).replace('\t', ' ');
         try { mine.getTransportControls().pause(); } catch (RuntimeException ignored) { }
-        send("SEARCH\t" + q);
-        long target = p + 2600;     // the tablet needs a moment to find and start the song
-        if (p > 8000) main.postDelayed(() -> send("SEEK\t" + target), 2600);
-        note.setText(L.t("Übernommen: ") + t);
+        send("SEARCH\t" + q + "\t" + p);   // the tablet seeks to this spot itself once the song has really loaded
+        note.setText(L.t("Sende ans Tablet: ") + t + " …");
     }
 
     private void pickDevice() {

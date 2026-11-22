@@ -578,27 +578,82 @@ final class BtRemote {
             pushSoon();
         }
 
-        /** Play a song by name, in the tablet's music app. Uses the open session when there is one. */
-        private void search(String q) {
+        /** Play a song by name in the tablet's music app — and CHECK that it really switched.
+         *  A media session that doesn't support play-from-search drops the request silently, so: use the
+         *  session only if it advertises that action, verify the title changed, and otherwise fall back to
+         *  the play-from-search intent (the voice-assistant route). The phone gets a NOTE with the real
+         *  outcome instead of an optimistic "done". */
+        private void search(String arg) {
+            // "query" or "query\tpositionMs" (handover: continue at the phone's spot once the song is in)
+            long pos = 0;
+            int tab = arg.lastIndexOf('\t');
+            if (tab > 0) { pos = plong(arg.substring(tab + 1)); arg = arg.substring(0, tab); }
+            final String q = arg.trim();
+            final long seekTo = pos, t0 = SystemClock.elapsedRealtime();
             if (q.isEmpty()) return;
+            final String before = nowTitle();
             MediaController target = ctl;
-            if (target != null && !YT_MUSIC.equals(target.getPackageName())) {
+            if (target == null || !YT_MUSIC.equals(target.getPackageName())) {
                 try {
                     for (MediaController m : sessions.getActiveSessions(me))
                         if (YT_MUSIC.equals(m.getPackageName())) { target = m; break; }
                 } catch (SecurityException ignored) { }
             }
-            if (target != null) {
-                try { target.getTransportControls().playFromSearch(q, new android.os.Bundle()); return; }
+            boolean viaSession = false;
+            if (target != null && supports(target, PlaybackState.ACTION_PLAY_FROM_SEARCH)) {
+                try { target.getTransportControls().playFromSearch(q, new android.os.Bundle()); viaSession = true; }
                 catch (RuntimeException ignored) { }
             }
+            if (!viaSession && !searchIntent(q)) return;
+            final boolean triedSession = viaSession;
+            final Runnable ok = () -> {
+                if (seekTo > 8000 && ctl != null && supports(ctl, PlaybackState.ACTION_SEEK_TO))
+                    try { ctl.getTransportControls().seekTo(seekTo + (SystemClock.elapsedRealtime() - t0)); } catch (RuntimeException ignored) { }
+                confirm();
+            };
+            main.postDelayed(() -> {
+                if (landed(before, q)) { ok.run(); return; }
+                if (triedSession && searchIntent(q))
+                    main.postDelayed(() -> { if (landed(before, q)) ok.run(); else failNote(); }, 4500);
+                else failNote();
+            }, 4000);
+        }
+
+        private static boolean supports(MediaController m, long action) {
+            PlaybackState s = m.getPlaybackState();
+            return s != null && (s.getActions() & action) != 0;
+        }
+
+        private String nowTitle() {
+            repick();
+            MediaMetadata md = ctl == null ? null : ctl.getMetadata();
+            return md == null ? "" : nz(md.getString(MediaMetadata.METADATA_KEY_TITLE));
+        }
+
+        /** Switched = a different title than before, or (same song re-sent) the query names what's playing. */
+        private boolean landed(String before, String q) {
+            String now = nowTitle();
+            if (now.isEmpty()) return false;
+            return !now.equals(before) || q.toLowerCase(java.util.Locale.ROOT).contains(now.toLowerCase(java.util.Locale.ROOT));
+        }
+
+        private boolean searchIntent(String q) {
             Intent i = new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
                 .putExtra(android.app.SearchManager.QUERY, q)
                 .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
                 .setPackage(YT_MUSIC)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            try { c.startActivity(i); }
-            catch (RuntimeException e) { if (link != null) link.send(L.t("NOTE\tYouTube Music einmal auf dem Tablet öffnen, dann klappt's.")); }
+            try { c.startActivity(i); return true; }
+            catch (RuntimeException e) { failNote(); return false; }
+        }
+
+        private void confirm() {
+            if (link != null) link.send("NOTE\t" + L.t("Tablet spielt jetzt: ") + clean(nowTitle()));
+            pushSoon();
+        }
+
+        private void failNote() {
+            if (link != null) link.send("NOTE\t" + L.t("Das Tablet hat nicht gewechselt. Auf dem Tablet ARC „Über anderen Apps einblenden“ erlauben (oder YouTube Music einmal öffnen), dann nochmals."));
         }
 
         private void startApp() {
