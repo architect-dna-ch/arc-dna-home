@@ -12,29 +12,57 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.widget.Toast;
 
 /**
- * ARC Flow — while on, the music follows the device in your hand. A pickup on this device (PickupDetector)
- * asks the paired ARC device what it's playing; if it's playing and nothing is playing here, we pause it
- * there and continue the same track here (best-effort position). Runs as a foreground service so the
- * sensor and the Bluetooth link stay alive when the screen is off.
+ * ARC Flow / ARC Sync — the music follows the device in your hand.
+ *
+ * Two modes (pref "flowMode"):
+ *  - "handoff": pick up a device and the track jumps here; the other device pauses.
+ *  - "sync": both devices play the same track at the same second. The one in your hand plays out loud,
+ *    the other is ducked to a whisper but stays aligned — so walking to it is seamless, with no echo.
+ *
+ * Leadership (who is loud / who drives the position) goes to whichever device was picked up most recently.
+ * Each device compares its own last pickup against the last time it heard the peer assert itself; the
+ * newer wins. Clocks are never compared across devices, only each device's own event order, so it needs
+ * no shared clock. Runs as a foreground service so the sensor and the Bluetooth link survive screen-off.
  */
 public class FlowService extends Service {
 
     static final String PREF = "flowAuto";
+    static final String MODE = "flowMode";          // "handoff" | "sync"
     private static final String CHANNEL = "arc_flow";
     private static final int NOTIF = 0x5F10;
+    private static final long TICK = 6000;
+
+    // Cross-component leadership timestamps (elapsedRealtime). Updated from the UI, the sensor, and the
+    // Bluetooth receiver (BtRemote), so they are static.
+    private static volatile long sLocalPickupAt;
+    private static volatile long sPeerAssertAt;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private PickupDetector det;
     private volatile boolean busy;
 
-    public static boolean isOn(Context c) {
-        return c.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean(PREF, false);
+    /** The peer asserted itself (sent us a SYNC / SYNCPOS / DUCK). Called from BtRemote's receiver. */
+    static void notePeerAssert() { sPeerAssertAt = SystemClock.elapsedRealtime(); }
+
+    private static void noteLocalPickup() { sLocalPickupAt = SystemClock.elapsedRealtime(); }
+
+    /** This device is the leader (loud, position source) if it was picked up at least as recently as the
+     *  last time the peer claimed leadership. */
+    private static boolean leaderHere() { return sLocalPickupAt > 0 && sLocalPickupAt >= sPeerAssertAt; }
+
+    /* ---------------- on / off, mode ---------------- */
+
+    public static boolean isOn(Context c) { return c.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean(PREF, false); }
+    public static boolean isSync(Context c) { return "sync".equals(c.getSharedPreferences("home", Context.MODE_PRIVATE).getString(MODE, "handoff")); }
+
+    public static void setMode(Context c, boolean sync) {
+        c.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putString(MODE, sync ? "sync" : "handoff").apply();
     }
 
-    /** Turn ARC Flow on/off and start/stop the service. */
     public static void setOn(Context c, boolean on) {
         c.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putBoolean(PREF, on).apply();
         Intent i = new Intent(c, FlowService.class);
@@ -44,28 +72,85 @@ public class FlowService extends Service {
         } catch (RuntimeException ignored) { }
     }
 
+    /* ---------------- UI entry points (ARC Remote player / Flow screen) ---------------- */
+
+    /** One-shot: pull the paired device's music onto THIS device now (handoff — pauses the other). */
+    public static void pullHere(final Context c) {
+        noteLocalPickup();
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            String[] t = null;
+            try { t = BtRemote.pullFromPeer(app, true); } catch (RuntimeException ignored) { }
+            final String[] track = t;
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (track != null) LocalMedia.playHere(app, track[0], track[1], parse(track[2]));
+            });
+        }, "arc-flow-pullhere").start();
+    }
+
+    /** Start ARC Sync from the device you're listening on: turn the service on in sync mode and tell the
+     *  peer to play the same track at the same second, ducked, while this device stays loud. */
+    public static void startSync(final Context c) {
+        setMode(c, true);
+        setOn(c, true);
+        noteLocalPickup();
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            LocalMedia.duck(app, false);
+            String[] n = LocalMedia.nowPlaying(app);
+            if (n != null && "1".equals(n[3]))
+                BtRemote.sendToPeer(app, "SYNC\t" + n[0] + "\t" + n[1] + "\t" + n[2], "DUCK\t1");
+        }, "arc-flow-startsync").start();
+    }
+
+    /* ---------------- service ---------------- */
+
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         goForeground();
-        if (det == null) {
-            det = new PickupDetector(this, this::onPickup);
-            det.start();
-        }
+        if (det == null) { det = new PickupDetector(this, this::onPickup); det.start(); }
+        main.removeCallbacks(tick);
+        main.postDelayed(tick, TICK);
         return START_STICKY;
     }
 
-    /** A pickup on this device: bring the music here, unless it is already playing here. */
+    /** Keep the ducked follower on the same second while this device is the leader. */
+    private final Runnable tick = new Runnable() {
+        @Override public void run() {
+            if (isSync(FlowService.this) && leaderHere() && LocalMedia.isPlayingHere(FlowService.this)) {
+                String[] n = LocalMedia.nowPlaying(FlowService.this);
+                final long pos = n == null ? 0 : parse(n[2]);
+                LocalMedia.duck(FlowService.this, false);
+                new Thread(() -> BtRemote.sendToPeer(FlowService.this, "SYNCPOS\t" + pos, "DUCK\t1"), "arc-flow-tick").start();
+            }
+            main.postDelayed(this, TICK);
+        }
+    };
+
+    /** A pickup on this device: bring the music here (or, in sync mode, take the lead + quiet the peer). */
     private void onPickup() {
-        if (busy || LocalMedia.isPlayingHere(this)) return;
+        if (busy) return;
+        noteLocalPickup();
+        final boolean sync = isSync(this);
+        if (!sync && LocalMedia.isPlayingHere(this)) return;   // handoff: already here, nothing to do
         busy = true;
+        LocalMedia.duck(this, false);                          // this device is now in hand → loud
         new Thread(() -> {
-            String[] t = null;
-            try { t = BtRemote.pullFromPeer(this); } catch (RuntimeException ignored) { }
-            final String[] track = t;
-            main.post(() -> {
-                if (track != null) {
-                    LocalMedia.playHere(this, track[0], track[1], parse(track[2]));
-                    toast(L.t("Musik folgt dir: ") + track[0]);
+            try {
+                if (!LocalMedia.isPlayingHere(this)) {
+                    String[] t = BtRemote.pullFromPeer(this, !sync);   // sync keeps the peer playing; handoff pauses it
+                    if (t != null) {
+                        final String[] track = t;
+                        main.post(() -> LocalMedia.playHere(this, track[0], track[1], parse(track[2])));
+                    }
                 }
+                if (sync) {
+                    String[] n = LocalMedia.nowPlaying(this);
+                    long pos = n == null ? 0 : parse(n[2]);
+                    BtRemote.sendToPeer(this, "SYNCPOS\t" + pos, "DUCK\t1");   // take the lead, quiet the other room
+                }
+            } catch (RuntimeException ignored) { }
+            main.post(() -> {
+                toast(sync ? L.t("Musik folgt dir – auf dem anderen Gerät leiser.") : L.t("Musik folgt dir."));
                 busy = false;
             });
         }, "arc-flow-pull").start();
@@ -102,6 +187,7 @@ public class FlowService extends Service {
     }
 
     @Override public void onDestroy() {
+        main.removeCallbacks(tick);
         if (det != null) { det.stop(); det = null; }
         super.onDestroy();
     }

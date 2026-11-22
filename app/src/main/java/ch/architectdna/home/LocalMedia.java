@@ -65,6 +65,43 @@ final class LocalMedia {
         try { ctl.getTransportControls().pause(); } catch (RuntimeException ignored) { }
     }
 
+    /** ARC Sync: nudge local playback to {@code targetPos} only if it has drifted more than ~1.2 s.
+     *  Keeps the quiet (follower) device on the same second as the one in your hand, without constant seeks. */
+    static void alignTo(Context c, long targetPos) {
+        MediaController ctl = pick(c);
+        if (ctl == null) return;
+        PlaybackState s = ctl.getPlaybackState();
+        if (s == null || s.getState() != PlaybackState.STATE_PLAYING) return;
+        if ((s.getActions() & PlaybackState.ACTION_SEEK_TO) == 0) return;
+        long cur = s.getPosition();
+        float speed = s.getPlaybackSpeed() == 0 ? 1f : s.getPlaybackSpeed();
+        if (s.getLastPositionUpdateTime() > 0)
+            cur += (long) ((SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime()) * speed);
+        if (Math.abs(cur - targetPos) > 1200)
+            try { ctl.getTransportControls().seekTo(targetPos); } catch (RuntimeException ignored) { }
+    }
+
+    /** ARC Sync auto-duck: lower this device's music to a background level, or restore it. We remember the
+     *  loud level the first time we duck so we can bring it back when this device comes into your hand. */
+    static void duck(Context c, boolean on) {
+        android.media.AudioManager am = c.getSystemService(android.media.AudioManager.class);
+        if (am == null) return;
+        int stream = android.media.AudioManager.STREAM_MUSIC;
+        int max = am.getStreamMaxVolume(stream);
+        int quiet = Math.max(1, Math.round(max * 0.12f));
+        android.content.SharedPreferences p = c.getSharedPreferences("home", Context.MODE_PRIVATE);
+        try {
+            if (on) {
+                int cur = am.getStreamVolume(stream);
+                if (cur > quiet) p.edit().putInt("preDuckVol", cur).apply();   // remember the loud level
+                if (cur > quiet) am.setStreamVolume(stream, quiet, 0);
+            } else {
+                int restore = p.getInt("preDuckVol", Math.max(quiet, Math.round(max * 0.6f)));
+                am.setStreamVolume(stream, Math.min(max, restore), 0);
+            }
+        } catch (RuntimeException ignored) { }
+    }
+
     /** Play a track here by search, then ease toward {@code posMs} once it has loaded (best effort). */
     static void playHere(Context c, String title, String artist, long posMs) {
         final String q = (title + " " + artist).trim();

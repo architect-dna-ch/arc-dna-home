@@ -153,10 +153,12 @@ final class BtRemote {
         return true;
     }
 
-    /** ARC Flow: ask the paired ARC device what it's playing. If it IS playing, pause it there and return
-     *  {title, artist, positionMs} so this device can continue the same track. null if nothing to pull
-     *  (no peer answered, or the peer isn't playing). Blocking — call off the main thread. */
-    static String[] pullFromPeer(Context c) {
+    /** ARC Flow: ask the paired ARC device what it's playing. If it IS playing and {@code pausePeer},
+     *  pause it there; either way return {title, artist, positionMs} so this device can continue the same
+     *  track. null if nothing to pull (no peer, or the peer isn't playing). Blocking — off the main thread. */
+    static String[] pullFromPeer(Context c) { return pullFromPeer(c, true); }
+
+    static String[] pullFromPeer(Context c, boolean pausePeer) {
         Link l = connect(c, null);
         if (l == null) return null;
         final String[] reply = new String[1];
@@ -171,8 +173,10 @@ final class BtRemote {
         if (np == null) { l.close(); return null; }
         String[] f = np.split("\t", -1);                 // NP \t title \t artist \t pos \t playing
         if (f.length >= 5 && "1".equals(f[4]) && !f[1].isEmpty()) {
-            l.send("PAUSE\t");
-            try { Thread.sleep(250); } catch (InterruptedException ignored) { }
+            if (pausePeer) {
+                l.send("PAUSE\t");
+                try { Thread.sleep(250); } catch (InterruptedException ignored) { }
+            }
             l.close();
             return new String[]{f[1], f[2], f[3]};
         }
@@ -180,10 +184,23 @@ final class BtRemote {
         return null;
     }
 
-    /** Connects to the given device, or tries the last partner, then other paired phones/tablets. Blocking. */
+    /** ARC Sync: fire-and-forget frames at the paired ARC device over a one-shot link (position nudges,
+     *  duck commands, a track to start). Blocking — call off the main thread. */
+    static void sendToPeer(Context c, String... frames) {
+        Link l = connect(c, null);
+        if (l == null) return;
+        for (String f : frames) l.send(f);
+        try { Thread.sleep(180); } catch (InterruptedException ignored) { }
+        l.close();
+    }
+
+    /** Connects to the given device, or the last partner, then other paired phones/tablets.
+     *  RFCOMM connect is flaky by nature, so we put the remembered ARC device first, try a secure then an
+     *  insecure socket for each, and make two passes with a short backoff before giving up. Blocking. */
     static Link connect(Context c, String preferredAddr) {
         BluetoothAdapter a = adapter(c);
         if (a == null) return null;
+        String last = c.getSharedPreferences("home", Context.MODE_PRIVATE).getString("remoteAddr", null);
         try {
             try { if (a.isDiscovering()) a.cancelDiscovery(); } catch (SecurityException ignored) { }
             java.util.List<BluetoothDevice> order = new java.util.ArrayList<>(), later = new java.util.ArrayList<>();
@@ -193,23 +210,45 @@ final class BtRemote {
                     || major == android.bluetooth.BluetoothClass.Device.Major.WEARABLE
                     || major == android.bluetooth.BluetoothClass.Device.Major.PERIPHERAL
                     || major == android.bluetooth.BluetoothClass.Device.Major.HEALTH;
-                if (d.getAddress().equals(preferredAddr)) order.add(0, d);
+                String addr = d.getAddress();
+                if (addr.equals(preferredAddr)) order.add(0, d);          // explicit pick wins
+                else if (addr.equals(last)) order.add(0, d);              // then the last ARC partner
                 else if (!accessory) later.add(d);
             }
             order.addAll(later);
-            for (BluetoothDevice d : order) {
-                BluetoothSocket s = null;
-                try {
-                    s = d.createRfcommSocketToServiceRecord(ID);
-                    s.connect();
-                    c.getSharedPreferences("home", Context.MODE_PRIVATE).edit()
-                        .putString("remoteAddr", d.getAddress()).apply();
-                    return new Link(s);
-                } catch (IOException e) {
-                    if (s != null) try { s.close(); } catch (IOException ignored) { }
+            for (int pass = 0; pass < 2; pass++) {
+                for (BluetoothDevice d : order) {
+                    Link l = tryConnect(c, a, d);
+                    if (l != null) {
+                        c.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putString("remoteAddr", d.getAddress()).apply();
+                        return l;
+                    }
                 }
+                try { Thread.sleep(350); } catch (InterruptedException ignored) { return null; }
             }
         } catch (SecurityException ignored) { }
+        return null;
+    }
+
+    /** One device: a secure RFCOMM socket, then an insecure one (often connects when the secure one won't). */
+    private static Link tryConnect(Context c, BluetoothAdapter a, BluetoothDevice d) {
+        try { if (a.isDiscovering()) a.cancelDiscovery(); } catch (SecurityException ignored) { }
+        BluetoothSocket s = null;
+        try {
+            s = d.createRfcommSocketToServiceRecord(ID);
+            s.connect();
+            return new Link(s);
+        } catch (IOException | SecurityException e) {
+            if (s != null) try { s.close(); } catch (IOException ignored) { }
+        }
+        s = null;
+        try {
+            s = d.createInsecureRfcommSocketToServiceRecord(ID);
+            s.connect();
+            return new Link(s);
+        } catch (IOException | SecurityException e) {
+            if (s != null) try { s.close(); } catch (IOException ignored) { }
+        }
         return null;
     }
 
@@ -502,6 +541,13 @@ final class BtRemote {
             if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
             if (cmd.equals("FIND")) { findMe(); return; }
             if (cmd.equals("NP?")) { replyNowPlaying(); return; }
+            if (cmd.equals("SYNC")) {                      // play the same track here (ARC Sync follower)
+                String[] q = arg.split("\t", -1);
+                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
+                FlowService.notePeerAssert(); return;
+            }
+            if (cmd.equals("SYNCPOS")) { LocalMedia.alignTo(c, plong(arg)); FlowService.notePeerAssert(); return; }
+            if (cmd.equals("DUCK")) { LocalMedia.duck(c, "1".equals(arg)); FlowService.notePeerAssert(); return; }
             if (ctl == null) { repick(); if (ctl == null) { if (cmd.equals("PLAY") || cmd.equals("TOGGLE")) startApp(); return; } }
             MediaController.TransportControls t = ctl.getTransportControls();
             try {
@@ -562,5 +608,6 @@ final class BtRemote {
 
         private static String nz(String s) { return s == null ? "" : s; }
         private static String clean(String s) { return s.replace('\t', ' ').replace('\n', ' '); }
+        private static long plong(String s) { try { return Long.parseLong(s.trim()); } catch (RuntimeException e) { return 0; } }
     }
 }

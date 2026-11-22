@@ -219,6 +219,10 @@ public class RemoteActivity extends Activity {
         TextView hand = pill(L.t("📱 → 🔊   Vom Handy übernehmen"), v -> handOver());
         col.addView(hand, lp(-1, dp(54), dp(16)));
 
+        // ARC Flow: the other direction — bring the tablet's music onto this phone, same spot
+        TextView bring = pill(L.t("🔊 → 📱   Vom Tablet hierher holen"), v -> bringHere());
+        col.addView(bring, lp(-1, dp(54), dp(10)));
+
         // search → plays on the tablet
         col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));
         TextView pushNow = new TextView(this);
@@ -491,6 +495,29 @@ public class RemoteActivity extends Activity {
     }
 
     /** What plays on this phone moves to the tablet: same song, same spot; the phone pauses. */
+    /** ARC Flow: pull whatever is playing on the tablet onto THIS phone, at roughly the same spot, and
+     *  pause the tablet. The reverse of handOver(). */
+    private void bringHere() {
+        note.setText(L.t("Hole die Musik vom Tablet …"));
+        final Runnable watchdog = () -> note.setText(L.t("Keine Verbindung zum Tablet – ist ARC dort offen und Bluetooth an?"));
+        main.postDelayed(watchdog, 9000);
+        new Thread(() -> {
+            String[] t = null;
+            try { t = BtRemote.pullFromPeer(this, true); } catch (RuntimeException ignored) { }
+            final String[] tr = t;
+            main.post(() -> {
+                main.removeCallbacks(watchdog);
+                if (tr != null) {
+                    long p = 0; try { p = Long.parseLong(tr[2]); } catch (NumberFormatException ignored) { }
+                    LocalMedia.playHere(this, tr[0], tr[1], p);
+                    note.setText(L.t("Hierher geholt: ") + tr[0]);
+                } else {
+                    note.setText(L.t("Auf dem Tablet läuft gerade nichts, oder keine Verbindung."));
+                }
+            });
+        }, "arc-bring-here").start();
+    }
+
     private void handOver() {
         MediaController mine = null;
         try {

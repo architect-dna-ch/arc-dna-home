@@ -100,11 +100,15 @@ public class FlowActivity extends Activity {
         if (busy) return;
         busy = true;
         status.setText(L.t("Verbinde mit dem anderen Gerät …"));
+        // Watchdog: RFCOMM can be slow; tell the user instead of looking frozen.
+        final Runnable watchdog = () -> { if (busy) status.setText(L.t("Keine Verbindung – ist ARC auf dem anderen Gerät offen und Bluetooth an?")); };
+        main.postDelayed(watchdog, 9000);
         new Thread(() -> {
             String[] t = null;
             try { t = BtRemote.pullFromPeer(this); } catch (RuntimeException ignored) { }
             final String[] track = t;
             main.post(() -> {
+                main.removeCallbacks(watchdog);
                 if (track != null) {
                     LocalMedia.playHere(this, track[0], track[1], parse(track[2]));
                     status.setText(L.t("Läuft jetzt hier: ") + track[0]);
