@@ -38,7 +38,7 @@ final class TreasureSync {
     private static final int MAX = 64 * 1024 * 1024;
     private static Thread serverThread;
     private static BluetoothServerSocket server;
-    private static volatile long lastPush;
+    static volatile long lastPush;
 
     static File peerBak(Context c) { return new File(c.getFilesDir(), "treasure-peer.bak"); }
 

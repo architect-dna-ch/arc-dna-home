@@ -329,6 +329,13 @@
             android:exported="true"
             android:label="ARC Flow"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+
+        <!-- ARC Lifeboat: continuity plan if the phone dies (tablet takes over). -->
+        <activity
+            android:name=".ContinuityActivity"
+            android:exported="true"
+            android:label="ARC Lifeboat"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
         <service
             android:name=".FlowService"
             android:exported="false"
