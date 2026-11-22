@@ -330,6 +330,27 @@
             android:label="ARC Flow"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
+        <!-- ARC Tag: "if found, tap me" wallet/keys tags. Claims tag links + NFC taps so the owner's
+             own tap is recognised (Chrome wouldn't know the owner key). -->
+        <activity
+            android:name=".TagActivity"
+            android:exported="true"
+            android:label="ARC Tag"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="https" android:host="architect-dna.ch" android:pathPrefix="/tag/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="architect-dna.ch" android:pathPrefix="/tag/" />
+            </intent-filter>
+        </activity>
+
         <!-- ARC Lifeboat: continuity plan if the phone dies (tablet takes over). -->
         <activity
             android:name=".ContinuityActivity"

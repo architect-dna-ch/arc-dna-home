@@ -93,6 +93,7 @@ public class MediaListener extends NotificationListenerService {
         TreasureSync.startServer(this);   // phone↔tablet encrypted vault backup
         BtRemote.startServer(this);      // the phone can steer this device's music (ARC Remote)
         ArcTap.start(this);              // tap the phone to the tablet to sync (magnetometer + bump)
+        TagWatch.start(this);            // ARC Tag: tell me when someone else found my wallet
     }
 
     private final android.content.BroadcastReceiver battery = new android.content.BroadcastReceiver() {
