@@ -1362,7 +1362,17 @@ public class StatsHomeActivity extends Activity {
 
     private void launch(App a) {
         if (VpnGate.intercept(this, a.pkg, a.launch)) return;   // Tor without VPN: warn first
-        try { startActivity(a.launch); } catch (RuntimeException ignored) { }
+        try {
+            startActivity(a.launch);
+        } catch (android.content.ActivityNotFoundException e) {
+            // Cross-app ARC screen whose target isn't in the installed home app yet (stale APK).
+            boolean arcHome = a.launch != null && a.launch.getComponent() != null
+                && "ch.architectdna.home".equals(a.launch.getComponent().getPackageName());
+            android.widget.Toast.makeText(this,
+                arcHome ? L.t("„" + a.label + "“ braucht die neuste ARC-App — bitte ARC aktualisieren.")
+                        : L.t("„" + a.label + "“ ist nicht installiert."),
+                android.widget.Toast.LENGTH_LONG).show();
+        } catch (RuntimeException ignored) { }
     }
 
     /** A two-part horizontal bar: the filled share in colour, the rest in the line colour. */
