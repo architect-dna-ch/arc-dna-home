@@ -544,8 +544,10 @@ final class BtRemote {
             if (cmd.equals("SYNC")) {                      // play the same track here (ARC Sync follower)
                 String[] q = arg.split("\t", -1);
                 if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
-                FlowService.notePeerAssert(); return;
+                FlowService.notePeerAssert(); FlowService.followSync(c); return;
             }
+            if (cmd.equals("SYNCOFF")) { FlowService.stopSyncLocal(c); return; }
+            if (cmd.equals("SYNCJOIN")) { FlowService.notePeerAssert(); FlowService.followSync(c); return; }
             if (cmd.equals("SYNCPOS")) { LocalMedia.alignTo(c, plong(arg)); FlowService.notePeerAssert(); return; }
             if (cmd.equals("DUCK")) { LocalMedia.duck(c, "1".equals(arg)); FlowService.notePeerAssert(); return; }
             if (ctl == null) { repick(); if (ctl == null) { if (cmd.equals("PLAY") || cmd.equals("TOGGLE")) startApp(); return; } }

@@ -34,7 +34,7 @@ public class FlowService extends Service {
     static final String MODE = "flowMode";          // "handoff" | "sync"
     private static final String CHANNEL = "arc_flow";
     private static final int NOTIF = 0x5F10;
-    private static final long TICK = 6000;
+    private static final long TICK = 20_000;   // each nudge opens a short link; the tablet keeps one at a time, so keep it rare
 
     // Cross-component leadership timestamps (elapsedRealtime). Updated from the UI, the sensor, and the
     // Bluetooth receiver (BtRemote), so they are static.
@@ -88,11 +88,66 @@ public class FlowService extends Service {
         }, "arc-flow-pullhere").start();
     }
 
-    /** Start ARC Sync from the device you're listening on: turn the service on in sync mode and tell the
+    private static void runService(Context c, boolean on) {
+        Intent i = new Intent(c, FlowService.class);
+        try {
+            if (on) { if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i); }
+            else c.stopService(i);
+        } catch (RuntimeException ignored) { }
+    }
+
+    /** Stop ARC Sync: back to handoff mode, and un-duck BOTH devices so neither is left whispering.
+     *  The service keeps running only if Auto-Flow is on. */
+    public static void stopSync(final Context c) {
+        setMode(c, false);
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            LocalMedia.duck(app, false);
+            BtRemote.sendToPeer(app, "DUCK\t0", "SYNCOFF\t");
+        }, "arc-flow-stopsync").start();
+        if (!isOn(c)) runService(c, false);
+    }
+
+    /** Start ARC Sync when the music is playing on the OTHER device (e.g. from the ARC Remote player):
+     *  take its track without pausing it, play it here at the same second (this device is in your hand,
+     *  so it's loud), and ask the other device to join quietly. */
+    public static void startSyncFromPeer(final Context c) {
+        setMode(c, true);
+        runService(c, true);
+        noteLocalPickup();
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            String[] t = null;
+            try { t = BtRemote.pullFromPeer(app, false); } catch (RuntimeException ignored) { }
+            if (t == null) return;
+            final String[] track = t;
+            new Handler(Looper.getMainLooper()).post(() -> LocalMedia.playHere(app, track[0], track[1], parse(track[2])));
+            LocalMedia.duck(app, false);
+            BtRemote.sendToPeer(app, "SYNCJOIN\t", "DUCK\t1");
+        }, "arc-flow-syncfrompeer").start();
+    }
+
+    /** The peer started ARC Sync and sent us its track: join in sync mode too, so picking THIS device up
+     *  later takes the lead back. (Starting a foreground service from the background can be refused on
+     *  newer Android; then this device still plays along ducked, it just won't take the lead on pickup.) */
+    static void followSync(Context c) {
+        if (isSync(c)) return;
+        setMode(c, true);
+        runService(c, true);
+    }
+
+    /** The peer switched ARC Sync off: leave sync mode here too (no message back, so no ping-pong). */
+    static void stopSyncLocal(Context c) {
+        setMode(c, false);
+        LocalMedia.duck(c, false);
+        if (!isOn(c)) runService(c, false);
+    }
+
+    /** Start ARC Sync from the device you're listening on: sync mode on, service running, and tell the
      *  peer to play the same track at the same second, ducked, while this device stays loud. */
     public static void startSync(final Context c) {
         setMode(c, true);
-        setOn(c, true);
+        runService(c, true);
         noteLocalPickup();
         final Context app = c.getApplicationContext();
         new Thread(() -> {

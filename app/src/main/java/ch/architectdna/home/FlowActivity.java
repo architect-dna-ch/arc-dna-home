@@ -24,8 +24,9 @@ public class FlowActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView status;
-    private Switch autoSw;
+    private Switch autoSw, syncSw;
     private volatile boolean busy;
+    private boolean binding;            // true while we set the switch ourselves — not a user tap
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -90,6 +91,38 @@ public class FlowActivity extends Activity {
         });
         row.addView(autoSw);
 
+        // ARC Sync toggle: same second on both devices, the one in your hand loud, the other a whisper
+        LinearLayout srow = new LinearLayout(this);
+        srow.setOrientation(LinearLayout.HORIZONTAL);
+        srow.setGravity(Gravity.CENTER_VERTICAL);
+        srow.setBackground(card());
+        srow.setPadding(dp(16), dp(14), dp(16), dp(14));
+        LinearLayout.LayoutParams srl = new LinearLayout.LayoutParams(-1, -2); srl.topMargin = dp(12);
+        col.addView(srow, srl);
+        LinearLayout sc = new LinearLayout(this); sc.setOrientation(LinearLayout.VERTICAL);
+        TextView st = text(15, 0xFFEAF2F8, true); st.setText(L.t("Synchron auf beiden")); sc.addView(st);
+        TextView ss = text(12, 0xFF7E97AB, false);
+        ss.setText(L.t("Beta: Beide Geräte spielen dieselbe Sekunde. Das in deiner Hand ist laut, das andere ganz leise — gehst du rüber und nimmst es hoch, wird es laut. Hier starten, wo die Musik gerade läuft."));
+        sc.addView(ss);
+        srow.addView(sc, new LinearLayout.LayoutParams(0, -2, 1f));
+        syncSw = new Switch(this);
+        syncSw.setChecked(FlowService.isSync(this));
+        syncSw.setOnCheckedChangeListener((v, on) -> {
+            if (binding) return;
+            if (on) {
+                if (!LocalMedia.isPlayingHere(this)) {
+                    status.setText(L.t("Starte Sync auf dem Gerät, auf dem gerade Musik läuft."));
+                    binding = true; v.setChecked(false); binding = false; return;
+                }
+                FlowService.startSync(this);
+                status.setText(L.t("Sync an: Das andere Gerät spielt jetzt leise mit."));
+            } else {
+                FlowService.stopSync(this);
+                status.setText(L.t("Sync aus. Beide Geräte wieder normal laut."));
+            }
+        });
+        srow.addView(syncSw);
+
         TextView note = text(12, 0xFF6C879C, false);
         note.setText(L.t("Ehrlich dazu: Die Stelle im Song trifft ARC auf ein paar Sekunden genau – die Musik-App muss den Titel erst laden. Beide ARC-Geräte müssen gekoppelt und in Bluetooth-Reichweite sein, und auf dem Zielgerät spielt der Song über die dortige Musik-App (YouTube Music)."));
         note.setPadding(0, dp(22), 0, 0);
@@ -123,6 +156,7 @@ public class FlowActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (autoSw != null) autoSw.setChecked(FlowService.isOn(this));
+        if (syncSw != null) { binding = true; syncSw.setChecked(FlowService.isSync(this)); binding = false; }
     }
 
     private static long parse(String s) { try { return Long.parseLong(s); } catch (NumberFormatException e) { return 0; } }

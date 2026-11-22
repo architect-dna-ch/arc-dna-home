@@ -223,6 +223,10 @@ public class RemoteActivity extends Activity {
         TextView bring = pill(L.t("🔊 → 📱   Vom Tablet hierher holen"), v -> bringHere());
         col.addView(bring, lp(-1, dp(54), dp(10)));
 
+        // ARC Sync: both devices on the same second; the one in your hand loud, the other a whisper
+        syncChip = pill(syncLabel(), v -> toggleSync());
+        col.addView(syncChip, lp(-1, dp(54), dp(10)));
+
         // search → plays on the tablet
         col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));
         TextView pushNow = new TextView(this);
@@ -495,6 +499,26 @@ public class RemoteActivity extends Activity {
     }
 
     /** What plays on this phone moves to the tablet: same song, same spot; the phone pauses. */
+    private TextView syncChip;
+
+    private String syncLabel() {
+        return FlowService.isSync(this) ? L.t("🔁   Sync an — tippen zum Beenden") : L.t("🔁   Synchron auf beiden (Beta)");
+    }
+
+    private void toggleSync() {
+        if (FlowService.isSync(this)) {
+            FlowService.stopSync(this);
+            note.setText(L.t("Sync aus. Beide Geräte wieder normal laut."));
+        } else if (LocalMedia.isPlayingHere(this)) {
+            FlowService.startSync(this);
+            note.setText(L.t("Sync an: Das Tablet spielt leise mit — nimm es hoch, dann wird es laut."));
+        } else {
+            FlowService.startSyncFromPeer(this);
+            note.setText(L.t("Sync an: Der Song vom Tablet läuft jetzt auch hier, das Tablet leise."));
+        }
+        syncChip.setText(syncLabel());
+    }
+
     /** ARC Flow: pull whatever is playing on the tablet onto THIS phone, at roughly the same spot, and
      *  pause the tablet. The reverse of handOver(). */
     private void bringHere() {
