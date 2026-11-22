@@ -145,8 +145,11 @@ final class BtRemote {
     }
 
     /** ARC Finder: ring the paired ARC device so you can hear where it is. Returns false if none answered. */
-    static boolean sendFind(Context c) {
-        Link l = connect(c, null);
+    static boolean sendFind(Context c) { return sendFind(c, null); }
+
+    /** Ring a specific device (the one picked in ARC Finder) — falls back to the usual order if it doesn't answer. */
+    static boolean sendFind(Context c, String addr) {
+        Link l = connect(c, addr);
         if (l == null) return false;
         try { l.send("FIND\t"); Thread.sleep(500); } catch (Exception ignored) { }
         l.close();

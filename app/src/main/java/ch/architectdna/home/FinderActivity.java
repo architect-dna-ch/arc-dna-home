@@ -170,7 +170,7 @@ public class FinderActivity extends Activity {
         if (!targetIsArc) return;
         Toast.makeText(this, t("Ringing your ARC device …", "ARC-Gerät klingelt …"), Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            boolean ok = BtRemote.sendFind(this);
+            boolean ok = BtRemote.sendFind(this, targetMac);
             main.post(() -> Toast.makeText(this, ok ? t("It should be ringing — follow the sound.", "Es klingelt – folge dem Ton.")
                 : t("Couldn't reach it (is ARC open on the tablet / in range?).", "Nicht erreichbar (ist ARC auf dem Tablet offen / in Reichweite?)."), Toast.LENGTH_LONG).show());
         }, "arc-find-ring").start();
