@@ -153,6 +153,33 @@ final class BtRemote {
         return true;
     }
 
+    /** ARC Flow: ask the paired ARC device what it's playing. If it IS playing, pause it there and return
+     *  {title, artist, positionMs} so this device can continue the same track. null if nothing to pull
+     *  (no peer answered, or the peer isn't playing). Blocking — call off the main thread. */
+    static String[] pullFromPeer(Context c) {
+        Link l = connect(c, null);
+        if (l == null) return null;
+        final String[] reply = new String[1];
+        final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        l.readLoop(new Handler2() {
+            @Override public void onFrame(String m) { if (m.startsWith("NP")) { reply[0] = m; latch.countDown(); } }
+            @Override public void onClosed() { latch.countDown(); }
+        });
+        l.send("NP?\t");
+        try { latch.await(1800, java.util.concurrent.TimeUnit.MILLISECONDS); } catch (InterruptedException ignored) { }
+        String np = reply[0];
+        if (np == null) { l.close(); return null; }
+        String[] f = np.split("\t", -1);                 // NP \t title \t artist \t pos \t playing
+        if (f.length >= 5 && "1".equals(f[4]) && !f[1].isEmpty()) {
+            l.send("PAUSE\t");
+            try { Thread.sleep(250); } catch (InterruptedException ignored) { }
+            l.close();
+            return new String[]{f[1], f[2], f[3]};
+        }
+        l.close();
+        return null;
+    }
+
     /** Connects to the given device, or tries the last partner, then other paired phones/tablets. Blocking. */
     static Link connect(Context c, String preferredAddr) {
         BluetoothAdapter a = adapter(c);
@@ -426,6 +453,15 @@ final class BtRemote {
             } catch (Exception ignored) { }
         }
 
+        /** ARC Flow: the other device (being picked up) asked what we're playing. Report this device's
+         *  current track so it can continue there; it pauses us with a follow-up PAUSE if it takes over. */
+        private void replyNowPlaying() {
+            if (link == null) return;
+            String[] n = LocalMedia.nowPlaying(c);
+            if (n == null) { link.send("NP\t\t\t0\t0"); return; }
+            link.send("NP\t" + clean(n[0]) + "\t" + clean(n[1]) + "\t" + n[2] + "\t" + n[3]);
+        }
+
         /** The other ARC device asked us to make noise so it can be found. Loud alarm + a buzz, ~20 s. */
         private void findMe() {
             try {
@@ -465,6 +501,7 @@ final class BtRemote {
             if (cmd.equals("SEARCH")) { search(arg); return; }
             if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
             if (cmd.equals("FIND")) { findMe(); return; }
+            if (cmd.equals("NP?")) { replyNowPlaying(); return; }
             if (ctl == null) { repick(); if (ctl == null) { if (cmd.equals("PLAY") || cmd.equals("TOGGLE")) startApp(); return; } }
             MediaController.TransportControls t = ctl.getTransportControls();
             try {

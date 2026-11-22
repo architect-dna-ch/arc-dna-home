@@ -323,6 +323,17 @@
             android:label="ARC Finder"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
+        <!-- ARC Flow: the music follows the device in your hand. -->
+        <activity
+            android:name=".FlowActivity"
+            android:exported="true"
+            android:label="ARC Flow"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+        <service
+            android:name=".FlowService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- ARC Cleaner: reclaims storage from interrupted updates (staged APK sessions, cache). -->
         <activity
             android:name=".CleanerActivity"
