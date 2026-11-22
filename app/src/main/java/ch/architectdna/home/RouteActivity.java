@@ -236,6 +236,7 @@ public class RouteActivity extends Activity {
             // Next connections for each of your routes.
             for (RouteLearner.Route r : new ArrayList<>(routes)) {
                 List<Conn> c = connections(r.from, r.to, 4);
+                if (c != null) { java.util.Set<String> lines = new java.util.HashSet<>(); for (Conn x : c) if (!x.product.isEmpty()) lines.add(x.product); Crowd.fetchSync(lines); }
                 main.post(() -> {
                     if (c != null) conns.put(r.key(), c);
                     paintRoutes();
@@ -369,6 +370,35 @@ public class RouteActivity extends Activity {
         }
     }
 
+    /* ---- crowdsourced density: volunteers tag how full a line is, everyone sees it here ---- */
+    private static final int[] CROWD_COL = {0xFF2E9E5B, 0xFFE3B341, 0xFFE8863B, 0xFFD24B3A};
+    private static final String[] CROWD_DE = {"frei", "Sitz", "stehen", "voll"};
+
+    private TextView crowdPill(int lvl) {
+        TextView p = mono(10, lvl < 0 ? ink3 : 0xFF141414);
+        if (lvl < 0) { p.setText(" + voll? "); p.setBackground(box(card, line, 12)); }
+        else { p.setText(CROWD_DE[Math.min(3, lvl)]); p.setBackground(box(CROWD_COL[Math.min(3, lvl)], 0, 12)); }
+        p.setPadding(dp(9), dp(4), dp(9), dp(4));
+        return p;
+    }
+
+    private void showCrowd(final String line) {
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(L.t("Wie voll ist ") + line + "?")
+            .setItems(new CharSequence[]{
+                "🟢  " + L.t("frei – viele Sitzplätze"),
+                "🟡  " + L.t("Sitzplätze werden knapp"),
+                "🟠  " + L.t("nur noch Stehplätze"),
+                "🔴  " + L.t("voll – kaum reinzukommen")},
+                (d, w) -> {
+                    Crowd.report(line, w);
+                    android.widget.Toast.makeText(this, L.t("Danke – gemeldet. Andere sehen es jetzt."), android.widget.Toast.LENGTH_SHORT).show();
+                    paintRoutes();
+                })
+            .setNegativeButton(L.t("Abbrechen"), null)
+            .show();
+    }
+
     private View routeCard(RouteLearner.Route r, boolean fromSearch) {
         int idx = Math.max(0, routes.indexOf(r));
         int col = fromSearch ? rust : ROUTE_COL[idx % ROUTE_COL.length];
@@ -439,6 +469,14 @@ public class RouteActivity extends Activity {
                 info.setText("  " + (x.product.isEmpty() ? "" : x.product + " · ") + (x.platform.isEmpty() ? "" : L.t("GL. ") + x.platform + " · ")
                     + x.duration + (x.transfers > 0 ? " · " + x.transfers + L.t("× UMST.") : L.t(" · DIREKT")) + (in <= 30 ? " · IN " + Math.max(0, in) + "'" : ""));
                 row.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
+                final String crowdLine = x.product;
+                if (!crowdLine.isEmpty()) {
+                    TextView pill = crowdPill(Crowd.level(crowdLine));
+                    pill.setOnClickListener(v -> showCrowd(crowdLine));
+                    LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(-2, -2);
+                    plp.rightMargin = dp(14);
+                    row.addView(pill, plp);
+                }
                 c.addView(row);
             }
         }
