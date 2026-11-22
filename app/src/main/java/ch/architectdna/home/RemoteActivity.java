@@ -221,6 +221,16 @@ public class RemoteActivity extends Activity {
 
         // search → plays on the tablet
         col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));
+        TextView pushNow = new TextView(this);
+        pushNow.setText(L.t("⬆  Handy-Song aufs Tablet (überspielt die Wiedergabe)"));
+        pushNow.setTextColor(0xFFFFFFFF);
+        pushNow.setTextSize(14.5f);
+        pushNow.setTypeface(pushNow.getTypeface(), Typeface.BOLD);
+        pushNow.setGravity(Gravity.CENTER);
+        pushNow.setBackground(round(rust, rust, 10));
+        pushNow.setPadding(0, dp(13), 0, dp(13));
+        pushNow.setOnClickListener(v -> castPhoneTrack());
+        col.addView(pushNow, lp(-1, -2, dp(10)));
         LinearLayout sr = new LinearLayout(this);
         search = new EditText(this);
         search.setHint("Song, Artist, Playlist …");
@@ -433,6 +443,39 @@ public class RemoteActivity extends Activity {
     }
 
     /* ---------------- actions ---------------- */
+
+    /** Grab whatever's playing on THIS phone and tell the tablet to play it — replacing its playlist. */
+    private void castPhoneTrack() {
+        String[] now = localNow();
+        if (now == null) { toast(L.t("Auf dem Handy läuft gerade kein Song.")); return; }
+        send("SEARCH\t" + (now[0] + " " + now[1]).trim().replace('\t', ' '));
+        note.setText(L.t("Aufs Tablet überspielt: ") + now[0]);
+        toast("„" + now[0] + L.t("“ läuft jetzt auf dem Tablet."));
+    }
+
+    /** Title + artist of the song playing on this phone right now (prefers an actively-playing session). */
+    private String[] localNow() {
+        try {
+            MediaSessionManager sm = getSystemService(MediaSessionManager.class);
+            java.util.List<MediaController> list = sm.getActiveSessions(new ComponentName(this, MediaListener.class));
+            MediaController best = null;
+            for (MediaController m : list) {
+                MediaMetadata md = m.getMetadata();
+                if (md == null || md.getString(MediaMetadata.METADATA_KEY_TITLE) == null) continue;
+                PlaybackState ps = m.getPlaybackState();
+                boolean playing = ps != null && ps.getState() == PlaybackState.STATE_PLAYING;
+                if (best == null || playing) { best = m; if (playing) break; }
+            }
+            if (best == null) return null;
+            MediaMetadata md = best.getMetadata();
+            String ti = md.getString(MediaMetadata.METADATA_KEY_TITLE);
+            if (ti == null || ti.isEmpty()) return null;
+            String ar = md.getString(MediaMetadata.METADATA_KEY_ARTIST);
+            return new String[]{ti, ar == null ? "" : ar};
+        } catch (Exception e) { return null; }
+    }
+
+    private void toast(String s) { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); }
 
     private void playSearch() {
         String q = search.getText().toString().trim();
