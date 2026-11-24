@@ -71,6 +71,8 @@ public class OneHomeActivity extends Activity {
     private SelfUpdater updater;
     private TextView upd;
     private String updText = "";
+    private TextView m1Title;
+    static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
 
     private static final class App { String label, pkg, cls; Drawable icon; }
@@ -173,6 +175,32 @@ public class OneHomeActivity extends Activity {
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, -2); cl.topMargin = dp(22);
         mid.addView(checkIn, cl);
 
+        // Music One: your one track, three times
+        LinearLayout m1 = new LinearLayout(this);
+        m1.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable mb = new GradientDrawable(); mb.setColor(CARD); mb.setCornerRadius(dp(16)); mb.setStroke(dp(1), LINE);
+        m1.setBackground(mb);
+        m1.setPadding(dp(16), dp(12), dp(12), dp(12));
+        TextView note = text(18, RUST, Typeface.DEFAULT_BOLD); note.setText("♪");
+        m1.addView(note);
+        LinearLayout mt = new LinearLayout(this); mt.setOrientation(LinearLayout.VERTICAL); mt.setPadding(dp(12), 0, 0, 0);
+        TextView mLabel = text(10, INK3, Typeface.create("monospace", Typeface.BOLD)); mLabel.setText("MUSIC ONE"); mLabel.setLetterSpacing(0.18f);
+        m1Title = text(15, INK, Typeface.DEFAULT_BOLD);
+        m1Title.setSingleLine(true);
+        m1Title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        mt.addView(mLabel); mt.addView(m1Title);
+        m1.addView(mt, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView play = pill("▶  3×", INK, BG);
+        play.setOnClickListener(v -> playMusicOne());
+        m1.addView(play);
+        m1.setOnClickListener(v -> playMusicOne());
+        m1.setOnLongClickListener(v -> {
+            Toast.makeText(this, L.t("Song ändern: in YouTube Music auf «Teilen» → ARC One."), Toast.LENGTH_LONG).show();
+            return true;
+        });
+        LinearLayout.LayoutParams m1l = new LinearLayout.LayoutParams(-1, -2); m1l.bottomMargin = dp(10);
+        col.addView(m1, m1l);
+
         // bottom: achieved count + the one way to everything else
         LinearLayout bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.CENTER_VERTICAL);
@@ -257,6 +285,40 @@ public class OneHomeActivity extends Activity {
         int n = doneList().length();
         doneCount.setText(n == 0 ? "" : n + L.t(" erreicht"));
         renderSince();
+        renderMusicOne();
+    }
+
+    private void renderMusicOne() {
+        if (m1Title == null) return;
+        String t = prefs.getString("m1_title", "Eyes (Slowed)"), a = prefs.getString("m1_artist", "HAIX");
+        m1Title.setText(a.isEmpty() ? t : t + "  ·  " + a);
+    }
+
+    /** Opens your track in YouTube Music (the exact link if you shared one, else by search), and asks the
+     *  ARC-DNA hub — it holds the media access — to play it 3× and pause after. */
+    private void playMusicOne() {
+        String link = prefs.getString("m1_link", "");
+        String q = (prefs.getString("m1_title", "Eyes (Slowed)") + " " + prefs.getString("m1_artist", "HAIX")).trim();
+        Intent i = !link.isEmpty()
+            ? new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(link))
+            : new Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+                .putExtra(android.app.SearchManager.QUERY, q)
+                .putExtra(android.provider.MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*");
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        boolean started = false;
+        try { startActivity(new Intent(i).setPackage(YT_MUSIC)); started = true; } catch (Exception ignored) { }
+        if (!started) try { startActivity(i); started = true; } catch (Exception ignored) { }
+        if (!started) { Toast.makeText(this, L.t("YouTube Music ist nicht installiert."), Toast.LENGTH_SHORT).show(); return; }
+        boolean counted = false;
+        try {
+            sendBroadcast(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RepeatWatch$Receiver").putExtra("times", 3));
+            counted = isInstalled("ch.architectdna.home");
+        } catch (Exception ignored) { }
+        Toast.makeText(this, counted ? L.t("Music One · 3×, dann Pause.") : L.t("Music One läuft (3× braucht die ARC-DNA-App)."), Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean isInstalled(String pkg) {
+        try { getPackageManager().getPackageInfo(pkg, 0); return true; } catch (Exception e) { return false; }
     }
 
     private void renderSince() {

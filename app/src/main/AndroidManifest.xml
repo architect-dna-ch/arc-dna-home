@@ -351,6 +351,11 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC One's "Music One": play the track N times, then pause (this app has the media access). -->
+        <receiver
+            android:name=".RepeatWatch$Receiver"
+            android:exported="true" />
+
         <!-- ARC Move: GPS at its fastest rate, speed, acceleration, heading — big numbers at a glance. -->
         <activity
             android:name=".MoveActivity"
