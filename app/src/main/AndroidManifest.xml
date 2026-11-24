@@ -351,6 +351,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ARC Move: GPS at its fastest rate, speed, acceleration, heading — big numbers at a glance. -->
+        <activity
+            android:name=".MoveActivity"
+            android:exported="true"
+            android:label="ARC Move"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Unabhängig: emotional independence — ride the urge (urge surfing), give yourself what you need. -->
         <activity
             android:name=".IndependenceActivity"

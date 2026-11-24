@@ -75,6 +75,17 @@ public class RouteActivity extends Activity {
     private EditText fromE, toE;
     private TextView hint;
 
+    // "Jetzt": the stop you're at / the next one ahead, live while Route is open
+    private TextView nowStop, nowSub, nowNext;
+    private LinearLayout nowDeps;
+    private android.location.LocationListener liveL;
+    private Location live;
+    private final List<Stop> near = new ArrayList<>();
+    private double qLat = Double.NaN, qLon;
+    private long qAt, depsAt;
+    private String depsFor = "";
+    private volatile boolean nearBusy, depsBusy;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -110,6 +121,31 @@ public class RouteActivity extends Activity {
         close.setOnClickListener(v -> finish());
         head.addView(close);
         col.addView(head);
+
+        LinearLayout now = new LinearLayout(this);
+        now.setOrientation(LinearLayout.VERTICAL);
+        now.setBackground(box(card, line, 18));
+        now.setPadding(dp(16), dp(14), dp(16), dp(14));
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, -2);
+        nl.topMargin = dp(14);
+        col.addView(now, nl);
+        TextView nowEye = mono(10.5f, rust);
+        nowEye.setLetterSpacing(0.22f);
+        nowEye.setText(L.t("— JETZT"));
+        now.addView(nowEye);
+        nowStop = text(22, ink, true);
+        nowStop.setPadding(0, dp(4), 0, 0);
+        nowStop.setText(L.t("Suche deine Haltestelle …"));
+        now.addView(nowStop);
+        nowSub = text(13, ink2, false);
+        now.addView(nowSub);
+        nowNext = text(15, green, true);
+        nowNext.setPadding(0, dp(8), 0, 0);
+        nowNext.setVisibility(View.GONE);
+        now.addView(nowNext);
+        nowDeps = new LinearLayout(this);
+        nowDeps.setOrientation(LinearLayout.VERTICAL);
+        now.addView(nowDeps);
 
         map = new MapView();
         map.setBackground(box(bg == 0xFFFAFAF8 ? 0xFFF3F2EE : 0xFF121211, line, 18));
@@ -177,12 +213,14 @@ public class RouteActivity extends Activity {
     protected void onResume() {
         super.onResume();
         main.post(tick);
+        startLive();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         main.removeCallbacks(tick);
+        stopLive();
     }
 
     @Override
@@ -191,6 +229,7 @@ public class RouteActivity extends Activity {
         if (requestCode == REQ_LOC) {
             RouteLearner.note(this);
             load();
+            startLive();
         }
     }
 
@@ -201,6 +240,139 @@ public class RouteActivity extends Activity {
             main.postDelayed(this, 1000);
         }
     };
+
+    /* ---------------- Jetzt: current stop, next stop ahead, departures ---------------- */
+
+    private void startLive() {
+        if (liveL != null || !RouteLearner.allowed(this)) return;
+        android.location.LocationManager lm = getSystemService(android.location.LocationManager.class);
+        if (lm == null) return;
+        liveL = this::onLive;
+        try {
+            for (String p : new String[]{android.location.LocationManager.NETWORK_PROVIDER, android.location.LocationManager.GPS_PROVIDER})
+                if (lm.isProviderEnabled(p)) lm.requestLocationUpdates(p, 2000, 3, liveL, Looper.getMainLooper());
+            Location last = RouteLearner.lastLocation(this);
+            if (last != null) onLive(last);
+        } catch (SecurityException | IllegalArgumentException e) { liveL = null; }
+    }
+
+    private void stopLive() {
+        android.location.LocationManager lm = getSystemService(android.location.LocationManager.class);
+        if (lm != null && liveL != null) try { lm.removeUpdates(liveL); } catch (RuntimeException ignored) { }
+        liveL = null;
+    }
+
+    private void onLive(Location l) {
+        if (l == null) return;
+        if (live != null && l.getAccuracy() > 150 && live.getAccuracy() < l.getAccuracy()
+            && l.getTime() - live.getTime() < 20_000) return;        // a worse network fix right after a good GPS one
+        live = l;
+        float[] d = new float[1];
+        if (!Double.isNaN(qLat)) Location.distanceBetween(qLat, qLon, l.getLatitude(), l.getLongitude(), d);
+        if (Double.isNaN(qLat) || d[0] > 150 || System.currentTimeMillis() - qAt > 90_000) refreshNear(l);
+        renderNow();
+    }
+
+    private void refreshNear(final Location l) {
+        if (nearBusy) return;
+        nearBusy = true;
+        qLat = l.getLatitude(); qLon = l.getLongitude(); qAt = System.currentTimeMillis();
+        new Thread(() -> {
+            List<Stop> got = new ArrayList<>();
+            try {
+                JSONArray st = RouteLearner.get("locations?type=station&x=" + l.getLatitude() + "&y=" + l.getLongitude()).optJSONArray("stations");
+                for (int i = 0; st != null && i < st.length(); i++) { Stop s = stop(st.getJSONObject(i)); if (s != null) got.add(s); }
+            } catch (Exception ignored) { }
+            main.post(() -> {
+                nearBusy = false;
+                if (!got.isEmpty()) { near.clear(); near.addAll(got); }
+                else if (near.isEmpty()) nowStop.setText(L.t("Keine Haltestelle gefunden (offline?)"));
+                renderNow();
+            });
+        }, "arc-route-near").start();
+    }
+
+    private void renderNow() {
+        if (live == null || near.isEmpty() || nowStop == null) return;
+        Stop cur = null; float best = Float.MAX_VALUE;
+        float[] d = new float[1];
+        for (Stop s : near) {
+            Location.distanceBetween(live.getLatitude(), live.getLongitude(), s.lat, s.lon, d);
+            if (d[0] < best) { best = d[0]; cur = s; }
+        }
+        if (cur == null) return;
+        boolean moving = live.hasSpeed() && live.getSpeed() > 2.0f;            // > ~7 km/h: riding, not walking
+        nowStop.setText(cur.name);
+        nowSub.setText((best < 80 ? L.t("Du bist hier") : moving ? L.t("Zuletzt in der Nähe") : L.t("Nächste Haltestelle"))
+            + " · " + metres(best) + (live.getAccuracy() > 60 ? L.t(" · GPS ungenau (±") + Math.round(live.getAccuracy()) + " m)" : ""));
+
+        if (moving && live.hasBearing()) {
+            Stop ahead = null; float aBest = Float.MAX_VALUE;
+            Location to = new Location("s");
+            for (Stop s : near) {
+                to.setLatitude(s.lat); to.setLongitude(s.lon);
+                float dist = live.distanceTo(to);
+                float diff = Math.abs(((live.bearingTo(to) - live.getBearing()) % 360 + 540) % 360 - 180);
+                if (dist > 40 && diff < 50 && dist < aBest) { aBest = dist; ahead = s; }
+            }
+            if (ahead != null) {
+                long eta = Math.round(aBest / Math.max(1f, live.getSpeed()));
+                nowNext.setText(L.t("Nächster Halt voraus: ") + ahead.name + " · " + metres(aBest) + " · ~" + (eta < 60 ? eta + " s" : (eta / 60) + " min"));
+                nowNext.setVisibility(View.VISIBLE);
+            } else nowNext.setVisibility(View.GONE);
+            nowDeps.removeAllViews();
+            depsFor = "";
+            return;
+        }
+        nowNext.setVisibility(View.GONE);
+        if (best < 200 && (!cur.name.equals(depsFor) || System.currentTimeMillis() - depsAt > 45_000)) loadDeps(cur.name);
+    }
+
+    private void loadDeps(final String station) {
+        if (depsBusy) return;
+        depsBusy = true;
+        depsFor = station; depsAt = System.currentTimeMillis();
+        new Thread(() -> {
+            JSONArray board = null;
+            try { board = RouteLearner.get("stationboard?limit=4&station=" + java.net.URLEncoder.encode(station, "UTF-8")).optJSONArray("stationboard"); }
+            catch (Exception ignored) { }
+            final JSONArray b = board;
+            main.post(() -> {
+                depsBusy = false;
+                nowDeps.removeAllViews();
+                if (b == null || b.length() == 0) return;
+                long nowS = System.currentTimeMillis() / 1000;
+                for (int i = 0; i < b.length(); i++) {
+                    JSONObject e = b.optJSONObject(i); if (e == null) continue;
+                    JSONObject st = e.optJSONObject("stop");
+                    long t = st == null ? 0 : st.optLong("departureTimestamp");
+                    int delay = st == null ? 0 : st.optInt("delay");
+                    long mins = Math.max(0, (t + delay * 60L - nowS) / 60);
+                    LinearLayout row = new LinearLayout(this);
+                    row.setGravity(Gravity.CENTER_VERTICAL);
+                    row.setPadding(0, dp(8), 0, 0);
+                    TextView ln = mono(12, ink);
+                    ln.setText((e.optString("category") + " " + e.optString("number")).trim());
+                    ln.setBackground(box(line, line, 6));
+                    ln.setPadding(dp(7), dp(3), dp(7), dp(3));
+                    row.addView(ln);
+                    TextView to = text(14, ink2, false);
+                    to.setText("  → " + e.optString("to"));
+                    to.setSingleLine(true);
+                    to.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    row.addView(to, new LinearLayout.LayoutParams(0, -2, 1f));
+                    TextView when = text(15, mins <= 1 ? green : ink, true);
+                    when.setText((mins == 0 ? L.t("jetzt") : mins + "'") + (delay > 0 ? " +" + delay : ""));
+                    row.addView(when);
+                    nowDeps.addView(row);
+                }
+            });
+        }, "arc-route-deps").start();
+    }
+
+    private static String metres(float m) {
+        return m < 1000 ? Math.round(m / 10f) * 10 + " m" : String.format(java.util.Locale.GERMAN, "%.1f km", m / 1000f);
+    }
 
     /* ---------------- data ---------------- */
 
