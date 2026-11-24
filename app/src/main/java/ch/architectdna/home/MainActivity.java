@@ -1958,7 +1958,7 @@ public class MainActivity extends Activity implements SensorEventListener, HeadT
             {"🎞","ARC Gifs",GifActivity.class},{"🔊","ARC Remote",RemoteActivity.class},
             {"🌀","ARC Flow",FlowActivity.class},{"🛟",L.t("Rettungsboot"),ContinuityActivity.class},{"🏷","ARC Tag",TagActivity.class},{"🔍","ARC Lens",LensActivity.class},
             {"🧭",L.t("Kompass"),KompassActivity.class},{"🌿",L.t("Gelassen"),CalmActivity.class},
-            {"🆘",L.t("Ruheinsel"),CrisisActivity.class},{"🎯",L.t("Fokus"),FokusActivity.class},
+            {"🌊",L.t("Unabhängig"),IndependenceActivity.class},{"🆘",L.t("Ruheinsel"),CrisisActivity.class},{"🎯",L.t("Fokus"),FokusActivity.class},
             {"🧰",L.t("KI-Werkzeuge"),WerkzeugeActivity.class},{"🔎",L.t("Faktencheck"),FaktenActivity.class},
             {"🙂",L.t("Stimmung"),MoodActivity.class},{"🌊","Takt",TaktActivity.class},
             {"📅","Flexplan",PlanActivity.class},{"☀",L.t("Sonne & Welt"),SunActivity.class},

@@ -351,6 +351,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Unabhängig: emotional independence — ride the urge (urge surfing), give yourself what you need. -->
+        <activity
+            android:name=".IndependenceActivity"
+            android:exported="true"
+            android:label="Unabhängig"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- ARC One: a home screen with one thing on it — your current intention. Pick it under
              Settings → Apps → Default apps → Home app. Also has its own icon to try it first. -->
         <activity
