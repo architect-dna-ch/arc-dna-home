@@ -72,6 +72,17 @@ public class OneHomeActivity extends Activity {
     private TextView upd;
     private String updText = "";
     private TextView m1Title;
+    private BrainView brain, calmBrain;
+    private FrameLayout calm;
+    private TextView calmBreath, calmLine;
+    private static final String[] CALM = {
+        "Gedanken sind Signale, keine Befehle.",
+        "Schmerz ist eine Information. Wut auch.",
+        "Jemand hat sich zurückgezogen. Das sagt etwas über die Situation, nicht über deinen Wert.",
+        "Was du fühlst, darf da sein. Es muss nicht bestimmen.",
+        "Du musst heute Nacht nichts über alle Menschen entscheiden.",
+        "Atme mit. Dann zurück an die Arbeit.",
+    };
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
 
@@ -110,11 +121,18 @@ public class OneHomeActivity extends Activity {
         top.addView(more);
         col.addView(top);
 
+        // the brain: a calm, turning net of lines in the free space; tap it to breathe with it
+        brain = new BrainView(this);
+        brain.setIntensity(0.6f);
+        brain.setContentDescription(L.t("Gehirn – tippen zum Durchatmen"));
+        brain.setOnClickListener(v -> openCalm());
+        col.addView(brain, new LinearLayout.LayoutParams(-1, 0, 1f));
+
         // centre: the one sentence
         LinearLayout mid = new LinearLayout(this);
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setGravity(Gravity.CENTER_VERTICAL);
-        col.addView(mid, new LinearLayout.LayoutParams(-1, 0, 1f));
+        col.addView(mid, new LinearLayout.LayoutParams(-1, -2));
 
         label = text(11, RUST, Typeface.create("monospace", Typeface.BOLD));
         label.setText(L.t("— MEIN ZIEL GERADE"));
@@ -244,9 +262,15 @@ public class OneHomeActivity extends Activity {
         tick.run();
         if (now() - appsLoadedAt > 5 * 60_000L) new Thread(this::loadApps, "arc-one-apps").start();
         if (updater != null) updater.check(false);
+        if (brain != null) brain.start();
     }
 
-    @Override protected void onPause() { super.onPause(); main.removeCallbacks(tick); }
+    @Override protected void onPause() {
+        super.onPause();
+        main.removeCallbacks(tick);
+        if (brain != null) brain.stop();
+        closeCalm();
+    }
 
     /** Pressing Home while already here: close whatever is open, back to the sentence. */
     @Override protected void onNewIntent(Intent i) {
@@ -257,6 +281,7 @@ public class OneHomeActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
+        if (calm != null) { closeCalm(); return; }
         if (drawer.getVisibility() == View.VISIBLE) closeDrawer();
         else if (editor.getVisibility() == View.VISIBLE) saveEditor();
         // a home screen has nowhere to go back to
@@ -269,6 +294,64 @@ public class OneHomeActivity extends Activity {
             date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(d));
             renderSince();
             main.postDelayed(this, 30_000);
+        }
+    };
+
+    /* ---------------- calm: the brain full-screen, breathe with it ---------------- */
+
+    private void openCalm() {
+        if (calm != null) return;
+        closeDrawer();
+        calm = new FrameLayout(this);
+        calm.setBackgroundColor(BG);
+        calm.setClickable(true);
+        calm.setOnClickListener(v -> closeCalm());
+        calmBrain = new BrainView(this);
+        calmBrain.setIntensity(1f);
+        calmBrain.setClickable(false);
+        calm.addView(calmBrain, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+        c.setPadding(dp(28), 0, dp(28), dp(48));
+        calmBreath = text(30, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
+        calmBreath.setGravity(Gravity.CENTER);
+        c.addView(calmBreath);
+        calmLine = text(17, INK2, Typeface.create("serif", Typeface.ITALIC));
+        calmLine.setGravity(Gravity.CENTER);
+        calmLine.setPadding(0, dp(14), 0, dp(22));
+        c.addView(calmLine);
+        TextView back = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
+        back.setText(L.t("TIPPEN ZUM ZURÜCKKEHREN"));
+        back.setLetterSpacing(0.16f);
+        c.addView(back);
+        calm.addView(c, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(calm, new FrameLayout.LayoutParams(-1, -1));
+        calm.setAlpha(0f);
+        calm.animate().alpha(1f).setDuration(500).start();
+        calmBrain.start();
+        calmTick.run();
+    }
+
+    private void closeCalm() {
+        if (calm == null) return;
+        main.removeCallbacks(calmTick);
+        if (calmBrain != null) calmBrain.stop();
+        final FrameLayout c = calm;
+        calm = null;
+        c.animate().alpha(0f).setDuration(300).withEndAction(() -> root.removeView(c)).start();
+    }
+
+    /** "ein" for 4 s, "aus" for 6 s (6 breaths a minute), and a new quiet line every two breaths. */
+    private final Runnable calmTick = new Runnable() {
+        private int lastLine = -1;
+        @Override public void run() {
+            if (calm == null) return;
+            long t = android.os.SystemClock.uptimeMillis();
+            calmBreath.setText((t % 10_000) < 4000 ? L.t("ein") : L.t("aus"));
+            int idx = (int) ((t / 20_000) % CALM.length);
+            if (idx != lastLine) { lastLine = idx; calmLine.setText(L.t(CALM[idx])); }
+            main.postDelayed(this, 200);
         }
     };
 
