@@ -1,4 +1,4 @@
-package ch.architectdna.home;
+package ch.architectdna.one;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -47,6 +47,8 @@ import java.util.Locale;
  * screen allows, with how long you've held it. Come back after an hour or more and it asks
  * "Noch dran?" — keep going, write a new one, or mark it done (done ones are counted). Swipe up
  * anywhere for a search field over your apps; nothing else lives on the screen.
+ *
+ * Launcher Nr. 5 — its own app (ch.architectdna.one), updates itself from the public mirror.
  */
 public class OneHomeActivity extends Activity {
 
@@ -66,6 +68,9 @@ public class OneHomeActivity extends Activity {
     private EditText search;
     private LinearLayout appList;
     private final List<App> apps = new ArrayList<>();
+    private SelfUpdater updater;
+    private TextView upd;
+    private String updText = "";
     private long appsLoadedAt;
 
     private static final class App { String label, pkg, cls; Drawable icon; }
@@ -173,6 +178,12 @@ public class OneHomeActivity extends Activity {
         bottom.setGravity(Gravity.CENTER_VERTICAL);
         doneCount = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
         bottom.addView(doneCount, new LinearLayout.LayoutParams(0, -2, 1f));
+        upd = text(12, RUST, Typeface.DEFAULT_BOLD);
+        upd.setText(L.t("Update ↻"));
+        upd.setPadding(dp(10), dp(10), dp(4), dp(10));
+        upd.setVisibility(View.GONE);
+        upd.setOnClickListener(v -> updater.fix(() -> Toast.makeText(this, L.t("Update gerade nicht erreichbar."), Toast.LENGTH_SHORT).show()));
+        bottom.addView(upd);
         TextView appsBtn = text(13, INK2, Typeface.DEFAULT_BOLD);
         appsBtn.setText(L.t("⌃  Apps"));
         appsBtn.setPadding(dp(14), dp(10), 0, dp(10));
@@ -192,6 +203,10 @@ public class OneHomeActivity extends Activity {
         col.setOnTouchListener((v, e) -> gd.onTouchEvent(e));
 
         setContentView(root, new ViewGroup.LayoutParams(-1, -1));
+        updater = new SelfUpdater(this, "one-v", (txt, need) -> {
+            updText = txt;
+            if (upd != null) upd.setVisibility(need ? View.VISIBLE : View.GONE);
+        });
         new Thread(this::loadApps, "arc-one-apps").start();
     }
 
@@ -200,6 +215,7 @@ public class OneHomeActivity extends Activity {
         render();
         tick.run();
         if (now() - appsLoadedAt > 5 * 60_000L) new Thread(this::loadApps, "arc-one-apps").start();
+        if (updater != null) updater.check(false);
     }
 
     @Override protected void onPause() { super.onPause(); main.removeCallbacks(tick); }
@@ -207,6 +223,7 @@ public class OneHomeActivity extends Activity {
     /** Pressing Home while already here: close whatever is open, back to the sentence. */
     @Override protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
+        if (SelfUpdater.ACTION.equals(i.getAction())) { updater.onStatus(i); return; }
         closeDrawer();
         if (editor.getVisibility() == View.VISIBLE) saveEditor();
     }
@@ -327,9 +344,16 @@ public class OneHomeActivity extends Activity {
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2); sl.topMargin = dp(30);
         c.addView(setHome, sl);
         TextView all = pill(L.t("Alle ARC-Werkzeuge öffnen"), CARD, INK);
-        all.setOnClickListener(v -> { try { startActivity(new Intent(this, MainActivity.class)); } catch (Exception ignored) { } });
+        all.setOnClickListener(v -> {
+            try { startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+            catch (Exception e) { Toast.makeText(this, L.t("ARC-DNA ist nicht installiert."), Toast.LENGTH_SHORT).show(); }
+        });
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2); al.topMargin = dp(10);
         c.addView(all, al);
+        TextView ver = text(11, INK3, Typeface.create("monospace", Typeface.NORMAL));
+        ver.setText("ARC One 0." + (updater == null ? "" : updater.current()) + (updText.isEmpty() ? "" : "  ·  " + updText));
+        ver.setPadding(0, dp(18), 0, 0);
+        c.addView(ver);
         TextView close = pill(L.t("Schliessen"), INK, BG);
         close.setOnClickListener(v -> root.removeView(sheet));
         LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(-2, -2); xl.topMargin = dp(10);

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <!-- ink tile: the one home in the family that is dark -->
+    <path android:fillColor="#0E0D0C" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z" />
+    <!-- a bold "1" -->
+    <path android:fillColor="#F4F1EC" android:pathData="M22,11h5.5v26h-5.5z" />
+    <path android:fillColor="#F4F1EC" android:pathData="M22,11 L14.5,17 L17.2,20.2 L22,16.4z" />
+    <!-- the intention: one rust point -->
+    <path android:fillColor="#E0573B" android:pathData="M31.5,34 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0" />
+</vector>

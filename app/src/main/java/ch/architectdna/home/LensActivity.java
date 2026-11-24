@@ -45,6 +45,8 @@ public class LensActivity extends Activity {
         note.setText(L.t("ARC Lens lädt …"));
         note.setTextColor(0xFFB9B4AC);
         note.setTextSize(15);
+        note.setGravity(android.view.Gravity.CENTER);
+        note.setPadding(64, 0, 64, 0);
         FrameLayout.LayoutParams nlp = new FrameLayout.LayoutParams(-2, -2);
         nlp.gravity = android.view.Gravity.CENTER;
         root.addView(note, nlp);
@@ -62,6 +64,15 @@ public class LensActivity extends Activity {
                 return true;
             }
             @Override public void onPageFinished(WebView v, String u) { note.setVisibility(View.GONE); }
+            @Override public void onReceivedHttpError(WebView v, WebResourceRequest req, android.webkit.WebResourceResponse res) {
+                if (!req.isForMainFrame()) return;
+                v.setVisibility(View.INVISIBLE);
+                note.setVisibility(View.VISIBLE);
+                note.setText(res.getStatusCode() == 404
+                    ? L.t("%s ist noch nicht online.\nDie Website architect-dna.ch muss zuerst veröffentlicht werden.").replace("%s", "ARC Lens")
+                    : L.t("Der Server antwortet gerade nicht. Später nochmals versuchen."));
+            }
+            @Override public void onPageStarted(WebView v, String u, android.graphics.Bitmap fav) { v.setVisibility(View.VISIBLE); }
             @Override public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame()) { note.setVisibility(View.VISIBLE); note.setText(L.t("Keine Verbindung.\nOnline gehen und neu öffnen.")); }
             }

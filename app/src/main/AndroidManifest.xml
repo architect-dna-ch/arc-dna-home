@@ -359,29 +359,6 @@
             android:screenOrientation="portrait"
             android:theme="@android:style/Theme.Material.NoActionBar" />
 
-        <!-- ARC One: a home screen with one thing on it — your current intention. Pick it under
-             Settings → Apps → Default apps → Home app. Also has its own icon to try it first. -->
-        <activity
-            android:name=".OneHomeActivity"
-            android:clearTaskOnLaunch="true"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:label="ARC One"
-            android:launchMode="singleTask"
-            android:stateNotNeeded="true"
-            android:theme="@android:style/Theme.Material.NoActionBar"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
         <!-- ARC Lens: point the camera, ask the vision model (page at architect-dna.ch/lens). -->
         <activity
             android:name=".LensActivity"

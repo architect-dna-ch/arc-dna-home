@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+
+// ARC One: launcher Nr. 5 — a home with one thing on it, your current intention. Own APK and package,
+// built by .github/workflows/one.yml, independent of the other ARC apps.
+android {
+    namespace 'ch.architectdna.one'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ch.architectdna.one'
+        minSdk 26
+        targetSdk 35
+        versionCode runNumber
+        versionName "0.${runNumber}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../app/arc-dna-home.p12')
+            storePassword 'arcdnahome'
+            keyAlias 'arcdna'
+            keyPassword 'arcdnahome'
+            storeType 'pkcs12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
