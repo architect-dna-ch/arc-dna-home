@@ -72,6 +72,7 @@ public class OneHomeActivity extends Activity {
     private TextView upd;
     private String updText = "";
     private TextView m1Title;
+    private LinearLayout m1, bottom;
     private BrainView brain, calmBrain;
     private FrameLayout calm;
     private TextView calmBreath, calmLine;
@@ -125,14 +126,26 @@ public class OneHomeActivity extends Activity {
         brain = new BrainView(this);
         brain.setIntensity(0.6f);
         brain.setContentDescription(L.t("Gehirn – tippen zum Durchatmen"));
-        brain.setOnClickListener(v -> openCalm());
+        // tap = breathe with it; swipe up over it still opens the apps (the brain used to swallow that)
+        final GestureDetector bg = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onDown(MotionEvent e) { return true; }
+            @Override public boolean onSingleTapUp(MotionEvent e) { tick(brain); openCalm(); return true; }
+            @Override public boolean onFling(MotionEvent a, MotionEvent e, float vx, float vy) {
+                if (vy < -900 && Math.abs(vy) > Math.abs(vx)) { openDrawer(); return true; }
+                return false;
+            }
+        });
+        brain.setOnTouchListener((v, e) -> bg.onTouchEvent(e));
+        brain.setOnClickListener(v -> openCalm());     // TalkBack / switch access
+        brain.setMinimumHeight(dp(56));
         col.addView(brain, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         // centre: the one sentence
         LinearLayout mid = new LinearLayout(this);
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setGravity(Gravity.CENTER_VERTICAL);
-        col.addView(mid, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams midl = new LinearLayout.LayoutParams(-1, -2); midl.topMargin = dp(14);
+        col.addView(mid, midl);
 
         label = text(11, RUST, Typeface.create("monospace", Typeface.BOLD));
         label.setText(L.t("— MEIN ZIEL GERADE"));
@@ -162,7 +175,7 @@ public class OneHomeActivity extends Activity {
         mid.addView(editor, new LinearLayout.LayoutParams(-1, -2));
 
         editDone = pill(L.t("Fertig"), RUST, 0xFFFFFFFF);
-        editDone.setOnClickListener(v -> saveEditor());
+        editDone.setOnClickListener(v -> { tick(v); saveEditor(); });
         editDone.setVisibility(View.GONE);
         LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(-2, -2); el.topMargin = dp(8);
         mid.addView(editDone, el);
@@ -181,9 +194,9 @@ public class OneHomeActivity extends Activity {
         TextView yes = pill(L.t("Ja, weiter"), INK, BG);
         TextView neu = pill(L.t("Neu schreiben"), CARD, INK);
         TextView done = pill(L.t("Erledigt ✓"), CARD, INK);
-        yes.setOnClickListener(v -> { prefs.edit().putLong("one_checked", now()).apply(); render(); });
-        neu.setOnClickListener(v -> openEditor());
-        done.setOnClickListener(v -> markDone());
+        yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); render(); });
+        neu.setOnClickListener(v -> { tick(v); openEditor(); });
+        done.setOnClickListener(v -> { confirm(v); markDone(); });
         for (TextView t : new TextView[]{yes, neu, done}) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2); p.rightMargin = dp(8);
             btns.addView(t, p);
@@ -194,7 +207,7 @@ public class OneHomeActivity extends Activity {
         mid.addView(checkIn, cl);
 
         // Music One: your one track, three times
-        LinearLayout m1 = new LinearLayout(this);
+        m1 = new LinearLayout(this);
         m1.setGravity(Gravity.CENTER_VERTICAL);
         GradientDrawable mb = new GradientDrawable(); mb.setColor(CARD); mb.setCornerRadius(dp(16)); mb.setStroke(dp(1), LINE);
         m1.setBackground(mb);
@@ -209,9 +222,9 @@ public class OneHomeActivity extends Activity {
         mt.addView(mLabel); mt.addView(m1Title);
         m1.addView(mt, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView play = pill("▶  3×", INK, BG);
-        play.setOnClickListener(v -> playMusicOne());
+        play.setOnClickListener(v -> { confirm(v); playMusicOne(); });
         m1.addView(play);
-        m1.setOnClickListener(v -> playMusicOne());
+        m1.setOnClickListener(v -> { confirm(v); playMusicOne(); });
         m1.setOnLongClickListener(v -> {
             Toast.makeText(this, L.t("Song ändern: in YouTube Music auf «Teilen» → ARC One."), Toast.LENGTH_LONG).show();
             return true;
@@ -220,7 +233,7 @@ public class OneHomeActivity extends Activity {
         col.addView(m1, m1l);
 
         // bottom: achieved count + the one way to everything else
-        LinearLayout bottom = new LinearLayout(this);
+        bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.CENTER_VERTICAL);
         doneCount = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
         bottom.addView(doneCount, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -419,6 +432,8 @@ public class OneHomeActivity extends Activity {
         checkIn.setVisibility(View.GONE);
         editor.setVisibility(View.VISIBLE);
         editDone.setVisibility(View.VISIBLE);
+        m1.setVisibility(View.GONE);                  // editing is focus: just the sentence and "Fertig"
+        bottom.setVisibility(View.GONE);
         editor.requestFocus();
         InputMethodManager im = getSystemService(InputMethodManager.class);
         if (im != null) editor.post(() -> im.showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT));
@@ -435,7 +450,15 @@ public class OneHomeActivity extends Activity {
         editDone.setVisibility(View.GONE);
         intent.setVisibility(View.VISIBLE);
         since.setVisibility(View.VISIBLE);
+        m1.setVisibility(View.VISIBLE);
+        bottom.setVisibility(View.VISIBLE);
         render();
+    }
+
+    private static void tick(View v) { v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); }
+    private static void confirm(View v) {
+        v.performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
+            ? android.view.HapticFeedbackConstants.CONFIRM : android.view.HapticFeedbackConstants.LONG_PRESS);
     }
 
     private void markDone() {
