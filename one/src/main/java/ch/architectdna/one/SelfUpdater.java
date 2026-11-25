@@ -36,7 +36,7 @@ final class SelfUpdater {
     private static final String MIRROR = "https://api.github.com/repos/architect-dna-ch/arc-releases";
     private static final String REPO = "https://api.github.com/repos/architect-dna-ch/arc-dna-home";
     private volatile String from = MIRROR;
-    private static final long EVERY_MS = 6 * 3600 * 1000L;
+    private static final long EVERY_MS = 30 * 60 * 1000L;   // a home screen resumes all day: look every 30 min
 
     private final Activity a;
     private final String prefix;
@@ -166,7 +166,7 @@ final class SelfUpdater {
                     main.post(() -> ui.state(L.t("Aktuell · 0.") + current(), false));
                 }
             } catch (Throwable e) {
-                prefs.edit().putLong("checked", System.currentTimeMillis() - EVERY_MS + 3_600_000L).apply();
+                prefs.edit().putLong("checked", System.currentTimeMillis() - EVERY_MS + 15 * 60_000L).apply();   // failed: try again in 15 min
                 String m = e.getMessage();
                 main.post(() -> ui.state(L.t("Update-Prüfung fehlgeschlagen") + (m == null ? "" : ": " + m), true));
             } finally {

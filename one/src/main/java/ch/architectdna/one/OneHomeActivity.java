@@ -484,9 +484,21 @@ public class OneHomeActivity extends Activity {
             w.setText(new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
             c.addView(w);
         }
+        TextView upNow = pill(L.t("Jetzt nach Updates suchen"), CARD, INK);
+        upNow.setOnClickListener(v -> {
+            root.removeView(sheet);
+            if (updater != null) {
+                updater.check(true);
+                Toast.makeText(this, L.t("Suche Updates …"), Toast.LENGTH_SHORT).show();
+                if (android.os.Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls())
+                    updater.fix(() -> { });                       // first time: let ARC One install its own updates
+            }
+        });
+        LinearLayout.LayoutParams ul = new LinearLayout.LayoutParams(-2, -2); ul.topMargin = dp(30);
+        c.addView(upNow, ul);
         TextView setHome = pill(L.t("Als Startbildschirm festlegen"), CARD, INK);
         setHome.setOnClickListener(v -> { try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { } } });
-        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2); sl.topMargin = dp(30);
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2); sl.topMargin = dp(10);
         c.addView(setHome, sl);
         TextView all = pill(L.t("Alle ARC-Werkzeuge öffnen"), CARD, INK);
         all.setOnClickListener(v -> {
