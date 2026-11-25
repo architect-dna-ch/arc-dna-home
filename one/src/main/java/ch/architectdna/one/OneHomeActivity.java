@@ -89,6 +89,10 @@ public class OneHomeActivity extends Activity {
     };
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
+    // the goal arriving from the other device (GoalSync.In writes prefs on the main thread) re-renders live
+    private final SharedPreferences.OnSharedPreferenceChangeListener goalIn = (sp, k) -> {
+        if ("one_updated".equals(k) && editor != null && editor.getVisibility() != View.VISIBLE) render();
+    };
 
     private static final class App { String label, pkg, cls; Drawable icon; }
 
@@ -221,7 +225,7 @@ public class OneHomeActivity extends Activity {
         TextView yes = pill(L.t("Ja, weiter"), INK, BG);
         TextView neu = pill(L.t("Neu schreiben"), CARD, INK);
         TextView done = pill(L.t("Erledigt ✓"), CARD, INK);
-        yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); render(); });
+        yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); GoalSync.push(this); render(); });
         neu.setOnClickListener(v -> { tick(v); openEditor(); });
         done.setOnClickListener(v -> { confirm(v); markDone(); });
         for (TextView t : new TextView[]{yes, neu, done}) {
@@ -295,6 +299,9 @@ public class OneHomeActivity extends Activity {
         });
         new Thread(this::loadApps, "arc-one-apps").start();
     }
+
+    @Override protected void onStart() { super.onStart(); prefs.registerOnSharedPreferenceChangeListener(goalIn); }
+    @Override protected void onStop() { prefs.unregisterOnSharedPreferenceChangeListener(goalIn); super.onStop(); }
 
     @Override protected void onResume() {
         super.onResume();
@@ -475,6 +482,7 @@ public class OneHomeActivity extends Activity {
         SharedPreferences.Editor e = prefs.edit();
         if (!t.equals(old)) e.putString("one_text", t).putLong("one_since", now());
         e.putLong("one_checked", now()).apply();
+        GoalSync.push(this);                          // mirror to the paired phone/tablet
         hideKeyboard(editor);
         editor.setVisibility(View.GONE);
         editDone.setVisibility(View.GONE);
@@ -513,6 +521,7 @@ public class OneHomeActivity extends Activity {
         JSONArray keep = new JSONArray();
         for (int i = Math.max(0, a.length() - 100); i < a.length(); i++) keep.put(a.opt(i));
         prefs.edit().putString("one_done", keep.toString()).putString("one_text", "").apply();
+        GoalSync.push(this);
         Toast.makeText(this, L.t("Erreicht ✓ — was als Nächstes?"), Toast.LENGTH_SHORT).show();
         render();
         openEditor();

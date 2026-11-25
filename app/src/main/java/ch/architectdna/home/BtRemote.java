@@ -543,6 +543,7 @@ final class BtRemote {
             if (cmd.equals("SEARCH")) { search(arg); return; }
             if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
             if (cmd.equals("FIND")) { findMe(); return; }
+            if (cmd.equals("GOAL")) { GoalRelay.deliver(c, arg); return; }   // ARC One goal mirror
             if (cmd.equals("NP?")) { replyNowPlaying(); return; }
             if (cmd.equals("SYNC")) {                      // play the same track here (ARC Sync follower)
                 String[] q = arg.split("\t", -1);

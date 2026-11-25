@@ -72,6 +72,8 @@
         <package android:name="ch.architectdna.stats" />
         <package android:name="ch.architectdna.orbit" />
         <package android:name="ch.architectdna.browser" />
+        <!-- ARC One: its goal is mirrored to the paired device over our Bluetooth link -->
+        <package android:name="ch.architectdna.one" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -354,6 +356,11 @@
         <!-- ARC One's "Music One": play the track N times, then pause (this app has the media access). -->
         <receiver
             android:name=".RepeatWatch$Receiver"
+            android:exported="true" />
+
+        <!-- ARC One hands its goal here; we send it to the paired phone/tablet. -->
+        <receiver
+            android:name=".GoalRelay$Out"
             android:exported="true" />
 
         <!-- ARC Move: GPS at its fastest rate, speed, acceleration, heading — big numbers at a glance. -->

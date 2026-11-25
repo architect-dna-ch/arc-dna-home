@@ -24,6 +24,11 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <!-- Launcher Nr. 5: pick it under Settings → Apps → Default apps → Home app. -->
+        <!-- the goal as the paired phone/tablet has it, delivered by ARC-DNA over Bluetooth -->
+        <receiver
+            android:name=".GoalSync$In"
+            android:exported="true" />
+
         <activity
             android:name=".OneHomeActivity"
             android:clearTaskOnLaunch="true"
