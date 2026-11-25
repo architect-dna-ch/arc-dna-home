@@ -89,6 +89,8 @@ public class OneHomeActivity extends Activity {
     };
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
+    private boolean peeking;
+    private final Runnable endPeek = () -> { peeking = false; render(); };
     // the goal arriving from the other device (GoalSync.In writes prefs on the main thread) re-renders live
     private final SharedPreferences.OnSharedPreferenceChangeListener goalIn = (sp, k) -> {
         if ("one_updated".equals(k) && editor != null && editor.getVisibility() != View.VISIBLE) render();
@@ -163,7 +165,12 @@ public class OneHomeActivity extends Activity {
         intent.setLetterSpacing(-0.03f);
         intent.setLineSpacing(0, 0.98f);
         intent.setAutoSizeTextTypeUniformWithConfiguration(26, 84, 2, TypedValue.COMPLEX_UNIT_SP);
-        intent.setOnClickListener(v -> openEditor());
+        // private mode (tram, bus, queue): the sentence is blurred. Hold it to switch; tap peeks for 4 s.
+        intent.setOnClickListener(v -> {
+            if (isPrivate() && !peeking) { tick(v); peeking = true; render(); main.postDelayed(endPeek, 4000); return; }
+            openEditor();
+        });
+        intent.setOnLongClickListener(v -> { confirm(v); setPrivate(!isPrivate()); return true; });
         mid.addView(intent, new LinearLayout.LayoutParams(-1, dp(300)));
 
         editor = new EditText(this);
@@ -408,9 +415,16 @@ public class OneHomeActivity extends Activity {
     private void render() {
         String t = prefs.getString("one_text", "");
         boolean has = !t.isEmpty();
+        boolean hide = has && isPrivate() && !peeking;
         intent.setText(has ? t : L.t("Was willst du gerade erreichen?"));
         intent.setTextColor(has ? INK : INK3);
-        label.setText(has ? L.t("— MEIN ZIEL GERADE") : L.t("— TIPPEN ZUM SCHREIBEN"));
+        if (android.os.Build.VERSION.SDK_INT >= 31)
+            intent.setRenderEffect(hide ? android.graphics.RenderEffect.createBlurEffect(dp(26), dp(26), android.graphics.Shader.TileMode.DECAL) : null);
+        else if (hide) intent.setText("• • • • • •");
+        label.setText(!has ? L.t("— TIPPEN ZUM SCHREIBEN")
+            : hide ? L.t("— PRIVAT · TIPPEN ZUM ZEIGEN · HALTEN ZUM AUS")
+            : isPrivate() ? L.t("— PRIVAT · GLEICH WIEDER VERDECKT")
+            : L.t("— MEIN ZIEL GERADE"));
         boolean stale = has && now() - prefs.getLong("one_checked", now()) >= STALE;
         checkIn.setVisibility(stale && editor.getVisibility() != View.VISIBLE ? View.VISIBLE : View.GONE);
         int n = doneList().length();
@@ -513,6 +527,16 @@ public class OneHomeActivity extends Activity {
         t.setBackground(g); t.setTextColor(ink);
     }
 
+    private boolean isPrivate() { return prefs.getBoolean("one_private", false); }
+
+    private void setPrivate(boolean on) {
+        prefs.edit().putBoolean("one_private", on).apply();
+        peeking = false;
+        main.removeCallbacks(endPeek);
+        Toast.makeText(this, on ? L.t("Privat: dein Ziel ist verdeckt. Tippen zeigt es kurz.") : L.t("Privat-Modus aus."), Toast.LENGTH_SHORT).show();
+        render();
+    }
+
     private void markDone() {
         String t = prefs.getString("one_text", "");
         if (t.isEmpty()) return;
@@ -553,13 +577,17 @@ public class OneHomeActivity extends Activity {
             JSONObject o = a.optJSONObject(i);
             if (o == null) continue;
             TextView r = text(15, INK, Typeface.DEFAULT);
-            r.setText("✓  " + o.optString("t"));
+            r.setText("✓  " + (isPrivate() ? "• • • • •" : o.optString("t")));
             r.setPadding(0, dp(12), 0, 0);
             c.addView(r);
             TextView w = text(11, INK3, Typeface.DEFAULT);
             w.setText(new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
             c.addView(w);
         }
+        TextView priv = pill(isPrivate() ? L.t("Privat-Modus ausschalten") : L.t("Privat-Modus (ÖV, unterwegs)"), CARD, INK);
+        priv.setOnClickListener(v -> { root.removeView(sheet); setPrivate(!isPrivate()); });
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(30);
+        c.addView(priv, pl);
         TextView upNow = pill(L.t("Jetzt nach Updates suchen"), CARD, INK);
         upNow.setOnClickListener(v -> {
             root.removeView(sheet);
@@ -570,7 +598,7 @@ public class OneHomeActivity extends Activity {
                     updater.fix(() -> { });                       // first time: let ARC One install its own updates
             }
         });
-        LinearLayout.LayoutParams ul = new LinearLayout.LayoutParams(-2, -2); ul.topMargin = dp(30);
+        LinearLayout.LayoutParams ul = new LinearLayout.LayoutParams(-2, -2); ul.topMargin = dp(10);
         c.addView(upNow, ul);
         TextView setHome = pill(L.t("Als Startbildschirm festlegen"), CARD, INK);
         setHome.setOnClickListener(v -> { try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { } } });
