@@ -60,7 +60,15 @@ final class Updater {
     /** Public download mirror: full APK only, no token, robust CDN — so updates work on mobile data
      *  even when the private repo's signed asset download stalls. Built by build.yml's mirror step. */
     private static final String MIRROR = "https://api.github.com/repos/architect-dna-ch/arc-releases";
+    private static final String MIRROR_DL = "https://github.com/architect-dna-ch/arc-releases/releases/download/";
     private static final long CHECK_EVERY_MS = 6 * 3600 * 1000L;
+
+    private boolean metered() {
+        try {
+            android.net.ConnectivityManager cm = activity.getSystemService(android.net.ConnectivityManager.class);
+            return cm == null || cm.isActiveNetworkMetered();
+        } catch (RuntimeException e) { return true; }
+    }
 
     private final Activity activity;
     private final SharedPreferences prefs;
@@ -267,7 +275,9 @@ final class Updater {
             PackageInstaller.Session session = null;
             try {
                 // First choice: the small patch from the installed version (a few MB instead of the whole APK).
-                java.io.File built = deltaId != 0 ? fromDelta() : null;
+                // On Wi-Fi the full APK straight from the public mirror is fast and never stalls; the small
+                // patch (private repo, signed redirect) is only worth it on mobile data.
+                java.io.File built = deltaId != 0 && metered() ? fromDelta() : null;
                 InputStream source;
                 long length;
                 HttpURLConnection c = null;
@@ -338,6 +348,16 @@ final class Updater {
      * VPNs where the private repo's signed asset redirect stalls), the private release as fallback.
      */
     private HttpURLConnection openFullApk() throws IOException {
+        // 1) the plain download URL — no API call (GitHub allows 60 per hour per connection, shared by
+        //    every ARC app on the same Wi-Fi), no token, just the CDN
+        if (latest > current()) {
+            try {
+                HttpURLConnection d = open(MIRROR_DL + "v1.0." + latest + "/ARC-DNA-Home.apk", "application/octet-stream", false);
+                if (d.getResponseCode() == 200) return d;
+                d.disconnect();
+            } catch (Exception e) { DiagLog.log("update direct mirror: " + e.getMessage()); }
+        }
+        // 2) the mirror's release list, 3) the private release
         try {
             HttpURLConnection m = open(MIRROR + "/releases?per_page=40", "application/vnd.github+json", false);
             if (m.getResponseCode() == 200) {
