@@ -285,6 +285,11 @@ public class OneHomeActivity extends Activity {
         upd.setVisibility(View.GONE);
         upd.setOnClickListener(v -> updater.fix(() -> Toast.makeText(this, L.t("Update gerade nicht erreichbar."), Toast.LENGTH_SHORT).show()));
         bottom.addView(upd);
+        TextView guideBtn = text(13, INK2, Typeface.DEFAULT_BOLD);   // ARC Guidebook: Quran & Sunnah, a few pages a day
+        guideBtn.setText(L.t("Guide"));
+        guideBtn.setPadding(dp(14), dp(10), dp(4), dp(10));
+        guideBtn.setOnClickListener(v -> { tick(v); startActivity(new Intent(this, GuideActivity.class)); });
+        bottom.addView(guideBtn);
         TextView appsBtn = text(13, INK2, Typeface.DEFAULT_BOLD);
         appsBtn.setText(L.t("⌃  Apps"));
         appsBtn.setPadding(dp(14), dp(10), 0, dp(10));
@@ -624,9 +629,13 @@ public class OneHomeActivity extends Activity {
             w.setText(new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
             c.addView(w);
         }
+        TextView guide = pill(L.t("ARC Guidebook lesen"), CARD, INK);
+        guide.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, GuideActivity.class)); });
+        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-2, -2); gl.topMargin = dp(30);
+        c.addView(guide, gl);
         TextView priv = pill(isPrivate() ? L.t("Privat-Modus ausschalten") : L.t("Privat-Modus (ÖV, unterwegs)"), CARD, INK);
         priv.setOnClickListener(v -> { root.removeView(sheet); setPrivate(!isPrivate()); });
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(30);
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(10);
         c.addView(priv, pl);
         TextView upNow = pill(L.t("Jetzt nach Updates suchen"), CARD, INK);
         upNow.setOnClickListener(v -> {
