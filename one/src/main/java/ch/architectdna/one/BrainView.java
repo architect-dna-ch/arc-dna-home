@@ -254,7 +254,9 @@ final class BrainView extends View {
 
         zoom += (zoomTarget - zoom) * Math.min(1f, dt / 110f);
         if (Math.abs(zoom - zoomTarget) < 0.002f) zoom = zoomTarget;
-        float iz = 1f / zoom, idot = (float) Math.pow(iz, 0.55);      // lines stay fine when zoomed, dots grow a little
+        // sizes follow the brain: the small home-screen brain gets small dots (else it turns into a green blob)
+        float sizeK = Math.max(0.3f, Math.min(1.3f, m / dp(360)));
+        float iz = sizeK / zoom, idot = sizeK * (float) Math.pow(1f / zoom, 0.55);   // lines stay fine when zoomed
         cv.save();
         cv.translate(fx, fy); cv.scale(zoom, zoom); cv.translate(-fx, -fy);
 
