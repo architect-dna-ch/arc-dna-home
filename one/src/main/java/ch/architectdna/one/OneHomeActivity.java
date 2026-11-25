@@ -90,6 +90,7 @@ public class OneHomeActivity extends Activity {
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
     private boolean peeking;
+    private TextView siestaBtn;
     private final Runnable endPeek = () -> { peeking = false; render(); };
     // the goal arriving from the other device (GoalSync.In writes prefs on the main thread) re-renders live
     private final SharedPreferences.OnSharedPreferenceChangeListener goalIn = (sp, k) -> {
@@ -285,6 +286,10 @@ public class OneHomeActivity extends Activity {
         upd.setVisibility(View.GONE);
         upd.setOnClickListener(v -> updater.fix(() -> Toast.makeText(this, L.t("Update gerade nicht erreichbar."), Toast.LENGTH_SHORT).show()));
         bottom.addView(upd);
+        siestaBtn = text(13, INK2, Typeface.DEFAULT_BOLD);          // Siesta 90: one sleep cycle, then a gentle wake
+        siestaBtn.setPadding(dp(14), dp(10), dp(4), dp(10));
+        siestaBtn.setOnClickListener(v -> { tick(v); toggleSiesta(); });
+        bottom.addView(siestaBtn);
         TextView guideBtn = text(13, INK2, Typeface.DEFAULT_BOLD);   // ARC Guidebook: Quran & Sunnah, a few pages a day
         guideBtn.setText(L.t("Guide"));
         guideBtn.setPadding(dp(14), dp(10), dp(4), dp(10));
@@ -313,6 +318,7 @@ public class OneHomeActivity extends Activity {
             updText = txt;
             if (upd != null) upd.setVisibility(need ? View.VISIBLE : View.GONE);
         });
+        if (getIntent() != null && getIntent().getBooleanExtra("play_m1", false)) main.postDelayed(this::playMusicOne, 600);
         new Thread(this::loadApps, "arc-one-apps").start();
     }
 
@@ -339,6 +345,7 @@ public class OneHomeActivity extends Activity {
     @Override protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
         if (SelfUpdater.ACTION.equals(i.getAction())) { updater.onStatus(i); return; }
+        if (i.getBooleanExtra("play_m1", false)) { i.removeExtra("play_m1"); main.postDelayed(this::playMusicOne, 400); return; }
         closeDrawer();
         if (editor.getVisibility() == View.VISIBLE) saveEditor();
     }
@@ -356,6 +363,7 @@ public class OneHomeActivity extends Activity {
             clock.setText(new SimpleDateFormat("HH:mm", Locale.GERMAN).format(d));
             date.setText(new SimpleDateFormat("EEEE, d. MMMM", Locale.GERMAN).format(d));
             renderSince();
+            renderSiesta();
             main.postDelayed(this, 30_000);
         }
     };
@@ -580,6 +588,42 @@ public class OneHomeActivity extends Activity {
         main.removeCallbacks(endPeek);
         Toast.makeText(this, on ? L.t("Privat: dein Ziel ist verdeckt. Tippen zeigt es kurz.") : L.t("Privat-Modus aus."), Toast.LENGTH_SHORT).show();
         render();
+    }
+
+    private void renderSiesta() {
+        if (siestaBtn == null) return;
+        long end = Siesta.endsAt(this);
+        if (end > System.currentTimeMillis()) {
+            siestaBtn.setText(L.t("Siesta bis ") + new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(end)));
+            siestaBtn.setTextColor(RUST);
+        } else {
+            siestaBtn.setText(L.t("Siesta 90"));
+            siestaBtn.setTextColor(INK2);
+        }
+    }
+
+    /** Tap: start (asking once for Do-Not-Disturb access, so the phone can go quiet), tap again: cancel. */
+    private void toggleSiesta() {
+        if (Siesta.endsAt(this) > System.currentTimeMillis()) {
+            Siesta.stop(this);
+            Toast.makeText(this, L.t("Siesta abgebrochen."), Toast.LENGTH_SHORT).show();
+            renderSiesta();
+            return;
+        }
+        if (!Siesta.canSilence(this) && !prefs.getBoolean("siesta_asked", false)) {
+            prefs.edit().putBoolean("siesta_asked", true).apply();
+            Toast.makeText(this, L.t("Einmal erlauben: ARC One darf «Nicht stören» setzen. Dann nochmals Siesta tippen."), Toast.LENGTH_LONG).show();
+            try { startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)); return; } catch (Exception ignored) { }
+        }
+        if (!Siesta.start(this)) {
+            Toast.makeText(this, L.t("Wecker ging nicht – bitte «Wecker & Erinnerungen» für ARC One erlauben."), Toast.LENGTH_LONG).show();
+            try { startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { }
+            return;
+        }
+        long end = Siesta.endsAt(this);
+        Toast.makeText(this, L.t("Siesta 90 · Wecken um ") + new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date(end))
+            + (Siesta.canSilence(this) ? L.t(" · Handy ist still.") : ""), Toast.LENGTH_LONG).show();
+        renderSiesta();
     }
 
     private void markDone() {

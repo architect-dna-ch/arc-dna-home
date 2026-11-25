@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Siesta 90: a real alarm clock, and the phone quiet while you sleep -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
         <!-- the app search lists every launchable app -->
@@ -24,6 +29,15 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <!-- Launcher Nr. 5: pick it under Settings → Apps → Default apps → Home app. -->
+        <!-- Siesta 90: wakes you over the lock screen, gently -->
+        <activity
+            android:name=".SiestaWakeActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
         <!-- ARC Guidebook: Quran and Sunnah explained, e-book style, with progress and a mind map -->
         <activity
             android:name=".GuideActivity"
