@@ -16,8 +16,8 @@ import java.util.Random;
  * a rust signal travels along a fold — the brain's signals, visible but not urgent. A calm visual only.
  *
  * The shape is generated: two hemispheres (a flat inner wall, a flatter underside, a temporal lobe
- * swelling at the side), a cerebellum of two finely folded lobes tucked under the back, and a short
- * tapered brain stem (flat stacked arcs and straight sticks read as plates — tried first). The folds
+ * swelling at the side) — nothing below it: every cerebellum and stem tried (stacked arcs, folded
+ * lobes, a tube) read as plates, stripes or a tail under the folds, and the brain reads better without. The folds
  * are short meandering lines that follow a smooth direction field across the surface, seeded on an even
  * grid so they cover it without clumping — that reads as gyri from every angle, unlike rings or a mesh
  * (both tried first: plates, a melon, two balls). Drawn in a few brightness buckets with drawLines,
@@ -31,7 +31,6 @@ final class BrainView extends View {
 
     private final float[][] lines;               // each: x,y,z,x,y,z…
     private final float[][] proj;                // each: sx,sy,depth…
-    private final float[] weight;                // per line: 1 = cortex, less = cerebellum/stem
     private final float[][] bucketPts = new float[BUCKETS][];
     private final int[] bucketLen = new int[BUCKETS];
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG), dot = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -62,47 +61,7 @@ final class BrainView extends View {
                 if (n / 3 > 4) out.add(java.util.Arrays.copyOf(buf, n));
             }
         }
-        int cortex = out.size();
-        for (int side = -1; side <= 1; side += 2) {                    // cerebellum: two lobes tucked under the back,
-            double ccx = side * 0.2, ccy = 0.33, ccz = -0.5;          // fine wavy folia wrapping side, back and under
-            for (int k = 0; k <= 10; k++) {
-                double v = -0.85 + 1.7 * k / 10, s = Math.sqrt(1 - v * v);
-                float[] buf = new float[29 * 3];
-                for (int i = 0; i <= 28; i++) {
-                    double u = -0.25 * Math.PI + 1.25 * Math.PI * i / 28;
-                    double ang = side > 0 ? u : Math.PI - u, wob = 1 + 0.03 * Math.sin(7 * u + k);
-                    buf[i * 3] = (float) (ccx + 0.25 * s * Math.cos(ang) * wob);
-                    buf[i * 3 + 1] = (float) (ccy + 0.15 * v);
-                    buf[i * 3 + 2] = (float) (ccz - 0.22 * s * Math.abs(Math.sin(u)) - 0.02 * s);
-                }
-                out.add(buf);
-            }
-        }
-        for (int a = 0; a < 5; a++) {                                   // brain stem: a short tapered tube
-            double ang = 2 * Math.PI * a / 5;
-            float[] buf = new float[13 * 3];
-            for (int j = 0; j <= 12; j++) {
-                double t = j / 12.0, rad = 0.075 - 0.03 * t;
-                buf[j * 3] = (float) (rad * Math.cos(ang));
-                buf[j * 3 + 1] = (float) (0.22 + 0.36 * t);
-                buf[j * 3 + 2] = (float) (-0.2 - 0.1 * t * t + rad * Math.sin(ang));
-            }
-            out.add(buf);
-        }
-        for (int j = 1; j <= 3; j++) {
-            double t = j / 4.0, rad = 0.075 - 0.03 * t;
-            float[] buf = new float[17 * 3];
-            for (int i = 0; i <= 16; i++) {
-                double ang = 2 * Math.PI * i / 16;
-                buf[i * 3] = (float) (rad * Math.cos(ang));
-                buf[i * 3 + 1] = (float) (0.22 + 0.36 * t);
-                buf[i * 3 + 2] = (float) (-0.2 - 0.1 * t * t + rad * Math.sin(ang));
-            }
-            out.add(buf);
-        }
         lines = out.toArray(new float[0][]);
-        weight = new float[lines.length];                               // the cortex leads; what's below stays quieter
-        for (int i = 0; i < lines.length; i++) weight[i] = i < cortex ? 1f : 0.7f;
         proj = new float[lines.length][];
         int segs = 0;
         for (int i = 0; i < lines.length; i++) { proj[i] = new float[lines[i].length]; segs += lines[i].length / 3 - 1; }
@@ -163,7 +122,7 @@ final class BrainView extends View {
             }
             for (int i = 0; i + 5 < P.length; i += 3) {                 // nearer segments go to brighter buckets
                 float depth = ((P[i + 2] + P[i + 5]) / 2 + 1) / 2;
-                int b = Math.max(0, Math.min(BUCKETS - 1, (int) (depth * weight[li] * BUCKETS)));
+                int b = Math.max(0, Math.min(BUCKETS - 1, (int) (depth * BUCKETS)));
                 float[] dst = bucketPts[b];
                 int n = bucketLen[b];
                 dst[n] = P[i]; dst[n + 1] = P[i + 1]; dst[n + 2] = P[i + 3]; dst[n + 3] = P[i + 4];
