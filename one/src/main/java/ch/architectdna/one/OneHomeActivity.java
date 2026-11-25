@@ -348,6 +348,7 @@ public class OneHomeActivity extends Activity {
         calm.setOnClickListener(v -> closeCalm());
         calmBrain = new BrainView(this);
         calmBrain.setIntensity(1f);
+        calmBrain.setLegend(true);
         calmBrain.setClickable(false);
         calm.addView(calmBrain, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout c = new LinearLayout(this);
