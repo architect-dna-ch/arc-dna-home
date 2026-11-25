@@ -237,7 +237,7 @@ public class OneHomeActivity extends Activity {
         TextView yes = pill(L.t("Ja, weiter"), INK, BG);
         TextView neu = pill(L.t("Neu schreiben"), CARD, INK);
         TextView done = pill(L.t("Erledigt ✓"), CARD, INK);
-        yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); GoalSync.push(this); render(); });
+        yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); render(); });   // a check-in isn't a change: not mirrored
         neu.setOnClickListener(v -> { tick(v); openEditor(); });
         done.setOnClickListener(v -> { confirm(v); markDone(); });
         for (TextView t : new TextView[]{yes, neu, done}) {
@@ -510,9 +510,10 @@ public class OneHomeActivity extends Activity {
         String t = editor.getText().toString().trim().replace('\n', ' ');
         String old = prefs.getString("one_text", "");
         SharedPreferences.Editor e = prefs.edit();
-        if (!t.equals(old)) e.putString("one_text", t).putLong("one_since", now());
+        boolean changed = !t.equals(old);
+        if (changed) { GoalSync.remember(prefs, old, prefs.getLong("one_since", 0)); e.putString("one_text", t).putLong("one_since", now()); }
         e.putLong("one_checked", now()).apply();
-        GoalSync.push(this);                          // mirror to the paired phone/tablet
+        if (changed) GoalSync.push(this);             // mirror to the paired phone/tablet — only real changes
         hideKeyboard(editor);
         editor.setVisibility(View.GONE);
         editDone.setVisibility(View.GONE);
@@ -673,6 +674,36 @@ public class OneHomeActivity extends Activity {
             w.setText(new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
             c.addView(w);
         }
+        // earlier sentences — replaced ones are kept, so a goal can't get lost
+        try {
+            JSONArray hist = new JSONArray(prefs.getString("one_history", "[]"));
+            if (hist.length() > 0) {
+                TextView hh = text(26, INK, Typeface.create("sans-serif-black", Typeface.NORMAL)); hh.setText(L.t("Frühere Ziele"));
+                hh.setPadding(0, dp(30), 0, 0);
+                c.addView(hh);
+                TextView hint = text(12, INK3, Typeface.DEFAULT); hint.setText(L.t("Tippen = wieder als Ziel setzen"));
+                c.addView(hint);
+                for (int i = hist.length() - 1; i >= 0 && i >= hist.length() - 15; i--) {
+                    JSONObject o = hist.optJSONObject(i);
+                    if (o == null) continue;
+                    final String txt = o.optString("t");
+                    TextView r = text(15, INK, Typeface.DEFAULT);
+                    r.setText("↺  " + (isPrivate() ? "• • • • •" : txt));
+                    r.setPadding(0, dp(12), 0, 0);
+                    r.setOnClickListener(v -> {
+                        root.removeView(sheet);
+                        GoalSync.remember(prefs, prefs.getString("one_text", ""), prefs.getLong("one_since", 0));
+                        prefs.edit().putString("one_text", txt).putLong("one_since", now()).putLong("one_checked", now()).apply();
+                        GoalSync.push(this);
+                        render();
+                    });
+                    c.addView(r);
+                    TextView w = text(11, INK3, Typeface.DEFAULT);
+                    w.setText(L.t("ersetzt ") + new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
+                    c.addView(w);
+                }
+            }
+        } catch (Exception ignored) { }
         TextView guide = pill(L.t("ARC Guidebook lesen"), CARD, INK);
         guide.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, GuideActivity.class)); });
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-2, -2); gl.topMargin = dp(30);
