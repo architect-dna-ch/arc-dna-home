@@ -72,7 +72,10 @@ public class OneHomeActivity extends Activity {
     private TextView upd;
     private String updText = "";
     private TextView m1Title;
-    private LinearLayout m1, bottom;
+    private LinearLayout m1, bottom, sinceRow;
+    private TextView finishBtn;
+    private boolean finishArmed;
+    private final Runnable disarm = this::disarmFinish;
     private BrainView brain, calmBrain;
     private FrameLayout calm;
     private TextView calmBreath, calmLine;
@@ -180,9 +183,33 @@ public class OneHomeActivity extends Activity {
         LinearLayout.LayoutParams el = new LinearLayout.LayoutParams(-2, -2); el.topMargin = dp(8);
         mid.addView(editDone, el);
 
+        // "seit … · tippen zum Ändern" with the one way to close it out: ✓ Erledigt (tap twice — no accidents)
+        sinceRow = new LinearLayout(this);
+        sinceRow.setGravity(Gravity.CENTER_VERTICAL);
+        sinceRow.setPadding(0, dp(10), 0, 0);
         since = text(13, INK2, Typeface.DEFAULT);
-        since.setPadding(0, dp(10), 0, 0);
-        mid.addView(since);
+        since.setOnClickListener(v -> { tick(v); openEditor(); });
+        sinceRow.addView(since, new LinearLayout.LayoutParams(0, -2, 1f));
+        finishBtn = pill(L.t("✓ Erledigt"), CARD, INK);
+        finishBtn.setTextSize(13);
+        finishBtn.setPadding(dp(14), dp(8), dp(14), dp(8));
+        finishBtn.setContentDescription(L.t("Ziel als erledigt markieren"));
+        finishBtn.setOnClickListener(v -> {
+            if (!finishArmed) {                       // first tap arms it, the second within 3 s confirms
+                tick(v);
+                finishArmed = true;
+                finishBtn.setText(L.t("Sicher? Nochmals tippen"));
+                tint(finishBtn, RUST, 0xFFFFFFFF);
+                main.postDelayed(disarm, 3000);
+                return;
+            }
+            disarmFinish();
+            confirm(v);
+            markDone();
+        });
+        LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(-2, -2); fl.leftMargin = dp(10);
+        sinceRow.addView(finishBtn, fl);
+        mid.addView(sinceRow, new LinearLayout.LayoutParams(-1, -2));
 
         // "Noch dran?" — shown when you come back after an hour or more
         checkIn = new LinearLayout(this);
@@ -381,6 +408,7 @@ public class OneHomeActivity extends Activity {
         int n = doneList().length();
         doneCount.setText(n == 0 ? "" : n + L.t(" erreicht"));
         renderSince();
+        finishBtn.setVisibility(has && checkIn.getVisibility() != View.VISIBLE ? View.VISIBLE : View.GONE);   // check-in has its own
         renderMusicOne();
     }
 
@@ -428,7 +456,8 @@ public class OneHomeActivity extends Activity {
         editor.setText(prefs.getString("one_text", ""));
         editor.setSelection(editor.getText().length());
         intent.setVisibility(View.GONE);
-        since.setVisibility(View.GONE);
+        sinceRow.setVisibility(View.GONE);
+        disarmFinish();
         checkIn.setVisibility(View.GONE);
         editor.setVisibility(View.VISIBLE);
         editDone.setVisibility(View.VISIBLE);
@@ -449,7 +478,7 @@ public class OneHomeActivity extends Activity {
         editor.setVisibility(View.GONE);
         editDone.setVisibility(View.GONE);
         intent.setVisibility(View.VISIBLE);
-        since.setVisibility(View.VISIBLE);
+        sinceRow.setVisibility(View.VISIBLE);
         m1.setVisibility(View.VISIBLE);
         bottom.setVisibility(View.VISIBLE);
         render();
@@ -459,6 +488,20 @@ public class OneHomeActivity extends Activity {
     private static void confirm(View v) {
         v.performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
             ? android.view.HapticFeedbackConstants.CONFIRM : android.view.HapticFeedbackConstants.LONG_PRESS);
+    }
+
+    private void disarmFinish() {
+        main.removeCallbacks(disarm);
+        if (!finishArmed) return;
+        finishArmed = false;
+        finishBtn.setText(L.t("✓ Erledigt"));
+        tint(finishBtn, CARD, INK);
+    }
+
+    private void tint(TextView t, int fill, int ink) {
+        GradientDrawable g = new GradientDrawable(); g.setColor(fill); g.setCornerRadius(dp(40));
+        if (fill == CARD) g.setStroke(dp(1), LINE);
+        t.setBackground(g); t.setTextColor(ink);
     }
 
     private void markDone() {
