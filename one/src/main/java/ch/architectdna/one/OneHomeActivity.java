@@ -171,6 +171,10 @@ public class OneHomeActivity extends Activity {
             openEditor();
         });
         intent.setOnLongClickListener(v -> { confirm(v); setPrivate(!isPrivate()); return true; });
+        intent.addOnLayoutChangeListener((v, nl, nt, nr, nb, ol, ot, orr, ob) -> {
+            redaction.setBounds(0, 0, Math.max(1, nr - nl), Math.max(1, nb - nt));
+            v.invalidate();
+        });
         mid.addView(intent, new LinearLayout.LayoutParams(-1, dp(300)));
 
         editor = new EditText(this);
@@ -418,12 +422,10 @@ public class OneHomeActivity extends Activity {
         boolean hide = has && isPrivate() && !peeking;
         intent.setText(has ? t : L.t("Was willst du gerade erreichen?"));
         intent.setTextColor(has ? INK : INK3);
-        if (android.os.Build.VERSION.SDK_INT >= 31)
-            intent.setRenderEffect(hide ? android.graphics.RenderEffect.createBlurEffect(dp(26), dp(26), android.graphics.Shader.TileMode.DECAL) : null);
-        else if (hide) intent.setText("• • • • • •");
+        redact(hide);
         label.setText(!has ? L.t("— TIPPEN ZUM SCHREIBEN")
-            : hide ? L.t("— PRIVAT · TIPPEN ZUM ZEIGEN · HALTEN ZUM AUS")
-            : isPrivate() ? L.t("— PRIVAT · GLEICH WIEDER VERDECKT")
+            : hide ? L.t("— PRIVAT · TIPPEN ZEIGT")
+            : isPrivate() ? L.t("— PRIVAT · GLEICH VERDECKT")
             : L.t("— MEIN ZIEL GERADE"));
         boolean stale = has && now() - prefs.getLong("one_checked", now()) >= STALE;
         checkIn.setVisibility(stale && editor.getVisibility() != View.VISIBLE ? View.VISIBLE : View.GONE);
@@ -470,7 +472,8 @@ public class OneHomeActivity extends Activity {
     private void renderSince() {
         String t = prefs.getString("one_text", "");
         if (t.isEmpty()) { since.setText(""); return; }
-        since.setText(L.t("seit ") + ago(now() - prefs.getLong("one_since", now())) + L.t(" · tippen zum Ändern"));
+        boolean hidden = isPrivate() && !peeking;
+        since.setText(L.t("seit ") + ago(now() - prefs.getLong("one_since", now())) + (hidden ? L.t(" · verdeckt") : L.t(" · tippen zum Ändern")));
     }
 
     private void openEditor() {
@@ -525,6 +528,43 @@ public class OneHomeActivity extends Activity {
         GradientDrawable g = new GradientDrawable(); g.setColor(fill); g.setCornerRadius(dp(40));
         if (fill == CARD) g.setStroke(dp(1), LINE);
         t.setBackground(g); t.setTextColor(ink);
+    }
+
+    /** Private mode: each line of the sentence becomes a dark rounded bar of the same length — like a
+     *  blacked-out document, calm instead of a grey blur. The text stays laid out, just not drawn. */
+    private final android.graphics.drawable.Drawable redaction = new android.graphics.drawable.Drawable() {
+        private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF rf = new android.graphics.RectF();
+        @Override public void draw(android.graphics.Canvas c) {
+            android.text.Layout l = intent.getLayout();
+            if (l == null) return;
+            float ox = intent.getTotalPaddingLeft(), oy = intent.getTotalPaddingTop();
+            for (int i = 0; i < l.getLineCount(); i++) {
+                float left = l.getLineLeft(i), right = l.getLineRight(i);
+                if (right - left < 1) continue;
+                float top = l.getLineTop(i), bottom = l.getLineBottom(i), h = bottom - top;
+                rf.set(ox + left, oy + top + h * 0.2f, ox + right, oy + bottom - h * 0.16f);
+                fill.setColor(0xFF221F1C);
+                c.drawRoundRect(rf, rf.height() * 0.22f, rf.height() * 0.22f, fill);
+                fill.setColor(0xFF2E2A26);                                   // a faint top edge, like paper over ink
+                c.drawRect(rf.left + rf.height() * 0.22f, rf.top, rf.right - rf.height() * 0.22f, rf.top + dp(1), fill);
+            }
+        }
+        @Override public void setAlpha(int a) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter f) { }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    };
+    private boolean redacted;
+
+    private void redact(boolean on) {
+        if (on) intent.setTextColor(0x00000000);
+        if (on == redacted) { if (on) redaction.invalidateSelf(); return; }
+        redacted = on;
+        if (on) {
+            redaction.setBounds(0, 0, Math.max(1, intent.getWidth()), Math.max(1, intent.getHeight()));
+            intent.getOverlay().add(redaction);
+        } else intent.getOverlay().remove(redaction);
+        intent.invalidate();
     }
 
     private boolean isPrivate() { return prefs.getBoolean("one_private", false); }
