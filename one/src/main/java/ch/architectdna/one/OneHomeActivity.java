@@ -349,7 +349,7 @@ public class OneHomeActivity extends Activity {
         calmBrain = new BrainView(this);
         calmBrain.setIntensity(1f);
         calmBrain.setLegend(true);
-        calmBrain.setClickable(false);
+        calmBrain.setZoomable(this::closeCalm);          // hold = zoom 300 %, tap = back
         calm.addView(calmBrain, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
@@ -363,7 +363,7 @@ public class OneHomeActivity extends Activity {
         calmLine.setPadding(0, dp(14), 0, dp(22));
         c.addView(calmLine);
         TextView back = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
-        back.setText(L.t("TIPPEN ZUM ZURÜCKKEHREN"));
+        back.setText(L.t("TIPPEN ZUM ZURÜCKKEHREN · HALTEN ZUM ZOOMEN"));
         back.setLetterSpacing(0.16f);
         c.addView(back);
         calm.addView(c, new FrameLayout.LayoutParams(-1, -1));

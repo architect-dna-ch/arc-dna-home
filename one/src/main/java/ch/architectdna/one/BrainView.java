@@ -4,7 +4,10 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.SystemClock;
+import android.view.HapticFeedbackConstants;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +64,17 @@ final class BrainView extends View {
     private long last;
     private boolean running, showLegend;
     private float alphaScale = 1f;
+
+    // hold to zoom: a fixed 300 % around the finger, slide to look around, let go to zoom back out
+    static final float ZOOM = 3f;
+    private boolean zoomable, zoomed;
+    private float zoom = 1f, zoomTarget = 1f, fx, fy, downX, downY;
+    private Runnable onTap;
+    private final Runnable holdStart = () -> {
+        zoomed = true; zoomTarget = ZOOM;
+        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        invalidate();
+    };
 
     BrainView(Context c) {
         super(c);
@@ -192,6 +206,32 @@ final class BrainView extends View {
     /** The small key at the top: what the colours are, and how many neurons stand for the real ones. */
     void setLegend(boolean on) { showLegend = on; invalidate(); }
 
+    /** Calm mode: hold to zoom in on the details; a short tap runs {@code tap}. */
+    void setZoomable(Runnable tap) { zoomable = true; onTap = tap; setClickable(true); }
+
+    @Override public boolean onTouchEvent(MotionEvent e) {
+        if (!zoomable) return super.onTouchEvent(e);
+        switch (e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                downX = fx = e.getX(); downY = fy = e.getY();
+                postDelayed(holdStart, ViewConfiguration.getLongPressTimeout() / 2);
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (zoomed) { fx = e.getX(); fy = e.getY(); }
+                else if (Math.hypot(e.getX() - downX, e.getY() - downY) > ViewConfiguration.get(getContext()).getScaledTouchSlop())
+                    removeCallbacks(holdStart);
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                removeCallbacks(holdStart);
+                if (zoomed) { zoomed = false; zoomTarget = 1f; invalidate(); }
+                else if (e.getActionMasked() == MotionEvent.ACTION_UP && onTap != null) onTap.run();
+                return true;
+            default:
+                return true;
+        }
+    }
+
     void start() { running = true; last = 0; invalidate(); }
     void stop() { running = false; }
 
@@ -212,6 +252,12 @@ final class BrainView extends View {
         double ax = 0.25 + 0.05 * Math.sin(t / 9000.0);
         double sy = Math.sin(ay), cyy = Math.cos(ay), sx = Math.sin(ax), cxx = Math.cos(ax);
 
+        zoom += (zoomTarget - zoom) * Math.min(1f, dt / 110f);
+        if (Math.abs(zoom - zoomTarget) < 0.002f) zoom = zoomTarget;
+        float iz = 1f / zoom, idot = (float) Math.pow(iz, 0.55);      // lines stay fine when zoomed, dots grow a little
+        cv.save();
+        cv.translate(fx, fy); cv.scale(zoom, zoom); cv.translate(-fx, -fy);
+
         project(cortex, pc, cx, cy, scale, sy, cyy, sx, cxx);
         project(nodes, pn, cx, cy, scale, sy, cyy, sx, cxx);
         project(fib, pf, cx, cy, scale, sy, cyy, sx, cxx);
@@ -222,13 +268,13 @@ final class BrainView extends View {
             int base = e * EDGE_PTS * 3;
             for (int s = 0; s < EDGE_PTS - 1; s++) addSeg(pf, base + s * 3, base + s * 3 + 3);
         }
-        line.setStrokeWidth(dp(0.7f));
+        line.setStrokeWidth(dp(0.7f) * iz);
         drawBuckets(cv, BLUE, 18, 120);
 
         clearBuckets();
         for (int l = 0; l + 1 < cortexStart.length; l++)
             for (int i = cortexStart[l]; i + 5 < cortexStart[l + 1]; i += 3) addSeg(pc, i, i + 3);
-        line.setStrokeWidth(dp(1.05f));
+        line.setStrokeWidth(dp(1.05f) * iz);
         drawBuckets(cv, PINK, 22, 165);
 
         // neuron bodies, brighter when a signal just arrived
@@ -236,7 +282,7 @@ final class BrainView extends View {
             float d = (pn[i * 3 + 2] + 1) / 2, f = flash[i];
             int a = (int) (alphaScale * (60 + 120 * d + 75 * f));
             dot.setColor((clamp(a) << 24) | (f > 0.55f ? GREEN : BLUE));
-            cv.drawCircle(pn[i * 3], pn[i * 3 + 1], dp(1.1f + 0.9f * f), dot);
+            cv.drawCircle(pn[i * 3], pn[i * 3 + 1], dp(1.1f + 0.9f * f) * idot, dot);
             flash[i] = f * 0.84f;
         }
 
@@ -253,13 +299,14 @@ final class BrainView extends View {
                 float fade = 1 - tr / 4f;
                 if (tr == 0) {
                     dot.setColor((clamp((int) (alphaScale * 55)) << 24) | GREEN);
-                    cv.drawCircle(px, py, dp(3f), dot);
+                    cv.drawCircle(px, py, dp(3f) * idot, dot);
                 }
                 dot.setColor((clamp((int) (alphaScale * 255 * fade)) << 24) | GREEN);
-                cv.drawCircle(px, py, dp(tr == 0 ? 1.5f : 0.9f), dot);
+                cv.drawCircle(px, py, dp(tr == 0 ? 1.5f : 0.9f) * idot, dot);
             }
         }
 
+        cv.restore();
         if (showLegend) drawLegend(cv);
         if (running) postInvalidateOnAnimation();
     }
@@ -315,6 +362,8 @@ final class BrainView extends View {
         }
         legend.setColor((clamp((int) (alphaScale * 110)) << 24) | 0xF4F1EC);
         cv.drawText("1 PUNKT ≈ 120 MIO. NEURONEN", x + dp(14), y + 3 * gap, legend);
+        cv.drawText(zoom > 1.05f ? "ZOOM " + Math.round(zoom * 100) + " % · LOSLASSEN ZUM ZURÜCK"
+            : "HALTEN ZUM ZOOMEN", x + dp(14), y + 4 * gap, legend);
     }
 
     private static void project(float[] src, float[] dst, float cx, float cy, float scale,
