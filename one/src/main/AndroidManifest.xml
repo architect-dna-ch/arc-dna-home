@@ -50,6 +50,12 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Aufwand & Wirkung: effort vs. effect, and whose part it was -->
+        <activity
+            android:name=".EffortActivity"
+            android:exported="false"
+            android:label="Aufwand &amp; Wirkung" />
+
         <!-- ARC Ring: boxing round timer -->
         <activity
             android:name=".RoundTimerActivity"

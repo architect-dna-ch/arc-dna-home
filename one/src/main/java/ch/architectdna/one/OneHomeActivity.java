@@ -760,6 +760,10 @@ public class OneHomeActivity extends Activity {
         hey.setOnClickListener(v -> { root.removeView(sheet); toggleHey(); });
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2); hl.topMargin = dp(10);
         c.addView(hey, hl);
+        TextView eff = pill(L.t("Aufwand & Wirkung"), CARD, INK);
+        eff.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, EffortActivity.class)); });
+        LinearLayout.LayoutParams efl = new LinearLayout.LayoutParams(-2, -2); efl.topMargin = dp(10);
+        c.addView(eff, efl);
         TextView ring = pill(L.t("Rundentimer (Boxen)"), CARD, INK);
         ring.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, RoundTimerActivity.class)); });
         LinearLayout.LayoutParams rgl = new LinearLayout.LayoutParams(-2, -2); rgl.topMargin = dp(10);
