@@ -292,11 +292,6 @@ public class OneHomeActivity extends Activity {
         siestaBtn.setPadding(dp(14), dp(10), dp(4), dp(10));
         siestaBtn.setOnClickListener(v -> { tick(v); toggleSiesta(); });
         bottom.addView(siestaBtn);
-        TextView guideBtn = text(13, INK2, Typeface.DEFAULT_BOLD);   // ARC Guidebook: Quran & Sunnah, a few pages a day
-        guideBtn.setText(L.t("Guide"));
-        guideBtn.setPadding(dp(14), dp(10), dp(4), dp(10));
-        guideBtn.setOnClickListener(v -> { tick(v); startActivity(new Intent(this, GuideActivity.class)); });
-        bottom.addView(guideBtn);
         TextView appsBtn = text(13, INK2, Typeface.DEFAULT_BOLD);
         appsBtn.setText(L.t("⌃  Apps"));
         appsBtn.setPadding(dp(14), dp(10), 0, dp(10));
@@ -701,142 +696,192 @@ public class OneHomeActivity extends Activity {
     private void showMenu() {
         closeDrawer();
         final FrameLayout sheet = new FrameLayout(this);
-        sheet.setBackgroundColor(0xEE0E0D0C);
+        sheet.setBackgroundColor(0xF20E0D0C);
         sheet.setClickable(true);
         ScrollView sv = new ScrollView(this);
-        LinearLayout c = new LinearLayout(this);
+        final LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(26), dp(40), dp(26), dp(40));
+        c.setPadding(dp(20), dp(26), dp(20), dp(40));
         sv.addView(c);
         sheet.addView(sv, new FrameLayout.LayoutParams(-1, -1));
+        final Runnable closeSheet = () -> root.removeView(sheet);
 
-        TextView h = text(26, INK, Typeface.create("sans-serif-black", Typeface.NORMAL)); h.setText(L.t("Erreicht"));
-        c.addView(h);
-        JSONArray a = doneList();
-        if (a.length() == 0) { TextView e = text(14, INK2, Typeface.DEFAULT); e.setText(L.t("Noch nichts abgehakt. Das kommt.")); e.setPadding(0, dp(8), 0, 0); c.addView(e); }
-        for (int i = a.length() - 1; i >= 0 && i >= a.length() - 30; i--) {
-            JSONObject o = a.optJSONObject(i);
-            if (o == null) continue;
-            TextView r = text(15, INK, Typeface.DEFAULT);
-            r.setText("✓  " + (isPrivate() ? "• • • • •" : o.optString("t")));
-            r.setPadding(0, dp(12), 0, 0);
-            c.addView(r);
-            TextView w = text(11, INK3, Typeface.DEFAULT);
-            w.setText(new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
-            c.addView(w);
+        // header: title + ✕
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = text(28, INK, Typeface.create("sans-serif-black", Typeface.NORMAL)); title.setText("ARC One");
+        head.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView x = text(26, INK2, Typeface.DEFAULT); x.setText("✕"); x.setPadding(dp(14), dp(4), dp(4), dp(4));
+        x.setOnClickListener(v -> closeSheet.run());
+        head.addView(x);
+        c.addView(head);
+
+        // 1) tools: big, distinct tiles
+        c.addView(section(L.t("Werkzeuge")));
+        String[][] tools = {
+            {"📖", L.t("Guidebook"), "guide"}, {"🥊", L.t("Rundentimer"), "ring"},
+            {"⚖️", L.t("Aufwand & Wirkung"), "effort"}, {"✅", L.t("Wie die meisten"), "norm"},
+        };
+        LinearLayout grid = null;
+        for (int i = 0; i < tools.length; i++) {
+            if (i % 2 == 0) { grid = new LinearLayout(this); c.addView(grid); }
+            final String id = tools[i][2];
+            View t = tile(tools[i][0], tools[i][1], v -> {
+                closeSheet.run();
+                Class<?> k = id.equals("guide") ? GuideActivity.class : id.equals("ring") ? RoundTimerActivity.class
+                    : id.equals("effort") ? EffortActivity.class : NormActivity.class;
+                startActivity(new Intent(this, k));
+            });
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, dp(92), 1f);
+            tl.setMargins(i % 2 == 0 ? 0 : dp(5), dp(5), i % 2 == 0 ? dp(5) : 0, dp(5));
+            grid.addView(t, tl);
         }
-        // earlier sentences — replaced ones are kept, so a goal can't get lost
-        try {
-            JSONArray hist = new JSONArray(prefs.getString("one_history", "[]"));
-            if (hist.length() > 0) {
-                TextView hh = text(26, INK, Typeface.create("sans-serif-black", Typeface.NORMAL)); hh.setText(L.t("Frühere Ziele"));
-                hh.setPadding(0, dp(30), 0, 0);
-                c.addView(hh);
-                TextView hint = text(12, INK3, Typeface.DEFAULT); hint.setText(L.t("Tippen = wieder als Ziel setzen"));
-                c.addView(hint);
-                for (int i = hist.length() - 1; i >= 0 && i >= hist.length() - 15; i--) {
-                    JSONObject o = hist.optJSONObject(i);
-                    if (o == null) continue;
-                    final String txt = o.optString("t");
-                    TextView r = text(15, INK, Typeface.DEFAULT);
-                    r.setText("↺  " + (isPrivate() ? "• • • • •" : txt));
-                    r.setPadding(0, dp(12), 0, 0);
-                    r.setOnClickListener(v -> {
-                        root.removeView(sheet);
+
+        // 2) switches: one row each, with what it does and a real on/off
+        c.addView(section(L.t("Helfer")));
+        c.addView(toggleRow("🔒", L.t("Privat-Modus"), L.t("Ziel verdeckt – für Tram & Bus"), isPrivate(), on -> setPrivate(on)));
+        c.addView(toggleRow("❓", L.t("«Wozu?»"), L.t("Fragt vor Chrome, Einstellungen & Co."),
+            Purpose.prefs(this).getBoolean("purpose_on", true), on -> Purpose.prefs(this).edit().putBoolean("purpose_on", on).apply()));
+        c.addView(toggleRow("⏱", L.t("Check-in"), L.t("Fragt nach 10 Min. in anderen Apps"),
+            Purpose.awayOn(this), on -> Purpose.prefs(this).edit().putBoolean("away_on", on).apply()));
+        c.addView(toggleRow("🎙", L.t("«Hey Claude»"), L.t("Sprachbefehle, offline"), HeyService.enabled(this), on -> {
+            if (on != HeyService.enabled(this)) toggleHey();
+        }));
+
+        // 3) history, folded: counts only until you open it
+        JSONArray done = doneList();
+        JSONArray hist;
+        try { hist = new JSONArray(prefs.getString("one_history", "[]")); } catch (Exception e) { hist = new JSONArray(); }
+        c.addView(section(L.t("Verlauf")));
+        final LinearLayout doneBox = new LinearLayout(this); doneBox.setOrientation(LinearLayout.VERTICAL); doneBox.setVisibility(View.GONE);
+        c.addView(linkRow("🏁", L.t("Erreicht"), done.length() == 0 ? L.t("Noch nichts abgehakt") : done.length() + L.t(" Ziele erreicht"),
+            v -> doneBox.setVisibility(doneBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE)));
+        for (int i = done.length() - 1; i >= 0 && i >= done.length() - 30; i--) {
+            JSONObject o = done.optJSONObject(i);
+            if (o == null) continue;
+            doneBox.addView(histLine("✓  " + (isPrivate() ? "• • • • •" : o.optString("t")),
+                new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))), null));
+        }
+        c.addView(doneBox);
+        if (hist.length() > 0) {
+            final LinearLayout histBox = new LinearLayout(this); histBox.setOrientation(LinearLayout.VERTICAL); histBox.setVisibility(View.GONE);
+            c.addView(linkRow("↺", L.t("Frühere Ziele"), hist.length() + L.t(" · tippen = wieder setzen"),
+                v -> histBox.setVisibility(histBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE)));
+            for (int i = hist.length() - 1; i >= 0 && i >= hist.length() - 15; i--) {
+                JSONObject o = hist.optJSONObject(i);
+                if (o == null) continue;
+                final String txt = o.optString("t");
+                histBox.addView(histLine("↺  " + (isPrivate() ? "• • • • •" : txt),
+                    L.t("ersetzt ") + new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))), v -> {
+                        closeSheet.run();
                         GoalSync.remember(prefs, prefs.getString("one_text", ""), prefs.getLong("one_since", 0));
                         prefs.edit().putString("one_text", txt).putLong("one_since", now()).putLong("one_checked", now()).apply();
                         GoalSync.push(this);
                         render();
-                    });
-                    c.addView(r);
-                    TextView w = text(11, INK3, Typeface.DEFAULT);
-                    w.setText(L.t("ersetzt ") + new SimpleDateFormat("EEE d. MMM, HH:mm", Locale.GERMAN).format(new Date(o.optLong("at"))));
-                    c.addView(w);
-                }
+                    }));
             }
-        } catch (Exception ignored) { }
-        TextView guide = pill(L.t("ARC Guidebook lesen"), CARD, INK);
-        guide.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, GuideActivity.class)); });
-        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-2, -2); gl.topMargin = dp(30);
-        c.addView(guide, gl);
-        TextView hey = pill(HeyService.enabled(this) ? L.t("«Hey Claude» ausschalten") : L.t("«Hey Claude» einschalten (offline)"), CARD, INK);
-        hey.setOnClickListener(v -> { root.removeView(sheet); toggleHey(); });
-        LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2); hl.topMargin = dp(10);
-        c.addView(hey, hl);
-        TextView purp = pill(Purpose.prefs(this).getBoolean("purpose_on", true) ? L.t("«Wozu?» vor Chrome & Co. ausschalten") : L.t("«Wozu?» vor Chrome & Co. einschalten"), CARD, INK);
-        purp.setOnClickListener(v -> { root.removeView(sheet); boolean on = !Purpose.prefs(this).getBoolean("purpose_on", true);
-            Purpose.prefs(this).edit().putBoolean("purpose_on", on).apply();
-            Toast.makeText(this, on ? L.t("«Wozu?» an.") : L.t("«Wozu?» aus."), Toast.LENGTH_SHORT).show(); });
-        LinearLayout.LayoutParams pul = new LinearLayout.LayoutParams(-2, -2); pul.topMargin = dp(10);
-        c.addView(purp, pul);
-        TextView awayB = pill(Purpose.awayOn(this) ? L.t("Check-in alle 10 Min. ausschalten") : L.t("Check-in alle 10 Min. einschalten"), CARD, INK);
-        awayB.setOnClickListener(v -> { root.removeView(sheet); boolean on = !Purpose.awayOn(this);
-            Purpose.prefs(this).edit().putBoolean("away_on", on).apply();
-            Toast.makeText(this, on ? L.t("ARC One fragt nach, wenn du 10 Min. weg bist.") : L.t("Check-in aus."), Toast.LENGTH_SHORT).show(); });
-        LinearLayout.LayoutParams awl = new LinearLayout.LayoutParams(-2, -2); awl.topMargin = dp(10);
-        c.addView(awayB, awl);
-        TextView eff = pill(L.t("Aufwand & Wirkung"), CARD, INK);
-        eff.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, EffortActivity.class)); });
-        LinearLayout.LayoutParams efl = new LinearLayout.LayoutParams(-2, -2); efl.topMargin = dp(10);
-        c.addView(eff, efl);
-        TextView ring = pill(L.t("Rundentimer (Boxen)"), CARD, INK);
-        ring.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, RoundTimerActivity.class)); });
-        LinearLayout.LayoutParams rgl = new LinearLayout.LayoutParams(-2, -2); rgl.topMargin = dp(10);
-        c.addView(ring, rgl);
-        TextView norm = pill(L.t("Wie die meisten (Checkliste)"), CARD, INK);
-        norm.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, NormActivity.class)); });
-        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2); nl.topMargin = dp(10);
-        c.addView(norm, nl);
-        TextView priv = pill(isPrivate() ? L.t("Privat-Modus ausschalten") : L.t("Privat-Modus (ÖV, unterwegs)"), CARD, INK);
-        priv.setOnClickListener(v -> { root.removeView(sheet); setPrivate(!isPrivate()); });
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(10);
-        c.addView(priv, pl);
-        TextView browserDl = pill(L.t("Update im Browser laden"), CARD, INK);
-        browserDl.setOnClickListener(v -> {
-            root.removeView(sheet);
-            // plain download from the public mirror; Chrome installs it after a tap — works when the in-app update won't
-            try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/architect-dna-ch/arc-releases/releases?q=one-v&expanded=true"))); } catch (Exception ignored) { }
-        });
-        if (!DiagNote.last.isEmpty()) {
-            TextView why = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
-            why.setText(L.t("Letzter Update-Fehler: ") + DiagNote.last);
-            why.setPadding(0, dp(24), 0, 0);
-            c.addView(why);
+            c.addView(histBox);
         }
-        LinearLayout.LayoutParams bdl = new LinearLayout.LayoutParams(-2, -2); bdl.topMargin = dp(10);
-        TextView upNow = pill(L.t("Jetzt nach Updates suchen"), CARD, INK);
-        upNow.setOnClickListener(v -> {
-            root.removeView(sheet);
+
+        // 4) the app itself
+        c.addView(section(L.t("App")));
+        c.addView(linkRow("⟳", L.t("Nach Updates suchen"), "ARC One 0." + (updater == null ? "" : updater.current())
+            + (updText.isEmpty() ? "" : " · " + updText), v -> {
+            closeSheet.run();
             if (updater != null) {
                 updater.check(true);
                 Toast.makeText(this, L.t("Suche Updates …"), Toast.LENGTH_SHORT).show();
                 if (android.os.Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls())
-                    updater.fix(() -> { });                       // first time: let ARC One install its own updates
+                    updater.fix(() -> { });
             }
-        });
-        LinearLayout.LayoutParams ul = new LinearLayout.LayoutParams(-2, -2); ul.topMargin = dp(10);
-        c.addView(upNow, ul);
-        c.addView(browserDl, bdl);
-        TextView setHome = pill(L.t("Als Startbildschirm festlegen"), CARD, INK);
-        setHome.setOnClickListener(v -> { try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { } } });
-        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2); sl.topMargin = dp(10);
-        c.addView(setHome, sl);
-        TextView all = pill(L.t("Alle ARC-Werkzeuge öffnen"), CARD, INK);
-        all.setOnClickListener(v -> {
+        }));
+        c.addView(linkRow("⬇", L.t("Update im Browser laden"),
+            DiagNote.last.isEmpty() ? L.t("Falls das Update hängt") : L.t("Letzter Fehler: ") + DiagNote.last, v -> {
+            closeSheet.run();
+            try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/architect-dna-ch/arc-releases/releases?q=one-v&expanded=true"))); } catch (Exception ignored) { }
+        }));
+        c.addView(linkRow("⌂", L.t("Als Startbildschirm festlegen"), L.t("Android-Einstellung"), v -> {
+            try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { } }
+        }));
+        c.addView(linkRow("◆", L.t("Alle ARC-Werkzeuge"), L.t("Öffnet die ARC-DNA-App"), v -> {
             try { startActivity(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
             catch (Exception e) { Toast.makeText(this, L.t("ARC-DNA ist nicht installiert."), Toast.LENGTH_SHORT).show(); }
-        });
-        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-2, -2); al.topMargin = dp(10);
-        c.addView(all, al);
-        TextView ver = text(11, INK3, Typeface.create("monospace", Typeface.NORMAL));
-        ver.setText("ARC One 0." + (updater == null ? "" : updater.current()) + (updText.isEmpty() ? "" : "  ·  " + updText));
-        ver.setPadding(0, dp(18), 0, 0);
-        c.addView(ver);
-        TextView close = pill(L.t("Schliessen"), INK, BG);
-        close.setOnClickListener(v -> root.removeView(sheet));
-        LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(-2, -2); xl.topMargin = dp(10);
-        c.addView(close, xl);
+        }));
+
         root.addView(sheet, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    /* menu building blocks: a section label, a tool tile, a switch row, a link row, a history line */
+
+    private TextView section(String s) {
+        TextView t = text(11, RUST, Typeface.create("monospace", Typeface.BOLD));
+        t.setText("— " + s.toUpperCase(Locale.GERMAN));
+        t.setLetterSpacing(0.18f);
+        t.setPadding(dp(2), dp(26), 0, dp(8));
+        return t;
+    }
+
+    private View tile(String icon, String label, View.OnClickListener click) {
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(14), dp(10), dp(10), dp(10));
+        GradientDrawable g = new GradientDrawable(); g.setColor(CARD); g.setCornerRadius(dp(16)); g.setStroke(dp(1), LINE);
+        t.setBackground(g);
+        TextView i = text(24, INK, Typeface.DEFAULT); i.setText(icon);
+        TextView l = text(14, INK, Typeface.DEFAULT_BOLD); l.setText(label); l.setPadding(0, dp(6), 0, 0);
+        t.addView(i); t.addView(l);
+        t.setOnClickListener(v -> { tick(v); click.onClick(v); });
+        return t;
+    }
+
+    private interface OnToggle { void set(boolean on); }
+
+    private View toggleRow(String icon, String title, String sub, boolean on, OnToggle cb) {
+        LinearLayout r = row(icon, title, sub);
+        final android.widget.Switch sw = new android.widget.Switch(this);
+        sw.setChecked(on);
+        sw.setOnCheckedChangeListener((b, v) -> { tick(b); cb.set(v); });
+        r.addView(sw);
+        r.setOnClickListener(v -> sw.toggle());
+        return r;
+    }
+
+    private View linkRow(String icon, String title, String sub, View.OnClickListener click) {
+        LinearLayout r = row(icon, title, sub);
+        TextView ch = text(18, INK3, Typeface.DEFAULT); ch.setText("›");
+        r.addView(ch);
+        r.setOnClickListener(v -> { tick(v); click.onClick(v); });
+        return r;
+    }
+
+    private LinearLayout row(String icon, String title, String sub) {
+        LinearLayout r = new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(dp(14), dp(12), dp(14), dp(12));
+        GradientDrawable g = new GradientDrawable(); g.setColor(CARD); g.setCornerRadius(dp(14));
+        r.setBackground(g);
+        TextView i = text(18, INK, Typeface.DEFAULT); i.setText(icon); i.setGravity(Gravity.CENTER);
+        r.addView(i, new LinearLayout.LayoutParams(dp(34), -2));
+        LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(dp(8), 0, dp(8), 0);
+        TextView t = text(15, INK, Typeface.DEFAULT_BOLD); t.setText(title);
+        TextView s = text(12, INK2, Typeface.DEFAULT); s.setText(sub);
+        tx.addView(t); tx.addView(s);
+        r.addView(tx, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.bottomMargin = dp(6);
+        r.setLayoutParams(lp);
+        return r;
+    }
+
+    private View histLine(String main, String meta, View.OnClickListener click) {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        l.setPadding(dp(16), dp(8), dp(8), dp(8));
+        TextView m = text(15, INK, Typeface.DEFAULT); m.setText(main);
+        TextView w = text(11, INK3, Typeface.DEFAULT); w.setText(meta);
+        l.addView(m); l.addView(w);
+        if (click != null) l.setOnClickListener(click);
+        return l;
     }
 
     /* ---------------- apps: one search field, nothing else ---------------- */
