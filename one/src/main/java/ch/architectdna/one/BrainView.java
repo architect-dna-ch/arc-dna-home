@@ -66,9 +66,10 @@ final class BrainView extends View {
     private float alphaScale = 1f;
 
     // hold to zoom: a fixed 300 % around the finger, slide to look around, let go to zoom back out
-    static final float ZOOM = 3f;
-    private boolean zoomable, zoomed;
-    private float zoom = 1f, zoomTarget = 1f, fx, fy, downX, downY;
+    static final float ZOOM = 3f, LOCK_ZOOM = 2f;
+    private boolean zoomable, zoomed, locked, holding;
+    private long lockedAt;
+    private float zoom = 1f, zoomTarget = 1f, fx, fy, downX, downY, lockX, lockY;
     private Runnable onTap;
     private final Runnable holdStart = () -> {
         zoomed = true; zoomTarget = ZOOM;
@@ -213,7 +214,9 @@ final class BrainView extends View {
         if (!zoomable) return super.onTouchEvent(e);
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                downX = fx = e.getX(); downY = fy = e.getY();
+                holding = true;
+                downX = e.getX(); downY = e.getY();
+                if (!locked) { fx = downX; fy = downY; }
                 postDelayed(holdStart, ViewConfiguration.getLongPressTimeout() / 2);
                 return true;
             case MotionEvent.ACTION_MOVE:
@@ -223,9 +226,17 @@ final class BrainView extends View {
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                holding = false;
                 removeCallbacks(holdStart);
-                if (zoomed) { zoomed = false; zoomTarget = 1f; invalidate(); }
-                else if (e.getActionMasked() == MotionEvent.ACTION_UP && onTap != null) onTap.run();
+                if (zoomed) {                                   // let go after holding: lock at 200 % and drift across
+                    zoomed = false; locked = true; lockedAt = SystemClock.uptimeMillis(); zoomTarget = LOCK_ZOOM;
+                    lockX = fx; lockY = fy;
+                    invalidate();
+                } else if (locked && e.getActionMasked() == MotionEvent.ACTION_UP) {   // tap while locked: zoom out
+                    locked = false; zoomTarget = 1f;
+                    performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                    invalidate();
+                } else if (e.getActionMasked() == MotionEvent.ACTION_UP && onTap != null) onTap.run();
                 return true;
             default:
                 return true;
@@ -252,6 +263,12 @@ final class BrainView extends View {
         double ax = 0.25 + 0.05 * Math.sin(t / 9000.0);
         double sy = Math.sin(ay), cyy = Math.cos(ay), sx = Math.sin(ax), cxx = Math.cos(ax);
 
+        if (locked && !holding) {                       // auto-scroll: a slow loop across the brain from where you let go
+            double u = (now - lockedAt) / 1000.0;
+            float rx = w * 0.26f, ry = h * 0.18f, ease = (float) Math.min(1, u / 2.5);
+            float tx = cx + rx * (float) Math.sin(u * 0.21), ty = cy + ry * (float) Math.sin(u * 0.33 + 0.7);
+            fx = lockX + (tx - lockX) * ease; fy = lockY + (ty - lockY) * ease;
+        }
         zoom += (zoomTarget - zoom) * Math.min(1f, dt / 110f);
         if (Math.abs(zoom - zoomTarget) < 0.002f) zoom = zoomTarget;
         // sizes follow the brain: the small home-screen brain gets small dots (else it turns into a green blob)
@@ -364,7 +381,8 @@ final class BrainView extends View {
         }
         legend.setColor((clamp((int) (alphaScale * 110)) << 24) | 0xF4F1EC);
         cv.drawText("1 PUNKT ≈ 120 MIO. NEURONEN", x + dp(14), y + 3 * gap, legend);
-        cv.drawText(zoom > 1.05f ? "ZOOM " + Math.round(zoom * 100) + " % · LOSLASSEN ZUM ZURÜCK"
+        cv.drawText(locked && !zoomed ? "ZOOM 200 % · FÄHRT DURCHS GEHIRN · TIPPEN = RAUS"
+            : zoom > 1.05f ? "ZOOM " + Math.round(zoom * 100) + " % · LOSLASSEN = 200 % FIXIERT"
             : "HALTEN ZUM ZOOMEN", x + dp(14), y + 4 * gap, legend);
     }
 
