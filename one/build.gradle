@@ -16,6 +16,8 @@ android {
         targetSdk 35
         versionCode runNumber
         versionName "0.${runNumber}"
+        // "Hey Claude" uses Vosk's native speech engine: phones and tablets here are all 64-bit ARM
+        ndk { abiFilters 'arm64-v8a' }
     }
 
     signingConfigs {
@@ -44,4 +46,9 @@ android {
         abortOnError false
         checkReleaseBuilds false
     }
+}
+
+dependencies {
+    // offline speech recognition for "Hey Claude" (Apache-2.0); pulls in JNA
+    implementation 'com.alphacephei:vosk-android:0.3.75'
 }

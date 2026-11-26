@@ -94,7 +94,7 @@ public class OneHomeActivity extends Activity {
     private final Runnable endPeek = () -> { peeking = false; render(); };
     // the goal arriving from the other device (GoalSync.In writes prefs on the main thread) re-renders live
     private final SharedPreferences.OnSharedPreferenceChangeListener goalIn = (sp, k) -> {
-        if ("one_updated".equals(k) && editor != null && editor.getVisibility() != View.VISIBLE) render();
+        if (("one_updated".equals(k) || "one_private".equals(k)) && editor != null && editor.getVisibility() != View.VISIBLE) render();
     };
 
     private static final class App { String label, pkg, cls; Drawable icon; }
@@ -319,6 +319,7 @@ public class OneHomeActivity extends Activity {
             if (upd != null) upd.setVisibility(need ? View.VISIBLE : View.GONE);
         });
         if (getIntent() != null && getIntent().getBooleanExtra("play_m1", false)) main.postDelayed(this::playMusicOne, 600);
+        if (getIntent() != null && getIntent().hasExtra("hey")) { final String h = getIntent().getStringExtra("hey"); main.postDelayed(() -> heyCommand(h), 600); }
         new Thread(this::loadApps, "arc-one-apps").start();
     }
 
@@ -332,6 +333,10 @@ public class OneHomeActivity extends Activity {
         if (now() - appsLoadedAt > 5 * 60_000L) new Thread(this::loadApps, "arc-one-apps").start();
         if (updater != null) updater.check(false);
         if (brain != null) brain.start();
+        // keep "Hey Claude" alive: Android only lets the microphone service start while ARC One is on screen
+        if (HeyService.enabled(this) && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            try { startForegroundService(new Intent(this, HeyService.class)); } catch (RuntimeException ignored) { }
+        }
     }
 
     @Override protected void onPause() {
@@ -346,6 +351,7 @@ public class OneHomeActivity extends Activity {
         super.onNewIntent(i);
         if (SelfUpdater.ACTION.equals(i.getAction())) { updater.onStatus(i); return; }
         if (i.getBooleanExtra("play_m1", false)) { i.removeExtra("play_m1"); main.postDelayed(this::playMusicOne, 400); return; }
+        if (i.hasExtra("hey")) { String h = i.getStringExtra("hey"); i.removeExtra("hey"); heyCommand(h); return; }
         closeDrawer();
         if (editor.getVisibility() == View.VISIBLE) saveEditor();
     }
@@ -591,6 +597,46 @@ public class OneHomeActivity extends Activity {
         render();
     }
 
+    /* ---------------- Hey Claude: offline voice quick commands ---------------- */
+
+    private void toggleHey() {
+        if (HeyService.enabled(this)) { HeyService.stop(this); Toast.makeText(this, L.t("«Hey Claude» aus."), Toast.LENGTH_SHORT).show(); return; }
+        java.util.List<String> need = new java.util.ArrayList<>();
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            need.add(android.Manifest.permission.RECORD_AUDIO);
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            need.add(android.Manifest.permission.POST_NOTIFICATIONS);
+        if (!need.isEmpty()) { requestPermissions(need.toArray(new String[0]), 47); return; }
+        startHey();
+    }
+
+    @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        if (code != 47) return;
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) startHey();
+        else Toast.makeText(this, L.t("Ohne Mikrofon kann «Hey Claude» nicht zuhören."), Toast.LENGTH_LONG).show();
+    }
+
+    private void startHey() {
+        HeyService.start(this);
+        Toast.makeText(this, L.t("«Hey Claude» an. Beim ersten Mal lädt es das Sprachmodell (~40 MB). Sag: Hey Claude … siesta, music, goal, time, private, calm, guide."), Toast.LENGTH_LONG).show();
+        // music / calm / guide open ARC One from the background: Android only allows that with this permission
+        if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("hey_overlay_asked", false)) {
+            prefs.edit().putBoolean("hey_overlay_asked", true).apply();
+            main.postDelayed(() -> {
+                Toast.makeText(this, L.t("Damit «music», «calm» und «guide» auch aus anderen Apps gehen: «Über anderen Apps einblenden» erlauben."), Toast.LENGTH_LONG).show();
+                try { startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { }
+            }, 2500);
+        }
+    }
+
+    private void heyCommand(String h) {
+        closeDrawer();
+        if ("music".equals(h)) main.postDelayed(this::playMusicOne, 300);
+        else if ("calm".equals(h)) openCalm();
+        else if ("guide".equals(h)) startActivity(new Intent(this, GuideActivity.class));
+    }
+
     private void renderSiesta() {
         if (siestaBtn == null) return;
         long end = Siesta.endsAt(this);
@@ -708,6 +754,10 @@ public class OneHomeActivity extends Activity {
         guide.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, GuideActivity.class)); });
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-2, -2); gl.topMargin = dp(30);
         c.addView(guide, gl);
+        TextView hey = pill(HeyService.enabled(this) ? L.t("«Hey Claude» ausschalten") : L.t("«Hey Claude» einschalten (offline)"), CARD, INK);
+        hey.setOnClickListener(v -> { root.removeView(sheet); toggleHey(); });
+        LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2); hl.topMargin = dp(10);
+        c.addView(hey, hl);
         TextView norm = pill(L.t("Wie die meisten (Checkliste)"), CARD, INK);
         norm.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, NormActivity.class)); });
         LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2); nl.topMargin = dp(10);
