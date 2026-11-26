@@ -550,6 +550,13 @@ final class BtRemote {
                 if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
                 FlowService.notePeerAssert(); FlowService.followSync(c); return;
             }
+            if (cmd.equals("HANDOFF")) {                   // the other device pushed its music here (double tap)
+                String[] q = arg.split("\t", -1);
+                FlowService.noteHandoffIn();
+                LocalMedia.duck(c, false);
+                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
+                return;
+            }
             if (cmd.equals("SYNCOFF")) { FlowService.stopSyncLocal(c); return; }
             if (cmd.equals("SYNCJOIN")) { FlowService.notePeerAssert(); FlowService.followSync(c); return; }
             if (cmd.equals("SYNCPOS")) { LocalMedia.alignTo(c, plong(arg)); FlowService.notePeerAssert(); return; }

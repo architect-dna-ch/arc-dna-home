@@ -43,6 +43,33 @@ public class FlowService extends Service {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private PickupDetector det;
+    private KnockDetector knock;
+    private static volatile long sHandoffInAt;      // a HANDOFF just arrived here: don't pull it back on our own pickup
+
+    /** The peer pushed its music here (double tap). Called from BtRemote's receiver. */
+    static void noteHandoffIn() { sHandoffInAt = SystemClock.elapsedRealtime(); }
+
+    /** Push THIS device's music to the paired device: it plays the same track at the same second, and this
+     *  one pauses. Used by the double tap against the tablet, and safe to call from anywhere. */
+    public static void pushToPeer(final Context c) {
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            String[] n = LocalMedia.nowPlaying(app);
+            if (n == null || !"1".equals(n[3])) { toastOn(app, L.t("Hier läuft gerade nichts.")); return; }
+            long pos = parse(n[2]) + 1500;                       // the other side needs a moment to start
+            BtRemote.Link l = BtRemote.connect(app, null);
+            if (l == null) { toastOn(app, L.t("Tablet nicht erreicht – Bluetooth an? ARC-DNA dort offen?")); return; }
+            l.send("HANDOFF\t" + n[0] + "\t" + n[1] + "\t" + pos);
+            try { Thread.sleep(250); } catch (InterruptedException ignored) { }
+            l.close();
+            LocalMedia.pauseHere(app);
+            toastOn(app, L.t("→ Musik geht aufs andere Gerät."));
+        }, "arc-flow-push").start();
+    }
+
+    private static void toastOn(final Context c, final String s) {
+        new Handler(Looper.getMainLooper()).post(() -> { try { Toast.makeText(c, s, Toast.LENGTH_SHORT).show(); } catch (RuntimeException ignored) { } });
+    }
     private volatile boolean busy;
 
     /** The peer asserted itself (sent us a SYNC / SYNCPOS / DUCK). Called from BtRemote's receiver. */
@@ -163,6 +190,11 @@ public class FlowService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         goForeground();
         if (det == null) { det = new PickupDetector(this, this::onPickup); det.start(); }
+        // double tap against the other device while music plays here → it moves over
+        if (knock == null) {
+            knock = new KnockDetector(this, () -> { if (LocalMedia.isPlayingHere(this)) { vibrate(); pushToPeer(this); } });
+            knock.start();
+        }
         main.removeCallbacks(tick);
         main.postDelayed(tick, TICK);
         return START_STICKY;
@@ -184,6 +216,7 @@ public class FlowService extends Service {
     /** A pickup on this device: bring the music here (or, in sync mode, take the lead + quiet the peer). */
     private void onPickup() {
         if (busy) return;
+        if (SystemClock.elapsedRealtime() - sHandoffInAt < 10_000) return;   // we were just handed the music
         noteLocalPickup();
         final boolean sync = isSync(this);
         if (!sync && LocalMedia.isPlayingHere(this)) return;   // handoff: already here, nothing to do
@@ -209,6 +242,13 @@ public class FlowService extends Service {
                 busy = false;
             });
         }, "arc-flow-pull").start();
+    }
+
+    private void vibrate() {
+        try {
+            android.os.Vibrator v = getSystemService(android.os.Vibrator.class);
+            if (v != null && Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createOneShot(60, 200));
+        } catch (RuntimeException ignored) { }
     }
 
     private void toast(String s) { try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (RuntimeException ignored) { } }
@@ -244,6 +284,7 @@ public class FlowService extends Service {
     @Override public void onDestroy() {
         main.removeCallbacks(tick);
         if (det != null) { det.stop(); det = null; }
+        if (knock != null) { knock.stop(); knock = null; }
         super.onDestroy();
     }
 

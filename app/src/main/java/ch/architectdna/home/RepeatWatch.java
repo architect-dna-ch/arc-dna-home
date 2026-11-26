@@ -49,7 +49,7 @@ final class RepeatWatch {
         final long t0 = SystemClock.elapsedRealtime();
         final String[] anchor = {null};
         final int[] plays = {0};
-        final long[] lastPos = {0}, actedAt = {0}, anchorDur = {0}, quietSince = {0};
+        final long[] lastPos = {0}, actedAt = {0}, anchorDur = {0}, quietSince = {0}, userSkipAt = {0};
         loop = new Runnable() {
             @Override public void run() {
                 long now = SystemClock.elapsedRealtime();
@@ -73,7 +73,8 @@ final class RepeatWatch {
                             anchor[0] = title; plays[0] = 1; lastPos[0] = pos; anchorDur[0] = dur;
                         }
                     } else if (title.equals(anchor[0])) {
-                        if (lastPos[0] > 20_000 && pos < 5_000) {            // looped back to the start by itself
+                        boolean nearEnd = anchorDur[0] > 0 ? lastPos[0] > anchorDur[0] - 6_000 : lastPos[0] > 20_000;
+                        if (nearEnd && pos < 5_000) {                         // looped back to the start by itself
                             plays[0]++;
                             if (plays[0] > times) {
                                 if (each) { skipNext(m); anchor[0] = null; actedAt[0] = now; lastPos[0] = 0; }
@@ -82,8 +83,11 @@ final class RepeatWatch {
                         }
                         if (anchor[0] != null) { lastPos[0] = pos; if (dur > 0) anchorDur[0] = dur; }
                     } else if (!title.isEmpty() && now - actedAt[0] > 4000) { // the track changed
-                        boolean reachedEnd = anchorDur[0] <= 0 || lastPos[0] > anchorDur[0] - 10_000;
+                        // only an automatic move at the very end counts; unknown length or any earlier change = you skipped
+                        boolean reachedEnd = anchorDur[0] > 0 && lastPos[0] > anchorDur[0] - 6_000;
                         if (!reachedEnd) {                                   // you chose another song: follow it
+                            if (now - userSkipAt[0] < 60_000) { stop(); return; }   // skipping around: you're in charge
+                            userSkipAt[0] = now;
                             anchor[0] = title; plays[0] = 1; lastPos[0] = pos; anchorDur[0] = dur;
                         } else if (plays[0] < times) {                       // the player moved on too early
                             actedAt[0] = now;
@@ -92,7 +96,7 @@ final class RepeatWatch {
                             try { m.getTransportControls().skipToPrevious(); } catch (RuntimeException ignored) { }
                         } else if (each) {                                   // N plays done: this one is next
                             anchor[0] = title; plays[0] = 1; lastPos[0] = pos; anchorDur[0] = dur;
-                        } else { pause(m); stop(); return; }
+                        } else { if (!each) pause(m); stop(); return; }
                     }
                 } else if (anchor[0] == null && now - t0 > 20_000) { stop(); return; }
                 if (h != null) h.postDelayed(this, 1000);
