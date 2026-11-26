@@ -57,6 +57,7 @@ public class GuideActivity extends Activity {
     private int at;
     final Set<Integer> read = new HashSet<>();
     final Set<Integer> marked = new HashSet<>();
+    final Set<Integer> skipped = new HashSet<>();      // "Zu viel gerade": passed over gently, not failed
 
     private FrameLayout root;
     private ScrollView pageScroll;
@@ -154,6 +155,18 @@ public class GuideActivity extends Activity {
         act.setBackground(ab);
         pageBox.addView(act);
 
+        // the way out of any page that triggers: no reading streak lost, no judgement
+        TextView tooMuch = text(13, INK3, Typeface.DEFAULT);
+        tooMuch.setText("Zu viel gerade →  weiterblättern");
+        tooMuch.setPadding(0, dp(22), 0, dp(6));
+        tooMuch.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            skipped.add(at);
+            save();
+            go(Math.min(pages.size() - 1, at + 1));
+        });
+        pageBox.addView(tooMuch);
+
         // bottom: ‹  ♡  Karte  ›
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER_VERTICAL);
@@ -242,10 +255,25 @@ public class GuideActivity extends Activity {
         at = Math.max(0, Math.min(pages.size() - 1, prefs.getInt("at", 0)));
         for (String s : prefs.getString("read", "").split(",")) try { read.add(Integer.parseInt(s.trim())); } catch (RuntimeException ignored) { }
         for (String s : prefs.getString("marked", "").split(",")) try { marked.add(Integer.parseInt(s.trim())); } catch (RuntimeException ignored) { }
+        for (String s : prefs.getString("skipped", "").split(",")) try { skipped.add(Integer.parseInt(s.trim())); } catch (RuntimeException ignored) { }
+        if (prefs.getInt("v", 1) < 2) {                  // v2 put "Die Mitte" (6 pages) in as chapter 2, after page 5
+            read.clear(); read.addAll(shift(prefs.getString("read", "")));
+            marked.clear(); marked.addAll(shift(prefs.getString("marked", "")));
+            if (at >= 5) at += 6;
+            prefs.edit().putInt("v", 2).apply();
+            save();
+        }
     }
 
     private void save() {
-        prefs.edit().putInt("at", at).putString("read", join(read)).putString("marked", join(marked)).apply();
+        prefs.edit().putInt("at", at).putString("read", join(read)).putString("marked", join(marked))
+            .putString("skipped", join(skipped)).apply();
+    }
+
+    private static Set<Integer> shift(String csv) {
+        Set<Integer> out = new HashSet<>();
+        for (String s : csv.split(",")) try { int i = Integer.parseInt(s.trim()); out.add(i >= 5 ? i + 6 : i); } catch (RuntimeException ignored) { }
+        return out;
     }
 
     private static String join(Set<Integer> s) {
@@ -260,6 +288,7 @@ public class GuideActivity extends Activity {
     private void markRead(int i) {
         if (i < 0 || i >= pages.size() || read.contains(i)) return;
         read.add(i);
+        skipped.remove(i);
         String d = day(System.currentTimeMillis());
         String last = prefs.getString("day", "");
         int todayN = d.equals(last) ? prefs.getInt("todayN", 0) : 0;
@@ -355,7 +384,8 @@ public class GuideActivity extends Activity {
 
         TextView stats = text(13, INK2, Typeface.create("monospace", Typeface.NORMAL));
         int s = streak();
-        stats.setText(read.size() + " von " + pages.size() + " Seiten gelesen" + (s > 0 ? " · " + s + (s == 1 ? " Tag" : " Tage") + " in Folge" : ""));
+        stats.setText(read.size() + " von " + pages.size() + " Seiten gelesen" + (s > 0 ? " · " + s + (s == 1 ? " Tag" : " Tage") + " in Folge" : "")
+            + (skipped.isEmpty() ? "" : " · " + skipped.size() + " für später"));
         stats.setPadding(0, dp(6), 0, dp(18));
         c.addView(stats);
 

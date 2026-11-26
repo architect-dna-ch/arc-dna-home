@@ -78,6 +78,10 @@ final class GuideMapView extends View {
                     cv.drawCircle(px, py, g.dp(7), fill);
                     fill.setColor(ch.color);
                     cv.drawCircle(px, py, g.dp(3.6f), fill);
+                } else if (g.skipped.contains(idx)) {                     // set aside for later: a faint dash
+                    line.setStrokeWidth(g.dp(1.4f));
+                    line.setColor(withAlpha(ch.color, 70));
+                    cv.drawLine(px - g.dp(3.5f), py, px + g.dp(3.5f), py, line);
                 } else {
                     ring.setStrokeWidth(g.dp(1));
                     ring.setColor(withAlpha(ch.color, 110));

@@ -1,265 +1,329 @@
 {
-  "title": "ARC Guidebook",
-  "note": "Zitate aus Koran und Sunnah sind sinngemäss wiedergegeben, mit Quelle. Das hier ist kein Rechtsgutachten (Fatwa): wo es um Regeln geht, steht die Frage dabei, die du einem Imam stellen kannst.",
-  "chapters": [
+ "title": "ARC Guidebook",
+ "note": "Zitate aus Koran und Sunnah sind sinngemäss wiedergegeben, mit Quelle. Das hier ist kein Rechtsgutachten (Fatwa): wo es um Regeln geht, steht die Frage dabei, die du einem Imam stellen kannst.",
+ "chapters": [
+  {
+   "id": "gott",
+   "title": "Wer Gott ist",
+   "color": "#F2C66D",
+   "pages": [
     {
-      "id": "gott", "title": "Wer Gott ist", "color": "#F2C66D",
-      "pages": [
-        {
-          "t": "Er ist nah",
-          "q": "Wenn Meine Diener dich nach Mir fragen: Ich bin nahe. Ich antworte dem Rufenden, wenn er Mich ruft.",
-          "s": "Koran 2:186",
-          "x": "Bevor es um Regeln geht, geht es um Ihn. Der erste Satz, den Gott über sich sagt, wenn jemand nach Ihm fragt, ist nicht \"Ich bin streng\", sondern \"Ich bin nahe\". Kein Vermittler, keine Bedingung, keine perfekte Form. Rufen reicht. In einer anderen Stelle heisst es, Er sei dem Menschen näher als seine Halsschlagader (50:16). Das ist kein Bild für Überwachung, sondern für Nähe: Er kennt das, was du nicht einmal aussprechen kannst.",
-          "a": "Sag heute einmal, in deinen eigenen Worten, einen Satz zu Ihm. Keine Formel. Einfach: was gerade ist."
-        },
-        {
-          "t": "Ein Schritt, und Er kommt gerannt",
-          "q": "Wer sich Mir eine Spanne nähert, dem nähere Ich Mich eine Elle. Wer zu Mir geht, zu dem komme Ich gerannt.",
-          "s": "Hadith qudsi · Bukhari 7405, Muslim 2675",
-          "x": "Du hast es selbst erlebt: ein Atom Schritt, und Er hebt dich hoch. Genau das beschreibt dieser Hadith. Die Bewegung ist ungleich verteilt: dein kleiner Schritt, Seine grosse Antwort. Und: \"Wer auch nur das Gewicht eines Atoms an Gutem tut, wird es sehen\" (99:7). Nichts, was du ehrlich in Seine Richtung tust, ist zu klein, um zu zählen.",
-          "a": "Such dir heute einen Atom-Schritt aus: einer Person helfen, eine Sache ehrlich sagen, fünf Minuten Ruhe. Mach ihn bewusst für Ihn."
-        },
-        {
-          "t": "Barmherzigkeit zuerst",
-          "q": "Meine Barmherzigkeit umfasst alle Dinge.",
-          "s": "Koran 7:156",
-          "x": "Fast jede Sure beginnt mit \"Im Namen Gottes, des Allerbarmers, des Barmherzigen\". Zwei Namen, beide aus Rahma: Barmherzigkeit, verwandt mit dem Wort für Mutterleib. Der Prophet ﷺ erzählte, Gott habe die Barmherzigkeit in hundert Teile geteilt, einen davon in die Welt gegeben, aus dem alle Geschöpfe einander lieben, und neunundneunzig bei sich behalten (Bukhari 6000, Muslim 2752). Was du an Wärme zwischen Menschen siehst, ist ein Hundertstel.",
-          "a": "Achte heute auf einen Moment von Wärme zwischen Menschen (im Tram, im Laden). Denk daran: ein Hundertstel."
-        },
-        {
-          "t": "Verzweifle nicht",
-          "q": "Sag: O Meine Diener, die ihr gegen euch selbst masslos gewesen seid, verzweifelt nicht an der Barmherzigkeit Gottes. Gott vergibt alle Sünden.",
-          "s": "Koran 39:53",
-          "x": "Dieser Vers ist an Menschen gerichtet, die \"gegen sich selbst masslos\" waren. Nicht an die Perfekten. Gott spricht sie mit \"Meine Diener\" an, mitten in ihrer Masslosigkeit. Das Einzige, was der Vers verbietet, ist das Verzweifeln. Scham, die dich von Ihm wegtreibt, ist nicht von Ihm.",
-          "a": "Wenn heute ein Gedanke kommt wie \"bei mir ist es zu spät\": antworte innerlich mit 39:53."
-        },
-        {
-          "t": "Seine Namen",
-          "q": "Ihm gehören die schönsten Namen. So ruft Ihn damit an.",
-          "s": "Koran 7:180",
-          "x": "Statt über Qadr zu grübeln, was du nicht verstehen musst, lern Ihn über Seine Namen kennen. Al-Wadud: der Liebevolle (85:14). Al-Latif: der Feinfühlige, der das Kleine sieht. As-Salam: der Frieden. Al-Ghafur: der viel Vergebende. Ar-Rahim: der Barmherzige. Jeder Name ist eine Tür. Du kannst Ihn mit dem Namen rufen, der zu deinem Moment passt: bei Angst As-Salam, bei Scham Al-Ghafur, bei Einsamkeit Al-Wadud.",
-          "a": "Wähl einen Namen für diese Woche. Ruf Ihn damit an, wenn es eng wird."
-        }
-      ]
+     "t": "Er ist nah",
+     "q": "Wenn Meine Diener dich nach Mir fragen: Ich bin nahe. Ich antworte dem Rufenden, wenn er Mich ruft.",
+     "s": "Koran 2:186",
+     "x": "Bevor es um Regeln geht, geht es um Ihn. Der erste Satz, den Gott über sich sagt, wenn jemand nach Ihm fragt, ist nicht \"Ich bin streng\", sondern \"Ich bin nahe\". Kein Vermittler, keine Bedingung, keine perfekte Form. Rufen reicht. In einer anderen Stelle heisst es, Er sei dem Menschen näher als seine Halsschlagader (50:16). Das ist kein Bild für Überwachung, sondern für Nähe: Er kennt das, was du nicht einmal aussprechen kannst.",
+     "a": "Sag heute einmal, in deinen eigenen Worten, einen Satz zu Ihm. Keine Formel. Einfach: was gerade ist."
     },
     {
-      "id": "waswasa", "title": "Waswasa und Zwang", "color": "#8FD3C7",
-      "pages": [
-        {
-          "t": "Das ist klarer Glaube",
-          "q": "Einige Gefährten kamen zum Propheten und sagten: Wir finden in uns Gedanken, die wir kaum auszusprechen wagen. Er fragte: Findet ihr das wirklich? Sie sagten ja. Er sagte: Das ist klarer Glaube.",
-          "s": "Muslim 132",
-          "x": "Die Gefährten litten unter Gedanken, die sie entsetzten. Die Antwort des Propheten ﷺ war nicht \"Ihr seid schlecht\", sondern: dass euch das so quält, ist der Beweis eures Glaubens. Wer keinen Glauben hat, den stören solche Gedanken nicht. Der Zwang benutzt deine Aufrichtigkeit gegen dich. Das macht dich nicht schuldig, es macht dich aufrichtig.",
-          "a": "Wenn ein quälender Gedanke kommt, sag dir: \"Das ist Waswasa, nicht ich.\" Und dann bewusst nichts damit tun."
-        },
-        {
-          "t": "Gedanken zählen nicht",
-          "q": "Gott hat meiner Gemeinschaft vergeben, was ihnen durch den Kopf geht, solange sie nicht danach handeln oder es aussprechen.",
-          "s": "Bukhari 5269, Muslim 127",
-          "x": "Das ist eine der befreiendsten Aussagen für jemanden mit Zwang. Gedanken, Bilder, Zweifel, die von selbst kommen, werden dir nicht angerechnet. Du musst sie nicht prüfen, nicht widerlegen, nicht neutralisieren. Genau das Prüfen und Neutralisieren hält den Zwang am Leben. Die Psychologie sagt dasselbe: Zwangsgedanken werden schwächer, wenn man nicht auf sie antwortet.",
-          "a": "Heute eine Übung: Ein aufdringlicher Gedanke kommt. Du lässt ihn da, ohne Gegenformel. Zähl langsam bis 60. Er wird leiser."
-        },
-        {
-          "t": "Gewissheit schlägt Zweifel",
-          "q": "Wer im Gebet etwas spürt und zweifelt, ob er seine Waschung verloren hat, soll das Gebet nicht verlassen, bis er einen Laut hört oder einen Geruch wahrnimmt.",
-          "s": "Bukhari 137, Muslim 361",
-          "x": "Daraus haben die Gelehrten eine Grundregel gemacht: Gewissheit wird durch Zweifel nicht aufgehoben. Du hast die Waschung gemacht? Dann gilt sie, auch wenn der Kopf zweifelt. Für Menschen mit Waswasa sagen viele Gelehrte ausdrücklich: nicht wiederholen. Einmal Waschung, einmal Gebet, egal wie unvollkommen es sich anfühlt. Das Wiederholen ist nicht Frömmigkeit, sondern Futter für den Zwang.",
-          "a": "Frage an einen Imam: \"Ich habe Waswasa. Welche Erleichterungen gelten für mich bei Waschung und Gebet?\""
-        },
-        {
-          "t": "Die Religion ist leicht",
-          "q": "Die Religion ist leicht. Niemand übertreibt in der Religion, ohne dass sie ihn überwältigt. So haltet die Mitte, nähert euch an und freut euch.",
-          "s": "Bukhari 39",
-          "x": "\"Gott will für euch Erleichterung, nicht Erschwernis\" (2:185). \"Er hat euch in der Religion keine Bedrängnis auferlegt\" (22:78). Wenn deine Religionsausübung dich an den Rand des Todes bringt, dann ist das nicht die Religion, sondern eine Krankheit, die sich als Religion verkleidet. Den Zwang zu behandeln ist kein Abfall, sondern das, was die Religion selbst will.",
-          "a": "Schreib einen Satz auf, der dich an die Mitte erinnert, und leg ihn dorthin, wo du betest oder betest willst."
-        },
-        {
-          "t": "Hilfe holen ist Sunnah",
-          "q": "Gott hat keine Krankheit herabgesandt, ohne auch ein Heilmittel herabzusenden.",
-          "s": "Bukhari 5678",
-          "x": "Zwangsstörungen sind gut behandelbar. Die wirksamste Methode heisst Expositionstherapie mit Reaktionsverhinderung (ERP): Man lernt Schritt für Schritt, den Zwangsgedanken auszuhalten, ohne das Ritual auszuführen. Dein Hausarzt kann Psychotherapie verordnen; die Grundversicherung übernimmt sie. Wenn je wieder Gedanken an den Tod kommen: Die Dargebotene Hand, Telefon 143, rund um die Uhr. Im Notfall 144.",
-          "a": "Diese Woche: beim Hausarzt einen Termin abmachen und das Wort \"Zwangsgedanken\" aussprechen."
-        }
-      ]
+     "t": "Ein Schritt, und Er kommt gerannt",
+     "q": "Wer sich Mir eine Spanne nähert, dem nähere Ich Mich eine Elle. Wer zu Mir geht, zu dem komme Ich gerannt.",
+     "s": "Hadith qudsi · Bukhari 7405, Muslim 2675",
+     "x": "Du hast es selbst erlebt: ein Atom Schritt, und Er hebt dich hoch. Genau das beschreibt dieser Hadith. Die Bewegung ist ungleich verteilt: dein kleiner Schritt, Seine grosse Antwort. Und: \"Wer auch nur das Gewicht eines Atoms an Gutem tut, wird es sehen\" (99:7). Nichts, was du ehrlich in Seine Richtung tust, ist zu klein, um zu zählen.",
+     "a": "Such dir heute einen Atom-Schritt aus: einer Person helfen, eine Sache ehrlich sagen, fünf Minuten Ruhe. Mach ihn bewusst für Ihn."
     },
     {
-      "id": "gebet", "title": "Gebet ohne Angst", "color": "#9DB8FF",
-      "pages": [
-        {
-          "t": "Wofür das Gebet da ist",
-          "q": "Verrichte das Gebet zu Meinem Gedenken.",
-          "s": "Koran 20:14",
-          "x": "Das Gebet ist kein Test, den man besteht oder durchfällt. Es ist Gedenken, Erinnerung an Ihn. Der Prophet ﷺ sagte zu Bilal vor dem Gebet: \"Gib uns Ruhe damit\" (Abu Dawud 4985). Ruhe, nicht Prüfung. Wenn das Gebet für dich gerade Angst bedeutet, ist das ein Zeichen, dass der Zwang das Gebet besetzt hat, nicht dass du versagst.",
-          "a": "Denk heute an einen Moment, in dem du dich Gott nah gefühlt hast. Das ist, wofür das Gebet gemacht ist."
-        },
-        {
-          "t": "Wenig, aber beständig",
-          "q": "Die Taten, die Gott am meisten liebt, sind die beständigsten, auch wenn sie wenig sind.",
-          "s": "Bukhari 6464, Muslim 783",
-          "x": "Der Rückweg muss nicht von null auf fünf gehen. Fünf Versuche, die dich zerbrechen, sind nicht besser als ein Gebet, das du in Frieden schaffst. Fang klein an: Bittgebet in eigenen Worten, dann vielleicht ein Pflichtgebet am Tag, das du einmal und ohne Wiederholung machst. Bau erst Frieden auf, dann Menge. Dass das Gebet eine Pflicht bleibt, ändert sich nicht. Wie du dorthin zurückfindest, darf sanft sein.",
-          "a": "Frage an einen Imam, der Waswasa kennt: \"Wie finde ich schrittweise zum Gebet zurück, ohne dass der Zwang übernimmt?\""
-        },
-        {
-          "t": "Rufen geht immer",
-          "q": "Euer Herr sagt: Ruft Mich an, so erhöre Ich euch.",
-          "s": "Koran 40:60",
-          "x": "Das Bittgebet (Du'a) hat keine Waschung, keine Richtung, keine feste Zeit, keine Formel. Im Tram, im Bett, beim Laufen. Der Prophet ﷺ nannte es das Wesen der Anbetung. Solange das rituelle Gebet schwer ist, bleibt diese Tür ganz offen, und sie lässt sich nicht \"falsch\" machen.",
-          "a": "Heute Abend, vor dem Einschlafen: drei Sätze an Ihn. Was war gut, was war schwer, was brauchst du."
-        },
-        {
-          "t": "Erleichterung ist vorgesehen",
-          "q": "Der Prophet hat in Medina Gebete zusammengelegt, ohne Angst und ohne Reise. Ibn Abbas wurde gefragt warum. Er sagte: Er wollte seine Gemeinschaft nicht in Bedrängnis bringen.",
-          "s": "Muslim 705",
-          "x": "Das Gesetz kennt Erleichterungen: für Reisende, Kranke, für Not. Wie weit sie für jemanden mit Zwang reichen, darin unterscheiden sich die Gelehrten, deshalb hier keine Regel, sondern die Richtung: Die Religion hat Platz für deine Lage. Du musst dir das nicht selbst erlauben, du darfst es erfragen.",
-          "a": "Frage an einen Imam: \"Darf ich in meiner Lage Gebete zusammenlegen, solange ich in Behandlung bin?\""
-        }
-      ]
+     "t": "Barmherzigkeit zuerst",
+     "q": "Meine Barmherzigkeit umfasst alle Dinge.",
+     "s": "Koran 7:156",
+     "x": "Fast jede Sure beginnt mit \"Im Namen Gottes, des Allerbarmers, des Barmherzigen\". Zwei Namen, beide aus Rahma: Barmherzigkeit, verwandt mit dem Wort für Mutterleib. Der Prophet ﷺ erzählte, Gott habe die Barmherzigkeit in hundert Teile geteilt, einen davon in die Welt gegeben, aus dem alle Geschöpfe einander lieben, und neunundneunzig bei sich behalten (Bukhari 6000, Muslim 2752). Was du an Wärme zwischen Menschen siehst, ist ein Hundertstel.",
+     "a": "Achte heute auf einen Moment von Wärme zwischen Menschen (im Tram, im Laden). Denk daran: ein Hundertstel."
     },
     {
-      "id": "charakter", "title": "Charakter und Sanftheit", "color": "#E79AB8",
-      "pages": [
-        {
-          "t": "Dafür wurde er gesandt",
-          "q": "Ich wurde gesandt, um den edlen Charakter zu vervollkommnen.",
-          "s": "Ahmad 8952",
-          "x": "Der Prophet ﷺ fasst seine Mission nicht in Ritualen zusammen, sondern in Charakter. Wie du mit Menschen umgehst, ist nicht der Nebenteil der Religion, es ist ihr Ziel. Das heisst auch: An Tagen, an denen das Rituelle schwer ist, bleibt dir dieser Teil ganz.",
-          "a": "Wähle heute eine Person und sei bewusst freundlich, ohne Gegenleistung."
-        },
-        {
-          "t": "Gott ist sanft",
-          "q": "Gott ist sanft und liebt die Sanftheit in allen Dingen.",
-          "s": "Bukhari 6927, Muslim 2593",
-          "x": "Sanftheit ist keine Schwäche. Über den Propheten ﷺ sagt der Koran: \"Wärest du schroff und hartherzig gewesen, wären sie dir davongelaufen\" (3:159). Sanftheit heisst: langsamer sprechen, weicher formulieren, dem anderen einen guten Grund unterstellen. Sie ist lernbar wie ein Handwerk.",
-          "a": "Wenn heute etwas dich reizt: eine Sekunde Pause, dann leiser antworten als du willst."
-        },
-        {
-          "t": "Lächeln ist Sadaqa",
-          "q": "Dein Lächeln im Gesicht deines Bruders ist eine Spende.",
-          "s": "Tirmidhi 1956",
-          "x": "Die kleinste Form von Güte kostet nichts. Grüssen, lächeln, Tür aufhalten. In der Schweiz wird viel gegrüsst: im Treppenhaus, im Wald, im kleinen Laden. Das ist eine Gelegenheit, nicht eine Pflicht.",
-          "a": "Heute jede Person grüssen, an der du im Treppenhaus oder im Laden vorbeigehst."
-        },
-        {
-          "t": "Stärke ist Selbstbeherrschung",
-          "q": "Der Starke ist nicht der, der andere niederringt. Der Starke ist der, der sich im Zorn beherrscht.",
-          "s": "Bukhari 6114",
-          "x": "Wenn du dich zurückziehst und dann kalt wirst, ist das oft Schutz: Lieber abweisend als verletzlich. Stärke heisst hier: die Gefühle spüren und trotzdem freundlich bleiben. Der Prophet ﷺ riet bei Zorn: hinsetzen, wenn du stehst; Waschung machen; schweigen (Abu Dawud 4782).",
-          "a": "Merke heute einen Moment, in dem du abweisend werden willst. Nur bemerken, nicht verurteilen."
-        }
-      ]
+     "t": "Verzweifle nicht",
+     "q": "Sag: O Meine Diener, die ihr gegen euch selbst masslos gewesen seid, verzweifelt nicht an der Barmherzigkeit Gottes. Gott vergibt alle Sünden.",
+     "s": "Koran 39:53",
+     "x": "Dieser Vers ist an Menschen gerichtet, die \"gegen sich selbst masslos\" waren. Nicht an die Perfekten. Gott spricht sie mit \"Meine Diener\" an, mitten in ihrer Masslosigkeit. Das Einzige, was der Vers verbietet, ist das Verzweifeln. Scham, die dich von Ihm wegtreibt, ist nicht von Ihm.",
+     "a": "Wenn heute ein Gedanke kommt wie \"bei mir ist es zu spät\": antworte innerlich mit 39:53."
     },
     {
-      "id": "frauen", "title": "Frauen, Respekt, Liebe", "color": "#F49A8A",
-      "pages": [
-        {
-          "t": "Zuneigung ist Sein Zeichen",
-          "q": "Zu Seinen Zeichen gehört, dass Er euch aus euch selbst Gattinnen erschuf, damit ihr bei ihnen Ruhe findet. Und Er hat zwischen euch Zuneigung und Barmherzigkeit gesetzt.",
-          "s": "Koran 30:21",
-          "x": "Dass dir das Herz schmilzt, ist kein Fehler im System. Es ist eines Seiner Zeichen. Die Sehnsucht nach Nähe ist nicht gegen den Glauben, sie ist im Glauben angelegt. Die Frage ist nicht, ob du sie fühlen darfst, sondern wohin du sie lenkst: zu Respekt und, wenn es so weit ist, zur Ehe.",
-          "a": "Schreib heute einen Satz auf: Was für eine Ehe wünschst du dir? Nicht wer, sondern wie."
-        },
-        {
-          "t": "Die Besten zu ihren Frauen",
-          "q": "Die Besten unter euch sind die, die am besten zu ihren Frauen sind.",
-          "s": "Tirmidhi 3895",
-          "x": "Der Massstab für einen guten Mann ist im Islam nicht Stärke oder Frömmigkeit nach aussen, sondern wie er mit der Frau an seiner Seite umgeht. Das beginnt lange vor der Ehe: wie du mit Frauen allgemein sprichst, ob du zuhörst, ob du ehrlich bist.",
-          "a": "Im nächsten Gespräch mit einer Frau (Kassiererin, Kollegin, Nachbarin): Blick, Gruss, eine echte Frage. Normal, ruhig."
-        },
-        {
-          "t": "Nicht Distanz, sondern Würde",
-          "q": "Sag den gläubigen Männern, sie sollen ihre Blicke senken und ihre Keuschheit bewahren. Das ist reiner für sie.",
-          "s": "Koran 24:30",
-          "x": "Den Blick senken heisst nicht, Frauen zu meiden oder kalt zu sein. Es heisst: nicht anstarren, nicht konsumieren. Du kannst einer Frau freundlich in die Augen schauen, grüssen, reden, und gleichzeitig ihre Würde und deine wahren. Das Muster \"überwältigt sein, dann abweisend werden\" ist zwei Extreme. Die Mitte ist: respektvolle Normalität.",
-          "a": "Beobachte heute: Wann wirst du bei Frauen kalt? Was hättest du stattdessen sagen können?"
-        },
-        {
-          "t": "Alter und Herz",
-          "q": "Khadija war die erste Frau des Propheten. Sie war, nach der bekanntesten Überlieferung, rund fünfzehn Jahre älter als er.",
-          "s": "Sira, Ibn Hisham",
-          "x": "Du hast dich geschämt, einen Altersunterschied nicht gesehen zu haben. Der Prophet ﷺ heiratete eine Frau, die deutlich älter war, und liebte sie sein Leben lang. Der Altersunterschied war nicht dein Fehler. Was weh tut, ist die Bindung, die nicht wurde. Diese Trauer darf sein. Sie zeigt, dass du lieben kannst.",
-          "a": "Wenn heute der Gedanke \"ich werde nie heiraten\" kommt: ersetze ihn durch \"ich lerne gerade, wie\"."
-        },
-        {
-          "t": "Der Weg zur Ehe",
-          "q": "Wer von euch die Mittel hat zu heiraten, der soll heiraten. Wer nicht, der soll fasten, denn es ist ihm ein Schutz.",
-          "s": "Bukhari 5066",
-          "x": "Die Ehe kommt nicht aus dem Nichts. Sie kommt aus Stabilität (Arbeit, Wohnung, innere Ruhe) und aus Begegnung (Gemeinde, Familie, Freundeskreis, Vertrauenspersonen). Deine jetzigen Ziele, Arbeitsbemühungen und Wohnungssuche, sind keine Ablenkung davon, sie sind der Weg dorthin.",
-          "a": "Erzähl einer Person, der du vertraust, dass du ernsthaft heiraten möchtest. Laut aussprechen öffnet Türen."
-        }
-      ]
-    },
-    {
-      "id": "verlangen", "title": "Verlangen, Scham, echte Nähe", "color": "#C9A7FF",
-      "pages": [
-        {
-          "t": "Der Mensch ist schwach erschaffen",
-          "q": "Gott will euch Erleichterung verschaffen, denn der Mensch wurde schwach erschaffen.",
-          "s": "Koran 4:28",
-          "x": "Gott kennt dein Verlangen, Er hat es erschaffen. Der Koran erzählt von Yusuf, dem Propheten, der der Versuchung widerstand, und lässt ihn sagen: \"Ich spreche meine Seele nicht frei. Die Seele gebietet das Schlechte, ausser wem mein Herr sich erbarmt\" (12:53). Selbst ein Prophet sagt: aus eigener Kraft nicht.",
-          "a": "Sag heute ehrlich zu Gott: \"Ich schaffe das nicht allein.\" Das ist kein Versagen, das ist Yusufs Satz."
-        },
-        {
-          "t": "Die Besten der Fehlenden",
-          "q": "Alle Kinder Adams machen Fehler, und die besten von denen, die Fehler machen, sind die, die umkehren.",
-          "s": "Tirmidhi 2499",
-          "x": "Bei Pornografie ist der Islam eindeutig: Sie gehört nicht zum Weg. Ebenso eindeutig ist: Scham allein hat noch niemanden befreit. Die Spirale \"ausrutschen, sich hassen, isolieren, wieder ausrutschen\" wird durch Selbsthass schneller, nicht langsamer. Umkehr (Tawba) heisst: zurückkommen, wieder und wieder, ohne Buchhaltung der Schande.",
-          "a": "Wenn du rückfällig wirst: kein Selbsthass-Monolog. Ein Satz Tawba, Wasser trinken, raus an die Luft."
-        },
-        {
-          "t": "Was es dir eigentlich gibt",
-          "q": "Gott will euch klarmachen und euch rechtleiten.",
-          "s": "Koran 4:26",
-          "x": "Du hast selbst beobachtet: Damit warst du weniger isoliert, ohne konntest du nach zwei Tagen lernen und dich disziplinieren. Das ist ein wichtiger Hinweis. Es geht nicht nur um Lust, sondern um Einsamkeit und Verbindung. Wenn das Bedürfnis nach Nähe echt gestillt wird (Freunde, Gemeinschaft, Bewegung, später Ehe), verliert der Ersatz Kraft.",
-          "a": "Nach zwei Tagen Klarheit: Was hast du in diesen Tagen besser gekonnt? Schreib es auf. Das ist dein Grund."
-        },
-        {
-          "t": "Praktisch",
-          "q": "Bind dein Kamel an, und dann vertraue auf Gott.",
-          "s": "Tirmidhi 2517",
-          "x": "Vertrauen auf Gott ersetzt nicht das Anbinden. Konkret: Handy nachts nicht im Bett, sondern ausserhalb laden. Wissen, wann es gefährlich wird (spät, allein, erschöpft, nach Zurückweisung). In diesen Momenten etwas Körperliches tun: Liegestütze, kalt duschen, raus gehen. Und Menschen einplanen: ein Anruf, ein Treffen, ein Training. Ohne Mensch kein Ausweg aus der Isolation.",
-          "a": "Heute Abend: Handy ausserhalb des Schlafzimmers laden."
-        }
-      ]
-    },
-    {
-      "id": "schweiz", "title": "Leben in der Schweiz", "color": "#7FD08A",
-      "pages": [
-        {
-          "t": "Pünktlichkeit ist Vertrauen",
-          "q": "Die Zeichen des Heuchlers sind drei: Wenn er spricht, lügt er. Wenn er verspricht, bricht er es. Wenn ihm etwas anvertraut wird, veruntreut er es.",
-          "s": "Bukhari 33",
-          "x": "In der Schweiz ist Pünktlichkeit eine Form von Respekt. Fünf Minuten zu spät ohne Nachricht gilt als unhöflich. Hier treffen sich Schweizer Kultur und Sunnah genau: Ein Termin ist ein Versprechen. Wer pünktlich ist, sagt ohne Worte: Ich nehme dich ernst. Bei Vorstellungsgesprächen und auf Ämtern zählt das doppelt.",
-          "a": "Beim nächsten Termin fünf Minuten vor der Zeit da sein. Wenn es nicht geht: vorher eine Nachricht."
-        },
-        {
-          "t": "Grüssen, Sie und Du",
-          "q": "Verbreitet den Friedensgruss unter euch.",
-          "s": "Muslim 54",
-          "x": "In Bern: \"Grüessech\" bei Leuten, die man nicht kennt, \"Hoi\" oder \"Sali\" unter Bekannten. Erwachsene Fremde, Ämter, Arbeitgeber: \"Sie\", bis man das Du angeboten bekommt. Beim Gruss Blickkontakt. Beim Händedruck mit Frauen unterscheiden sich die Gelehrten. Viele Muslime in Europa geben die Hand, andere grüssen mit der Hand auf dem Herzen und erklären es freundlich. Wichtig ist, dass es respektvoll und nicht abweisend wirkt.",
-          "a": "Frage an einen Imam: \"Wie halte ich es mit dem Händedruck im Berufsleben in der Schweiz?\""
-        },
-        {
-          "t": "Nachbarn und Ruhe",
-          "q": "Jibril hat mir so lange ans Herz gelegt, gut zum Nachbarn zu sein, dass ich dachte, er würde ihn zum Erben machen.",
-          "s": "Bukhari 6014",
-          "x": "Schweizer Alltag hat ungeschriebene Regeln: Ruhezeiten (meist ab 22 Uhr und am Sonntag), Waschküchenplan, Abfall trennen und nur am richtigen Tag hinausstellen. Was manchen kleinlich vorkommt, ist im Kern Rücksicht, und Rücksicht auf Nachbarn ist im Islam fast so wichtig wie Verwandtschaft. Ein freundlicher Nachbar zu sein, ist hier eine stille Da'wa.",
-          "a": "Stell dich einer Nachbarin oder einem Nachbarn kurz vor, den du noch nicht kennst."
-        },
-        {
-          "t": "Apéro, Verein, Zugehörigkeit",
-          "q": "Wir haben euch zu Völkern und Stämmen gemacht, damit ihr einander kennenlernt.",
-          "s": "Koran 49:13",
-          "x": "Kontakte entstehen in der Schweiz oft über Vereine: Sport, Musik, Freiwilligenarbeit, Quartiertreff. Beim Apéro kann man Wasser oder Sirup nehmen, niemand muss trinken; ein freundliches \"nein danke, ich trinke keinen Alkohol\" reicht. Die Schweiz ist heute ein Mix aus vielen Kulturen. Du musst nicht zwischen muslimisch und schweizerisch wählen. Kennenlernen ist der Auftrag aus 49:13.",
-          "a": "Such dir einen Verein oder eine Gruppe in deiner Nähe heraus, die dich interessiert. Nur anschauen, noch nicht anmelden."
-        },
-        {
-          "t": "Direkt, aber höflich",
-          "q": "Sprecht zu den Menschen auf schöne Weise.",
-          "s": "Koran 2:83",
-          "x": "Schweizer Kommunikation ist oft zurückhaltend: Kritik kommt indirekt (\"das könnte man noch anschauen\"), Lob sparsam, Privates erst spät. Lautes Auftreten wirkt schnell aufdringlich. Gleichzeitig wird Ehrlichkeit geschätzt, wenn sie ruhig kommt. \"Auf schöne Weise sprechen\" heisst hier: klar in der Sache, weich im Ton.",
-          "a": "Formuliere heute eine Bitte oder Kritik bewusst weich: \"Wäre es möglich, dass …\""
-        }
-      ]
+     "t": "Seine Namen",
+     "q": "Ihm gehören die schönsten Namen. So ruft Ihn damit an.",
+     "s": "Koran 7:180",
+     "x": "Statt über Qadr zu grübeln, was du nicht verstehen musst, lern Ihn über Seine Namen kennen. Al-Wadud: der Liebevolle (85:14). Al-Latif: der Feinfühlige, der das Kleine sieht. As-Salam: der Frieden. Al-Ghafur: der viel Vergebende. Ar-Rahim: der Barmherzige. Jeder Name ist eine Tür. Du kannst Ihn mit dem Namen rufen, der zu deinem Moment passt: bei Angst As-Salam, bei Scham Al-Ghafur, bei Einsamkeit Al-Wadud.",
+     "a": "Wähl einen Namen für diese Woche. Ruf Ihn damit an, wenn es eng wird."
     }
-  ]
+   ]
+  },
+  {
+   "id": "mitte",
+   "title": "Die Mitte",
+   "color": "#E8B86B",
+   "pages": [
+    {
+     "t": "So liest du dieses Buch",
+     "q": "Nehmt euch nur so viele Taten vor, wie ihr tragen könnt.",
+     "s": "Bukhari 1970, Muslim 782",
+     "x": "Dieses Buch ist keine Liste von Regeln, die du abarbeiten musst. Es ist ein Begleiter. Wenn eine Seite dich triggert, dir eng wird oder der Zwang anspringt: tippe unten auf «Zu viel gerade» und blättere weiter. Das ist kein Versagen, das ist genau die Mitte. Du kannst jede Seite später lesen, oder nie.",
+     "a": "Wenn heute etwas zu viel wird: weiterblättern, durchatmen, Wasser trinken."
+    },
+    {
+     "t": "Der erste Blick gehört dir",
+     "q": "Ali, lass auf einen Blick keinen zweiten folgen. Der erste gehört dir, der zweite nicht.",
+     "s": "Abu Dawud 2149, Tirmidhi 2777",
+     "x": "Der erste Blick war nie verboten. Ein Gesicht sehen, eine Person erkennen, wissen, wer wer ist: das ist normales Leben. Gemeint ist nur das Hinstarren, das Konsumieren. Wer drei Jahre lang sogar den ersten Blick vermeidet, in falsche Züge steigt und Gesichter nicht kennt, ist strenger als die Sunnah. Das ist nicht mehr Frömmigkeit, das ist der Zwang, der eine kleine Regel grösser als dein Leben gemacht hat.",
+     "a": "Heute: Gesichter anschauen, Namen lernen. Freundlich, normal."
+    },
+    {
+     "t": "Die Übertreiber",
+     "q": "Zugrunde gehen die Übertreiber. Zugrunde gehen die Übertreiber. Zugrunde gehen die Übertreiber.",
+     "s": "Muslim 2670",
+     "x": "Der Prophet ﷺ hat es dreimal gesagt. Er warnte nicht nur vor zu wenig Religion, sondern genauso vor zu viel: vor Strenge, die Menschen kaputt macht. Als drei Männer sich vornahmen, nie zu schlafen, immer zu fasten und nie zu heiraten, sagte er: Ich bete und schlafe, ich faste und esse, und ich heirate. Wer sich von meiner Sunnah abwendet, gehört nicht zu mir (Bukhari 5063).",
+     "a": "Merke heute eine Stelle, an der du strenger bist, als es dir guttut. Nur bemerken."
+    },
+    {
+     "t": "Eine Gemeinschaft der Mitte",
+     "q": "So haben Wir euch zu einer Gemeinschaft der Mitte gemacht.",
+     "s": "Koran 2:143",
+     "x": "Balance ist nicht unislamisch, sie ist der Kern. Du siehst Schweizer, die ausgeglichen leben, und denkst, das sei das Gegenteil deiner Religion. Aber die Mitte ist genau das, was der Koran von dir will: nicht die Moschee-Blindheirat und nicht das Alles-egal, sondern ein Leben mit Respekt, Arbeit, Freundschaft, Freude und Gott darin.",
+     "a": "Schreib drei Dinge auf, die für dich zu einem ausgeglichenen Leben gehören."
+    },
+    {
+     "t": "Schritt für Schritt",
+     "q": "Sie fragen dich nach Wein und Glücksspiel. Sag: In beiden liegt grosse Sünde und auch Nutzen für die Menschen, doch die Sünde ist grösser als der Nutzen.",
+     "s": "Koran 2:219",
+     "x": "Das Alkoholverbot kam nicht auf einmal, sondern in Stufen, über Jahre. Gott hat Menschen Zeit gegeben, sich zu verändern. Du musst nicht alle Regeln gleichzeitig aufnehmen: nicht Musik, Filme, Blick und Gebet auf einmal. Deine Reihenfolge jetzt: Gesundheit, Stabilität, Schule, Arbeit. Der Rest hat Zeit. Wenn dich der Gedanke an \"alles aufgeben\" wütend macht, sagt dir das nur: zu viel auf einmal.",
+     "a": "Wähle eine einzige Sache, an der du gerade arbeitest. Nur eine."
+    },
+    {
+     "t": "Normales Leben ist erlaubt",
+     "q": "Eine Frau kam zum Propheten und sagte: Die Männer haben deine ganze Zeit. Gib uns einen Tag. Und er gab ihnen einen Tag und lehrte sie.",
+     "s": "Bukhari 101",
+     "x": "Frauen und Männer lebten zur Zeit des Propheten ﷺ nicht in getrennten Welten. Frauen stellten öffentlich Fragen, beteten in der Moschee, handelten auf dem Markt. Mit Klassenkameradinnen zu Mittag essen, mit Respekt und Freundlichkeit, ist kein Fehltritt. Es ist genau die gesunde Mitte zwischen Kälte und Grenzenlosigkeit.",
+     "a": "Wenn sich heute eine Gelegenheit ergibt: dazusetzen, zuhören, eine echte Frage stellen."
+    }
+   ]
+  },
+  {
+   "id": "waswasa",
+   "title": "Waswasa und Zwang",
+   "color": "#8FD3C7",
+   "pages": [
+    {
+     "t": "Das ist klarer Glaube",
+     "q": "Einige Gefährten kamen zum Propheten und sagten: Wir finden in uns Gedanken, die wir kaum auszusprechen wagen. Er fragte: Findet ihr das wirklich? Sie sagten ja. Er sagte: Das ist klarer Glaube.",
+     "s": "Muslim 132",
+     "x": "Die Gefährten litten unter Gedanken, die sie entsetzten. Die Antwort des Propheten ﷺ war nicht \"Ihr seid schlecht\", sondern: dass euch das so quält, ist der Beweis eures Glaubens. Wer keinen Glauben hat, den stören solche Gedanken nicht. Der Zwang benutzt deine Aufrichtigkeit gegen dich. Das macht dich nicht schuldig, es macht dich aufrichtig.",
+     "a": "Wenn ein quälender Gedanke kommt, sag dir: \"Das ist Waswasa, nicht ich.\" Und dann bewusst nichts damit tun."
+    },
+    {
+     "t": "Gedanken zählen nicht",
+     "q": "Gott hat meiner Gemeinschaft vergeben, was ihnen durch den Kopf geht, solange sie nicht danach handeln oder es aussprechen.",
+     "s": "Bukhari 5269, Muslim 127",
+     "x": "Das ist eine der befreiendsten Aussagen für jemanden mit Zwang. Gedanken, Bilder, Zweifel, die von selbst kommen, werden dir nicht angerechnet. Du musst sie nicht prüfen, nicht widerlegen, nicht neutralisieren. Genau das Prüfen und Neutralisieren hält den Zwang am Leben. Die Psychologie sagt dasselbe: Zwangsgedanken werden schwächer, wenn man nicht auf sie antwortet.",
+     "a": "Heute eine Übung: Ein aufdringlicher Gedanke kommt. Du lässt ihn da, ohne Gegenformel. Zähl langsam bis 60. Er wird leiser."
+    },
+    {
+     "t": "Gewissheit schlägt Zweifel",
+     "q": "Wer im Gebet etwas spürt und zweifelt, ob er seine Waschung verloren hat, soll das Gebet nicht verlassen, bis er einen Laut hört oder einen Geruch wahrnimmt.",
+     "s": "Bukhari 137, Muslim 361",
+     "x": "Daraus haben die Gelehrten eine Grundregel gemacht: Gewissheit wird durch Zweifel nicht aufgehoben. Du hast die Waschung gemacht? Dann gilt sie, auch wenn der Kopf zweifelt. Für Menschen mit Waswasa sagen viele Gelehrte ausdrücklich: nicht wiederholen. Einmal Waschung, einmal Gebet, egal wie unvollkommen es sich anfühlt. Das Wiederholen ist nicht Frömmigkeit, sondern Futter für den Zwang.",
+     "a": "Frage an einen Imam: \"Ich habe Waswasa. Welche Erleichterungen gelten für mich bei Waschung und Gebet?\""
+    },
+    {
+     "t": "Die Religion ist leicht",
+     "q": "Die Religion ist leicht. Niemand übertreibt in der Religion, ohne dass sie ihn überwältigt. So haltet die Mitte, nähert euch an und freut euch.",
+     "s": "Bukhari 39",
+     "x": "\"Gott will für euch Erleichterung, nicht Erschwernis\" (2:185). \"Er hat euch in der Religion keine Bedrängnis auferlegt\" (22:78). Wenn deine Religionsausübung dich an den Rand des Todes bringt, dann ist das nicht die Religion, sondern eine Krankheit, die sich als Religion verkleidet. Den Zwang zu behandeln ist kein Abfall, sondern das, was die Religion selbst will.",
+     "a": "Schreib einen Satz auf, der dich an die Mitte erinnert, und leg ihn dorthin, wo du betest oder betest willst."
+    },
+    {
+     "t": "Hilfe holen ist Sunnah",
+     "q": "Gott hat keine Krankheit herabgesandt, ohne auch ein Heilmittel herabzusenden.",
+     "s": "Bukhari 5678",
+     "x": "Zwangsstörungen sind gut behandelbar. Die wirksamste Methode heisst Expositionstherapie mit Reaktionsverhinderung (ERP): Man lernt Schritt für Schritt, den Zwangsgedanken auszuhalten, ohne das Ritual auszuführen. Dein Hausarzt kann Psychotherapie verordnen; die Grundversicherung übernimmt sie. Wenn je wieder Gedanken an den Tod kommen: Die Dargebotene Hand, Telefon 143, rund um die Uhr. Im Notfall 144.",
+     "a": "Diese Woche: beim Hausarzt einen Termin abmachen und das Wort \"Zwangsgedanken\" aussprechen."
+    }
+   ]
+  },
+  {
+   "id": "gebet",
+   "title": "Gebet ohne Angst",
+   "color": "#9DB8FF",
+   "pages": [
+    {
+     "t": "Wofür das Gebet da ist",
+     "q": "Verrichte das Gebet zu Meinem Gedenken.",
+     "s": "Koran 20:14",
+     "x": "Das Gebet ist kein Test, den man besteht oder durchfällt. Es ist Gedenken, Erinnerung an Ihn. Der Prophet ﷺ sagte zu Bilal vor dem Gebet: \"Gib uns Ruhe damit\" (Abu Dawud 4985). Ruhe, nicht Prüfung. Wenn das Gebet für dich gerade Angst bedeutet, ist das ein Zeichen, dass der Zwang das Gebet besetzt hat, nicht dass du versagst.",
+     "a": "Denk heute an einen Moment, in dem du dich Gott nah gefühlt hast. Das ist, wofür das Gebet gemacht ist."
+    },
+    {
+     "t": "Wenig, aber beständig",
+     "q": "Die Taten, die Gott am meisten liebt, sind die beständigsten, auch wenn sie wenig sind.",
+     "s": "Bukhari 6464, Muslim 783",
+     "x": "Der Rückweg muss nicht von null auf fünf gehen. Fünf Versuche, die dich zerbrechen, sind nicht besser als ein Gebet, das du in Frieden schaffst. Fang klein an: Bittgebet in eigenen Worten, dann vielleicht ein Pflichtgebet am Tag, das du einmal und ohne Wiederholung machst. Bau erst Frieden auf, dann Menge. Dass das Gebet eine Pflicht bleibt, ändert sich nicht. Wie du dorthin zurückfindest, darf sanft sein.",
+     "a": "Frage an einen Imam, der Waswasa kennt: \"Wie finde ich schrittweise zum Gebet zurück, ohne dass der Zwang übernimmt?\""
+    },
+    {
+     "t": "Rufen geht immer",
+     "q": "Euer Herr sagt: Ruft Mich an, so erhöre Ich euch.",
+     "s": "Koran 40:60",
+     "x": "Das Bittgebet (Du'a) hat keine Waschung, keine Richtung, keine feste Zeit, keine Formel. Im Tram, im Bett, beim Laufen. Der Prophet ﷺ nannte es das Wesen der Anbetung. Solange das rituelle Gebet schwer ist, bleibt diese Tür ganz offen, und sie lässt sich nicht \"falsch\" machen.",
+     "a": "Heute Abend, vor dem Einschlafen: drei Sätze an Ihn. Was war gut, was war schwer, was brauchst du."
+    },
+    {
+     "t": "Erleichterung ist vorgesehen",
+     "q": "Der Prophet hat in Medina Gebete zusammengelegt, ohne Angst und ohne Reise. Ibn Abbas wurde gefragt warum. Er sagte: Er wollte seine Gemeinschaft nicht in Bedrängnis bringen.",
+     "s": "Muslim 705",
+     "x": "Das Gesetz kennt Erleichterungen: für Reisende, Kranke, für Not. Wie weit sie für jemanden mit Zwang reichen, darin unterscheiden sich die Gelehrten, deshalb hier keine Regel, sondern die Richtung: Die Religion hat Platz für deine Lage. Du musst dir das nicht selbst erlauben, du darfst es erfragen.",
+     "a": "Frage an einen Imam: \"Darf ich in meiner Lage Gebete zusammenlegen, solange ich in Behandlung bin?\""
+    }
+   ]
+  },
+  {
+   "id": "charakter",
+   "title": "Charakter und Sanftheit",
+   "color": "#E79AB8",
+   "pages": [
+    {
+     "t": "Dafür wurde er gesandt",
+     "q": "Ich wurde gesandt, um den edlen Charakter zu vervollkommnen.",
+     "s": "Ahmad 8952",
+     "x": "Der Prophet ﷺ fasst seine Mission nicht in Ritualen zusammen, sondern in Charakter. Wie du mit Menschen umgehst, ist nicht der Nebenteil der Religion, es ist ihr Ziel. Das heisst auch: An Tagen, an denen das Rituelle schwer ist, bleibt dir dieser Teil ganz.",
+     "a": "Wähle heute eine Person und sei bewusst freundlich, ohne Gegenleistung."
+    },
+    {
+     "t": "Gott ist sanft",
+     "q": "Gott ist sanft und liebt die Sanftheit in allen Dingen.",
+     "s": "Bukhari 6927, Muslim 2593",
+     "x": "Sanftheit ist keine Schwäche. Über den Propheten ﷺ sagt der Koran: \"Wärest du schroff und hartherzig gewesen, wären sie dir davongelaufen\" (3:159). Sanftheit heisst: langsamer sprechen, weicher formulieren, dem anderen einen guten Grund unterstellen. Sie ist lernbar wie ein Handwerk.",
+     "a": "Wenn heute etwas dich reizt: eine Sekunde Pause, dann leiser antworten als du willst."
+    },
+    {
+     "t": "Lächeln ist Sadaqa",
+     "q": "Dein Lächeln im Gesicht deines Bruders ist eine Spende.",
+     "s": "Tirmidhi 1956",
+     "x": "Die kleinste Form von Güte kostet nichts. Grüssen, lächeln, Tür aufhalten. In der Schweiz wird viel gegrüsst: im Treppenhaus, im Wald, im kleinen Laden. Das ist eine Gelegenheit, nicht eine Pflicht.",
+     "a": "Heute jede Person grüssen, an der du im Treppenhaus oder im Laden vorbeigehst."
+    },
+    {
+     "t": "Stärke ist Selbstbeherrschung",
+     "q": "Der Starke ist nicht der, der andere niederringt. Der Starke ist der, der sich im Zorn beherrscht.",
+     "s": "Bukhari 6114",
+     "x": "Wenn du dich zurückziehst und dann kalt wirst, ist das oft Schutz: Lieber abweisend als verletzlich. Stärke heisst hier: die Gefühle spüren und trotzdem freundlich bleiben. Der Prophet ﷺ riet bei Zorn: hinsetzen, wenn du stehst; Waschung machen; schweigen (Abu Dawud 4782).",
+     "a": "Merke heute einen Moment, in dem du abweisend werden willst. Nur bemerken, nicht verurteilen."
+    }
+   ]
+  },
+  {
+   "id": "frauen",
+   "title": "Frauen, Respekt, Liebe",
+   "color": "#F49A8A",
+   "pages": [
+    {
+     "t": "Zuneigung ist Sein Zeichen",
+     "q": "Zu Seinen Zeichen gehört, dass Er euch aus euch selbst Gattinnen erschuf, damit ihr bei ihnen Ruhe findet. Und Er hat zwischen euch Zuneigung und Barmherzigkeit gesetzt.",
+     "s": "Koran 30:21",
+     "x": "Dass dir das Herz schmilzt, ist kein Fehler im System. Es ist eines Seiner Zeichen. Die Sehnsucht nach Nähe ist nicht gegen den Glauben, sie ist im Glauben angelegt. Die Frage ist nicht, ob du sie fühlen darfst, sondern wohin du sie lenkst: zu Respekt und, wenn es so weit ist, zur Ehe.",
+     "a": "Schreib heute einen Satz auf: Was für eine Ehe wünschst du dir? Nicht wer, sondern wie."
+    },
+    {
+     "t": "Die Besten zu ihren Frauen",
+     "q": "Die Besten unter euch sind die, die am besten zu ihren Frauen sind.",
+     "s": "Tirmidhi 3895",
+     "x": "Der Massstab für einen guten Mann ist im Islam nicht Stärke oder Frömmigkeit nach aussen, sondern wie er mit der Frau an seiner Seite umgeht. Das beginnt lange vor der Ehe: wie du mit Frauen allgemein sprichst, ob du zuhörst, ob du ehrlich bist.",
+     "a": "Im nächsten Gespräch mit einer Frau (Kassiererin, Kollegin, Nachbarin): Blick, Gruss, eine echte Frage. Normal, ruhig."
+    },
+    {
+     "t": "Nicht Distanz, sondern Würde",
+     "q": "Sag den gläubigen Männern, sie sollen ihre Blicke senken und ihre Keuschheit bewahren. Das ist reiner für sie.",
+     "s": "Koran 24:30",
+     "x": "Den Blick senken heisst nicht, Frauen zu meiden oder kalt zu sein. Es heisst: nicht anstarren, nicht konsumieren. Du kannst einer Frau freundlich in die Augen schauen, grüssen, reden, und gleichzeitig ihre Würde und deine wahren. Das Muster \"überwältigt sein, dann abweisend werden\" ist zwei Extreme. Die Mitte ist: respektvolle Normalität.",
+     "a": "Beobachte heute: Wann wirst du bei Frauen kalt? Was hättest du stattdessen sagen können?"
+    },
+    {
+     "t": "Alter und Herz",
+     "q": "Khadija war die erste Frau des Propheten. Sie war, nach der bekanntesten Überlieferung, rund fünfzehn Jahre älter als er.",
+     "s": "Sira, Ibn Hisham",
+     "x": "Du hast dich geschämt, einen Altersunterschied nicht gesehen zu haben. Der Prophet ﷺ heiratete eine Frau, die deutlich älter war, und liebte sie sein Leben lang. Der Altersunterschied war nicht dein Fehler. Was weh tut, ist die Bindung, die nicht wurde. Diese Trauer darf sein. Sie zeigt, dass du lieben kannst.",
+     "a": "Wenn heute der Gedanke \"ich werde nie heiraten\" kommt: ersetze ihn durch \"ich lerne gerade, wie\"."
+    },
+    {
+     "t": "Der Weg zur Ehe",
+     "q": "Wer von euch die Mittel hat zu heiraten, der soll heiraten. Wer nicht, der soll fasten, denn es ist ihm ein Schutz.",
+     "s": "Bukhari 5066",
+     "x": "Die Ehe kommt nicht aus dem Nichts. Sie kommt aus Stabilität (Arbeit, Wohnung, innere Ruhe) und aus Begegnung (Gemeinde, Familie, Freundeskreis, Vertrauenspersonen). Deine jetzigen Ziele, Arbeitsbemühungen und Wohnungssuche, sind keine Ablenkung davon, sie sind der Weg dorthin.",
+     "a": "Erzähl einer Person, der du vertraust, dass du ernsthaft heiraten möchtest. Laut aussprechen öffnet Türen."
+    }
+   ]
+  },
+  {
+   "id": "verlangen",
+   "title": "Verlangen, Scham, echte Nähe",
+   "color": "#C9A7FF",
+   "pages": [
+    {
+     "t": "Der Mensch ist schwach erschaffen",
+     "q": "Gott will euch Erleichterung verschaffen, denn der Mensch wurde schwach erschaffen.",
+     "s": "Koran 4:28",
+     "x": "Gott kennt dein Verlangen, Er hat es erschaffen. Der Koran erzählt von Yusuf, dem Propheten, der der Versuchung widerstand, und lässt ihn sagen: \"Ich spreche meine Seele nicht frei. Die Seele gebietet das Schlechte, ausser wem mein Herr sich erbarmt\" (12:53). Selbst ein Prophet sagt: aus eigener Kraft nicht.",
+     "a": "Sag heute ehrlich zu Gott: \"Ich schaffe das nicht allein.\" Das ist kein Versagen, das ist Yusufs Satz."
+    },
+    {
+     "t": "Die Besten der Fehlenden",
+     "q": "Alle Kinder Adams machen Fehler, und die besten von denen, die Fehler machen, sind die, die umkehren.",
+     "s": "Tirmidhi 2499",
+     "x": "Bei Pornografie ist der Islam eindeutig: Sie gehört nicht zum Weg. Ebenso eindeutig ist: Scham allein hat noch niemanden befreit. Die Spirale \"ausrutschen, sich hassen, isolieren, wieder ausrutschen\" wird durch Selbsthass schneller, nicht langsamer. Umkehr (Tawba) heisst: zurückkommen, wieder und wieder, ohne Buchhaltung der Schande.",
+     "a": "Wenn du rückfällig wirst: kein Selbsthass-Monolog. Ein Satz Tawba, Wasser trinken, raus an die Luft."
+    },
+    {
+     "t": "Was es dir eigentlich gibt",
+     "q": "Gott will euch klarmachen und euch rechtleiten.",
+     "s": "Koran 4:26",
+     "x": "Du hast selbst beobachtet: Damit warst du weniger isoliert, ohne konntest du nach zwei Tagen lernen und dich disziplinieren. Das ist ein wichtiger Hinweis. Es geht nicht nur um Lust, sondern um Einsamkeit und Verbindung. Wenn das Bedürfnis nach Nähe echt gestillt wird (Freunde, Gemeinschaft, Bewegung, später Ehe), verliert der Ersatz Kraft.",
+     "a": "Nach zwei Tagen Klarheit: Was hast du in diesen Tagen besser gekonnt? Schreib es auf. Das ist dein Grund."
+    },
+    {
+     "t": "Praktisch",
+     "q": "Bind dein Kamel an, und dann vertraue auf Gott.",
+     "s": "Tirmidhi 2517",
+     "x": "Vertrauen auf Gott ersetzt nicht das Anbinden. Konkret: Handy nachts nicht im Bett, sondern ausserhalb laden. Wissen, wann es gefährlich wird (spät, allein, erschöpft, nach Zurückweisung). In diesen Momenten etwas Körperliches tun: Liegestütze, kalt duschen, raus gehen. Und Menschen einplanen: ein Anruf, ein Treffen, ein Training. Ohne Mensch kein Ausweg aus der Isolation.",
+     "a": "Heute Abend: Handy ausserhalb des Schlafzimmers laden."
+    }
+   ]
+  },
+  {
+   "id": "schweiz",
+   "title": "Leben in der Schweiz",
+   "color": "#7FD08A",
+   "pages": [
+    {
+     "t": "Pünktlichkeit ist Vertrauen",
+     "q": "Die Zeichen des Heuchlers sind drei: Wenn er spricht, lügt er. Wenn er verspricht, bricht er es. Wenn ihm etwas anvertraut wird, veruntreut er es.",
+     "s": "Bukhari 33",
+     "x": "In der Schweiz ist Pünktlichkeit eine Form von Respekt. Fünf Minuten zu spät ohne Nachricht gilt als unhöflich. Hier treffen sich Schweizer Kultur und Sunnah genau: Ein Termin ist ein Versprechen. Wer pünktlich ist, sagt ohne Worte: Ich nehme dich ernst. Bei Vorstellungsgesprächen und auf Ämtern zählt das doppelt.",
+     "a": "Beim nächsten Termin fünf Minuten vor der Zeit da sein. Wenn es nicht geht: vorher eine Nachricht."
+    },
+    {
+     "t": "Grüssen, Sie und Du",
+     "q": "Verbreitet den Friedensgruss unter euch.",
+     "s": "Muslim 54",
+     "x": "In Bern: \"Grüessech\" bei Leuten, die man nicht kennt, \"Hoi\" oder \"Sali\" unter Bekannten. Erwachsene Fremde, Ämter, Arbeitgeber: \"Sie\", bis man das Du angeboten bekommt. Beim Gruss Blickkontakt. Beim Händedruck mit Frauen unterscheiden sich die Gelehrten. Viele Muslime in Europa geben die Hand, andere grüssen mit der Hand auf dem Herzen und erklären es freundlich. Wichtig ist, dass es respektvoll und nicht abweisend wirkt.",
+     "a": "Frage an einen Imam: \"Wie halte ich es mit dem Händedruck im Berufsleben in der Schweiz?\""
+    },
+    {
+     "t": "Nachbarn und Ruhe",
+     "q": "Jibril hat mir so lange ans Herz gelegt, gut zum Nachbarn zu sein, dass ich dachte, er würde ihn zum Erben machen.",
+     "s": "Bukhari 6014",
+     "x": "Schweizer Alltag hat ungeschriebene Regeln: Ruhezeiten (meist ab 22 Uhr und am Sonntag), Waschküchenplan, Abfall trennen und nur am richtigen Tag hinausstellen. Was manchen kleinlich vorkommt, ist im Kern Rücksicht, und Rücksicht auf Nachbarn ist im Islam fast so wichtig wie Verwandtschaft. Ein freundlicher Nachbar zu sein, ist hier eine stille Da'wa.",
+     "a": "Stell dich einer Nachbarin oder einem Nachbarn kurz vor, den du noch nicht kennst."
+    },
+    {
+     "t": "Apéro, Verein, Zugehörigkeit",
+     "q": "Wir haben euch zu Völkern und Stämmen gemacht, damit ihr einander kennenlernt.",
+     "s": "Koran 49:13",
+     "x": "Kontakte entstehen in der Schweiz oft über Vereine: Sport, Musik, Freiwilligenarbeit, Quartiertreff. Beim Apéro kann man Wasser oder Sirup nehmen, niemand muss trinken; ein freundliches \"nein danke, ich trinke keinen Alkohol\" reicht. Die Schweiz ist heute ein Mix aus vielen Kulturen. Du musst nicht zwischen muslimisch und schweizerisch wählen. Kennenlernen ist der Auftrag aus 49:13.",
+     "a": "Such dir einen Verein oder eine Gruppe in deiner Nähe heraus, die dich interessiert. Nur anschauen, noch nicht anmelden."
+    },
+    {
+     "t": "Direkt, aber höflich",
+     "q": "Sprecht zu den Menschen auf schöne Weise.",
+     "s": "Koran 2:83",
+     "x": "Schweizer Kommunikation ist oft zurückhaltend: Kritik kommt indirekt (\"das könnte man noch anschauen\"), Lob sparsam, Privates erst spät. Lautes Auftreten wirkt schnell aufdringlich. Gleichzeitig wird Ehrlichkeit geschätzt, wenn sie ruhig kommt. \"Auf schöne Weise sprechen\" heisst hier: klar in der Sache, weich im Ton.",
+     "a": "Formuliere heute eine Bitte oder Kritik bewusst weich: \"Wäre es möglich, dass …\""
+    }
+   ]
+  }
+ ],
+ "version": 2
 }
