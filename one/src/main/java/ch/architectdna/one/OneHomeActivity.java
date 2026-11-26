@@ -90,6 +90,7 @@ public class OneHomeActivity extends Activity {
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
     private boolean peeking;
+    private static boolean awayTracked;
     private TextView siestaBtn;
     private final Runnable endPeek = () -> { peeking = false; render(); };
     // the goal arriving from the other device (GoalSync.In writes prefs on the main thread) re-renders live
@@ -102,6 +103,7 @@ public class OneHomeActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         prefs = getSharedPreferences("home", MODE_PRIVATE);
+        if (!awayTracked) { awayTracked = true; Purpose.track(getApplication()); }   // check in when you leave ARC One
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
 
@@ -767,6 +769,12 @@ public class OneHomeActivity extends Activity {
             Toast.makeText(this, on ? L.t("«Wozu?» an.") : L.t("«Wozu?» aus."), Toast.LENGTH_SHORT).show(); });
         LinearLayout.LayoutParams pul = new LinearLayout.LayoutParams(-2, -2); pul.topMargin = dp(10);
         c.addView(purp, pul);
+        TextView awayB = pill(Purpose.awayOn(this) ? L.t("Check-in alle 10 Min. ausschalten") : L.t("Check-in alle 10 Min. einschalten"), CARD, INK);
+        awayB.setOnClickListener(v -> { root.removeView(sheet); boolean on = !Purpose.awayOn(this);
+            Purpose.prefs(this).edit().putBoolean("away_on", on).apply();
+            Toast.makeText(this, on ? L.t("ARC One fragt nach, wenn du 10 Min. weg bist.") : L.t("Check-in aus."), Toast.LENGTH_SHORT).show(); });
+        LinearLayout.LayoutParams awl = new LinearLayout.LayoutParams(-2, -2); awl.topMargin = dp(10);
+        c.addView(awayB, awl);
         TextView eff = pill(L.t("Aufwand & Wirkung"), CARD, INK);
         eff.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, EffortActivity.class)); });
         LinearLayout.LayoutParams efl = new LinearLayout.LayoutParams(-2, -2); efl.topMargin = dp(10);

@@ -117,9 +117,93 @@ final class Purpose {
         return PendingIntent.getBroadcast(c, 63, new Intent(c, Receiver.class).setAction("nudge"), PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** "Erledigt ✓" from the notification, and the 4-minute taps. */
+    /* ---------------- away check: ARC One looks after you while you're in other apps ---------------- */
+
+    static final long AWAY_MS = 10 * 60_000L;
+    private static final int AWAY_NOTE = 64;
+    private static int started;                          // ARC One screens currently visible
+
+    static boolean awayOn(Context c) { return prefs(c).getBoolean("away_on", true); }
+
+    /** Counts ARC One's own visible screens; when the last one goes, the check-in clock starts. */
+    static void track(android.app.Application app) {
+        app.registerActivityLifecycleCallbacks(new android.app.Application.ActivityLifecycleCallbacks() {
+            @Override public void onActivityStarted(android.app.Activity a) { if (started++ == 0) back(a); }
+            @Override public void onActivityStopped(android.app.Activity a) { if (--started <= 0) { started = 0; left(a); } }
+            @Override public void onActivityCreated(android.app.Activity a, android.os.Bundle b) { }
+            @Override public void onActivityResumed(android.app.Activity a) { }
+            @Override public void onActivityPaused(android.app.Activity a) { }
+            @Override public void onActivitySaveInstanceState(android.app.Activity a, android.os.Bundle b) { }
+            @Override public void onActivityDestroyed(android.app.Activity a) { }
+        });
+    }
+
+    private static void left(Context c) {
+        if (!awayOn(c)) return;
+        prefs(c).edit().putLong("away_since", System.currentTimeMillis()).apply();
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am != null) am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + AWAY_MS, away(c));
+    }
+
+    private static void back(Context c) {
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am != null) am.cancel(away(c));
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm != null) nm.cancel(AWAY_NOTE);
+        prefs(c).edit().remove("away_since").apply();
+    }
+
+    private static PendingIntent away(Context c) {
+        return PendingIntent.getBroadcast(c, 65, new Intent(c, Receiver.class).setAction("away"), PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static void awayNudge(Context c) {
+        if (!awayOn(c) || prefs(c).getLong("away_since", 0) == 0) return;
+        if (!current(c).isEmpty()) return;                      // a «Wozu?» is running: that one nudges already
+        android.os.PowerManager pm = c.getSystemService(android.os.PowerManager.class);
+        if (pm != null && !pm.isInteractive()) {                // screen off: no nudge, look again later
+            prefs(c).edit().putLong("away_since", System.currentTimeMillis()).apply();
+            AlarmManager am = c.getSystemService(AlarmManager.class);
+            if (am != null) am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + AWAY_MS, away(c));
+            return;
+        }
+        channels(c);
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        long mins = Math.max(1, (System.currentTimeMillis() - prefs(c).getLong("away_since", 0)) / 60_000);
+        String goal = prefs(c).getString("one_text", "");
+        boolean priv = prefs(c).getBoolean("one_private", false);
+        String body = goal.isEmpty() || priv ? "Seit " + mins + " Min. weg vom Startbildschirm. Bist du noch bei dem, was du wolltest?"
+            : "Seit " + mins + " Min. unterwegs. Dein Ziel: " + goal;
+        PendingIntent home = PendingIntent.getActivity(c, 66, new Intent(c, OneHomeActivity.class)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent fine = PendingIntent.getBroadcast(c, 67, new Intent(c, Receiver.class).setAction("fine"), PendingIntent.FLAG_IMMUTABLE);
+        Notification n = new Notification.Builder(c, CH_NUDGE)
+            .setSmallIcon(R.drawable.ic_one)
+            .setContentTitle("Abgelenkt?")
+            .setContentText(body)
+            .setStyle(new Notification.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setContentIntent(home)
+            .addAction(new Notification.Action.Builder(null, "Zurück zu ARC One", home).build())
+            .addAction(new Notification.Action.Builder(null, "Alles gut", fine).build())
+            .build();
+        try { nm.notify(AWAY_NOTE, n); } catch (SecurityException ignored) { }
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am != null) am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + AWAY_MS, away(c));
+    }
+
+    /** "Erledigt ✓" from the notification, the 4-minute taps, and the away check-ins. */
     public static final class Receiver extends BroadcastReceiver {
         @Override public void onReceive(Context c, Intent i) {
+            if ("away".equals(i.getAction())) { awayNudge(c); return; }
+            if ("fine".equals(i.getAction())) {                 // "Alles gut": quiet for 30 min, then ask again
+                NotificationManager nm = c.getSystemService(NotificationManager.class);
+                if (nm != null) nm.cancel(AWAY_NOTE);
+                AlarmManager am = c.getSystemService(AlarmManager.class);
+                if (am != null) { am.cancel(away(c)); am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 3 * AWAY_MS, away(c)); }
+                return;
+            }
             if ("done".equals(i.getAction())) { end(c); return; }
             if (current(c).isEmpty()) return;
             show(c, true);
