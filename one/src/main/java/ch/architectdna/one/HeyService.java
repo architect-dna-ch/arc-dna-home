@@ -120,12 +120,7 @@ public class HeyService extends Service {
         } catch (Exception e) {
             note("Ging nicht: " + e.getMessage() + " · tippen zum Öffnen");
         }
-        main.post(() -> {
-            if (tts == null) tts = new TextToSpeech(this, s -> {
-                ttsReady = s == TextToSpeech.SUCCESS;
-                if (ttsReady) tts.setLanguage(Locale.GERMAN);
-            });
-        });
+
     }
 
     private void download(File dir) throws Exception {
@@ -180,31 +175,42 @@ public class HeyService extends Service {
     }
 
     private final RecognitionListener listener = new RecognitionListener() {
-        @Override public void onPartialResult(String hyp) { }
-        @Override public void onResult(String hyp) { heard(hyp); }
-        @Override public void onFinalResult(String hyp) { heard(hyp); }
+        @Override public void onPartialResult(String hyp) { heard(hyp, true); }
+        @Override public void onResult(String hyp) { heard(hyp, false); }
+        @Override public void onFinalResult(String hyp) { heard(hyp, false); }
         @Override public void onError(Exception e) { main.postDelayed(HeyService.this::restart, 3000); }
         @Override public void onTimeout() { main.postDelayed(HeyService.this::restart, 500); }
     };
 
     /* ---------------- what was said ---------------- */
 
-    private void heard(String json) {
+    private long actedAt;
+
+    /** Acts on the partial result already (no waiting for the end of the sentence); once per phrase. */
+    private void heard(String json, boolean partial) {
         String t;
-        try { t = new JSONObject(json).optString("text", ""); } catch (Exception e) { return; }
+        try { JSONObject o = new JSONObject(json); t = o.optString(partial ? "partial" : "text", ""); } catch (Exception e) { return; }
+        if (System.currentTimeMillis() - actedAt < 2500) return;      // the same phrase again (partial, then final)
         t = t.replace("[unk]", " ").replaceAll("\\s+", " ").trim();
         if (t.isEmpty()) return;
         long now = System.currentTimeMillis();
         boolean wake = t.contains("hey claude") || t.contains("hey cloud") || t.contains("hey clod");
         String rest = t.replace("hey claude", "").replace("hey cloud", "").replace("hey clod", "").trim();
         if (wake && rest.isEmpty()) {                                      // "Hey Claude" … (wait for the command)
+            if (now > armedUntil) ping();
             armedUntil = now + 6000;
-            ping();
             return;
         }
         if (!wake && now > armedUntil) return;                            // a command word without "Hey Claude": ignore
+        if (rest.isEmpty() || !isCommand(rest)) return;
         armedUntil = 0;
-        if (!rest.isEmpty()) run(rest);
+        actedAt = now;
+        run(rest);
+    }
+
+    private static boolean isCommand(String r) {
+        for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "stop listening"}) if (r.contains(w)) return true;
+        return false;
     }
 
     private void ping() {
@@ -223,7 +229,7 @@ public class HeyService extends Service {
         ping();
         SharedPreferences p = getSharedPreferences("home", MODE_PRIVATE);
         String hhmm = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date());
-        if (cmd.contains("stop listening")) { say("Okay, ich höre nicht mehr zu."); main.postDelayed(() -> stop(this), 2500); return; }
+        if (cmd.contains("stop listening")) { say("«Hey Claude» aus."); stop(this); return; }
         if (cmd.contains("time")) { say("Es ist " + hhmm + "."); return; }
         if (cmd.contains("goal")) {
             String g = p.getString("one_text", "");
@@ -253,16 +259,9 @@ public class HeyService extends Service {
         } catch (RuntimeException ignored) { }
     }
 
-    /** Speaks, with the microphone paused so it doesn't hear itself. */
+    /** No voice: the action happens at once, confirmed by a vibration; text only as a short note. */
     private void say(String s) {
-        if (tts == null || !ttsReady) return;
-        if (speech != null) speech.setPause(true);
-        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override public void onStart(String id) { }
-            @Override public void onDone(String id) { main.postDelayed(() -> { if (speech != null) speech.setPause(false); }, 300); }
-            @Override public void onError(String id) { main.post(() -> { if (speech != null) speech.setPause(false); }); }
-        });
-        tts.speak(s, TextToSpeech.QUEUE_FLUSH, null, "arc-hey");
+        main.post(() -> android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show());
     }
 
     @Override public void onDestroy() {
