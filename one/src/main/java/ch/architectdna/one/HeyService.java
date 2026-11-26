@@ -163,6 +163,7 @@ public class HeyService extends Service {
             Recognizer rec = new Recognizer(model, 16000.0f, GRAMMAR);
             speech = new SpeechService(rec, 16000.0f);
             speech.startListening(listener);
+            tell("listening");
             note("Hört auf «Hey Claude» · offline");
         } catch (Exception e) {
             note("Mikrofon nicht verfügbar · " + e.getMessage());
@@ -203,6 +204,7 @@ public class HeyService extends Service {
         String rest = w.replace(" arc ", " ").replace(" ark ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
         if (claude && rest.isEmpty()) {                                    // "Claude" … (wait for the command)
             if (now > armedUntil) ping();
+            tell("armed");
             armedUntil = now + 6000;
             return;
         }
@@ -211,6 +213,7 @@ public class HeyService extends Service {
         if (rest.isEmpty() || !isCommand(rest)) return;
         armedUntil = 0;
         actedAt = now;
+        tell("heard:" + rest);
         run(rest);
     }
 
@@ -219,6 +222,13 @@ public class HeyService extends Service {
             "play", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist"}) if (r.contains(w)) return true;
         return false;
     }
+
+    /** The home screen listens for these to show what the voice is doing (null when it's not on screen). */
+    interface Ui { void state(String s); }
+    static volatile Ui ui;
+    static volatile String lastState = "";
+
+    static void tell(String s) { lastState = s; Ui u = ui; if (u != null) u.state(s); }
 
     private void ping() {
         try {
@@ -324,6 +334,7 @@ public class HeyService extends Service {
 
     @Override public void onDestroy() {
         stopping = true;
+        tell("off");
         main.removeCallbacksAndMessages(null);
         if (speech != null) { try { speech.stop(); speech.shutdown(); } catch (RuntimeException ignored) { } }
         if (model != null) { try { model.close(); } catch (RuntimeException ignored) { } }

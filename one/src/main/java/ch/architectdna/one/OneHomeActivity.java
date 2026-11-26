@@ -90,6 +90,8 @@ public class OneHomeActivity extends Activity {
     static final String YT_MUSIC = "com.google.android.apps.youtube.music";
     private long appsLoadedAt;
     private boolean peeking;
+    private TextView mic;
+    private final Runnable micIdle = () -> renderMic(HeyService.enabled(this) ? "listening" : "off");
     private static boolean awayTracked;
     private TextView siestaBtn;
     private final Runnable endPeek = () -> { peeking = false; render(); };
@@ -128,6 +130,12 @@ public class OneHomeActivity extends Activity {
         date = text(13, INK3, Typeface.DEFAULT);
         tc.addView(clock); tc.addView(date);
         top.addView(tc, new LinearLayout.LayoutParams(0, -2, 1f));
+        // voice indicator: a small dot + "ARC" when listening; it lights up rust when it hears its name
+        mic = text(11, INK3, Typeface.create("monospace", Typeface.BOLD));
+        mic.setLetterSpacing(0.15f);
+        mic.setPadding(dp(10), dp(6), dp(4), dp(6));
+        mic.setOnClickListener(v -> showMenu());
+        top.addView(mic);
         TextView more = text(24, INK3, Typeface.DEFAULT_BOLD); more.setText("⋯");
         more.setPadding(dp(14), dp(4), 0, dp(4));
         more.setOnClickListener(v -> showMenu());
@@ -331,6 +339,8 @@ public class OneHomeActivity extends Activity {
         if (updater != null) updater.check(false);
         if (brain != null) brain.start();
         checkPurpose();
+        HeyService.ui = st -> main.post(() -> renderMic(st));
+        renderMic(HeyService.enabled(this) ? "listening" : "off");
         startSpeed();
         // keep "Hey Claude" alive: Android only lets the microphone service start while ARC One is on screen
         if (HeyService.enabled(this) && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -340,6 +350,7 @@ public class OneHomeActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
+        HeyService.ui = null;
         stopSpeed();
         main.removeCallbacks(tick);
         if (brain != null) brain.stop();
@@ -657,8 +668,29 @@ public class OneHomeActivity extends Activity {
 
     /* ---------------- Hey Claude: offline voice quick commands ---------------- */
 
+    /** The voice dot: hidden when off · "● ARC" dim while listening · bright rust "● ARC HÖRT" when armed · the command it ran. */
+    private void renderMic(String st) {
+        if (mic == null) return;
+        main.removeCallbacks(micIdle);
+        if (!HeyService.enabled(this) || "off".equals(st)) { mic.setVisibility(View.GONE); mic.animate().cancel(); return; }
+        mic.setVisibility(View.VISIBLE);
+        if ("armed".equals(st)) {
+            mic.setText("● ARC HÖRT …"); mic.setTextColor(RUST);
+            mic.animate().cancel(); mic.setAlpha(1f);
+            main.postDelayed(micIdle, 6000);
+        } else if (st.startsWith("heard:")) {
+            mic.setText("● " + st.substring(6).toUpperCase(Locale.GERMAN) + " ✓"); mic.setTextColor(0xFF7FD08A);
+            mic.setAlpha(1f);
+            main.postDelayed(micIdle, 2500);
+        } else {
+            mic.setText("● ARC"); mic.setTextColor(INK3);
+            mic.setAlpha(0.55f);
+            mic.animate().alpha(1f).setDuration(1600).withEndAction(() -> { if (mic != null) mic.animate().alpha(0.55f).setDuration(1600).start(); }).start();
+        }
+    }
+
     private void toggleHey() {
-        if (HeyService.enabled(this)) { HeyService.stop(this); Toast.makeText(this, L.t("«Hey Claude» aus."), Toast.LENGTH_SHORT).show(); return; }
+        if (HeyService.enabled(this)) { HeyService.stop(this); renderMic("off"); Toast.makeText(this, L.t("Sprachbefehle aus."), Toast.LENGTH_SHORT).show(); return; }
         java.util.List<String> need = new java.util.ArrayList<>();
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
             need.add(android.Manifest.permission.RECORD_AUDIO);
@@ -682,6 +714,7 @@ public class OneHomeActivity extends Activity {
 
     private void startHey() {
         HeyService.start(this);
+        renderMic("listening");
         Toast.makeText(this, L.t("«Hey Claude» an. Beim ersten Mal lädt es das Sprachmodell (~40 MB). Sag z. B.: «ARC pause», «ARC next», «Claude, siesta»."), Toast.LENGTH_LONG).show();
         // music / calm / guide open ARC One from the background: Android only allows that with this permission
         if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("hey_overlay_asked", false)) {
