@@ -699,6 +699,16 @@ public class OneHomeActivity extends Activity {
         else if ("calm".equals(h)) openCalm();
         else if ("guide".equals(h)) startActivity(new Intent(this, GuideActivity.class));
         else if ("boxing".equals(h)) startActivity(new Intent(this, RoundTimerActivity.class));
+        else if ("norm".equals(h)) startActivity(new Intent(this, NormActivity.class));
+        else if ("newgoal".equals(h)) openEditor();
+        else if ("done".equals(h) && !prefs.getString("one_text", "").isEmpty()) {
+            new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(L.t("Ziel erledigt?"))
+                .setMessage(isPrivate() ? "• • • • •" : prefs.getString("one_text", ""))
+                .setPositiveButton(L.t("Ja ✓"), (d, w) -> markDone())
+                .setNegativeButton(L.t("Nein"), null)
+                .show();
+        }
     }
 
     private void renderSiesta() {

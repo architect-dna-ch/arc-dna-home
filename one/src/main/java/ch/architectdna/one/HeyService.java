@@ -55,7 +55,9 @@ public class HeyService extends Service {
     private static final int NOTE = 47;
     // the only phrases the recogniser may hear; anything else becomes [unk] and is ignored
     private static final String GRAMMAR = "[\"hey claude\", \"hey cloud\", \"hey clod\", \"siesta\", \"music\", \"music one\","
-        + " \"my goal\", \"goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\", \"stop listening\", \"[unk]\"]";
+        + " \"my goal\", \"goal\", \"goal done\", \"new goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\","
+        + " \"play\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
+        + " \"stop listening\", \"[unk]\"]";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private Model model;
@@ -209,7 +211,8 @@ public class HeyService extends Service {
     }
 
     private static boolean isCommand(String r) {
-        for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "boxing", "timer", "stop listening"}) if (r.contains(w)) return true;
+        for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "boxing", "timer", "stop listening",
+            "play", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist"}) if (r.contains(w)) return true;
         return false;
     }
 
@@ -231,6 +234,46 @@ public class HeyService extends Service {
         String hhmm = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date());
         if (cmd.contains("stop listening")) { say("«Hey Claude» aus."); stop(this); return; }
         if (cmd.matches(".*\\btime\\b.*")) { say("Es ist " + hhmm + "."); return; }   // "time", not "timer"
+        // --- music without opening anything: the same keys a headset sends ---
+        if (cmd.contains("pause")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PAUSE); say("Pause."); return; }
+        if (cmd.matches(".*\\bplay\\b.*")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY); say("Play."); return; }
+        if (cmd.contains("next")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT); say("Nächster Song."); return; }
+        if (cmd.contains("previous")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS); say("Zurück."); return; }
+        if (cmd.contains("louder") || cmd.contains("quieter")) {
+            android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+            if (am != null) for (int k = 0; k < 2; k++)
+                am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                    cmd.contains("louder") ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER, android.media.AudioManager.FLAG_SHOW_UI);
+            return;
+        }
+        // --- phone ---
+        if (cmd.contains("light")) {
+            boolean on = !cmd.contains("off") && !torchOn;
+            try {
+                android.hardware.camera2.CameraManager cm = getSystemService(android.hardware.camera2.CameraManager.class);
+                for (String id : cm.getCameraIdList()) {
+                    Boolean f = cm.getCameraCharacteristics(id).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                    if (f != null && f) { cm.setTorchMode(id, on); torchOn = on; say(on ? "Licht an." : "Licht aus."); return; }
+                }
+            } catch (Exception e) { say("Taschenlampe geht gerade nicht."); }
+            return;
+        }
+        if (cmd.contains("battery")) {
+            android.os.BatteryManager bm = getSystemService(android.os.BatteryManager.class);
+            int pct = bm == null ? -1 : bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            say(pct < 0 ? "Akku unbekannt." : "Akku " + pct + " %" + (bm.isCharging() ? ", lädt." : "."));
+            return;
+        }
+        // --- your goal ---
+        if (cmd.contains("goal done") || cmd.contains("new goal")) {
+            String what = cmd.contains("done") ? "done" : "newgoal";
+            say(what.equals("done") ? "Erledigt? Bestätige auf dem Bildschirm." : "Neues Ziel.");
+            try {
+                startActivity(new Intent(this, OneHomeActivity.class).putExtra("hey", what)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            } catch (RuntimeException ignored) { }
+            return;
+        }
         if (cmd.contains("goal")) {
             String g = p.getString("one_text", "");
             say(g.isEmpty() ? "Du hast gerade kein Ziel aufgeschrieben."
@@ -251,13 +294,23 @@ public class HeyService extends Service {
             return;
         }
         String ui = cmd.contains("music") ? "music" : (cmd.contains("calm") || cmd.contains("breathe")) ? "calm" : cmd.contains("guide") ? "guide"
-            : (cmd.contains("boxing") || cmd.contains("timer")) ? "boxing" : null;
+            : (cmd.contains("boxing") || cmd.contains("timer")) ? "boxing" : cmd.contains("checklist") ? "norm" : cmd.contains("home") ? "home" : null;
         if (ui == null) return;
-        say(ui.equals("music") ? "Music One." : ui.equals("calm") ? "Atme mit." : ui.equals("boxing") ? "Rundentimer." : "Guidebook.");
+        say(ui.equals("music") ? "Music One." : ui.equals("calm") ? "Atme mit." : ui.equals("boxing") ? "Rundentimer."
+            : ui.equals("norm") ? "Checkliste." : ui.equals("home") ? "ARC One." : "Guidebook.");
         try {
             startActivity(new Intent(this, OneHomeActivity.class).putExtra("hey", ui)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         } catch (RuntimeException ignored) { }
+    }
+
+    private boolean torchOn;
+
+    private void mediaKey(int code) {
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        if (am == null) return;
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code));
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code));
     }
 
     /** No voice: the action happens at once, confirmed by a vibration; text only as a short note. */
