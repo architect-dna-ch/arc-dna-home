@@ -38,6 +38,12 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true" />
 
+        <!-- Wie die meisten: the Swiss defaults most people just have, as a checklist -->
+        <activity
+            android:name=".NormActivity"
+            android:exported="false"
+            android:label="Wie die meisten" />
+
         <!-- ARC Guidebook: Quran and Sunnah explained, e-book style, with progress and a mind map -->
         <activity
             android:name=".GuideActivity"

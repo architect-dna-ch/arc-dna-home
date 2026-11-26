@@ -708,6 +708,10 @@ public class OneHomeActivity extends Activity {
         guide.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, GuideActivity.class)); });
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-2, -2); gl.topMargin = dp(30);
         c.addView(guide, gl);
+        TextView norm = pill(L.t("Wie die meisten (Checkliste)"), CARD, INK);
+        norm.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, NormActivity.class)); });
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2); nl.topMargin = dp(10);
+        c.addView(norm, nl);
         TextView priv = pill(isPrivate() ? L.t("Privat-Modus ausschalten") : L.t("Privat-Modus (ÖV, unterwegs)"), CARD, INK);
         priv.setOnClickListener(v -> { root.removeView(sheet); setPrivate(!isPrivate()); });
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(10);

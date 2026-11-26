@@ -1,0 +1,78 @@
+{
+  "title": "Wie die meisten",
+  "rule": "Besonders sein, wo es billig ist (der Sticker). Wie alle, wo Fehler teuer sind (Hülle und Schutzglas).",
+  "groups": [
+    {
+      "t": "Handy & Technik", "icon": "📱",
+      "items": [
+        {"t": "Hülle + Schutzglas", "n": "Fast alle haben beides, ab dem ersten Tag.", "w": "Ein Sturz ohne Schutz kostet ein Display.", "c": "Displaytausch ca. CHF 100–250 · Hülle + Glas ca. CHF 30"},
+        {"t": "Automatisches Backup an", "n": "Fotos und Daten sichern sich in die Cloud.", "w": "Handy weg oder kaputt = sonst alles weg.", "c": "Gratis bis ein paar GB"},
+        {"t": "Bildschirmsperre mit PIN", "n": "PIN oder Fingerabdruck, immer.", "w": "Ein verlorenes Handy ohne Sperre öffnet Mail, Bank, alles.", "c": "Gratis"},
+        {"t": "Zwei-Faktor beim E-Mail", "n": "Login mit zweitem Schritt (App oder SMS).", "w": "Wer dein E-Mail hat, setzt alle Passwörter zurück.", "c": "Gratis, 5 Minuten"},
+        {"t": "Updates installieren", "n": "Updates werden einfach gemacht, nicht aufgeschoben.", "w": "Sicherheitslücken werden damit geschlossen.", "c": "Gratis"}
+      ]
+    },
+    {
+      "t": "Geld & Admin", "icon": "📄",
+      "items": [
+        {"t": "Krankenkasse jährlich prüfen", "n": "Im Herbst Prämien vergleichen; Grundversicherung kündbar bis 30. November.", "w": "Gleiche Leistung, oft hunderte Franken Unterschied pro Jahr.", "c": "Ersparnis oft CHF 200–600 im Jahr"},
+        {"t": "Privathaftpflicht", "n": "Haben fast alle. Viele Vermieter verlangen sie.", "w": "Wasserschaden beim Nachbarn oder ein Unfall mit dem Velo kann teuer werden.", "c": "ca. CHF 80–150 im Jahr"},
+        {"t": "Hausratversicherung", "n": "Deckt Diebstahl, Feuer, Wasser in der Wohnung.", "w": "Einbruch oder Brand ohne Versicherung = alles selbst ersetzen.", "c": "ca. CHF 100–200 im Jahr"},
+        {"t": "Steuererklärung pünktlich", "n": "Jedes Frühling, oder Fristverlängerung beantragen.", "w": "Zu spät = Mahnung, Busse, Schätzung durch das Amt.", "c": "Gratis mit der Software des Kantons"},
+        {"t": "Notgroschen", "n": "Ziel: Reserve für ca. 3 Monatsausgaben, auch klein anfangen.", "w": "Eine kaputte Sache wird sonst zur Krise.", "c": "Schon CHF 20 im Monat zählt"},
+        {"t": "Rechnungen per eBill", "n": "Rechnungen kommen ins E-Banking, Zahlung mit einem Klick.", "w": "Keine vergessenen Rechnungen, keine Mahngebühren.", "c": "Gratis"},
+        {"t": "Halbtax", "n": "Sehr viele haben es, wenn sie Zug fahren.", "w": "Die Hälfte auf fast alle Billette.", "c": "ca. CHF 190 im Jahr, lohnt sich oft schon nach wenigen Fahrten"}
+      ]
+    },
+    {
+      "t": "Gesundheit", "icon": "🫀",
+      "items": [
+        {"t": "Hausarzt haben", "n": "Eine feste Ärztin oder einen festen Arzt, auch wenn man gesund ist.", "w": "Wenn es dir schlecht geht, musst du nicht erst suchen.", "c": "Ein Telefonat"},
+        {"t": "Dentalhygiene einmal im Jahr", "n": "Viele gehen jährlich.", "w": "Kleine Probleme bleiben klein; Zahnarzt ist in der Schweiz nicht von der Grundversicherung gedeckt.", "c": "ca. CHF 120–200 statt später viel mehr"},
+        {"t": "7–9 Stunden Schlaf", "n": "Die meisten brauchen das; wer weniger schläft, merkt es oft nicht mehr.", "w": "Schlaf ist Konzentration, Laune, Willenskraft.", "c": "Gratis"},
+        {"t": "Kein Energydrink am Abend", "n": "Koffein nach dem frühen Nachmittag lassen die meisten weg.", "w": "Koffein wirkt 6+ Stunden und stört den Tiefschlaf.", "c": "Spart Geld"},
+        {"t": "Zwei richtige Mahlzeiten", "n": "Regelmässig essen, auch ohne grossen Hunger.", "w": "Ohne Essen: Reizbarkeit, Angst, Crash.", "c": "—"},
+        {"t": "Notfallnummern kennen", "n": "144 Sanität, 117 Polizei, 118 Feuerwehr, 145 Tox, 143 Dargebotene Hand.", "w": "Im Ernstfall keine Sekunde suchen.", "c": "Gratis"}
+      ]
+    },
+    {
+      "t": "Wohnen", "icon": "🏠",
+      "items": [
+        {"t": "Ruhezeiten einhalten", "n": "Abends ab ca. 22 Uhr und am Sonntag leise.", "w": "Häufigster Streitgrund mit Nachbarn.", "c": "Gratis"},
+        {"t": "Abfall nach Regeln", "n": "Gebührensack, Glas, PET, Papier getrennt, am richtigen Tag raus.", "w": "Falscher Sack = Busse.", "c": "Bussen ab ca. CHF 50"},
+        {"t": "Stosslüften", "n": "Mehrmals täglich 5–10 Minuten Fenster weit auf statt gekippt.", "w": "Gegen Schimmel; Schimmel kann bei der Wohnungsabgabe teuer werden.", "c": "Gratis"},
+        {"t": "Umzug melden", "n": "Neue Adresse innert ca. 14 Tagen bei der Gemeinde melden.", "w": "Sonst verpasste Post, Bussen, Probleme mit Ämtern.", "c": "Gratis bis kleine Gebühr"},
+        {"t": "Schuhe aus in Wohnungen", "n": "Bei Besuch fragen oder Schuhe einfach ausziehen.", "w": "Ist in vielen Schweizer Haushalten normal.", "c": "Gratis"}
+      ]
+    },
+    {
+      "t": "Arbeit & Bewerbung", "icon": "💼",
+      "items": [
+        {"t": "Komplettes Dossier", "n": "CV, Motivation, Arbeitszeugnisse, Diplome in einem PDF.", "w": "Ohne Zeugnisse wirkt ein Dossier unvollständig.", "c": "Einmal Zeit investieren"},
+        {"t": "Foto im CV", "n": "In der Schweiz noch üblich: freundliches, ruhiges Foto.", "w": "Fehlt es, fällt es auf.", "c": "Gratis mit gutem Licht"},
+        {"t": "Konkrete Stelle nennen", "n": "Auch bei Spontanbewerbungen einen Wunschbereich nennen.", "w": "Sonst weiss HR nicht, wohin weiterleiten.", "c": "Ein Satz"},
+        {"t": "Nachfassen nach 1–2 Wochen", "n": "Freundliche Nachfrage, wenn nichts kommt.", "w": "Zeigt Interesse, viele melden sich erst dann.", "c": "Eine E-Mail"},
+        {"t": "Zwischenzeugnis verlangen", "n": "Bei längeren Stellen oder Wechsel des Vorgesetzten.", "w": "Später schwer zu bekommen.", "c": "Eine Bitte"}
+      ]
+    },
+    {
+      "t": "Unter Menschen", "icon": "🤝",
+      "items": [
+        {"t": "Pünktlich, sonst Nachricht", "n": "Fünf Minuten vorher da; wenn es nicht geht, vorher melden.", "w": "Gilt als Respekt, wird sehr bemerkt.", "c": "Gratis"},
+        {"t": "Grüssen mit Blickkontakt", "n": "Im Treppenhaus, im Laden, beim Ankommen.", "w": "Fehlt es, wirkt man kalt oder abweisend.", "c": "Gratis"},
+        {"t": "Bei Einladung etwas mitbringen", "n": "Kleinigkeit: Schokolade, Blumen, Getränk.", "w": "Gehört dazu, wird erwartet.", "c": "ca. CHF 5–15"},
+        {"t": "Anmelden statt vorbeigehen", "n": "Besuche werden vorher abgemacht.", "w": "Spontan klingeln wirkt oft aufdringlich.", "c": "Eine Nachricht"},
+        {"t": "Danke sagen, kurz nachher", "n": "Nach Hilfe oder Einladung eine kurze Nachricht.", "w": "Kleine Geste, grosse Wirkung.", "c": "Gratis"}
+      ]
+    },
+    {
+      "t": "Unterwegs", "icon": "🚋",
+      "items": [
+        {"t": "Billett vor dem Einsteigen", "n": "Ticket oder App gelöst, bevor man einsteigt.", "w": "Kontrolleure kennen keine Ausrede.", "c": "Busse ca. CHF 90+"},
+        {"t": "Rucksack nicht auf den Sitz", "n": "Tasche auf den Schoss oder auf den Boden.", "w": "Wird bemerkt, gerade im vollen Tram.", "c": "Gratis"},
+        {"t": "Leise telefonieren", "n": "Im ÖV kurz und leise, oder später zurückrufen.", "w": "Laut telefonieren stört viele.", "c": "Gratis"},
+        {"t": "Rolltreppe: rechts stehen", "n": "Rechts stehen, links gehen.", "w": "Kleiner Ärger, den man leicht vermeidet.", "c": "Gratis"}
+      ]
+    }
+  ]
+}
