@@ -636,6 +636,7 @@ public class OneHomeActivity extends Activity {
         if ("music".equals(h)) main.postDelayed(this::playMusicOne, 300);
         else if ("calm".equals(h)) openCalm();
         else if ("guide".equals(h)) startActivity(new Intent(this, GuideActivity.class));
+        else if ("boxing".equals(h)) startActivity(new Intent(this, RoundTimerActivity.class));
     }
 
     private void renderSiesta() {
@@ -759,6 +760,10 @@ public class OneHomeActivity extends Activity {
         hey.setOnClickListener(v -> { root.removeView(sheet); toggleHey(); });
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2); hl.topMargin = dp(10);
         c.addView(hey, hl);
+        TextView ring = pill(L.t("Rundentimer (Boxen)"), CARD, INK);
+        ring.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, RoundTimerActivity.class)); });
+        LinearLayout.LayoutParams rgl = new LinearLayout.LayoutParams(-2, -2); rgl.topMargin = dp(10);
+        c.addView(ring, rgl);
         TextView norm = pill(L.t("Wie die meisten (Checkliste)"), CARD, INK);
         norm.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, NormActivity.class)); });
         LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-2, -2); nl.topMargin = dp(10);

@@ -55,7 +55,7 @@ public class HeyService extends Service {
     private static final int NOTE = 47;
     // the only phrases the recogniser may hear; anything else becomes [unk] and is ignored
     private static final String GRAMMAR = "[\"hey claude\", \"hey cloud\", \"hey clod\", \"siesta\", \"music\", \"music one\","
-        + " \"my goal\", \"goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"stop listening\", \"[unk]\"]";
+        + " \"my goal\", \"goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\", \"stop listening\", \"[unk]\"]";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private Model model;
@@ -209,7 +209,7 @@ public class HeyService extends Service {
     }
 
     private static boolean isCommand(String r) {
-        for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "stop listening"}) if (r.contains(w)) return true;
+        for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "boxing", "timer", "stop listening"}) if (r.contains(w)) return true;
         return false;
     }
 
@@ -230,7 +230,7 @@ public class HeyService extends Service {
         SharedPreferences p = getSharedPreferences("home", MODE_PRIVATE);
         String hhmm = new SimpleDateFormat("HH:mm", Locale.GERMAN).format(new Date());
         if (cmd.contains("stop listening")) { say("«Hey Claude» aus."); stop(this); return; }
-        if (cmd.contains("time")) { say("Es ist " + hhmm + "."); return; }
+        if (cmd.matches(".*\\btime\\b.*")) { say("Es ist " + hhmm + "."); return; }   // "time", not "timer"
         if (cmd.contains("goal")) {
             String g = p.getString("one_text", "");
             say(g.isEmpty() ? "Du hast gerade kein Ziel aufgeschrieben."
@@ -250,9 +250,10 @@ public class HeyService extends Service {
             } else say("Der Wecker ging nicht. Öffne ARC One und tippe auf Siesta.");
             return;
         }
-        String ui = cmd.contains("music") ? "music" : (cmd.contains("calm") || cmd.contains("breathe")) ? "calm" : cmd.contains("guide") ? "guide" : null;
+        String ui = cmd.contains("music") ? "music" : (cmd.contains("calm") || cmd.contains("breathe")) ? "calm" : cmd.contains("guide") ? "guide"
+            : (cmd.contains("boxing") || cmd.contains("timer")) ? "boxing" : null;
         if (ui == null) return;
-        say(ui.equals("music") ? "Music One." : ui.equals("calm") ? "Atme mit." : "Guidebook.");
+        say(ui.equals("music") ? "Music One." : ui.equals("calm") ? "Atme mit." : ui.equals("boxing") ? "Rundentimer." : "Guidebook.");
         try {
             startActivity(new Intent(this, OneHomeActivity.class).putExtra("hey", ui)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));

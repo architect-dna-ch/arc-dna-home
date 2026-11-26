@@ -50,6 +50,12 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- ARC Ring: boxing round timer -->
+        <activity
+            android:name=".RoundTimerActivity"
+            android:exported="false"
+            android:label="ARC Ring" />
+
         <!-- Wie die meisten: the Swiss defaults most people just have, as a checklist -->
         <activity
             android:name=".NormActivity"
