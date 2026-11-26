@@ -39,7 +39,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * "Hey Claude" — ARC quick commands by voice, fully offline.
+ * "ARC" / "Claude" — ARC quick commands by voice, fully offline.
  *
  * A small English speech model (Vosk, ~40 MB, downloaded once) listens on the phone itself, limited
  * to a handful of words — nothing is recorded, stored or sent anywhere. Say "Hey Claude", hear a
@@ -54,7 +54,7 @@ public class HeyService extends Service {
     private static final String MODEL_URL = "https://alphacephei.com/vosk/models/" + MODEL + ".zip";
     private static final int NOTE = 47;
     // the only phrases the recogniser may hear; anything else becomes [unk] and is ignored
-    private static final String GRAMMAR = "[\"hey claude\", \"hey cloud\", \"hey clod\", \"siesta\", \"music\", \"music one\","
+    private static final String GRAMMAR = "[\"arc\", \"ark\", \"claude\", \"cloud\", \"siesta\", \"music\", \"music one\","
         + " \"my goal\", \"goal\", \"goal done\", \"new goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\","
         + " \"play\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
         + " \"stop listening\", \"[unk]\"]";
@@ -196,14 +196,18 @@ public class HeyService extends Service {
         t = t.replace("[unk]", " ").replaceAll("\\s+", " ").trim();
         if (t.isEmpty()) return;
         long now = System.currentTimeMillis();
-        boolean wake = t.contains("hey claude") || t.contains("hey cloud") || t.contains("hey clod");
-        String rest = t.replace("hey claude", "").replace("hey cloud", "").replace("hey clod", "").trim();
-        if (wake && rest.isEmpty()) {                                      // "Hey Claude" … (wait for the command)
+        // wake words: "ARC" (short, so only together with a command in one breath) or "Claude" (also alone, then a beep)
+        String w = " " + t + " ";
+        boolean arc = w.contains(" arc ") || w.contains(" ark "), claude = w.contains(" claude ") || w.contains(" cloud ");
+        boolean wake = arc || claude;
+        String rest = w.replace(" arc ", " ").replace(" ark ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
+        if (claude && rest.isEmpty()) {                                    // "Claude" … (wait for the command)
             if (now > armedUntil) ping();
             armedUntil = now + 6000;
             return;
         }
-        if (!wake && now > armedUntil) return;                            // a command word without "Hey Claude": ignore
+        if (wake && rest.isEmpty()) return;                               // a lone "arc" is too easy to mishear: ignore
+        if (!wake && now > armedUntil) return;                            // a command word without a wake word: ignore
         if (rest.isEmpty() || !isCommand(rest)) return;
         armedUntil = 0;
         actedAt = now;
