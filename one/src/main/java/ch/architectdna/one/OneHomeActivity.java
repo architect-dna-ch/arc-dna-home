@@ -333,6 +333,7 @@ public class OneHomeActivity extends Activity {
         if (now() - appsLoadedAt > 5 * 60_000L) new Thread(this::loadApps, "arc-one-apps").start();
         if (updater != null) updater.check(false);
         if (brain != null) brain.start();
+        checkPurpose();
         // keep "Hey Claude" alive: Android only lets the microphone service start while ARC One is on screen
         if (HeyService.enabled(this) && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             try { startForegroundService(new Intent(this, HeyService.class)); } catch (RuntimeException ignored) { }
@@ -760,6 +761,12 @@ public class OneHomeActivity extends Activity {
         hey.setOnClickListener(v -> { root.removeView(sheet); toggleHey(); });
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2); hl.topMargin = dp(10);
         c.addView(hey, hl);
+        TextView purp = pill(Purpose.prefs(this).getBoolean("purpose_on", true) ? L.t("«Wozu?» vor Chrome & Co. ausschalten") : L.t("«Wozu?» vor Chrome & Co. einschalten"), CARD, INK);
+        purp.setOnClickListener(v -> { root.removeView(sheet); boolean on = !Purpose.prefs(this).getBoolean("purpose_on", true);
+            Purpose.prefs(this).edit().putBoolean("purpose_on", on).apply();
+            Toast.makeText(this, on ? L.t("«Wozu?» an.") : L.t("«Wozu?» aus."), Toast.LENGTH_SHORT).show(); });
+        LinearLayout.LayoutParams pul = new LinearLayout.LayoutParams(-2, -2); pul.topMargin = dp(10);
+        c.addView(purp, pul);
         TextView eff = pill(L.t("Aufwand & Wirkung"), CARD, INK);
         eff.setOnClickListener(v -> { root.removeView(sheet); startActivity(new Intent(this, EffortActivity.class)); });
         LinearLayout.LayoutParams efl = new LinearLayout.LayoutParams(-2, -2); efl.topMargin = dp(10);
@@ -930,6 +937,53 @@ public class OneHomeActivity extends Activity {
     }
 
     private void launch(App a) {
+        if (Purpose.guarded(this, a.pkg)) { askPurpose(a); return; }
+        open(a);
+    }
+
+    /** Before a rabbit-hole app: what for? One line, a recent one, or "nur kurz". Never blocks. */
+    private void askPurpose(final App a) {
+        LinearLayout f = new LinearLayout(this);
+        f.setOrientation(LinearLayout.VERTICAL);
+        f.setPadding(dp(22), dp(8), dp(22), 0);
+        final EditText in = new EditText(this);
+        in.setHint(L.t("z. B. Zugverbindung nach Thun nachschauen"));
+        in.setSingleLine(true);
+        f.addView(in);
+        final android.app.AlertDialog[] dlg = new android.app.AlertDialog[1];
+        for (final String r : Purpose.recent(this)) {
+            TextView t = text(14, INK2, Typeface.DEFAULT);
+            t.setText("↺  " + r);
+            t.setPadding(0, dp(10), 0, dp(4));
+            t.setOnClickListener(v -> { if (dlg[0] != null) dlg[0].dismiss(); Purpose.begin(this, r, a.label); open(a); });
+            f.addView(t);
+        }
+        dlg[0] = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle(L.t("Wozu öffnest du ") + a.label + "?")
+            .setView(f)
+            .setPositiveButton(L.t("Los"), (d, w) -> { Purpose.begin(this, in.getText().toString(), a.label); open(a); })
+            .setNeutralButton(L.t("Nur kurz"), (d, w) -> { Purpose.begin(this, "", a.label); open(a); })
+            .setNegativeButton(L.t("Doch nicht"), null)
+            .create();
+        dlg[0].setOnShowListener(d -> { in.requestFocus(); dlg[0].getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE); });
+        in.setOnEditorActionListener((v, id, e) -> { dlg[0].getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); return true; });
+        dlg[0].show();
+    }
+
+    /** Back on the home screen with a purpose still open: did you get it? */
+    private void checkPurpose() {
+        String p = Purpose.current(this);
+        if (p.isEmpty() || now() - Purpose.since(this) < 20_000) return;
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle(L.t("Erledigt?"))
+            .setMessage(L.t("Du wolltest: ") + p + "\n" + L.t("seit ") + ago(now() - Purpose.since(this)))
+            .setPositiveButton(L.t("Ja ✓"), (d, w) -> Purpose.end(this))
+            .setNegativeButton(L.t("Noch nicht"), null)
+            .setNeutralButton(L.t("Vergessen, egal"), (d, w) -> Purpose.end(this))
+            .show();
+    }
+
+    private void open(App a) {
         try {
             startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setClassName(a.pkg, a.cls).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));

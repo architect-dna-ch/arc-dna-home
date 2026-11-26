@@ -50,6 +50,11 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Wozu?: "Erledigt" from the notification and the 4-minute nudges -->
+        <receiver
+            android:name=".Purpose$Receiver"
+            android:exported="false" />
+
         <!-- Aufwand & Wirkung: effort vs. effect, and whose part it was -->
         <activity
             android:name=".EffortActivity"
