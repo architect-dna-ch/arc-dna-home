@@ -331,6 +331,7 @@ public class OneHomeActivity extends Activity {
         if (updater != null) updater.check(false);
         if (brain != null) brain.start();
         checkPurpose();
+        startSpeed();
         // keep "Hey Claude" alive: Android only lets the microphone service start while ARC One is on screen
         if (HeyService.enabled(this) && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             try { startForegroundService(new Intent(this, HeyService.class)); } catch (RuntimeException ignored) { }
@@ -339,6 +340,7 @@ public class OneHomeActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
+        stopSpeed();
         main.removeCallbacks(tick);
         if (brain != null) brain.stop();
         closeCalm();
@@ -441,6 +443,7 @@ public class OneHomeActivity extends Activity {
         intent.setTextColor(has ? INK : INK3);
         redact(hide);
         label.setText(!has ? L.t("— TIPPEN ZUM SCHREIBEN")
+            : hide && moving && !prefs.getBoolean("one_private", false) ? L.t("— UNTERWEGS · VERDECKT · TIPPEN ZEIGT")
             : hide ? L.t("— PRIVAT · TIPPEN ZEIGT")
             : isPrivate() ? L.t("— PRIVAT · GLEICH VERDECKT")
             : L.t("— MEIN ZIEL GERADE"));
@@ -586,10 +589,66 @@ public class OneHomeActivity extends Activity {
         intent.invalidate();
     }
 
-    private boolean isPrivate() { return prefs.getBoolean("one_private", false); }
+    private boolean isPrivate() { return prefs.getBoolean("one_private", false) || moving; }
+
+    /* ---------------- auto-private: on the move (tram, bus, train) the goal hides by itself ---------------- */
+
+    private boolean moving, suppressMove;      // suppressMove: you showed it yourself during this ride
+    private int fastCount;
+    private long slowSince;
+    private android.location.LocationManager lm;
+
+    private boolean autoPrivate() { return prefs.getBoolean("auto_private", false); }
+
+    private boolean hasLocation() {
+        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** GPS speed, only while the home screen is on — a few readings a minute, nothing in the background. */
+    private final android.location.LocationListener speedL = new android.location.LocationListener() {
+        @Override public void onLocationChanged(android.location.Location l) {
+            if (!l.hasSpeed()) return;
+            float s = l.getSpeed();                                     // m/s
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (s > 4.2f) {                                             // > 15 km/h: faster than walking or jogging
+                slowSince = 0;
+                if (++fastCount >= 2 && !moving && !suppressMove) { moving = true; peeking = false; render(); }
+            } else {
+                fastCount = 0;
+                if (s < 1.5f) {
+                    if (slowSince == 0) slowSince = now;
+                    else if (now - slowSince > 45_000) { suppressMove = false; if (moving) { moving = false; render(); } }   // stopped for a while: show again
+                } else slowSince = 0;
+            }
+        }
+        @Override public void onStatusChanged(String p, int st, Bundle b) { }
+        @Override public void onProviderEnabled(String p) { }
+        @Override public void onProviderDisabled(String p) { }
+    };
+
+    private void startSpeed() {
+        if (!autoPrivate() || !hasLocation()) return;
+        if (lm == null) lm = getSystemService(android.location.LocationManager.class);
+        if (lm == null) return;
+        try { lm.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 3000, 0, speedL, Looper.getMainLooper()); }
+        catch (RuntimeException ignored) { }
+    }
+
+    private void stopSpeed() {
+        if (lm != null) try { lm.removeUpdates(speedL); } catch (RuntimeException ignored) { }
+        fastCount = 0;
+    }
+
+    private void setAutoPrivate(boolean on) {
+        if (on && !hasLocation()) { requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 48); return; }
+        prefs.edit().putBoolean("auto_private", on).apply();
+        if (on) startSpeed(); else { stopSpeed(); moving = false; render(); }
+        Toast.makeText(this, on ? L.t("Unterwegs (Tram, Bus, Zug) wird dein Ziel automatisch verdeckt.") : L.t("Automatisch privat: aus."), Toast.LENGTH_SHORT).show();
+    }
 
     private void setPrivate(boolean on) {
         prefs.edit().putBoolean("one_private", on).apply();
+        if (!on && moving) { moving = false; suppressMove = true; }   // switched off by hand mid-ride: stay off until you stop
         peeking = false;
         main.removeCallbacks(endPeek);
         Toast.makeText(this, on ? L.t("Privat: dein Ziel ist verdeckt. Tippen zeigt es kurz.") : L.t("Privat-Modus aus."), Toast.LENGTH_SHORT).show();
@@ -611,6 +670,11 @@ public class OneHomeActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
+        if (code == 48) {
+            if (hasLocation()) setAutoPrivate(true);
+            else Toast.makeText(this, L.t("Ohne Standort kann ARC One nicht merken, dass du fährst."), Toast.LENGTH_LONG).show();
+            return;
+        }
         if (code != 47) return;
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) startHey();
         else Toast.makeText(this, L.t("Ohne Mikrofon kann «Hey Claude» nicht zuhören."), Toast.LENGTH_LONG).show();
@@ -740,6 +804,8 @@ public class OneHomeActivity extends Activity {
         // 2) switches: one row each, with what it does and a real on/off
         c.addView(section(L.t("Helfer")));
         c.addView(toggleRow("🔒", L.t("Privat-Modus"), L.t("Ziel verdeckt – für Tram & Bus"), isPrivate(), on -> setPrivate(on)));
+        c.addView(toggleRow("🚋", L.t("Automatisch privat"), L.t("Verdeckt dein Ziel, sobald du fährst (GPS, nur wenn sichtbar)"),
+            autoPrivate(), on -> setAutoPrivate(on)));
         c.addView(toggleRow("❓", L.t("«Wozu?»"), L.t("Fragt vor Chrome, Einstellungen & Co."),
             Purpose.prefs(this).getBoolean("purpose_on", true), on -> Purpose.prefs(this).edit().putBoolean("purpose_on", on).apply()));
         c.addView(toggleRow("⏱", L.t("Check-in"), L.t("Fragt nach 10 Min. in anderen Apps"),

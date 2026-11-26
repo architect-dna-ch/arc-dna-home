@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Hey Claude: offline voice quick commands (the audio never leaves the phone) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Automatisch privat: GPS speed while the home screen is visible (tram, bus, train → goal hidden) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
