@@ -247,16 +247,22 @@ public class OneHomeActivity extends Activity {
         TextView yes = pill(L.t("Ja, weiter"), INK, BG);
         TextView neu = pill(L.t("Neu schreiben"), CARD, INK);
         TextView done = pill(L.t("Erledigt ✓"), CARD, INK);
+        neu.setText(L.t("Neu"));
         yes.setOnClickListener(v -> { tick(v); prefs.edit().putLong("one_checked", now()).apply(); render(); });   // a check-in isn't a change: not mirrored
         neu.setOnClickListener(v -> { tick(v); openEditor(); });
         done.setOnClickListener(v -> { confirm(v); markDone(); });
-        for (TextView t : new TextView[]{yes, neu, done}) {
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2); p.rightMargin = dp(8);
+        TextView[] row3 = {yes, neu, done};
+        for (int k = 0; k < 3; k++) {                       // three equal buttons across the full width, even gaps
+            TextView t = row3[k];
+            t.setSingleLine(true);
+            t.setPadding(dp(8), dp(11), dp(8), dp(11));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (k > 0) p.leftMargin = dp(8);
             btns.addView(t, p);
         }
         LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-1, -2); bl.topMargin = dp(10);
         checkIn.addView(btns, bl);
-        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, -2); cl.topMargin = dp(22);
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-1, -2); cl.topMargin = dp(22); cl.bottomMargin = dp(16);
         mid.addView(checkIn, cl);
 
         // Music One: your one track, three times
