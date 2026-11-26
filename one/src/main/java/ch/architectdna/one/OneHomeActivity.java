@@ -478,10 +478,11 @@ public class OneHomeActivity extends Activity {
         if (!started) { Toast.makeText(this, L.t("YouTube Music ist nicht installiert."), Toast.LENGTH_SHORT).show(); return; }
         boolean counted = false;
         try {
-            sendBroadcast(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RepeatWatch$Receiver").putExtra("times", 3));
+            sendBroadcast(new Intent().setClassName("ch.architectdna.home", "ch.architectdna.home.RepeatWatch$Receiver")
+                .putExtra("times", 3).putExtra("each", true));                // every song 3×, then the next, and so on
             counted = isInstalled("ch.architectdna.home");
         } catch (Exception ignored) { }
-        Toast.makeText(this, counted ? L.t("Music One · 3×, dann Pause.") : L.t("Music One läuft (3× braucht die ARC-DNA-App)."), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, counted ? L.t("Music One · jeder Song 3×, dann der nächste.") : L.t("Music One läuft (3× braucht die ARC-DNA-App)."), Toast.LENGTH_SHORT).show();
     }
 
     private boolean isInstalled(String pkg) {
