@@ -257,8 +257,12 @@ final class BrainView extends View {
         long now = SystemClock.uptimeMillis(), t = now - born;
         float dt = last == 0 ? 16 : Math.min(50, now - last);
         last = now;
-        float w = getWidth(), h = getHeight(), m = Math.min(w, h), cx = w / 2f, cy = h / 2f - m * 0.04f;
-        float scale = m * 0.62f * (1 + 0.035f * breath(t));
+        float w = getWidth(), h = getHeight(), m = Math.min(w, h), cx = w / 2f;
+        // in a wide, short slot (the home screen) the brain is limited by height: fill it and sit dead centre;
+        // in a tall or square one (calm mode) keep the old framing with a little room for the legend above
+        boolean wide = w > h * 1.25f;
+        float cy = wide ? h / 2f : h / 2f - m * 0.04f;
+        float scale = m * (wide ? 0.95f : 0.62f) * (1 + 0.035f * breath(t));
         double ay = t / 46_000.0 * Math.PI * 2 - 0.8;                    // one turn every ~46 s
         double ax = 0.25 + 0.05 * Math.sin(t / 9000.0);
         double sy = Math.sin(ay), cyy = Math.cos(ay), sx = Math.sin(ax), cxx = Math.cos(ax);
