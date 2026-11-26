@@ -245,7 +245,21 @@ final class SelfUpdater {
             Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
             if (confirm != null) a.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } else if (st != PackageInstaller.STATUS_SUCCESS) {
-            ui.state(L.t("Update abgebrochen"), true);
+            // say why, so a failed update can be fixed instead of guessed at
+            String why;
+            switch (st) {
+                case PackageInstaller.STATUS_FAILURE_ABORTED: why = "Bestätigung abgebrochen oder nicht gezeigt"; break;
+                case PackageInstaller.STATUS_FAILURE_BLOCKED: why = "vom System blockiert"; break;
+                case PackageInstaller.STATUS_FAILURE_CONFLICT: why = "Konflikt mit installierter Version"; break;
+                case PackageInstaller.STATUS_FAILURE_INCOMPATIBLE: why = "nicht kompatibel mit diesem Gerät"; break;
+                case PackageInstaller.STATUS_FAILURE_INVALID: why = "Datei beschädigt, neu laden"; break;
+                case PackageInstaller.STATUS_FAILURE_STORAGE: why = "zu wenig Speicher"; break;
+                default: why = "Fehler " + st;
+            }
+            String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+            DiagNote.last = why + (msg == null ? "" : " · " + msg);
+            prefs.edit().putLong("checked", 0).apply();                                   // a tap retries right away
+            ui.state(L.t("Update abgebrochen") + " · " + why + " · " + L.t("tippen = nochmal"), true);
         }
     }
 
@@ -268,3 +282,6 @@ final class SelfUpdater {
         }
     }
 }
+
+/** The last install failure, in full, for the ⋯ menu. */
+final class DiagNote { static volatile String last = ""; private DiagNote() { } }

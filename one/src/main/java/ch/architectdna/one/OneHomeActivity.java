@@ -767,6 +767,19 @@ public class OneHomeActivity extends Activity {
         priv.setOnClickListener(v -> { root.removeView(sheet); setPrivate(!isPrivate()); });
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2); pl.topMargin = dp(10);
         c.addView(priv, pl);
+        TextView browserDl = pill(L.t("Update im Browser laden"), CARD, INK);
+        browserDl.setOnClickListener(v -> {
+            root.removeView(sheet);
+            // plain download from the public mirror; Chrome installs it after a tap — works when the in-app update won't
+            try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/architect-dna-ch/arc-releases/releases?q=one-v&expanded=true"))); } catch (Exception ignored) { }
+        });
+        if (!DiagNote.last.isEmpty()) {
+            TextView why = text(12, INK3, Typeface.create("monospace", Typeface.NORMAL));
+            why.setText(L.t("Letzter Update-Fehler: ") + DiagNote.last);
+            why.setPadding(0, dp(24), 0, 0);
+            c.addView(why);
+        }
+        LinearLayout.LayoutParams bdl = new LinearLayout.LayoutParams(-2, -2); bdl.topMargin = dp(10);
         TextView upNow = pill(L.t("Jetzt nach Updates suchen"), CARD, INK);
         upNow.setOnClickListener(v -> {
             root.removeView(sheet);
@@ -779,6 +792,7 @@ public class OneHomeActivity extends Activity {
         });
         LinearLayout.LayoutParams ul = new LinearLayout.LayoutParams(-2, -2); ul.topMargin = dp(10);
         c.addView(upNow, ul);
+        c.addView(browserDl, bdl);
         TextView setHome = pill(L.t("Als Startbildschirm festlegen"), CARD, INK);
         setHome.setOnClickListener(v -> { try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { } } });
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2); sl.topMargin = dp(10);
