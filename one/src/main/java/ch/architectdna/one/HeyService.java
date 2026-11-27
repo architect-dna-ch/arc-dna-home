@@ -54,7 +54,7 @@ public class HeyService extends Service {
     private static final String MODEL_URL = "https://alphacephei.com/vosk/models/" + MODEL + ".zip";
     private static final int NOTE = 47;
     // the only phrases the recogniser may hear; anything else becomes [unk] and is ignored
-    private static final String GRAMMAR = "[\"arc\", \"ark\", \"claude\", \"cloud\", \"siesta\", \"music\", \"music one\","
+    private static final String GRAMMAR = "[\"architect\", \"claude\", \"cloud\", \"siesta\", \"music\", \"music one\","
         + " \"my goal\", \"goal\", \"goal done\", \"new goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\","
         + " \"play\", \"continue\", \"resume\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
         + " \"stop listening\", \"[unk]\"]";
@@ -200,9 +200,10 @@ public class HeyService extends Service {
         long now = System.currentTimeMillis();
         // wake words: "ARC" (short, so only together with a command in one breath) or "Claude" (also alone, then a beep)
         String w = " " + t + " ";
-        boolean arc = w.contains(" arc ") || w.contains(" ark "), claude = w.contains(" claude ") || w.contains(" cloud ");
+        // wake word for commands: "architect" (three syllables, rarely in songs or talk); "claude" opens the app
+        boolean arc = w.contains(" architect "), claude = w.contains(" claude ") || w.contains(" cloud ");
         boolean wake = arc || claude;
-        String rest = w.replace(" arc ", " ").replace(" ark ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
+        String rest = w.replace(" architect ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
         // while music plays, lyrics can sound like commands: then ARC commands only count on finished phrases
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
         boolean music = am != null && am.isMusicActive();

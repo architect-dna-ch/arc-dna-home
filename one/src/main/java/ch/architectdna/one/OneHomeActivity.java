@@ -721,7 +721,7 @@ public class OneHomeActivity extends Activity {
     private void startHey() {
         HeyService.start(this);
         renderMic("listening");
-        Toast.makeText(this, L.t("«Hey Claude» an. Beim ersten Mal lädt es das Sprachmodell (~40 MB). Sag z. B.: «ARC pause», «ARC next», «Claude, siesta»."), Toast.LENGTH_LONG).show();
+        Toast.makeText(this, L.t("«Hey Claude» an. Beim ersten Mal lädt es das Sprachmodell (~40 MB). Sag z. B.: «Architect pause», «Architect next» – «Claude» öffnet die Claude-App."), Toast.LENGTH_LONG).show();
         // music / calm / guide open ARC One from the background: Android only allows that with this permission
         if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("hey_overlay_asked", false)) {
             prefs.edit().putBoolean("hey_overlay_asked", true).apply();
@@ -862,7 +862,7 @@ public class OneHomeActivity extends Activity {
             Purpose.prefs(this).getBoolean("purpose_on", true), on -> Purpose.prefs(this).edit().putBoolean("purpose_on", on).apply()));
         c.addView(toggleRow("⏱", L.t("Check-in"), L.t("Fragt nach 10 Min. in anderen Apps"),
             Purpose.awayOn(this), on -> Purpose.prefs(this).edit().putBoolean("away_on", on).apply()));
-        c.addView(toggleRow("🎙", L.t("Sprachbefehle «ARC»"), L.t("«ARC pause», «Claude, siesta» … offline"), HeyService.enabled(this), on -> {
+        c.addView(toggleRow("🎙", L.t("Sprachbefehle «Architect»"), L.t("«Architect pause» · «Claude» öffnet die App · offline"), HeyService.enabled(this), on -> {
             if (on != HeyService.enabled(this)) toggleHey();
         }));
 
