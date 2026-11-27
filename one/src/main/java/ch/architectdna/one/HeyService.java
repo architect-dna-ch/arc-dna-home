@@ -206,16 +206,12 @@ public class HeyService extends Service {
         // counts — "Claude" on its own (beep), then the command — and only on finished phrases, never "ARC …"
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
         boolean music = am != null && am.isMusicActive();
-        if (music && partial) return;
-        if (music && !claude && now > armedUntil) return;
-        if (music && claude && !rest.isEmpty()) return;
-        if (claude && rest.isEmpty()) {                                    // "Claude" … (wait for the command)
-            if (now > armedUntil) ping();
-            tell("armed");
-            armedUntil = now + 6000;
-            // no ARC command within 3.5 s: "Claude" on its own opens the Claude app
-            main.removeCallbacks(openClaude);
-            main.postDelayed(openClaude, 3500);
+        if (music && partial) return;                                 // with music: only finished phrases
+        if (claude && rest.isEmpty()) {                                    // "Claude" = open the Claude app, now
+            actedAt = now;
+            ping();
+            armedUntil = now;
+            openClaude.run();
             return;
         }
         if (wake && rest.isEmpty()) return;                               // a lone "arc" is too easy to mishear: ignore
