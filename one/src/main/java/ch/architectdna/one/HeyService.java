@@ -213,12 +213,16 @@ public class HeyService extends Service {
             if (now > armedUntil) ping();
             tell("armed");
             armedUntil = now + 6000;
+            // no ARC command within 3.5 s: "Claude" on its own opens the Claude app
+            main.removeCallbacks(openClaude);
+            main.postDelayed(openClaude, 3500);
             return;
         }
         if (wake && rest.isEmpty()) return;                               // a lone "arc" is too easy to mishear: ignore
         if (!wake && now > armedUntil) return;                            // a command word without a wake word: ignore
         if (rest.isEmpty() || !isCommand(rest)) return;
         armedUntil = 0;
+        main.removeCallbacks(openClaude);
         actedAt = now;
         tell("heard:" + rest);
         run(rest);
@@ -326,6 +330,16 @@ public class HeyService extends Service {
     }
 
     private boolean torchOn;
+
+    /** "Claude" and nothing after it: open the Claude app (voice mode is one tap inside it). */
+    private final Runnable openClaude = () -> {
+        if (armedUntil == 0) return;                                  // a command came after all
+        armedUntil = 0;
+        Intent i = getPackageManager().getLaunchIntentForPackage("com.anthropic.claude");
+        if (i == null) { say("Claude-App ist nicht installiert."); tell("listening"); return; }
+        try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); tell("heard:claude app"); }
+        catch (RuntimeException e) { say("Claude-App liess sich nicht öffnen."); }
+    };
 
     private void mediaKey(int code) {
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
