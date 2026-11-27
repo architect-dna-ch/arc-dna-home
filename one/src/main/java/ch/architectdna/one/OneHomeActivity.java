@@ -834,6 +834,7 @@ public class OneHomeActivity extends Activity {
         String[][] tools = {
             {"📖", L.t("Guidebook"), "guide"}, {"🥊", L.t("Rundentimer"), "ring"},
             {"⚖️", L.t("Aufwand & Wirkung"), "effort"}, {"✅", L.t("Wie die meisten"), "norm"},
+            {"🗓", L.t("Wozu-Journal"), "journal"}, {"🧠", L.t("Atmen"), "calm"},
         };
         LinearLayout grid = null;
         for (int i = 0; i < tools.length; i++) {
@@ -841,6 +842,8 @@ public class OneHomeActivity extends Activity {
             final String id = tools[i][2];
             View t = tile(tools[i][0], tools[i][1], v -> {
                 closeSheet.run();
+                if (id.equals("calm")) { openCalm(); return; }
+                if (id.equals("journal")) { startActivity(new Intent(this, JournalActivity.class)); return; }
                 Class<?> k = id.equals("guide") ? GuideActivity.class : id.equals("ring") ? RoundTimerActivity.class
                     : id.equals("effort") ? EffortActivity.class : NormActivity.class;
                 startActivity(new Intent(this, k));
@@ -1147,7 +1150,7 @@ public class OneHomeActivity extends Activity {
             .setMessage(L.t("Du wolltest: ") + p + "\n" + L.t("seit ") + ago(now() - Purpose.since(this)))
             .setPositiveButton(L.t("Ja ✓"), (d, w) -> Purpose.end(this))
             .setNegativeButton(L.t("Noch nicht"), null)
-            .setNeutralButton(L.t("Vergessen, egal"), (d, w) -> Purpose.end(this))
+            .setNeutralButton(L.t("Vergessen, egal"), (d, w) -> Purpose.end(this, "vergessen"))
             .show();
     }
 

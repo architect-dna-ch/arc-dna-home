@@ -47,16 +47,25 @@ final class Purpose {
 
     /** Starts it: remembers the sentence, shows it, and sets the first nudge. Empty = "nur kurz". */
     static void begin(Context c, String text, String appLabel) {
+        if (!current(c).isEmpty()) end(c, "abgelöst");            // a new one starts: the old one goes into the journal
         String t = text == null || text.trim().isEmpty() ? "nur kurz in " + appLabel : text.trim();
+        android.media.AudioManager am = c.getSystemService(android.media.AudioManager.class);
         prefs(c).edit().putString("purpose_text", t).putLong("purpose_at", System.currentTimeMillis())
-            .putString("purpose_app", appLabel).apply();
+            .putString("purpose_app", appLabel).putBoolean("purpose_music", am != null && am.isMusicActive()).apply();
         remember(c, t);
         show(c, false);
         schedule(c);
     }
 
-    static void end(Context c) {
-        prefs(c).edit().remove("purpose_text").remove("purpose_at").remove("purpose_app").apply();
+    static void end(Context c) { end(c, "erledigt"); }
+
+    /** Ends it and writes it to the journal: what, which app, from–to, how it ended, music on or not. */
+    static void end(Context c, String outcome) {
+        SharedPreferences p = prefs(c);
+        String t = current(c);
+        if (!t.isEmpty()) Journal.add(c, t, p.getString("purpose_app", ""), since(c), System.currentTimeMillis(), outcome,
+            p.getBoolean("purpose_music", false));
+        p.edit().remove("purpose_text").remove("purpose_at").remove("purpose_app").remove("purpose_music").apply();
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm != null) nm.cancel(NOTE);
         AlarmManager am = c.getSystemService(AlarmManager.class);
