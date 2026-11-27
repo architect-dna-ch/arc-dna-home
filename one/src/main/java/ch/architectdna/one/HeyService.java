@@ -202,6 +202,13 @@ public class HeyService extends Service {
         boolean arc = w.contains(" arc ") || w.contains(" ark "), claude = w.contains(" claude ") || w.contains(" cloud ");
         boolean wake = arc || claude;
         String rest = w.replace(" arc ", " ").replace(" ark ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
+        // while music plays, the recogniser hears command words in the lyrics: then only the deliberate two-step
+        // counts — "Claude" on its own (beep), then the command — and only on finished phrases, never "ARC …"
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        boolean music = am != null && am.isMusicActive();
+        if (music && partial) return;
+        if (music && !claude && now > armedUntil) return;
+        if (music && claude && !rest.isEmpty()) return;
         if (claude && rest.isEmpty()) {                                    // "Claude" … (wait for the command)
             if (now > armedUntil) ping();
             tell("armed");
