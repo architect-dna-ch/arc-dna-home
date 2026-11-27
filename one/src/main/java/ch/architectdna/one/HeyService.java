@@ -161,6 +161,7 @@ public class HeyService extends Service {
         if (stopping || model == null) return;
         try {
             Recognizer rec = new Recognizer(model, 16000.0f, GRAMMAR);
+            try { rec.setEndpointerDelays(5.0f, 0.3f, 8.0f); } catch (Throwable ignored) { }   // a phrase ends after 0.3 s of quiet
             speech = new SpeechService(rec, 16000.0f);
             speech.startListening(listener);
             tell("listening");
@@ -202,12 +203,11 @@ public class HeyService extends Service {
         boolean arc = w.contains(" arc ") || w.contains(" ark "), claude = w.contains(" claude ") || w.contains(" cloud ");
         boolean wake = arc || claude;
         String rest = w.replace(" arc ", " ").replace(" ark ", " ").replace(" claude ", " ").replace(" cloud ", " ").trim();
-        // while music plays, the recogniser hears command words in the lyrics: then only the deliberate two-step
-        // counts — "Claude" on its own (beep), then the command — and only on finished phrases, never "ARC …"
+        // while music plays, lyrics can sound like commands: then ARC commands only count on finished phrases
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
         boolean music = am != null && am.isMusicActive();
-        if (music && partial) return;                                 // with music: only finished phrases
-        if (claude && rest.isEmpty()) {                                    // "Claude" = open the Claude app, now
+        if (music && partial && !(claude && rest.isEmpty())) return;      // with music, commands only on finished phrases
+        if (claude && rest.isEmpty()) {                                    // "Claude" = open the Claude app on the first partial
             actedAt = now;
             ping();
             armedUntil = now;
