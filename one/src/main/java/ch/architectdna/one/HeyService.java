@@ -57,6 +57,7 @@ public class HeyService extends Service {
     private static final String GRAMMAR = "[\"architect\", \"claude\", \"cloud\", \"siesta\", \"music\", \"music one\","
         + " \"my goal\", \"goal\", \"goal done\", \"new goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\","
         + " \"play\", \"continue\", \"resume\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
+        + " \"chrome\", \"browser\", \"camera\", \"alarm\", \"volume up\", \"volume down\","
         + " \"stop listening\", \"[unk]\"]";
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -165,6 +166,7 @@ public class HeyService extends Service {
         if (stopping || model == null) return;
         try {
             Recognizer rec = new Recognizer(model, 16000.0f, GRAMMAR);
+            rec.setWords(true);                                                // per-word confidence, for commands without a wake word
             try { rec.setEndpointerDelays(5.0f, 0.3f, 8.0f); } catch (Throwable ignored) { }   // a phrase ends after 0.3 s of quiet
             speech = new SpeechService(rec, 16000.0f);
             speech.startListening(listener);
@@ -220,7 +222,11 @@ public class HeyService extends Service {
             return;
         }
         if (wake && rest.isEmpty()) return;                               // a lone "arc" is too easy to mishear: ignore
-        if (!wake && now > armedUntil) return;                            // a command word without a wake word: ignore
+        if (!wake && now > armedUntil) {
+            // optional: plain commands without "Architect" — only the command alone, on a finished phrase,
+            // no music playing, and the recogniser sure of every word (else conversation would trigger it)
+            if (!noWake(this) || partial || music || !EXACT.contains(rest) || minConf(json) < 0.92) return;
+        }
         if (rest.isEmpty() || !isCommand(rest)) return;
         armedUntil = 0;
         main.removeCallbacks(openClaude);
@@ -229,9 +235,27 @@ public class HeyService extends Service {
         run(rest);
     }
 
+    static boolean noWake(android.content.Context c) { return c.getSharedPreferences("home", MODE_PRIVATE).getBoolean("hey_nowake", false); }
+
+    /** The phrases that may stand alone (without "Architect") — exact match only. */
+    private static final java.util.Set<String> EXACT = new java.util.HashSet<>(java.util.Arrays.asList(
+        "pause", "play", "next", "previous", "louder", "quieter", "volume up", "volume down", "light", "light off",
+        "chrome", "browser", "camera", "alarm", "battery", "time", "siesta", "music", "music one", "timer", "boxing", "private", "goal"));
+
+    private static double minConf(String json) {
+        try {
+            org.json.JSONArray a = new JSONObject(json).optJSONArray("result");
+            if (a == null || a.length() == 0) return 0;
+            double m = 1;
+            for (int i = 0; i < a.length(); i++) m = Math.min(m, a.getJSONObject(i).optDouble("conf", 0));
+            return m;
+        } catch (Exception e) { return 0; }
+    }
+
     private static boolean isCommand(String r) {
         for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "boxing", "timer", "stop listening",
-            "play", "continue", "resume", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist"}) if (r.contains(w)) return true;
+            "play", "continue", "resume", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist",
+            "chrome", "browser", "camera", "alarm", "volume"}) if (r.contains(w)) return true;
         return false;
     }
 
@@ -266,6 +290,18 @@ public class HeyService extends Service {
         if (cmd.matches(".*\\b(play|continue|resume)\\b.*")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY); say("Weiter."); return; }
         if (cmd.contains("next")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT); say("Nächster Song."); return; }
         if (cmd.contains("previous")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS); say("Zurück."); return; }
+        if (cmd.contains("volume up")) cmd = "louder";
+        else if (cmd.contains("volume down")) cmd = "quieter";
+        if (cmd.contains("chrome") || cmd.contains("browser") || cmd.contains("camera") || cmd.contains("alarm")) {
+            Intent i;
+            if (cmd.contains("chrome")) i = getPackageManager().getLaunchIntentForPackage("com.android.chrome");
+            else if (cmd.contains("browser")) i = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_BROWSER);
+            else if (cmd.contains("camera")) i = new Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+            else i = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            if (i == null) { say("App nicht gefunden."); return; }
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (RuntimeException e) { say("Liess sich nicht öffnen."); }
+            return;
+        }
         if (cmd.contains("louder") || cmd.contains("quieter")) {
             android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
             if (am != null) for (int k = 0; k < 2; k++)

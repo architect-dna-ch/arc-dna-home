@@ -865,6 +865,8 @@ public class OneHomeActivity extends Activity {
         c.addView(toggleRow("🎙", L.t("Sprachbefehle «Architect»"), L.t("«Architect pause» · «Claude» öffnet die App · offline"), HeyService.enabled(this), on -> {
             if (on != HeyService.enabled(this)) toggleHey();
         }));
+        c.addView(toggleRow("⚡", L.t("Ohne «Architect» (Test)"), L.t("«pause», «chrome», «camera» … allein – nur ohne Musik, nur bei klarem Wort"),
+            HeyService.noWake(this), on -> prefs.edit().putBoolean("hey_nowake", on).apply()));
 
         // 3) history, folded: counts only until you open it
         JSONArray done = doneList();
