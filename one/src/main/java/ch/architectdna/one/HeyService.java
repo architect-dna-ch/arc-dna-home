@@ -81,6 +81,10 @@ public class HeyService extends Service {
     @Override public IBinder onBind(Intent i) { return null; }
 
     @Override public int onStartCommand(Intent i, int flags, int id) {
+        if (!torchWatched) {
+            try { getSystemService(android.hardware.camera2.CameraManager.class).registerTorchCallback(torchCb, main); torchWatched = true; }
+            catch (RuntimeException ignored) { }
+        }
         if (i != null && "off".equals(i.getAction())) { stop(this); return START_NOT_STICKY; }
         goForeground("Startet …");
         if (speech == null && model == null) new Thread(this::prepare, "arc-hey").start();
@@ -276,7 +280,7 @@ public class HeyService extends Service {
                 android.hardware.camera2.CameraManager cm = getSystemService(android.hardware.camera2.CameraManager.class);
                 for (String id : cm.getCameraIdList()) {
                     Boolean f = cm.getCameraCharacteristics(id).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE);
-                    if (f != null && f) { cm.setTorchMode(id, on); torchOn = on; say(on ? "Licht an." : "Licht aus."); return; }
+                    if (f != null && f) { cm.setTorchMode(id, on); say(on ? "Licht an." : "Licht aus."); return; }
                 }
             } catch (Exception e) { say("Taschenlampe geht gerade nicht."); }
             return;
@@ -327,7 +331,12 @@ public class HeyService extends Service {
         } catch (RuntimeException ignored) { }
     }
 
-    private boolean torchOn;
+    // the real torch state, as Android reports it (also when you switch it in quick settings)
+    private volatile boolean torchOn;
+    private boolean torchWatched;
+    private final android.hardware.camera2.CameraManager.TorchCallback torchCb = new android.hardware.camera2.CameraManager.TorchCallback() {
+        @Override public void onTorchModeChanged(String camId, boolean enabled) { torchOn = enabled; }
+    };
 
     /** "Claude" and nothing after it: open the Claude app (voice mode is one tap inside it). */
     private final Runnable openClaude = () -> {
@@ -354,6 +363,7 @@ public class HeyService extends Service {
     @Override public void onDestroy() {
         stopping = true;
         tell("off");
+        if (torchWatched) try { getSystemService(android.hardware.camera2.CameraManager.class).unregisterTorchCallback(torchCb); } catch (RuntimeException ignored) { }
         main.removeCallbacksAndMessages(null);
         if (speech != null) { try { speech.stop(); speech.shutdown(); } catch (RuntimeException ignored) { } }
         if (model != null) { try { model.close(); } catch (RuntimeException ignored) { } }
