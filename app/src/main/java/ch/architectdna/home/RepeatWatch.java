@@ -22,7 +22,7 @@ import android.os.SystemClock;
  *
  * Mode "each" (Music One's default): after N plays, on to the next track — which then also plays N
  * times, and so on, through the queue or radio. If you pick another song yourself (it changes before
- * the anchor has ended), that one becomes the new anchor. Stops when you pause for 3 minutes, after
+ * the anchor has ended), the watch stops for good and never touches the player again. Stops when you pause for 3 minutes, after
  * 3 hours, or if nothing starts within 20 s. Without "each": after the N-th play, it pauses.
  */
 final class RepeatWatch {
@@ -49,7 +49,7 @@ final class RepeatWatch {
         final long t0 = SystemClock.elapsedRealtime();
         final String[] anchor = {null};
         final int[] plays = {0};
-        final long[] lastPos = {0}, actedAt = {0}, anchorDur = {0}, quietSince = {0}, userSkipAt = {0};
+        final long[] lastPos = {0}, actedAt = {0}, anchorDur = {0}, quietSince = {0};
         loop = new Runnable() {
             @Override public void run() {
                 long now = SystemClock.elapsedRealtime();
@@ -85,10 +85,8 @@ final class RepeatWatch {
                     } else if (!title.isEmpty() && now - actedAt[0] > 4000) { // the track changed
                         // only an automatic move at the very end counts; unknown length or any earlier change = you skipped
                         boolean reachedEnd = anchorDur[0] > 0 && lastPos[0] > anchorDur[0] - 6_000;
-                        if (!reachedEnd) {                                   // you chose another song: follow it
-                            if (now - userSkipAt[0] < 60_000) { stop(); return; }   // skipping around: you're in charge
-                            userSkipAt[0] = now;
-                            anchor[0] = title; plays[0] = 1; lastPos[0] = pos; anchorDur[0] = dur;
+                        if (!reachedEnd) {                                   // you picked something yourself: hands off, completely
+                            stop(); return;
                         } else if (plays[0] < times) {                       // the player moved on too early
                             actedAt[0] = now;
                             plays[0]++;
