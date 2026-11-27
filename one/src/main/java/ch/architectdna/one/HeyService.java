@@ -56,7 +56,7 @@ public class HeyService extends Service {
     // the only phrases the recogniser may hear; anything else becomes [unk] and is ignored
     private static final String GRAMMAR = "[\"arc\", \"ark\", \"claude\", \"cloud\", \"siesta\", \"music\", \"music one\","
         + " \"my goal\", \"goal\", \"goal done\", \"new goal\", \"time\", \"private\", \"calm\", \"breathe\", \"guide\", \"boxing\", \"timer\","
-        + " \"play\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
+        + " \"play\", \"continue\", \"resume\", \"pause\", \"next\", \"previous\", \"louder\", \"quieter\", \"light\", \"light off\", \"battery\", \"home\", \"checklist\","
         + " \"stop listening\", \"[unk]\"]";
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -226,7 +226,7 @@ public class HeyService extends Service {
 
     private static boolean isCommand(String r) {
         for (String w : new String[]{"siesta", "music", "goal", "time", "private", "calm", "breathe", "guide", "boxing", "timer", "stop listening",
-            "play", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist"}) if (r.contains(w)) return true;
+            "play", "continue", "resume", "pause", "next", "previous", "louder", "quieter", "light", "battery", "home", "checklist"}) if (r.contains(w)) return true;
         return false;
     }
 
@@ -257,7 +257,8 @@ public class HeyService extends Service {
         if (cmd.matches(".*\\btime\\b.*")) { say("Es ist " + hhmm + "."); return; }   // "time", not "timer"
         // --- music without opening anything: the same keys a headset sends ---
         if (cmd.contains("pause")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PAUSE); say("Pause."); return; }
-        if (cmd.matches(".*\\bplay\\b.*")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY); say("Play."); return; }
+        // play / continue / resume = carry on where it stopped — never restarts Music One, even if "music" was heard too
+        if (cmd.matches(".*\\b(play|continue|resume)\\b.*")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY); say("Weiter."); return; }
         if (cmd.contains("next")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT); say("Nächster Song."); return; }
         if (cmd.contains("previous")) { mediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS); say("Zurück."); return; }
         if (cmd.contains("louder") || cmd.contains("quieter")) {
