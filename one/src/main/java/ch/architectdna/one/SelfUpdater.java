@@ -154,6 +154,11 @@ final class SelfUpdater {
                 }
                 prefs.edit().putLong("checked", System.currentTimeMillis()).apply();
                 if (best > current() && asset != 0) {
+                    if (!manual && prefs.getInt("failedV", 0) == best) {   // this one failed before: no more automatic tries, one quiet line
+                        int v = best;
+                        main.post(() -> ui.state(L.t("Update 0.") + v + L.t(" bereit · tippen"), true));
+                        return;
+                    }
                     if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
                         main.post(() -> ui.state(L.t("Update bereit · Installieren erlauben →"), true));
                         return;
@@ -192,6 +197,7 @@ final class SelfUpdater {
             installInner(id, version);
         } catch (Exception e) {
             progress(-1, 0, 0, version, true);
+            prefs.edit().putInt("failedV", version).apply();   // download broke: wait for a tap, don't loop
             throw e;
         }
     }
@@ -258,7 +264,7 @@ final class SelfUpdater {
             }
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             DiagNote.last = why + (msg == null ? "" : " · " + msg);
-            prefs.edit().putLong("checked", 0).apply();                                   // a tap retries right away
+            prefs.edit().putLong("checked", 0).putInt("failedV", prefs.getInt("pending", 0)).apply();   // only a tap retries this version
             ui.state(L.t("Update abgebrochen") + " · " + why + " · " + L.t("tippen = nochmal"), true);
         }
     }
