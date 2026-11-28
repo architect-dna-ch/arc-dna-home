@@ -263,6 +263,14 @@ public class GuideActivity extends Activity {
             prefs.edit().putInt("v", 2).apply();
             save();
         }
+        if (prefs.getInt("v", 1) < 3) {                  // v3 put "Seine Rahma empfangen" (6 pages) in as chapter 3, after page 11
+            read.clear(); read.addAll(shift(join(read), 11, 6));
+            marked.clear(); marked.addAll(shift(join(marked), 11, 6));
+            Set<Integer> sk = shift(prefs.getString("skipped", ""), 11, 6); skipped.clear(); skipped.addAll(sk);
+            if (at >= 11) at += 6;
+            prefs.edit().putInt("v", 3).apply();
+            save();
+        }
     }
 
     private void save() {
@@ -270,9 +278,12 @@ public class GuideActivity extends Activity {
             .putString("skipped", join(skipped)).apply();
     }
 
-    private static Set<Integer> shift(String csv) {
+    private static Set<Integer> shift(String csv) { return shift(csv, 5, 6); }
+
+    /** Page numbers at or after {@code from} move by {@code by} (a chapter was inserted there). */
+    private static Set<Integer> shift(String csv, int from, int by) {
         Set<Integer> out = new HashSet<>();
-        for (String s : csv.split(",")) try { int i = Integer.parseInt(s.trim()); out.add(i >= 5 ? i + 6 : i); } catch (RuntimeException ignored) { }
+        for (String s : csv.split(",")) try { int i = Integer.parseInt(s.trim()); out.add(i >= from ? i + by : i); } catch (RuntimeException ignored) { }
         return out;
     }
 
