@@ -12,6 +12,8 @@ import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.view.View;
 
+import java.util.Locale;
+
 /** The ARC Player's medium (jukebox, vinyl, cassette, CD, floppy), shared by ARC Player and ARC Remote. */
 final class DiskView extends View {
 
