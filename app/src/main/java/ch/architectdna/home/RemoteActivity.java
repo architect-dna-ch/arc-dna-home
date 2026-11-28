@@ -53,7 +53,7 @@ import java.util.Locale;
 public class RemoteActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final int bg = 0xFF0E0E0D, card = 0xFF1A1A18, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0, ink3 = 0xFF6F6E69,
+    private int bg = 0xFF0E0E0D, card = 0xFF1A1A18, ink = 0xFFF4F2EC, ink2 = 0xFFA5A5A0, ink3 = 0xFF6F6E69,
         line = 0xFF2C2C2A, rust = 0xFFD9472F, green = 0xFF2BD96B;
 
     private volatile BtRemote.Link link;
@@ -61,7 +61,9 @@ public class RemoteActivity extends Activity {
     private Thread connecting;
 
     private TextView dot, peer, title, artist, app, note, playBtn;
-    private ImageView cover;
+    private DiskView disk;
+    private Bitmap art;
+    private String shownTitle = "";
     private Seek seek;
     private VolBar volBar;
     private EditText search;
@@ -81,6 +83,7 @@ public class RemoteActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        themeColours();
         getWindow().setStatusBarColor(bg);
         getWindow().setNavigationBarColor(bg);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);   // in the tub, the screen stays ready
@@ -94,101 +97,107 @@ public class RemoteActivity extends Activity {
         col.setPadding(dp(22), dp(18), dp(22), dp(40));
         sv.addView(col);
 
-        // header: — ARC REMOTE · device · dot
+        // header, like ARC Player: ─ ARC REMOTE · device ● · 💾 Handy · ✕
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView lab = mono("— ARC REMOTE", rust, 11);
+        View dash = new View(this);
+        dash.setBackgroundColor(rust);
+        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(dp(24), dp(2));
+        dl.rightMargin = dp(12);
+        head.addView(dash, dl);
+        TextView lab = mono("ARC REMOTE", ink3, 11);
         head.addView(lab, new LinearLayout.LayoutParams(0, -2, 1f));
-        peer = mono(L.t("SUCHT …"), ink3, 11);
-        head.addView(peer);
+        LinearLayout dev = new LinearLayout(this);
+        dev.setGravity(Gravity.CENTER_VERTICAL);
+        dev.setPadding(dp(12), dp(7), dp(12), dp(7));
+        dev.setBackground(round(card, line, 20));
+        peer = mono(L.t("SUCHT …"), ink2, 10.5f);
+        peer.setLetterSpacing(0.12f);
+        dev.addView(peer);
         dot = new TextView(this);
         dot.setText(" ●");
         dot.setTextColor(rust);
-        dot.setTextSize(13);
-        head.addView(dot);
-        head.setOnClickListener(v -> pickDevice());
+        dot.setTextSize(12);
+        dev.addView(dot);
+        dev.setOnClickListener(v -> pickDevice());
+        head.addView(dev);
+        TextView close = new TextView(this);
+        close.setText("✕");
+        close.setTextColor(ink);
+        close.setTextSize(18);
+        close.setPadding(dp(16), dp(4), dp(2), dp(4));
+        close.setOnClickListener(v -> finish());
+        head.addView(close);
         col.addView(head);
 
-        cover = new ImageView(this);
-        cover.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        cover.setBackground(round(card, line, 10));
-        cover.setOutlineProvider(new ViewOutlineProvider() {
-            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10)); }
-        });
-        cover.setClipToOutline(true);
-        cover.setOnTouchListener((v, e) -> {
-            if (e.getActionMasked() != MotionEvent.ACTION_UP) return true;
-            long now = SystemClock.uptimeMillis();
-            boolean right = e.getX() > v.getWidth() / 2f;
-            if (now - lastTapAt < 320 && (lastTapX > v.getWidth() / 2f) == right) {
-                send(right ? "SEEKBY\t10000" : "SEEKBY\t-10000");
-                pos = Math.max(0, nowPos() + (right ? 10_000 : -10_000));
-                at = now;
-                flash(right ? "10 ⟳" : "⟲ 10");
-                lastTapAt = 0;
-            } else {
-                lastTapAt = now;
-                lastTapX = e.getX();
-            }
-            return true;
-        });
-        FrameLayout coverBox = new FrameLayout(this) {
-            @Override protected void onMeasure(int w, int h) { super.onMeasure(w, w); }
-        };
-        coverBox.addView(cover, new FrameLayout.LayoutParams(-1, -1));
-        col.addView(coverBox, lp(-1, -2, dp(22)));
+        // the same medium as ARC Player (vinyl, cassette, CD …), showing what the TABLET plays
+        disk = new DiskView(this, new DiskView.Host() {
+            @Override public boolean isPlaying() { return playing; }
+            @Override public long position() { return nowPos(); }
+            @Override public long duration() { return dur; }
+        }, bg, line, rust, ink3);
+        disk.setOnClickListener(v -> disk.nextEra());
+        disk.setOnLongClickListener(v -> { disk.autoEra(); return true; });
+        int wdp = getResources().getConfiguration().screenWidthDp;
+        col.addView(disk, lp(-1, dp(wdp < 360 ? 230 : 300), dp(18)));
 
-        app = mono("", ink3, 10.5f);
-        col.addView(app, lp(-1, -2, dp(18)));
         title = new TextView(this);
         title.setTextColor(ink);
-        title.setTextSize(26);
-        title.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        title.setLetterSpacing(-0.02f);
-        title.setMaxLines(2);
-        title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setTextSize(22);
+        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        title.setPadding(0, dp(18), 0, 0);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        title.setMarqueeRepeatLimit(-1);
+        title.setSelected(true);
         title.setText(L.t("Verbinde mit dem Tablet …"));
-        col.addView(title, lp(-1, -2, dp(4)));
+        col.addView(title);
         artist = new TextView(this);
         artist.setTextColor(ink2);
         artist.setTextSize(16);
         artist.setSingleLine(true);
         artist.setEllipsize(TextUtils.TruncateAt.END);
-        col.addView(artist, lp(-1, -2, dp(2)));
+        col.addView(artist);
+        app = mono("", ink3, 10);
+        app.setLetterSpacing(0.12f);
+        app.setPadding(0, dp(6), 0, 0);
+        col.addView(app);
 
         seek = new Seek();
-        col.addView(seek, lp(-1, dp(44), dp(14)));
+        col.addView(seek, lp(-1, dp(52), dp(14)));
 
         // transport: big targets
         LinearLayout tr = new LinearLayout(this);
         tr.setGravity(Gravity.CENTER);
-        tr.addView(circle("⏮", card, ink, 72, v -> send("PREV")));
-        tr.addView(new View(this), new LinearLayout.LayoutParams(dp(22), 1));
-        playBtn = circle("▶", ink, bg, 96, v -> {
+        tr.setPadding(0, dp(8), 0, 0);
+        tr.addView(circle("⏮", card, ink, 58, v -> send("PREV")));
+        tr.addView(new View(this), new LinearLayout.LayoutParams(dp(28), 1));
+        playBtn = circle("▶", rust, 0xFFFFFFFF, 78, v -> {
             playing = !playing;                 // answer the finger now, the tablet confirms a moment later
             at = SystemClock.uptimeMillis();
             paintPlay();
             send("TOGGLE");
         });
         tr.addView(playBtn);
-        tr.addView(new View(this), new LinearLayout.LayoutParams(dp(22), 1));
-        tr.addView(circle("⏭", card, ink, 72, v -> send("NEXT")));
-        col.addView(tr, lp(-1, -2, dp(10)));
+        tr.addView(new View(this), new LinearLayout.LayoutParams(dp(28), 1));
+        tr.addView(circle("⏭", card, ink, 58, v -> send("NEXT")));
+        col.addView(tr, lp(-1, -2, 0));
 
-        // Netflix-style extras: −10 s · speed · sleep timer · +10 s (double-tap the cover left/right works too)
+        // Netflix-style extras: −10 s · speed · sleep timer · +10 s
         LinearLayout ex = new LinearLayout(this);
-        TextView b10 = pill("⟲ 10", v -> { pos = Math.max(0, nowPos() - 10_000); at = SystemClock.uptimeMillis(); send("SEEKBY\t-10000"); });
-        speedBtn = pill("1×", v -> send("SPEEDNEXT"));
-        sleepBtn = pill("☾", v -> {
+        ex.setGravity(Gravity.CENTER);
+        TextView b10 = chip("⟲ 10", ink, v -> { pos = Math.max(0, nowPos() - 10_000); at = SystemClock.uptimeMillis(); send("SEEKBY\t-10000"); });
+        speedBtn = chip("1×", ink2, v -> send("SPEEDNEXT"));
+        sleepBtn = chip("☾ " + L.t("AUS"), ink2, v -> {
             int next = 0;
             for (int m : MediaExtras.SLEEP_MIN) if (m > sleepMin) { next = m; break; }
             sleepMin = next;
-            sleepBtn.setText(next == 0 ? "☾" : "☾ " + next + "'");
+            sleepBtn.setText(next == 0 ? "☾ " + L.t("AUS") : "☾ " + next + " MIN");
             send("SLEEP\t" + next);
         });
-        TextView f10 = pill("10 ⟳", v -> { pos = nowPos() + 10_000; at = SystemClock.uptimeMillis(); send("SEEKBY\t10000"); });
+        TextView f10 = chip("10 ⟳", ink, v -> { pos = nowPos() + 10_000; at = SystemClock.uptimeMillis(); send("SEEKBY\t10000"); });
         for (TextView x : new TextView[]{b10, speedBtn, sleepBtn, f10}) {
-            LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            LinearLayout.LayoutParams xl = new LinearLayout.LayoutParams(0, -2, 1f);
             xl.leftMargin = xl.rightMargin = dp(3);
             ex.addView(x, xl);
         }
@@ -197,13 +206,13 @@ public class RemoteActivity extends Activity {
         // volume
         LinearLayout vr = new LinearLayout(this);
         vr.setGravity(Gravity.CENTER_VERTICAL);
-        vr.addView(circle("−", card, ink, 52, v -> send("VOLSTEP\t-1")));
+        vr.addView(circle("−", card, ink, 44, v -> send("VOLSTEP\t-1")));
         volBar = new VolBar();
-        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(0, dp(52), 1f);
+        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(0, dp(40), 1f);
         vlp.leftMargin = dp(12);
         vlp.rightMargin = dp(12);
         vr.addView(volBar, vlp);
-        vr.addView(circle("+", card, ink, 52, v -> send("VOLSTEP\t1")));
+        vr.addView(circle("+", card, ink, 44, v -> send("VOLSTEP\t1")));
         col.addView(vr, lp(-1, -2, dp(24)));
         TextView keys = mono(L.t("LAUTSTÄRKETASTEN DES HANDYS STEUERN DAS TABLET"), ink3, 9.5f);
         keys.setGravity(Gravity.CENTER);
@@ -217,15 +226,15 @@ public class RemoteActivity extends Activity {
 
         // hand over what plays on this phone
         TextView hand = pill(L.t("📱 → 🔊   Vom Handy übernehmen"), v -> handOver());
-        col.addView(hand, lp(-1, dp(54), dp(16)));
+        col.addView(hand, lp(-1, dp(48), dp(16)));
 
         // ARC Flow: the other direction — bring the tablet's music onto this phone, same spot
         TextView bring = pill(L.t("🔊 → 📱   Vom Tablet hierher holen"), v -> bringHere());
-        col.addView(bring, lp(-1, dp(54), dp(10)));
+        col.addView(bring, lp(-1, dp(48), dp(10)));
 
         // ARC Sync: both devices on the same second; the one in your hand loud, the other a whisper
         syncChip = pill(syncLabel(), v -> toggleSync());
-        col.addView(syncChip, lp(-1, dp(54), dp(10)));
+        col.addView(syncChip, lp(-1, dp(48), dp(10)));
 
         // search → plays on the tablet
         col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));
@@ -235,7 +244,7 @@ public class RemoteActivity extends Activity {
         pushNow.setTextSize(14.5f);
         pushNow.setTypeface(pushNow.getTypeface(), Typeface.BOLD);
         pushNow.setGravity(Gravity.CENTER);
-        pushNow.setBackground(round(rust, rust, 10));
+        pushNow.setBackground(round(rust, rust, 24));
         pushNow.setPadding(0, dp(13), 0, dp(13));
         pushNow.setOnClickListener(v -> castPhoneTrack());
         col.addView(pushNow, lp(-1, -2, dp(10)));
@@ -246,7 +255,7 @@ public class RemoteActivity extends Activity {
         search.setHintTextColor(ink3);
         search.setSingleLine(true);
         search.setImeOptions(EditorInfo.IME_ACTION_GO);
-        search.setBackground(round(card, line, 8));
+        search.setBackground(round(card, line, 24));
         search.setPadding(dp(14), 0, dp(14), 0);
         search.setOnEditorActionListener((v, id, e) -> { playSearch(); return true; });
         sr.addView(search, new LinearLayout.LayoutParams(0, dp(52), 1f));
@@ -262,6 +271,7 @@ public class RemoteActivity extends Activity {
         col.addView(queue, lp(-1, -2, dp(8)));
 
         setContentView(sv);
+        barIcons();
 
         if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 41);
@@ -389,19 +399,20 @@ public class RemoteActivity extends Activity {
                 paintPlay();
                 seek.invalidate();
                 volBar.invalidate();
-                if (t.isEmpty()) cover.setImageDrawable(null);
+                if (t.isEmpty()) art = null;
+                if (!t.equals(shownTitle) || t.isEmpty()) { shownTitle = t; disk.set(art, t.isEmpty() ? L.t("LEER") : t, PlayerActivity.colourOf(art)); }
+                disk.invalidate();
                 break;
             case "ART":
                 if (p.length < 3) return;
-                if (p[2].isEmpty()) { cover.setImageDrawable(null); return; }
+                if (p[2].isEmpty()) { art = null; disk.set(null, shownTitle, 0); return; }
                 if (p[1].equals(artKey)) return;
                 artKey = p[1];
                 try {
                     byte[] raw = Base64.decode(p[2], Base64.DEFAULT);
                     Bitmap bm = BitmapFactory.decodeByteArray(raw, 0, raw.length);
-                    cover.setImageBitmap(bm);
-                    cover.setAlpha(0f);
-                    cover.animate().alpha(1f).setDuration(220).start();
+                    art = bm;
+                    disk.set(bm, shownTitle, PlayerActivity.colourOf(bm));
                 } catch (RuntimeException ignored) { }
                 break;
             case "QUEUE":
@@ -603,25 +614,35 @@ public class RemoteActivity extends Activity {
         Seek() { super(RemoteActivity.this); }
 
         @Override protected void onDraw(Canvas c) {
-            float w = getWidth(), y = dp(14);
-            float f = drag >= 0 ? drag : dur > 0 ? (float) nowPos() / dur : 0;
+            float pad = dp(13), l = pad, r = getWidth() - pad, top = dp(12), bh = dp(8);
+            float f = drag >= 0 ? drag : dur > 0 ? Math.min(1, (float) nowPos() / dur) : 0, head = l + (r - l) * f;
+            p.setShader(null);
             p.setColor(line);
-            c.drawRoundRect(new RectF(0, y - dp(2), w, y + dp(2)), dp(2), dp(2), p);
+            c.drawRoundRect(l, top, r, top + bh, bh / 2, bh / 2, p);
             p.setColor(rust);
-            c.drawRoundRect(new RectF(0, y - dp(2), w * f, y + dp(2)), dp(2), dp(2), p);
-            c.drawCircle(w * f, y, dp(drag >= 0 ? 10 : 7), p);
-            p.setColor(ink3);
+            c.drawRoundRect(l, top, Math.max(l + bh, head), top + bh, bh / 2, bh / 2, p);
+            float k = (SystemClock.uptimeMillis() % 3600) / 3600f, band = dp(70), sx = l - band + (r - l + 2 * band) * k;
+            p.setShader(new android.graphics.LinearGradient(sx - band, 0, sx + band, 0,
+                new int[]{0x00BFE3FF, 0x88EAF6FF, 0xCCFFFFFF, 0x88BFE3FF, 0x00BFE3FF}, null, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRoundRect(l, top, r, top + bh, bh / 2, bh / 2, p);
+            p.setShader(null);
+            p.setColor(0x553C8CFF);
+            c.drawCircle(head, top + bh / 2, dp(12), p);
+            p.setColor(0xFFFFFFFF);
+            c.drawCircle(head, top + bh / 2, dp(7), p);
+            p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             p.setTextSize(dp(11));
-            p.setTypeface(Typeface.MONOSPACE);
+            p.setColor(ink3);
             long shown = drag >= 0 ? (long) (drag * dur) : nowPos();
-            c.drawText(time(shown), 0, y + dp(24), p);
-            String d = time(dur);
-            c.drawText(d, w - p.measureText(d), y + dp(24), p);
+            c.drawText(time(shown), l, top + bh + dp(24), p);
+            String d = dur > 0 ? time(dur) : "–:––";
+            c.drawText(d, r - p.measureText(d), top + bh + dp(24), p);
+            postInvalidateOnAnimation();
         }
 
         @Override public boolean onTouchEvent(MotionEvent e) {
             if (dur <= 0) return false;
-            float f = Math.max(0, Math.min(1, e.getX() / getWidth()));
+            float f = Math.max(0, Math.min(1, (e.getX() - dp(13)) / (getWidth() - 2 * dp(13))));
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     getParent().requestDisallowInterceptTouchEvent(true);
@@ -710,13 +731,13 @@ public class RemoteActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextColor(colour);
-        t.setTextSize(sizeDp > 80 ? 30 : sizeDp > 60 ? 24 : 22);
+        t.setTextSize(sizeDp > 70 ? 26 : 20);
         t.setGravity(Gravity.CENTER);
         t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
         g.setColor(fill);
-        if (fill == card) g.setStroke(dp(1), line);
+        g.setStroke(dp(1.5f), fill == card ? line : fill);
         t.setBackground(g);
         t.setOnClickListener(l);
         t.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
@@ -727,10 +748,10 @@ public class RemoteActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextColor(ink);
-        t.setTextSize(15);
+        t.setTextSize(14.5f);
         t.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         t.setGravity(Gravity.CENTER);
-        t.setBackground(round(card, line, 8));
+        t.setBackground(round(card, line, 24));
         t.setOnClickListener(l);
         return t;
     }
@@ -740,9 +761,39 @@ public class RemoteActivity extends Activity {
         t.setText(s);
         t.setTextColor(colour);
         t.setTextSize(sp);
-        t.setTypeface(Typeface.MONOSPACE);
+        t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         t.setLetterSpacing(0.24f);
         return t;
+    }
+
+    /** ARC Player's chip: mono caps in a rounded outline. */
+    private TextView chip(String s, int colour, View.OnClickListener l) {
+        TextView c = mono(s, colour, 11);
+        c.setLetterSpacing(0.12f);
+        c.setSingleLine(true);
+        c.setGravity(Gravity.CENTER);
+        c.setPadding(dp(8), dp(9), dp(8), dp(9));
+        c.setBackground(round(card, colour, 20));
+        c.setOnClickListener(l);
+        return c;
+    }
+
+    /** Day or night like the system — the same palette as ARC Player. */
+    private void themeColours() {
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!night) {
+            bg = 0xFFFAFAF8; card = 0xFFFFFFFF; line = 0xFFE0E0D8;
+            ink = 0xFF1A1A1A; ink2 = 0xFF5A5A58; ink3 = 0xFF9A9A98; rust = 0xFFB5271E; green = 0xFF1E9E50;
+        }
+    }
+
+    private void barIcons() {
+        if (Build.VERSION.SDK_INT < 30 || getWindow().getInsetsController() == null) return;
+        boolean light = bg == 0xFFFAFAF8;
+        int bits = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        getWindow().getInsetsController().setSystemBarsAppearance(light ? bits : 0, bits);
     }
 
     private GradientDrawable round(int fill, int stroke, int r) {
