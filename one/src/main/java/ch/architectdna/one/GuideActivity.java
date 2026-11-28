@@ -271,6 +271,14 @@ public class GuideActivity extends Activity {
             prefs.edit().putInt("v", 3).apply();
             save();
         }
+        if (prefs.getInt("v", 1) < 4) {                  // v4 added 8 more pages at the end of "Seine Rahma empfangen" (after page 17)
+            read.clear(); read.addAll(shift(join(read), 17, 8));
+            marked.clear(); marked.addAll(shift(join(marked), 17, 8));
+            Set<Integer> sk = shift(join(skipped), 17, 8); skipped.clear(); skipped.addAll(sk);
+            if (at >= 17) at += 8;
+            prefs.edit().putInt("v", 4).apply();
+            save();
+        }
     }
 
     private void save() {
