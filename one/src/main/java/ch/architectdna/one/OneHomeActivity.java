@@ -647,7 +647,7 @@ public class OneHomeActivity extends Activity {
         if (!autoPrivate() || !hasLocation()) return;
         if (lm == null) lm = getSystemService(android.location.LocationManager.class);
         if (lm == null) return;
-        try { lm.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 3000, 0, speedL, Looper.getMainLooper()); }
+        try { lm.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER, 5000, 0, speedL, Looper.getMainLooper()); }
         catch (RuntimeException ignored) { }
     }
 

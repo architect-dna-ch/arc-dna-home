@@ -137,6 +137,23 @@ public class RemoteActivity extends Activity {
             @Override public long duration() { return dur; }
         }, bg, line, rust, ink3);
         disk.setOnClickListener(v -> disk.nextEra());
+        // swipe the record UP = throw this phone's song onto the tablet (it flies off the top)
+        final android.view.GestureDetector flick = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onDown(MotionEvent e) { return true; }
+            @Override public boolean onSingleTapUp(MotionEvent e) { disk.nextEra(); return true; }
+            @Override public void onLongPress(MotionEvent e) { disk.autoEra(); }
+            @Override public boolean onFling(MotionEvent a, MotionEvent e, float vx, float vy) {
+                if (a == null || vy > -dp(900) || Math.abs(vy) < Math.abs(vx)) return false;
+                disk.animate().translationY(-disk.getHeight()).alpha(0f).setDuration(260).withEndAction(() -> {
+                    disk.setTranslationY(disk.getHeight() * 0.4f);
+                    disk.animate().translationY(0).alpha(1f).setDuration(380).start();
+                }).start();
+                try { disk.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM); } catch (RuntimeException ignored) { }
+                handOver();
+                return true;
+            }
+        });
+        disk.setOnTouchListener((v, e) -> { v.getParent().requestDisallowInterceptTouchEvent(e.getActionMasked() == MotionEvent.ACTION_MOVE); return flick.onTouchEvent(e); });
         disk.setOnLongClickListener(v -> { disk.autoEra(); return true; });
         int wdp = getResources().getConfiguration().screenWidthDp;
         col.addView(disk, lp(-1, dp(wdp < 360 ? 230 : 300), dp(18)));
@@ -235,6 +252,13 @@ public class RemoteActivity extends Activity {
         // ARC Sync: both devices on the same second; the one in your hand loud, the other a whisper
         syncChip = pill(syncLabel(), v -> toggleSync());
         col.addView(syncChip, lp(-1, dp(48), dp(10)));
+
+        // the tablet updates itself on command — no walking over, no tapping "install" there
+        TextView upd = pill(L.t("⬆ ARC-DNA-Update aufs Tablet"), v -> { send("UPDATE\t"); note.setText(L.t("Update ans Tablet geschickt …")); });
+        col.addView(upd, lp(-1, dp(48), dp(10)));
+        TextView hint = mono(L.t("PLATTE NACH OBEN WISCHEN = HANDY-SONG AUFS TABLET"), ink3, 9.5f);
+        hint.setGravity(Gravity.CENTER);
+        col.addView(hint, lp(-1, -2, dp(8)));
 
         // search → plays on the tablet
         col.addView(mono(L.t("— AUF DEM TABLET SPIELEN"), ink3, 11), lp(-1, -2, dp(26)));

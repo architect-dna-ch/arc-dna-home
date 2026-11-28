@@ -331,7 +331,15 @@ final class BrainView extends View {
 
         cv.restore();
         if (showLegend) drawLegend(cv);
-        if (running) postInvalidateOnAnimation();
+        if (running) nextFrame();
+    }
+
+    /** 60–120 fps only while a finger is on it or the zoom moves; otherwise 30 fps (15 in battery saver).
+     *  The signals step by real time, so they look the same — the GPU just works a half to a quarter as often. */
+    private void nextFrame() {
+        if (holding || Math.abs(zoom - zoomTarget) > 0.01f) { postInvalidateOnAnimation(); return; }
+        android.os.PowerManager pm = (android.os.PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+        postInvalidateDelayed(pm != null && pm.isPowerSaveMode() ? 66 : 33);
     }
 
     private void stepSignals(float dt) {

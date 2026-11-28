@@ -45,6 +45,7 @@ public class HubActivity extends Activity {
         updater = new Updater(this, prefs, this::onUpdateState);
         updater.progress = this::onProgress;
         build();
+        if (getIntent() != null && getIntent().getBooleanExtra("updateNow", false)) pushedUpdate();
         // Pull down from the top: look for updates now.
         scroll.setOnTouchListener((v, e) -> {
             if (e.getActionMasked() == MotionEvent.ACTION_DOWN) downY = scroll.getScrollY() == 0 ? e.getY() : -1;
@@ -77,6 +78,15 @@ public class HubActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (Updater.ACTION_STATUS.equals(intent.getAction())) updater.onStatus(intent);
+        else if (intent.getBooleanExtra("updateNow", false)) pushedUpdate();
+    }
+
+    /** Sent from the phone (ARC Remote → "Update aufs Tablet"): look now and install without asking. */
+    private void pushedUpdate() {
+        getIntent().removeExtra("updateNow");
+        prefs.edit().putBoolean("autoUpdate", true).apply();
+        updateLine.setText(t("↻ Update from the phone …", "↻ Update vom Handy …"));
+        updater.check(true);
     }
 
     private void build() {

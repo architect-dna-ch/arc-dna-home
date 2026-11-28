@@ -541,6 +541,16 @@ final class BtRemote {
                 return;
             }
             if (cmd.equals("SEARCH")) { search(arg); return; }
+            if (cmd.equals("UPDATE")) {                    // the phone says: update yourself now (no tapping on the tablet)
+                try {
+                    c.startActivity(new Intent(c, HubActivity.class).putExtra("updateNow", true)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                    if (link != null) link.send("NOTE\t" + L.t("Tablet sucht das Update und installiert es …"));
+                } catch (RuntimeException e) {
+                    if (link != null) link.send("NOTE\t" + L.t("Tablet konnte das Update nicht starten – ARC-DNA dort einmal öffnen."));
+                }
+                return;
+            }
             if (cmd.equals("PLAYID")) {                    // exact track: "videoId\tposMs\ttitle\tartist"
                 String[] q = arg.split("\t", -1);
                 if (q.length >= 4 && LocalMedia.validId(q[0])) {

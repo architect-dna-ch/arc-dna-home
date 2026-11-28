@@ -87,6 +87,11 @@ public class HeyService extends Service {
             catch (RuntimeException ignored) { }
         }
         if (i != null && "off".equals(i.getAction())) { stop(this); return START_NOT_STICKY; }
+        if (!screenWatched) {
+            android.content.IntentFilter f = new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF);
+            f.addAction(Intent.ACTION_SCREEN_ON);
+            try { registerReceiver(screen, f); screenWatched = true; } catch (RuntimeException ignored) { }
+        }
         goForeground("Startet …");
         if (speech == null && model == null) new Thread(this::prepare, "arc-hey").start();
         return START_STICKY;
@@ -162,8 +167,36 @@ public class HeyService extends Service {
         zip.delete();
     }
 
+    /* ---------------- battery: sleep while the screen is off and nothing plays ---------------- */
+
+    private boolean screenWatched, asleep;
+
+    private final android.content.BroadcastReceiver screen = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, Intent i) {
+            main.removeCallbacks(sleepCheck);
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) main.postDelayed(sleepCheck, 20_000);
+            else if (asleep) { asleep = false; listen(); }
+        }
+    };
+
+    /** Screen off: keep listening only while music plays (so «Architect, next» still works in the tub);
+     *  otherwise release the microphone and the recogniser until the screen comes back on. */
+    private final Runnable sleepCheck = new Runnable() {
+        @Override public void run() {
+            if (stopping) return;
+            android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
+            if (pm != null && pm.isInteractive()) return;
+            android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+            if (am != null && am.isMusicActive()) { main.postDelayed(this, 120_000); return; }
+            asleep = true;
+            if (speech != null) { try { speech.stop(); speech.shutdown(); } catch (RuntimeException ignored) { } speech = null; }
+            tell("off");
+            note("Schläft · Bildschirm aus");
+        }
+    };
+
     private void listen() {
-        if (stopping || model == null) return;
+        if (stopping || model == null || asleep || speech != null) return;
         try {
             Recognizer rec = new Recognizer(model, 16000.0f, GRAMMAR);
             rec.setWords(true);                                                // per-word confidence, for commands without a wake word
@@ -180,6 +213,7 @@ public class HeyService extends Service {
 
     private void restart() {
         if (stopping) return;
+        if (asleep) return;
         if (speech != null) { try { speech.stop(); speech.shutdown(); } catch (RuntimeException ignored) { } speech = null; }
         listen();
     }
@@ -400,6 +434,7 @@ public class HeyService extends Service {
         stopping = true;
         tell("off");
         if (torchWatched) try { getSystemService(android.hardware.camera2.CameraManager.class).unregisterTorchCallback(torchCb); } catch (RuntimeException ignored) { }
+        if (screenWatched) try { unregisterReceiver(screen); } catch (RuntimeException ignored) { }
         main.removeCallbacksAndMessages(null);
         if (speech != null) { try { speech.stop(); speech.shutdown(); } catch (RuntimeException ignored) { } }
         if (model != null) { try { model.close(); } catch (RuntimeException ignored) { } }
