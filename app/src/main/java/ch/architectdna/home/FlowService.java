@@ -59,7 +59,7 @@ public class FlowService extends Service {
             long pos = parse(n[2]) + 1500;                       // the other side needs a moment to start
             BtRemote.Link l = BtRemote.connect(app, null);
             if (l == null) { toastOn(app, L.t("Tablet nicht erreicht – Bluetooth an? ARC-DNA dort offen?")); return; }
-            l.send("HANDOFF\t" + n[0] + "\t" + n[1] + "\t" + pos);
+            l.send("HANDOFF\t" + n[0] + "\t" + n[1] + "\t" + pos + "\t" + n[4]);
             try { Thread.sleep(250); } catch (InterruptedException ignored) { }
             l.close();
             LocalMedia.pauseHere(app);
@@ -181,7 +181,7 @@ public class FlowService extends Service {
             LocalMedia.duck(app, false);
             String[] n = LocalMedia.nowPlaying(app);
             if (n != null && "1".equals(n[3]))
-                BtRemote.sendToPeer(app, "SYNC\t" + n[0] + "\t" + n[1] + "\t" + n[2], "DUCK\t1");
+                BtRemote.sendToPeer(app, "SYNC\t" + n[0] + "\t" + n[1] + "\t" + n[2] + "\t" + n[4], "DUCK\t1");
         }, "arc-flow-startsync").start();
     }
 

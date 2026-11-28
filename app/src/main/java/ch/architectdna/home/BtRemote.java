@@ -541,20 +541,28 @@ final class BtRemote {
                 return;
             }
             if (cmd.equals("SEARCH")) { search(arg); return; }
+            if (cmd.equals("PLAYID")) {                    // exact track: "videoId\tposMs\ttitle\tartist"
+                String[] q = arg.split("\t", -1);
+                if (q.length >= 4 && LocalMedia.validId(q[0])) {
+                    LocalMedia.playHere(c, q[2], q[3], plong(q[1]), q[0]);
+                    if (link != null) link.send("NOTE\t" + L.t("Spielt auf dem Tablet: ") + q[2]);
+                } else if (q.length >= 4) search((q[2] + " " + q[3]).trim() + "\t" + q[1]);
+                return;
+            }
             if (cmd.equals("AUDIO")) { audioCmd(arg); return; }
             if (cmd.equals("FIND")) { findMe(); return; }
             if (cmd.equals("GOAL")) { GoalRelay.deliver(c, arg); return; }   // ARC One goal mirror
             if (cmd.equals("NP?")) { replyNowPlaying(); return; }
             if (cmd.equals("SYNC")) {                      // play the same track here (ARC Sync follower)
                 String[] q = arg.split("\t", -1);
-                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
+                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]), q.length >= 4 ? q[3] : "");
                 FlowService.notePeerAssert(); FlowService.followSync(c); return;
             }
             if (cmd.equals("HANDOFF")) {                   // the other device pushed its music here (double tap)
                 String[] q = arg.split("\t", -1);
                 FlowService.noteHandoffIn();
                 LocalMedia.duck(c, false);
-                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]));
+                if (q.length >= 3) LocalMedia.playHere(c, q[0], q[1], plong(q[2]), q.length >= 4 ? q[3] : "");
                 return;
             }
             if (cmd.equals("SYNCOFF")) { FlowService.stopSyncLocal(c); return; }

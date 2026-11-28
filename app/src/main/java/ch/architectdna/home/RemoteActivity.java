@@ -456,7 +456,8 @@ public class RemoteActivity extends Activity {
     private void castPhoneTrack() {
         String[] now = localNow();
         if (now == null) { toast(L.t("Auf dem Handy läuft gerade kein Song.")); return; }
-        send("SEARCH\t" + (now[0] + " " + now[1]).trim().replace('\t', ' '));
+        if (LocalMedia.validId(now[2])) send("PLAYID\t" + now[2] + "\t0\t" + now[0].replace('\t', ' ') + "\t" + now[1].replace('\t', ' '));
+        else send("SEARCH\t" + (now[0] + " " + now[1]).trim().replace('\t', ' '));
         note.setText(L.t("Sende ans Tablet: ") + now[0] + " …");     // the tablet answers with the real outcome
     }
 
@@ -478,7 +479,7 @@ public class RemoteActivity extends Activity {
             String ti = md.getString(MediaMetadata.METADATA_KEY_TITLE);
             if (ti == null || ti.isEmpty()) return null;
             String ar = md.getString(MediaMetadata.METADATA_KEY_ARTIST);
-            return new String[]{ti, ar == null ? "" : ar};
+            return new String[]{ti, ar == null ? "" : ar, LocalMedia.videoId(md)};
         } catch (Exception e) { return null; }
     }
 
@@ -562,7 +563,10 @@ public class RemoteActivity extends Activity {
             ? SystemClock.elapsedRealtime() - s.getLastPositionUpdateTime() : 0);
         String q = (t + (a == null ? "" : " " + a)).replace('\t', ' ');
         try { mine.getTransportControls().pause(); } catch (RuntimeException ignored) { }
-        send("SEARCH\t" + q + "\t" + p);   // the tablet seeks to this spot itself once the song has really loaded
+        String id = LocalMedia.videoId(md);
+        if (LocalMedia.validId(id))
+            send("PLAYID\t" + id + "\t" + p + "\t" + t.replace('\t', ' ') + "\t" + (a == null ? "" : a.replace('\t', ' ')));
+        else send("SEARCH\t" + q + "\t" + p);   // the tablet seeks to this spot itself once the song has really loaded
         note.setText(L.t("Sende ans Tablet: ") + t + " …");
     }
 

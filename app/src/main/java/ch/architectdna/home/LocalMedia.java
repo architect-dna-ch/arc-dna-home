@@ -31,7 +31,7 @@ final class LocalMedia {
 
     private static ComponentName me(Context c) { return new ComponentName(c, MediaListener.class); }
 
-    /** {title, artist, positionMs, playing(1/0)} for the best local session, or null if none / no access. */
+    /** {title, artist, positionMs, playing(1/0), videoId or ""} for the best local session, or null if none / no access. */
     static String[] nowPlaying(Context c) {
         MediaController ctl = pick(c);
         if (ctl == null) return null;
@@ -50,7 +50,7 @@ final class LocalMedia {
             if (dur > 0) pos = Math.min(pos, dur);
         }
         if (title.isEmpty()) return null;
-        return new String[]{title, artist, Long.toString(Math.max(0, pos)), playing ? "1" : "0"};
+        return new String[]{title, artist, Long.toString(Math.max(0, pos)), playing ? "1" : "0", videoId(md)};
     }
 
     static boolean isPlayingHere(Context c) {
@@ -106,7 +106,69 @@ final class LocalMedia {
      *  Uses the music app's session only if it advertises play-from-search (otherwise Android drops the
      *  request silently), checks the title actually changed, and falls back to the play-from-search
      *  intent. The seek adds the time the track took to load, so it lands closer to "the same second". */
+    /** The exact YouTube video id of the track, when the app exposes it (YouTube Music does, as its media id).
+     *  With it the other device plays THIS song, not whatever its search ranks first for the same words. */
+    static String videoId(MediaMetadata md) {
+        if (md == null) return "";
+        String[] cands = {
+            md.getString(MediaMetadata.METADATA_KEY_MEDIA_ID),
+            md.getString(MediaMetadata.METADATA_KEY_MEDIA_URI),
+            md.getDescription() == null ? null : md.getDescription().getMediaId(),
+            md.getDescription() == null || md.getDescription().getMediaUri() == null ? null : md.getDescription().getMediaUri().toString(),
+        };
+        for (String s : cands) {
+            if (s == null) continue;
+            s = s.trim();
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:[?&]v=|youtu\\.be/)([A-Za-z0-9_-]{11})").matcher(s);
+            if (m.find()) return m.group(1);
+            if (s.matches("[A-Za-z0-9_-]{11}")) return s;
+        }
+        return "";
+    }
+
+    static boolean validId(String id) { return id != null && id.matches("[A-Za-z0-9_-]{11}"); }
+
+    /** Open exactly this video in YouTube Music. */
+    static boolean playId(Context c, String id) {
+        if (!validId(id)) return false;
+        Intent i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://music.youtube.com/watch?v=" + id))
+            .setPackage(BtRemote.YT_MUSIC)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { c.startActivity(i); return true; } catch (RuntimeException e) { return false; }
+    }
+
     static void playHere(final Context c, final String title, String artist, final long posMs) {
+        playHere(c, title, artist, posMs, "");
+    }
+
+    /** Play the track here. With a video id: exactly that track (then seek). Without one, or if the id route
+     *  didn't land on the right title: the old search. */
+    static void playHere(final Context c, final String title, final String artist, final long posMs, String id) {
+        if (validId(id)) {
+            final long t0 = SystemClock.elapsedRealtime();
+            if (playId(c, id)) {
+                final Handler h = new Handler(Looper.getMainLooper());
+                h.postDelayed(new Runnable() {
+                    int tries = 0;
+                    @Override public void run() {
+                        if (sameTitle(currentTitle(c), title)) { if (posMs > 4000) seekSoon(c, posMs, t0); return; }
+                        if (++tries < 6) { h.postDelayed(this, 1000); return; }
+                        playSearch(c, title, artist, posMs);           // id didn't take: fall back
+                    }
+                }, 1500);
+                return;
+            }
+        }
+        playSearch(c, title, artist, posMs);
+    }
+
+    static boolean sameTitle(String now, String want) {
+        if (now == null || want == null || now.isEmpty() || want.isEmpty()) return false;
+        String a = now.toLowerCase(java.util.Locale.ROOT).trim(), b = want.toLowerCase(java.util.Locale.ROOT).trim();
+        return a.equals(b) || a.contains(b) || b.contains(a);
+    }
+
+    private static void playSearch(final Context c, final String title, String artist, final long posMs) {
         final String q = (title + " " + artist).trim();
         if (q.isEmpty()) return;
         final long t0 = SystemClock.elapsedRealtime();
